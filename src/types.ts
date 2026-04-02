@@ -38,6 +38,7 @@ export type ProposalStatus =
 
 export interface Proposal {
   id: string;
+  project_id: string;
   type: ProposalType;
   title: string;
   content: string;
@@ -56,6 +57,7 @@ export interface Proposal {
 // 游戏成品
 export interface Game {
   id: string;
+  project_id: string;
   name: string;
   description: string | null;
   html_content?: string;

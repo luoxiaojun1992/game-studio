@@ -51,6 +51,7 @@ db.exec(`
   -- 提案表（策划案、架构方案、技术方案等）
   CREATE TABLE IF NOT EXISTS proposals (
     id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL DEFAULT 'default',
     type TEXT NOT NULL,
     title TEXT NOT NULL,
     content TEXT NOT NULL,
@@ -69,6 +70,7 @@ db.exec(`
   -- 游戏成品表
   CREATE TABLE IF NOT EXISTS games (
     id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL DEFAULT 'default',
     name TEXT NOT NULL,
     description TEXT,
     html_content TEXT NOT NULL,
@@ -122,7 +124,9 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_agent_messages_session ON agent_messages(agent_session_id);
   CREATE INDEX IF NOT EXISTS idx_agent_messages_agent ON agent_messages(agent_id);
   CREATE INDEX IF NOT EXISTS idx_proposals_status ON proposals(status);
+  CREATE INDEX IF NOT EXISTS idx_proposals_project_id ON proposals(project_id);
   CREATE INDEX IF NOT EXISTS idx_agent_logs_agent ON agent_logs(agent_id);
+  CREATE INDEX IF NOT EXISTS idx_games_project_id ON games(project_id);
   CREATE INDEX IF NOT EXISTS idx_commands_status ON commands(status);
   CREATE INDEX IF NOT EXISTS idx_handoffs_status ON handoffs(status);
   CREATE INDEX IF NOT EXISTS idx_handoffs_to_agent ON handoffs(to_agent_id);
@@ -142,6 +146,24 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_agent_memories_agent ON agent_memories(agent_id);
   CREATE INDEX IF NOT EXISTS idx_agent_memories_category ON agent_memories(category);
 `);
+
+function hasColumn(tableName: string, columnName: string): boolean {
+  const rows = db.prepare(`PRAGMA table_info(${tableName})`).all() as Array<{ name: string }>;
+  return rows.some(row => row.name === columnName);
+}
+
+function ensureProjectColumns(): void {
+  if (!hasColumn('proposals', 'project_id')) {
+    db.exec(`ALTER TABLE proposals ADD COLUMN project_id TEXT NOT NULL DEFAULT 'default';`);
+  }
+  if (!hasColumn('games', 'project_id')) {
+    db.exec(`ALTER TABLE games ADD COLUMN project_id TEXT NOT NULL DEFAULT 'default';`);
+  }
+  db.exec(`UPDATE proposals SET project_id = 'default' WHERE project_id IS NULL OR project_id = '';`);
+  db.exec(`UPDATE games SET project_id = 'default' WHERE project_id IS NULL OR project_id = '';`);
+}
+
+ensureProjectColumns();
 
 // ============= 类型定义 =============
 
@@ -168,6 +190,7 @@ export interface DbAgentMessage {
 
 export interface DbProposal {
   id: string;
+  project_id: string;
   type: 'game_design' | 'biz_design' | 'tech_arch' | 'tech_impl' | 'ceo_review';
   title: string;
   content: string;
@@ -185,6 +208,7 @@ export interface DbProposal {
 
 export interface DbGame {
   id: string;
+  project_id: string;
   name: string;
   description: string | null;
   html_content: string;
@@ -315,10 +339,26 @@ export function getProposal(id: string): DbProposal | undefined {
 
 export function createProposal(proposal: DbProposal): DbProposal {
   const stmt = db.prepare(`
-    INSERT INTO proposals (id, type, title, content, author_agent_id, status, reviewer_agent_id, review_comment, user_decision, user_comment, version, parent_id, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO proposals (id, project_id, type, title, content, author_agent_id, status, reviewer_agent_id, review_comment, user_decision, user_comment, version, parent_id, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
-  stmt.run(proposal.id, proposal.type, proposal.title, proposal.content, proposal.author_agent_id, proposal.status, proposal.reviewer_agent_id, proposal.review_comment, proposal.user_decision, proposal.user_comment, proposal.version, proposal.parent_id, proposal.created_at, proposal.updated_at);
+  stmt.run(
+    proposal.id,
+    proposal.project_id,
+    proposal.type,
+    proposal.title,
+    proposal.content,
+    proposal.author_agent_id,
+    proposal.status,
+    proposal.reviewer_agent_id,
+    proposal.review_comment,
+    proposal.user_decision,
+    proposal.user_comment,
+    proposal.version,
+    proposal.parent_id,
+    proposal.created_at,
+    proposal.updated_at
+  );
   return proposal;
 }
 
@@ -355,10 +395,22 @@ export function getGame(id: string): DbGame | undefined {
 
 export function createGame(game: DbGame): DbGame {
   const stmt = db.prepare(`
-    INSERT INTO games (id, name, description, html_content, proposal_id, version, status, author_agent_id, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO games (id, project_id, name, description, html_content, proposal_id, version, status, author_agent_id, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
-  stmt.run(game.id, game.name, game.description, game.html_content, game.proposal_id, game.version, game.status, game.author_agent_id, game.created_at, game.updated_at);
+  stmt.run(
+    game.id,
+    game.project_id,
+    game.name,
+    game.description,
+    game.html_content,
+    game.proposal_id,
+    game.version,
+    game.status,
+    game.author_agent_id,
+    game.created_at,
+    game.updated_at
+  );
   return game;
 }
 
@@ -552,6 +604,12 @@ export function clearAgentMemories(agentId: string): boolean {
 // 产出根目录
 const OUTPUT_DIR = path.join(__dirname, '..', 'output');
 
+function normalizeProjectId(projectId: string | null | undefined): string {
+  const raw = (projectId || 'default').trim();
+  const safe = raw.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64);
+  return safe || 'default';
+}
+
 /**
  * 确保产出目录存在
  */
@@ -562,16 +620,29 @@ export function ensureOutputDir(): string {
   return OUTPUT_DIR;
 }
 
+function ensureProjectOutputDirs(projectId: string): { projectDir: string; docsDir: string; designsDir: string; codeDir: string } {
+  const root = ensureOutputDir();
+  const safeProjectId = normalizeProjectId(projectId);
+  const projectDir = path.join(root, safeProjectId);
+  const docsDir = path.join(projectDir, 'docs');
+  const designsDir = path.join(projectDir, 'designs');
+  const codeDir = path.join(projectDir, 'code');
+  [projectDir, docsDir, designsDir, codeDir].forEach((dir) => {
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  });
+  return { projectDir, docsDir, designsDir, codeDir };
+}
+
 /**
  * 保存策划案到产出目录
  */
 export function saveProposalToFile(proposal: DbProposal): string | null {
-  const dir = ensureOutputDir();
-  const proposalsDir = path.join(dir, 'proposals');
-  if (!fs.existsSync(proposalsDir)) fs.mkdirSync(proposalsDir, { recursive: true });
+  const { docsDir, designsDir } = ensureProjectOutputDirs(proposal.project_id);
+  const isDesignDoc = proposal.type === 'game_design' || proposal.type === 'biz_design';
+  const targetDir = isDesignDoc ? designsDir : docsDir;
 
   const safeName = proposal.title.replace(/[<>:"/\\|?*]/g, '_').slice(0, 50);
-  const filePath = path.join(proposalsDir, `${proposal.type}_${proposal.id.slice(0, 8)}_${safeName}.md`);
+  const filePath = path.join(targetDir, `${proposal.type}_${proposal.id.slice(0, 8)}_${safeName}.md`);
   
   try {
     const content = `# ${proposal.title}\n\n` +
@@ -592,12 +663,10 @@ export function saveProposalToFile(proposal: DbProposal): string | null {
  * 保存游戏到产出目录
  */
 export function saveGameToFile(game: DbGame): string | null {
-  const dir = ensureOutputDir();
-  const gamesDir = path.join(dir, 'games');
-  if (!fs.existsSync(gamesDir)) fs.mkdirSync(gamesDir, { recursive: true });
+  const { codeDir } = ensureProjectOutputDirs(game.project_id);
 
   const safeName = game.name.replace(/[<>:"/\\|?*]/g, '_').slice(0, 50);
-  const filePath = path.join(gamesDir, `${game.name}_v${game.version}_${game.id.slice(0, 8)}.html`);
+  const filePath = path.join(codeDir, `${safeName}_v${game.version}_${game.id.slice(0, 8)}.html`);
   
   try {
     fs.writeFileSync(filePath, game.html_content, 'utf-8');

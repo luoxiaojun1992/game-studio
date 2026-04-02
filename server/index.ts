@@ -540,7 +540,7 @@ app.use('/output', express.static(path.join(__dirname, '..', 'output'), {
 
 // 覆盖创建提案的逻辑，增加文件保存
 app.post('/api/proposals', (req, res) => {
-  const { type, title, content, author_agent_id } = req.body;
+  const { project_id, type, title, content, author_agent_id } = req.body;
   if (!type || !title || !content || !author_agent_id) {
     return res.status(400).json({ error: '缺少必要字段' });
   }
@@ -548,6 +548,7 @@ app.post('/api/proposals', (req, res) => {
   const now = new Date().toISOString();
   const proposal = db.createProposal({
     id: uuidv4(),
+    project_id: project_id || 'default',
     type,
     title,
     content,
@@ -605,7 +606,7 @@ app.post('/api/proposals/:id/decide', (req, res) => {
 
 // 覆盖游戏提交，增加文件保存
 app.post('/api/games', (req, res) => {
-  const { name, description, html_content, proposal_id, author_agent_id, version } = req.body;
+  const { project_id, name, description, html_content, proposal_id, author_agent_id, version } = req.body;
   if (!name || !html_content || !author_agent_id) {
     return res.status(400).json({ error: '缺少必要字段' });
   }
@@ -613,6 +614,7 @@ app.post('/api/games', (req, res) => {
   const now = new Date().toISOString();
   const game = db.createGame({
     id: uuidv4(),
+    project_id: project_id || 'default',
     name,
     description: description || null,
     html_content,

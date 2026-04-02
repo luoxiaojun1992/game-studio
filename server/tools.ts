@@ -133,16 +133,18 @@ export function createStudioToolsServer(agentId: AgentRole, logFn?: ToolLogFn): 
         'submit_proposal',
         '提交一份策划案或方案文档（如游戏策划案、商业策划案、技术方案等）。提案提交后将通知管理者进行审批。',
         {
+          project_id: z.string().optional().default('default').describe('项目 ID，用于归档到 /output/{project_id}/... 目录'),
           type: z.enum(['game_design', 'biz_design', 'tech_arch', 'tech_impl', 'ceo_review']).describe(
             '提案类型：game_design=游戏策划, biz_design=商业策划, tech_arch=架构方案, tech_impl=技术方案'
           ),
           title: z.string().describe('提案标题'),
           content: z.string().describe('提案的完整内容（Markdown 格式）')
         },
-        async ({ type, title, content }) => {
+        async ({ project_id, type, title, content }) => {
           const now = new Date().toISOString();
           const proposal = db.createProposal({
             id: uuidv4(),
+            project_id: project_id || 'default',
             type,
             title,
             content,
@@ -172,16 +174,18 @@ export function createStudioToolsServer(agentId: AgentRole, logFn?: ToolLogFn): 
         'submit_game',
         '提交一个完成的游戏成品（单文件 HTML）。游戏将被保存到数据库和产出目录中。',
         {
+          project_id: z.string().optional().default('default').describe('项目 ID，用于归档到 /output/{project_id}/... 目录'),
           name: z.string().describe('游戏名称'),
           html_content: z.string().min(100).describe('完整的游戏 HTML 代码（必须是包含所有 CSS/JS 的单文件 HTML）'),
           description: z.string().optional().describe('游戏简介'),
           version: z.string().optional().default('1.0.0').describe('版本号'),
           proposal_id: z.string().optional().describe('关联的策划案 ID（如果有）')
         },
-        async ({ name, html_content, description, version, proposal_id }) => {
+        async ({ project_id, name, html_content, description, version, proposal_id }) => {
           const now = new Date().toISOString();
           const game = db.createGame({
             id: uuidv4(),
+            project_id: project_id || 'default',
             name,
             description: description || null,
             html_content,
