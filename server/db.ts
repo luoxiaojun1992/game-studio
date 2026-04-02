@@ -147,8 +147,11 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_agent_memories_category ON agent_memories(category);
 `);
 
-function hasColumn(tableName: string, columnName: string): boolean {
-  const rows = db.prepare(`PRAGMA table_info(${tableName})`).all() as Array<{ name: string }>;
+function hasColumn(tableName: 'proposals' | 'games', columnName: string): boolean {
+  const pragmaSql = tableName === 'proposals'
+    ? 'PRAGMA table_info(proposals)'
+    : 'PRAGMA table_info(games)';
+  const rows = db.prepare(pragmaSql).all() as Array<{ name: string }>;
   return rows.some(row => row.name === columnName);
 }
 
@@ -603,11 +606,34 @@ export function clearAgentMemories(agentId: string): boolean {
 
 // 产出根目录
 const OUTPUT_DIR = path.join(__dirname, '..', 'output');
+const PROJECT_ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
+const MAX_PROJECT_ID_LENGTH = 64;
+const MAX_FILENAME_LENGTH = 50;
+const MAX_VERSION_LENGTH = 30;
+
+function sanitizeFilename(value: string, maxLength: number): string {
+  return value
+    .replace(/\0/g, '')
+    .replace(/[\x00-\x1f\x80-\x9f]/g, '_')
+    .replace(/[<>:"/\\|?*]/g, '_')
+    .slice(0, maxLength);
+}
 
 function normalizeProjectId(projectId: string | null | undefined): string {
   const raw = (projectId || 'default').trim();
-  const safe = raw.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64);
-  return safe || 'default';
+  if (!raw) return 'default';
+  if (raw.length > MAX_PROJECT_ID_LENGTH) return 'default';
+  if (!PROJECT_ID_PATTERN.test(raw)) return 'default';
+  return raw;
+}
+
+function resolveSafePath(baseDir: string, fileName: string): string {
+  const resolvedBase = path.resolve(baseDir);
+  const candidate = path.resolve(baseDir, fileName);
+  if (!candidate.startsWith(`${resolvedBase}${path.sep}`) && candidate !== resolvedBase) {
+    throw new Error('非法文件路径');
+  }
+  return candidate;
 }
 
 /**
@@ -640,9 +666,9 @@ export function saveProposalToFile(proposal: DbProposal): string | null {
   const { docsDir, designsDir } = ensureProjectOutputDirs(proposal.project_id);
   const isDesignDoc = proposal.type === 'game_design' || proposal.type === 'biz_design';
   const targetDir = isDesignDoc ? designsDir : docsDir;
+  const safeType = sanitizeFilename(proposal.type, 20) || 'proposal';
 
-  const safeName = proposal.title.replace(/[<>:"/\\|?*]/g, '_').slice(0, 50);
-  const filePath = path.join(targetDir, `${proposal.type}_${proposal.id.slice(0, 8)}_${safeName}.md`);
+  const filePath = resolveSafePath(targetDir, `${safeType}_${proposal.id.slice(0, 8)}.md`);
   
   try {
     const content = `# ${proposal.title}\n\n` +
@@ -665,8 +691,9 @@ export function saveProposalToFile(proposal: DbProposal): string | null {
 export function saveGameToFile(game: DbGame): string | null {
   const { codeDir } = ensureProjectOutputDirs(game.project_id);
 
-  const safeName = game.name.replace(/[<>:"/\\|?*]/g, '_').slice(0, 50);
-  const filePath = path.join(codeDir, `${safeName}_v${game.version}_${game.id.slice(0, 8)}.html`);
+  const safeName = sanitizeFilename(game.name, MAX_FILENAME_LENGTH);
+  const safeVersion = sanitizeFilename(game.version, MAX_VERSION_LENGTH);
+  const filePath = resolveSafePath(codeDir, `${safeName}_v${safeVersion}_${game.id.slice(0, 8)}.html`);
   
   try {
     fs.writeFileSync(filePath, game.html_content, 'utf-8');
