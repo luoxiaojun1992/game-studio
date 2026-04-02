@@ -3,6 +3,7 @@ import { query, PermissionResult, CanUseTool } from '@tencent-ai/agent-sdk';
 import { v4 as uuidv4 } from 'uuid';
 import { AgentRole, AGENT_DEFINITIONS } from './agents.js';
 import * as db from './db.js';
+import { sseBroadcaster } from './sse-broadcaster.js';
 
 export type AgentStatus = 'idle' | 'working' | 'paused' | 'error';
 
@@ -144,12 +145,86 @@ class AgentManager extends EventEmitter {
   }
 
   /**
+   * 汇总工具输入参数，便于日志展示
+   */
+  private summarizeToolInput(toolName: string, input: Record<string, unknown>): string {
+    try {
+      switch (toolName) {
+        case 'Bash':
+        case 'Shell':
+        case 'Execute':
+        case 'execute_command': {
+          const cmd = String(input.command || input.cmd || input.script || '');
+          return cmd.length > 300 ? cmd.slice(0, 300) + '...' : cmd;
+        }
+        case 'Read':
+        case 'read_file': {
+          return String(input.filePath || input.path || input.file_path || '');
+        }
+        case 'Write':
+        case 'write':
+        case 'write_to_file': {
+          const fp = String(input.filePath || input.path || input.file_path || '');
+          const content = String(input.content || '');
+          return `${fp} (${content.length} 字符)`;
+        }
+        case 'Grep':
+        case 'grep':
+        case 'search':
+        case 'search_content': {
+          return `pattern="${input.pattern || input.query || ''}"`;
+        }
+        case 'WebSearch':
+        case 'web_search': {
+          return String(input.query || input.keyword || '');
+        }
+        default: {
+          const str = JSON.stringify(input);
+          return str.length > 300 ? str.slice(0, 300) + '...' : str;
+        }
+      }
+    } catch {
+      return String(input);
+    }
+  }
+
+  /**
+   * 汇总工具返回结果，便于日志展示
+   */
+  private summarizeToolResult(toolName: string, result: string, isError: boolean): string {
+    if (isError) {
+      return result.length > 200 ? result.slice(0, 200) + '...(错误截断)' : result;
+    }
+    if (result.length <= 200) return result;
+    // 根据工具类型截取有意义的片段
+    switch (toolName) {
+      case 'Bash':
+      case 'Shell':
+      case 'Execute':
+      case 'execute_command': {
+        const lines = result.split('\n');
+        if (lines.length > 10) {
+          return lines.slice(0, 5).join('\n') + '\n...(省略 ' + (lines.length - 10) + ' 行)\n' + lines.slice(-5).join('\n');
+        }
+        return result.slice(0, 300) + '...';
+      }
+      case 'Read':
+      case 'read_file': {
+        return result.slice(0, 200) + `...(共 ${result.length} 字符)`;
+      }
+      default: {
+        return result.slice(0, 200) + '...(已截断)';
+      }
+    }
+  }
+
+  /**
    * 向 Agent 发送消息并获取流式响应
    */
   async sendMessage(
     agentId: AgentRole,
     message: string,
-    model: string = 'claude-sonnet-4',
+    model: string = 'glm-5.0',
     onEvent?: (event: StreamEvent) => void
   ): Promise<string> {
     if (this.isAgentPaused(agentId)) {
@@ -203,6 +278,81 @@ class AgentManager extends EventEmitter {
 
     try {
       const canUseTool: CanUseTool = async (toolName, input, options) => {
+        // ---- 拦截 Agent 工具调用，自动转为任务交接 ----
+        if (toolName === 'Agent' || toolName === 'agent' || toolName === 'Task') {
+          try {
+            const agentInput = input as any;
+            // 从 Agent 工具的 prompt/subagent_name 中提取目标 Agent
+            const prompt = String(agentInput.prompt || agentInput.subagent_prompt || '');
+            const subagentName = String(agentInput.subagent_name || agentInput.name || '');
+
+            // 尝试匹配目标 Agent
+            let toAgentId: AgentRole | null = null;
+            const agentMap: Record<string, AgentRole> = {
+              'engineer': 'engineer', '软件工程师': 'engineer', '架构师': 'architect',
+              'architect': 'architect', '游戏策划': 'game_designer', 'game_designer': 'game_designer',
+              '商业策划': 'biz_designer', 'biz_designer': 'biz_designer',
+              'ceo': 'ceo', 'CEO': 'ceo', '经理': 'ceo'
+            };
+            for (const [key, role] of Object.entries(agentMap)) {
+              if (prompt.includes(key) || subagentName.includes(key)) {
+                toAgentId = role;
+                break;
+              }
+            }
+
+            // 如果没有匹配到具体 Agent，尝试从 handoffTargets 推断
+            if (!toAgentId) {
+              const def = AGENT_DEFINITIONS[agentId];
+              if (def?.handoffTargets && def.handoffTargets.length > 0) {
+                toAgentId = def.handoffTargets[0];
+              }
+            }
+
+            if (toAgentId) {
+              // 自动创建交接记录
+              const title = prompt.length > 50 ? prompt.slice(0, 50) + '...' : prompt.slice(0, 50);
+              const now = new Date().toISOString();
+              const handoff = db.createHandoff({
+                id: uuidv4(),
+                from_agent_id: agentId,
+                to_agent_id: toAgentId,
+                title: title || '任务交接',
+                description: prompt || 'Agent 发起任务交接',
+                context: JSON.stringify(agentInput, null, 2).slice(0, 2000),
+                status: 'pending',
+                priority: 'normal',
+                result: null,
+                accepted_at: null,
+                completed_at: null,
+                source_command_id: null,
+                created_at: now,
+                updated_at: now,
+              });
+
+              this.addLog(agentId, '自动创建交接', `${agentId} → ${toAgentId}: ${handoff.title}`, 'success');
+
+              // 广播交接事件
+              sseBroadcaster.broadcast({ type: 'handoff_created', handoff });
+
+              return {
+                behavior: 'deny',
+                message: `已自动为你创建任务交接到 ${AGENT_DEFINITIONS[toAgentId]?.name || toAgentId}。交接需要管理者确认后才会执行。请勿直接调用其他 Agent。`
+              };
+            }
+          } catch (e) {
+            // 解析失败，走正常权限流程
+          }
+        }
+
+        // ---- 自动放行调用交接 API 的 Bash/curl 命令 ----
+        if (toolName === 'Bash' || toolName === 'Shell' || toolName === 'Execute' || toolName === 'execute_command') {
+          const cmd = String(input.command || input.cmd || '');
+          if (cmd.includes('/api/handoffs') || cmd.includes('handoff') || cmd.includes('/api/agents/') && cmd.includes('/memories')) {
+            return { behavior: 'allow', updatedInput: input };
+          }
+        }
+
         // 发送权限请求事件
         const requestId = uuidv4();
         const permEvent: StreamEvent = {
@@ -289,6 +439,9 @@ class AgentManager extends EventEmitter {
                 const toolInput = (block as any).input || {};
                 const toolCall = { id: toolId, name: block.name, input: toolInput, status: 'running' };
                 toolCalls.push(toolCall);
+                // 记录工具调用日志
+                const inputSummary = this.summarizeToolInput(block.name, toolInput);
+                this.addLog(agentId, `调用工具: ${block.name}`, inputSummary, 'info');
                 const toolEvent: StreamEvent = { type: 'tool', agentId, id: toolId, name: block.name, input: toolInput, status: 'running', streamId };
                 this.emit('stream_event', toolEvent);
                 if (onEvent) onEvent(toolEvent);
@@ -305,6 +458,9 @@ class AgentManager extends EventEmitter {
             tool.status = isError ? 'error' : 'completed';
             tool.isError = isError;
             tool.result = typeof content === 'string' ? content : JSON.stringify(content);
+            // 记录工具结果日志
+            const resultSummary = this.summarizeToolResult(tool.name, tool.result, isError);
+            this.addLog(agentId, `工具结果: ${tool.name}`, resultSummary, isError ? 'error' : 'success');
             const toolResultEvent: StreamEvent = {
               type: 'tool_result', agentId, toolId: tool.id,
               content: tool.result, isError, streamId
@@ -313,6 +469,11 @@ class AgentManager extends EventEmitter {
             if (onEvent) onEvent(toolResultEvent);
           }
         } else if (msg.type === 'result') {
+          // 记录最终回复摘要到日志
+          if (fullResponse.length > 0) {
+            const replyPreview = fullResponse.length > 500 ? fullResponse.slice(0, 500) + '...(已截断)' : fullResponse;
+            this.addLog(agentId, '最终回复', replyPreview, 'info');
+          }
           const doneEvent: StreamEvent = { type: 'agent_done', agentId, streamId, duration: msg.duration, cost: msg.cost };
           this.emit('stream_event', doneEvent);
           if (onEvent) onEvent(doneEvent);

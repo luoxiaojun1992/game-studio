@@ -111,6 +111,27 @@ export interface PermissionRequest {
   timestamp: number;
 }
 
+// 任务交接
+export type HandoffStatus = 'pending' | 'accepted' | 'working' | 'completed' | 'rejected' | 'cancelled';
+export type HandoffPriority = 'low' | 'normal' | 'high' | 'urgent';
+
+export interface Handoff {
+  id: string;
+  from_agent_id: AgentRole;
+  to_agent_id: AgentRole;
+  title: string;
+  description: string;
+  context: string | null;
+  status: HandoffStatus;
+  priority: HandoffPriority;
+  result: string | null;
+  accepted_at: string | null;
+  completed_at: string | null;
+  source_command_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 // SSE 事件
 export interface SSEInitEvent {
   type: 'init';
@@ -141,7 +162,9 @@ export type SSEEvent =
   | { type: 'game_submitted'; game: Game }
   | { type: 'game_updated'; game: Game }
   | { type: 'agent_paused'; agentId: AgentRole }
-  | { type: 'agent_resumed'; agentId: AgentRole };
+  | { type: 'agent_resumed'; agentId: AgentRole }
+  | { type: 'handoff_created'; handoff: Handoff }
+  | { type: 'handoff_updated'; handoff: Handoff };
 
 // 页面标签
-export type TabKey = 'overview' | 'proposals' | 'games' | 'logs' | 'commands';
+export type TabKey = 'overview' | 'proposals' | 'games' | 'logs' | 'commands' | 'handoffs';

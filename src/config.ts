@@ -48,6 +48,9 @@ export const api = {
   // 指令历史
   getCommands: () => fetch(`${API_BASE}/api/commands`).then(r => r.json()),
 
+  // 查询可用模型
+  getModels: () => fetch(`${API_BASE}/api/models`).then(r => r.json()),
+
   // 权限响应
   respondPermission: (requestId: string, behavior: 'allow' | 'deny', message?: string) =>
     fetch(`${API_BASE}/api/permission-response`, {
@@ -55,6 +58,56 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ requestId, behavior, message })
     }).then(r => r.json()),
+
+  // 任务交接
+  getHandoffs: (agentId?: string, status?: string) => {
+    const params = new URLSearchParams();
+    if (agentId) params.set('agentId', agentId);
+    if (status) params.set('status', status);
+    return fetch(`${API_BASE}/api/handoffs?${params}`).then(r => r.json());
+  },
+  getPendingHandoffs: (toAgentId?: string) => {
+    const params = new URLSearchParams();
+    if (toAgentId) params.set('toAgentId', toAgentId);
+    return fetch(`${API_BASE}/api/handoffs/pending?${params}`).then(r => r.json());
+  },
+  createHandoff: (data: { from_agent_id: string; to_agent_id: string; title: string; description: string; context?: string; priority?: string }) =>
+    fetch(`${API_BASE}/api/handoffs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }).then(r => r.json()),
+  acceptHandoff: (id: string) =>
+    fetch(`${API_BASE}/api/handoffs/${id}/accept`, { method: 'POST' }).then(r => r.json()),
+  completeHandoff: (id: string, result?: string) =>
+    fetch(`${API_BASE}/api/handoffs/${id}/complete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ result })
+    }).then(r => r.json()),
+  rejectHandoff: (id: string, reason?: string) =>
+    fetch(`${API_BASE}/api/handoffs/${id}/reject`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason })
+    }).then(r => r.json()),
+  cancelHandoff: (id: string) =>
+    fetch(`${API_BASE}/api/handoffs/${id}/cancel`, { method: 'POST' }).then(r => r.json()),
+
+  // Agent 记忆
+  getAgentMemories: (agentId: string, category?: string) => {
+    const params = new URLSearchParams();
+    if (category) params.set('category', category);
+    return fetch(`${API_BASE}/api/agents/${agentId}/memories?${params}`).then(r => r.json());
+  },
+  createMemory: (agentId: string, data: { category?: string; content: string; importance?: string; source_task?: string }) =>
+    fetch(`${API_BASE}/api/agents/${agentId}/memories`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }).then(r => r.json()),
+  deleteMemory: (id: string) =>
+    fetch(`${API_BASE}/api/memories/${id}`, { method: 'DELETE' }).then(r => r.json()),
 
   // SSE 观测流
   observeUrl: `${API_BASE}/api/observe`,
@@ -65,6 +118,6 @@ export const api = {
     fetch(`${API_BASE}/api/agents/${agentId}/command`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message, model: model || 'claude-sonnet-4' })
+      body: JSON.stringify({ message, model: model || 'glm-5.0' })
     })
 };

@@ -1,11 +1,13 @@
 import React from 'react';
-import { Agent, AgentRole } from '../types';
+import { Agent, AgentRole, Handoff } from '../types';
 
 interface Props {
   agent: Agent;
   onPauseToggle: () => void;
   onSendCommand: () => void;
   streamLog?: { agentId: AgentRole; content: string; time: string };
+  pendingHandoffs?: Handoff[];
+  activeHandoffs?: Handoff[];
 }
 
 const STATUS_CONFIG = {
@@ -15,10 +17,14 @@ const STATUS_CONFIG = {
   error: { label: '出错', color: 'text-red-400', dot: 'bg-red-400', bg: 'border-red-800/50' },
 };
 
-export default function AgentCard({ agent, onPauseToggle, onSendCommand, streamLog }: Props) {
+export default function AgentCard({ agent, onPauseToggle, onSendCommand, streamLog, pendingHandoffs = [], activeHandoffs = [] }: Props) {
   const status = agent.state?.status || 'idle';
   const statusCfg = STATUS_CONFIG[status];
   const isPaused = agent.state?.isPaused;
+
+  const incomingPending = pendingHandoffs.filter(h => h.to_agent_id === agent.id);
+  const outgoingActive = activeHandoffs.filter(h => h.from_agent_id === agent.id && ['pending', 'accepted', 'working'].includes(h.status));
+  const hasHandoffActivity = incomingPending.length > 0 || outgoingActive.length > 0;
 
   return (
     <div
@@ -35,10 +41,20 @@ export default function AgentCard({ agent, onPauseToggle, onSendCommand, streamL
           </div>
         </div>
 
-        {/* 状态点 */}
-        <div className="flex items-center gap-1">
+        {/* 状态点和交接指示 */}
+        <div className="flex items-center gap-1.5">
           <span className={`w-2 h-2 rounded-full ${statusCfg.dot} ${status === 'working' ? 'animate-pulse' : ''}`} />
           <span className={`text-xs ${statusCfg.color}`}>{statusCfg.label}</span>
+          {incomingPending.length > 0 && (
+            <span className="bg-purple-500/20 text-purple-300 border border-purple-500/40 text-xs px-1.5 py-0 rounded-full font-bold" title={`${incomingPending.length} 个待接收交接`}>
+              📥 {incomingPending.length}
+            </span>
+          )}
+          {outgoingActive.length > 0 && (
+            <span className="bg-green-500/20 text-green-300 border border-green-500/40 text-xs px-1.5 py-0 rounded-full font-bold" title={`${outgoingActive.length} 个已发出交接`}>
+              📤 {outgoingActive.length}
+            </span>
+          )}
         </div>
       </div>
 

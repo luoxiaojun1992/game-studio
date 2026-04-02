@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Agent, AgentRole, AgentState, Proposal, Game, AgentLog, SSEEvent, TabKey, PermissionRequest } from '../types';
+import { Agent, AgentRole, AgentState, Proposal, Game, AgentLog, SSEEvent, TabKey, PermissionRequest, Handoff } from '../types';
 import { api } from '../config';
 import AgentCard from '../components/AgentCard';
 import ProposalList from '../components/ProposalList';
@@ -8,10 +8,12 @@ import LogPanel from '../components/LogPanel';
 import CommandPanel from '../components/CommandPanel';
 import ProposalDetail from '../components/ProposalDetail';
 import GamePreview from '../components/GamePreview';
+import HandoffPanel from '../components/HandoffPanel';
 
 const TABS: { key: TabKey; label: string; icon: string }[] = [
   { key: 'overview', label: '团队总览', icon: '🏠' },
   { key: 'proposals', label: '策划案', icon: '📋' },
+  { key: 'handoffs', label: '任务交接', icon: '🔄' },
   { key: 'games', label: '游戏成品', icon: '🎮' },
   { key: 'logs', label: '运行日志', icon: '📜' },
   { key: 'commands', label: '指令中心', icon: '⌨️' },
@@ -22,6 +24,7 @@ export default function StudioPage() {
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [games, setGames] = useState<Game[]>([]);
   const [logs, setLogs] = useState<AgentLog[]>([]);
+  const [handoffs, setHandoffs] = useState<Handoff[]>([]);
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
@@ -137,6 +140,23 @@ export default function StudioPage() {
           return [game, ...prev];
         });
         break;
+
+      case 'handoff_created':
+        setHandoffs(prev => [(event as any).handoff as Handoff, ...prev]);
+        break;
+
+      case 'handoff_updated':
+        setHandoffs(prev => {
+          const updated = (event as any).handoff as Handoff;
+          const idx = prev.findIndex(h => h.id === updated.id);
+          if (idx >= 0) {
+            const next = [...prev];
+            next[idx] = updated;
+            return next;
+          }
+          return [updated, ...prev];
+        });
+        break;
     }
   }, []);
 
@@ -182,6 +202,7 @@ export default function StudioPage() {
 
   const pendingProposals = proposals.filter(p => p.status === 'pending_review' || p.status === 'under_review');
   const workingAgents = agents.filter(a => a.state?.status === 'working');
+  const pendingHandoffs = handoffs.filter(h => h.status === 'pending');
 
   return (
     <div className="flex flex-col h-screen bg-gray-950 text-gray-100">
@@ -209,6 +230,12 @@ export default function StudioPage() {
               <span>{pendingProposals.length} 个待审批方案</span>
             </div>
           )}
+          {pendingHandoffs.length > 0 && (
+            <div className="flex items-center gap-1.5 bg-purple-500/20 border border-purple-500/40 rounded-full px-3 py-1 text-xs text-purple-300 animate-pulse cursor-pointer" onClick={() => setActiveTab('handoffs')}>
+              <span>🔄</span>
+              <span>{pendingHandoffs.length} 个待接收交接</span>
+            </div>
+          )}
           {workingAgents.length > 0 && (
             <div className="flex items-center gap-1.5 bg-green-500/20 border border-green-500/40 rounded-full px-3 py-1 text-xs text-green-300">
               <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse inline-block" />
@@ -226,24 +253,40 @@ export default function StudioPage() {
       {pendingPermissions.length > 0 && (
         <div className="shrink-0 bg-orange-950/50 border-b border-orange-900/50 px-6 py-2">
           <div className="text-xs text-orange-300 font-medium mb-1">⚠️ 有 Agent 正在请求操作权限，需要您确认：</div>
-          <div className="flex flex-wrap gap-2">
+          <div className="space-y-2">
             {pendingPermissions.map(perm => (
-              <div key={perm.requestId} className="flex items-center gap-2 bg-orange-900/40 border border-orange-700/50 rounded-lg px-3 py-1.5 text-xs">
-                <span className="text-orange-300 font-medium">{perm.agentId}</span>
-                <span className="text-gray-400">→</span>
-                <span className="text-white font-mono">{perm.toolName}</span>
-                <button
-                  onClick={() => handlePermissionResponse(perm.requestId, 'allow')}
-                  className="bg-green-600 hover:bg-green-500 text-white rounded px-2 py-0.5 transition-colors"
-                >
-                  允许
-                </button>
-                <button
-                  onClick={() => handlePermissionResponse(perm.requestId, 'deny')}
-                  className="bg-red-700 hover:bg-red-600 text-white rounded px-2 py-0.5 transition-colors"
-                >
-                  拒绝
-                </button>
+              <div key={perm.requestId} className="bg-orange-900/40 border border-orange-700/50 rounded-lg px-4 py-2.5">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="text-orange-300 font-medium">{getAgentEmoji(perm.agentId)} {perm.agentId}</span>
+                  <span className="text-gray-500">→</span>
+                  <span className="text-white font-mono font-semibold">{perm.toolName}</span>
+                </div>
+                {/* 显示具体的工具输入内容 */}
+                {perm.input && Object.keys(perm.input).length > 0 && (
+                  <div className="bg-gray-900/60 rounded-md p-2 mb-2 font-mono text-xs text-gray-300 overflow-x-auto whitespace-pre-wrap break-all max-h-40 overflow-y-auto border border-gray-700/50">
+                    {Object.entries(perm.input).map(([key, value]) => (
+                      <div key={key}>
+                        <span className="text-blue-400">{key}</span>
+                        <span className="text-gray-500">: </span>
+                        <span className="text-gray-200">{formatToolValue(value)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handlePermissionResponse(perm.requestId, 'allow')}
+                    className="bg-green-600 hover:bg-green-500 text-white rounded px-3 py-1 text-xs font-medium transition-colors"
+                  >
+                    ✅ 允许执行
+                  </button>
+                  <button
+                    onClick={() => handlePermissionResponse(perm.requestId, 'deny')}
+                    className="bg-red-700 hover:bg-red-600 text-white rounded px-3 py-1 text-xs font-medium transition-colors"
+                  >
+                    ❌ 拒绝
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -269,6 +312,11 @@ export default function StudioPage() {
                 {pendingProposals.length}
               </span>
             )}
+            {tab.key === 'handoffs' && pendingHandoffs.length > 0 && (
+              <span className="bg-purple-400 text-purple-900 text-xs rounded-full px-1.5 py-0.5 font-bold min-w-[18px] text-center">
+                {pendingHandoffs.length}
+              </span>
+            )}
           </button>
         ))}
       </nav>
@@ -288,6 +336,8 @@ export default function StudioPage() {
                     setActiveTab('commands');
                   }}
                   streamLog={streamLogs.filter(l => l.agentId === agent.id).slice(-1)[0]}
+                  pendingHandoffs={pendingHandoffs}
+                  activeHandoffs={handoffs.filter(h => ['pending', 'accepted', 'working'].includes(h.status))}
                 />
               ))}
             </div>
@@ -396,6 +446,10 @@ export default function StudioPage() {
           <LogPanel logs={logs} agents={agents} />
         )}
 
+        {activeTab === 'handoffs' && (
+          <HandoffPanel agents={agents} />
+        )}
+
         {activeTab === 'commands' && (
           <CommandPanel agents={agents} onCommandSent={() => {}} />
         )}
@@ -423,4 +477,26 @@ function ProposalStatusBadge({ status }: { status: string }) {
       {c.label}
     </span>
   );
+}
+
+// Agent emoji 映射
+function getAgentEmoji(agentId: string): string {
+  const map: Record<string, string> = {
+    engineer: '👨‍💻', architect: '🏗️', game_designer: '🎮',
+    biz_designer: '💼', ceo: '👔',
+  };
+  return map[agentId] || '🤖';
+}
+
+// 格式化工具输入值，便于展示
+function formatToolValue(value: any): string {
+  if (value === null || value === undefined) return 'null';
+  if (typeof value === 'string') {
+    // 命令类内容完整显示
+    if (value.length > 2000) return value.slice(0, 2000) + '\n... (内容过长已截断)';
+    return value;
+  }
+  if (Array.isArray(value)) return JSON.stringify(value, null, 2);
+  if (typeof value === 'object') return JSON.stringify(value, null, 2);
+  return String(value);
 }

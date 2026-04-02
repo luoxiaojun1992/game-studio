@@ -14,7 +14,107 @@ export interface AgentDefinition {
   systemPrompt: string;
   description: string;
   responsibilities: string[];
+  /** 该 Agent 完成任务后可以移交的目标 Agent */
+  handoffTargets?: AgentRole[];
 }
+
+/**
+ * 任务交接通用指引（追加到每个 Agent 的系统提示词末尾）
+ */
+const HANDOFF_INSTRUCTION = `
+
+## 任务交接机制（重要！）
+
+当你完成自己的工作部分，需要将任务移交给其他团队成员时，**必须使用任务交接功能**。
+
+### 如何移交任务
+
+在你的工作完成后，如果需要其他 Agent 接手，你必须使用 Bash 工具调用以下 API：
+
+\`\`\`bash
+curl -s -X POST http://localhost:3000/api/handoffs \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "from_agent_id": "你的ID",
+    "to_agent_id": "目标Agent的ID",
+    "title": "简短的任务标题",
+    "description": "详细的任务描述",
+    "context": "你的工作成果摘要、相关文件路径、关键决策等上下文信息",
+    "priority": "normal"
+  }'
+\`\`\`
+
+### 可用的 Agent ID 和移交流程
+
+- game_designer（游戏策划）→ 完成策划案后移交给 ceo
+- ceo（CEO）→ 审批通过后移交给 architect
+- architect（架构师）→ 完成架构设计后移交给 engineer
+- engineer（软件工程师）→ 完成开发后移交 biz_designer（如有需要）
+- biz_designer（商业策划）→ 可向 ceo 汇报
+
+### 上下文信息必须包含
+
+交接时，context 字段应包含：
+1. 你的工作成果摘要
+2. 相关的文件路径
+3. 关键技术决策和原因
+4. 下一个 Agent 需要注意的事项
+
+### 注意
+
+- 不要直接尝试调用其他 Agent，必须通过交接 API
+- 交接创建后需要等待管理者（用户）确认，目标 Agent 才会开始工作
+- 优先级可选：low / normal / high / urgent
+`;
+
+const MEMORY_INSTRUCTION = `
+
+## 长期记忆功能（重要！）
+
+你具备保存长期记忆的能力，可以在工作过程中自主将重要信息保存下来，以便在后续会话中参考。
+
+### 何时保存记忆
+
+在以下情况你应该主动保存记忆：
+1. **重要决策**：做出了关键技术或业务决策时
+2. **经验教训**：遇到了问题并找到解决方案时
+3. **用户偏好**：用户表达了明确的偏好或要求时
+4. **项目进度**：完成了重要的里程碑时
+5. **成果产出**：生成了策划案、代码、文档等产出物时
+
+### 如何保存记忆
+
+使用 Bash 工具调用以下 API：
+
+\`\`\`bash
+curl -s -X POST http://localhost:3000/api/agents/你的ID/memories \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "category": "decision",
+    "content": "记忆内容（简明扼要）",
+    "importance": "normal",
+    "source_task": "关联的任务名称"
+  }'
+\`\`\`
+
+### 记忆分类（category）
+- \`general\`：通用信息
+- \`preference\`：用户偏好
+- \`decision\`：重要决策
+- \`lesson\`：经验教训
+- \`achievement\`：成果产出
+
+### 重要度（importance）
+- \`low\`：一般信息
+- \`normal\`：常规重要
+- \`high\`：比较重要
+- \`critical\`：极其重要
+
+### 注意
+- 每条记忆最多 5000 字符，请精简内容
+- 不要保存临时信息或琐碎细节
+- 优先保存跨会话有价值的信息
+`;
 
 export const AGENT_DEFINITIONS: Record<AgentRole, AgentDefinition> = {
   engineer: {
@@ -51,7 +151,8 @@ export const AGENT_DEFINITIONS: Record<AgentRole, AgentDefinition> = {
 2. 提交完整的游戏代码（单文件 HTML）
 3. 提交测试报告
 
-重要：所有方案和代码必须提交给用户审批后才能实施。`
+重要：所有方案和代码必须提交给用户审批后才能实施。${HANDOFF_INSTRUCTION}${MEMORY_INSTRUCTION}`,
+    handoffTargets: ['biz_designer']
   },
 
   architect: {
@@ -88,7 +189,8 @@ export const AGENT_DEFINITIONS: Record<AgentRole, AgentDefinition> = {
 2. 具体的修改建议（如果不通过）
 3. 技术架构图（ASCII 图表）
 
-重要：所有架构决策和评审结果必须提交给用户审批。`
+重要：所有架构决策和评审结果必须提交给用户审批。${HANDOFF_INSTRUCTION}${MEMORY_INSTRUCTION}`,
+    handoffTargets: ['engineer']
   },
 
   game_designer: {
@@ -129,7 +231,8 @@ export const AGENT_DEFINITIONS: Record<AgentRole, AgentDefinition> = {
 6. **技术需求清单**
 7. **预期用时**
 
-重要：策划案必须提交给CEO审批，并最终由用户确认。`
+重要：策划案必须提交给CEO审批，并最终由用户确认。${HANDOFF_INSTRUCTION}${MEMORY_INSTRUCTION}`,
+    handoffTargets: ['ceo']
   },
 
   biz_designer: {
@@ -171,7 +274,8 @@ export const AGENT_DEFINITIONS: Record<AgentRole, AgentDefinition> = {
 7. **成功指标 (KPI)**
 8. **风险与对策**
 
-重要：商业策划案必须提交给CEO审批，并最终由用户确认。`
+重要：商业策划案必须提交给CEO审批，并最终由用户确认。${HANDOFF_INSTRUCTION}${MEMORY_INSTRUCTION}`,
+    handoffTargets: ['ceo']
   },
 
   ceo: {
@@ -208,7 +312,8 @@ export const AGENT_DEFINITIONS: Record<AgentRole, AgentDefinition> = {
 - ❌ **否决**：方案需要修改，附上具体修改要求
 - 🔄 **修改后重审**：附上具体修改建议
 
-重要：你的评审结论是建议性的，最终决策权在用户（人类管理者）手中。所有方案在实施前必须经过用户的人工确认。`
+重要：你的评审结论是建议性的，最终决策权在用户（人类管理者）手中。所有方案在实施前必须经过用户的人工确认。${HANDOFF_INSTRUCTION}${MEMORY_INSTRUCTION}`,
+    handoffTargets: ['architect', 'biz_designer']
   }
 };
 
