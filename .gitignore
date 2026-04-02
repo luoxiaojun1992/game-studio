@@ -3,3 +3,8 @@
 /data
 /.env
 /output
+*.tsbuildinfo
+server/*.js
+server/*.d.ts
+vite.config.js
+vite.config.d.ts

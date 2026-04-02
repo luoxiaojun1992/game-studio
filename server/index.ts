@@ -42,7 +42,7 @@ app.get('/api/health', (req, res) => {
 
 app.get('/api/models', async (req, res) => {
   try {
-    const q = new Query({ prompt: '', options: {} });
+    const q = new Query('', {});
     const models = await q.supportedModels();
     res.json({ models: models || [] });
   } catch (error: any) {
@@ -593,6 +593,7 @@ app.post('/api/proposals/:id/decide', (req, res) => {
   });
 
   const updated = db.getProposal(id);
+  if (!updated) return res.status(500).json({ error: '提案更新后读取失败' });
 
   // 审批后保存最终版到产出目录
   const filePath = db.saveProposalToFile(updated);

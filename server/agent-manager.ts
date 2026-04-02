@@ -405,7 +405,7 @@ class AgentManager extends EventEmitter {
               }
             }
           }
-        } else if (msg.type === 'tool_result') {
+        } else if (msg.type === 'user' && msg.message.role === 'user') {
           const msgAny = msg as any;
           const toolId = msgAny.tool_use_id;
           const isError = msgAny.is_error || false;
@@ -429,7 +429,13 @@ class AgentManager extends EventEmitter {
             const replyPreview = fullResponse.length > 500 ? fullResponse.slice(0, 500) + '...(已截断)' : fullResponse;
             this.addLog(agentId, '最终回复', replyPreview, 'info');
           }
-          const doneEvent: StreamEvent = { type: 'agent_done', agentId, streamId, duration: msg.duration, cost: msg.cost };
+          const doneEvent: StreamEvent = {
+            type: 'agent_done',
+            agentId,
+            streamId,
+            duration: msg.duration_ms,
+            cost: msg.total_cost_usd
+          };
           this.emit('stream_event', doneEvent);
           if (onEvent) onEvent(doneEvent);
         }
