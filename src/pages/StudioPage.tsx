@@ -177,7 +177,10 @@ export default function StudioPage() {
   // 连接 SSE
   useEffect(() => {
     connectSSE();
-    return () => eventSourceRef.current?.close();
+    return () => {
+      eventSourceRef.current?.close();
+      connectedRef.current = false; // StrictMode cleanup 后允许重建连接
+    };
   }, [connectSSE]);
 
   // 处理权限响应
