@@ -31,7 +31,10 @@ interface ModelInfo {
 }
 
 export default function CommandPanel({ agents, onCommandSent }: Props) {
-  const [selectedAgent, setSelectedAgent] = useState<AgentRole>('game_designer');
+  // 默认选中正在工作的 Agent，没有则选中第一个
+  const workingAgent = agents.find(a => a.state?.status === 'working');
+  const defaultAgent = workingAgent?.id || agents[0]?.id || 'game_designer';
+  const [selectedAgent, setSelectedAgent] = useState<AgentRole>(defaultAgent);
   const [message, setMessage] = useState('');
   const [streaming, setStreaming] = useState(false);
   const [chatHistory, setChatHistory] = useState<StreamLog[]>([]);
@@ -107,6 +110,14 @@ export default function CommandPanel({ agents, onCommandSent }: Props) {
       ]);
     });
   }, []);
+
+  // 当有 Agent 开始工作时，自动切换到该 Agent
+  useEffect(() => {
+    const working = agents.find(a => a.state?.status === 'working');
+    if (working && working.id !== selectedAgent) {
+      setSelectedAgent(working.id);
+    }
+  }, [agents, selectedAgent]);
 
   // 切换 Agent 时加载历史
   useEffect(() => {
