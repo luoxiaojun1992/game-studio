@@ -92,7 +92,7 @@ export function createStudioToolsServer(agentId: AgentRole, logFn?: ToolLogFn): 
         '将任务移交给其他团队成员。当你完成自己的工作部分，需要其他 Agent 接手时调用此工具。交接需要管理者确认后目标 Agent 才会开始工作。',
         {
           to_agent_id: z.enum(['engineer', 'architect', 'game_designer', 'biz_designer', 'ceo']).describe(
-            '目标 Agent ID：engineer=软件工程师, architect=架构师, game_designer=游戏策划, biz_designer=商业策划, ceo=CEO'
+            '目标 Agent ID：engineer=软件工程师（含软件测试）, architect=架构师, game_designer=游戏策划（含UI设计）, biz_designer=商业策划, ceo=CEO'
           ),
           title: z.string().describe('简短的任务标题'),
           description: z.string().describe('详细的任务描述'),
