@@ -1,4 +1,6 @@
 import { EventEmitter } from 'events';
+import fs from 'fs';
+import path from 'path';
 import { query, PermissionResult, CanUseTool } from '@tencent-ai/agent-sdk';
 import { v4 as uuidv4 } from 'uuid';
 import { AgentRole, AGENT_DEFINITIONS } from './agents.js';
@@ -338,11 +340,16 @@ class AgentManager extends EventEmitter {
       };
 
       const sdkSessionId = agentDbSession.sdk_session_id;
+      const outputDir = path.resolve(process.cwd(), 'output');
+      if (!fs.existsSync(outputDir)) {
+        fs.mkdirSync(outputDir, { recursive: true });
+      }
 
       const stream = query({
         prompt: message,
         options: {
-          cwd: process.cwd(),
+          cwd: outputDir,
+          additionalDirectories: [process.cwd()],
           model,
           maxTurns: 15,
           systemPrompt: this.buildSystemPrompt(agentId),
