@@ -34,7 +34,15 @@ export default function StudioPage() {
   const eventSourceRef = useRef<EventSource | null>(null);
 
   // 初始化 SSE 观测连接
+  // 注意：React.StrictMode 开发模式下 useEffect 会执行两次，
+  // 通过标记位避免建立重复连接
+  const connectedRef = useRef(false);
+
   const connectSSE = useCallback(() => {
+    // 防止 StrictMode 重复连接
+    if (connectedRef.current) return;
+    connectedRef.current = true;
+
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
     }
@@ -45,6 +53,7 @@ export default function StudioPage() {
     es.onopen = () => setConnected(true);
     es.onerror = () => {
       setConnected(false);
+      connectedRef.current = false; // 允许重连
       setTimeout(connectSSE, 3000);
     };
 

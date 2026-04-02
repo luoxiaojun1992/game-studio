@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { AgentRole, AGENT_DEFINITIONS } from './agents.js';
 import * as db from './db.js';
 import { sseBroadcaster } from './sse-broadcaster.js';
+import { createStudioToolsServer, getMemorySummaryForPrompt } from './tools.js';
 
 export type AgentStatus = 'idle' | 'working' | 'paused' | 'error';
 
@@ -57,7 +58,7 @@ class AgentManager extends EventEmitter {
       const dbSession = db.getAgentSession(agentId);
       if (dbSession) {
         const state = this.agentStates.get(agentId)!;
-        state.status = dbSession.status === 'working' ? 'idle' : dbSession.status; // 重启后重置 working 状态
+        state.status = dbSession.status === 'working' ? 'idle' : dbSession.status;
         state.currentTask = dbSession.current_task;
         state.lastActiveAt = dbSession.updated_at;
       }
@@ -196,7 +197,6 @@ class AgentManager extends EventEmitter {
       return result.length > 200 ? result.slice(0, 200) + '...(错误截断)' : result;
     }
     if (result.length <= 200) return result;
-    // 根据工具类型截取有意义的片段
     switch (toolName) {
       case 'Bash':
       case 'Shell':
@@ -216,6 +216,15 @@ class AgentManager extends EventEmitter {
         return result.slice(0, 200) + '...(已截断)';
       }
     }
+  }
+
+  /**
+   * 构建完整的 systemPrompt，注入长期记忆
+   */
+  private buildSystemPrompt(agentId: AgentRole): string {
+    const agentDef = AGENT_DEFINITIONS[agentId];
+    const memorySummary = getMemorySummaryForPrompt(agentId);
+    return agentDef.systemPrompt + memorySummary;
   }
 
   /**
@@ -277,83 +286,29 @@ class AgentManager extends EventEmitter {
     let toolCalls: any[] = [];
 
     try {
+      // ---- 创建 MCP 自定义工具服务器 ----
+      const studioToolsServer = createStudioToolsServer(agentId, (aid, action, detail, level) => {
+        this.addLog(aid, action, detail, level);
+      });
+
+      // ---- canUseTool 回调 ----
+      // 现在逻辑大幅简化：
+      // 1. 自定义 MCP 工具：
+      //    - 读操作（save_memory, get_*, 无副作用）→ 自动放行
+      //    - 写操作 + 有副作用的（create_handoff, submit_proposal, submit_game）→ 需要用户确认
+      // 2. CodeBuddy 内置工具走正常权限流程
+      const CAN_AUTO_ALLOW = ['save_memory', 'get_memories', 'get_proposals', 'get_pending_handoffs'];
+
       const canUseTool: CanUseTool = async (toolName, input, options) => {
-        // ---- 拦截 Agent 工具调用，自动转为任务交接 ----
-        if (toolName === 'Agent' || toolName === 'agent' || toolName === 'Task') {
-          try {
-            const agentInput = input as any;
-            // 从 Agent 工具的 prompt/subagent_name 中提取目标 Agent
-            const prompt = String(agentInput.prompt || agentInput.subagent_prompt || '');
-            const subagentName = String(agentInput.subagent_name || agentInput.name || '');
-
-            // 尝试匹配目标 Agent
-            let toAgentId: AgentRole | null = null;
-            const agentMap: Record<string, AgentRole> = {
-              'engineer': 'engineer', '软件工程师': 'engineer', '架构师': 'architect',
-              'architect': 'architect', '游戏策划': 'game_designer', 'game_designer': 'game_designer',
-              '商业策划': 'biz_designer', 'biz_designer': 'biz_designer',
-              'ceo': 'ceo', 'CEO': 'ceo', '经理': 'ceo'
-            };
-            for (const [key, role] of Object.entries(agentMap)) {
-              if (prompt.includes(key) || subagentName.includes(key)) {
-                toAgentId = role;
-                break;
-              }
-            }
-
-            // 如果没有匹配到具体 Agent，尝试从 handoffTargets 推断
-            if (!toAgentId) {
-              const def = AGENT_DEFINITIONS[agentId];
-              if (def?.handoffTargets && def.handoffTargets.length > 0) {
-                toAgentId = def.handoffTargets[0];
-              }
-            }
-
-            if (toAgentId) {
-              // 自动创建交接记录
-              const title = prompt.length > 50 ? prompt.slice(0, 50) + '...' : prompt.slice(0, 50);
-              const now = new Date().toISOString();
-              const handoff = db.createHandoff({
-                id: uuidv4(),
-                from_agent_id: agentId,
-                to_agent_id: toAgentId,
-                title: title || '任务交接',
-                description: prompt || 'Agent 发起任务交接',
-                context: JSON.stringify(agentInput, null, 2).slice(0, 2000),
-                status: 'pending',
-                priority: 'normal',
-                result: null,
-                accepted_at: null,
-                completed_at: null,
-                source_command_id: null,
-                created_at: now,
-                updated_at: now,
-              });
-
-              this.addLog(agentId, '自动创建交接', `${agentId} → ${toAgentId}: ${handoff.title}`, 'success');
-
-              // 广播交接事件
-              sseBroadcaster.broadcast({ type: 'handoff_created', handoff });
-
-              return {
-                behavior: 'deny',
-                message: `已自动为你创建任务交接到 ${AGENT_DEFINITIONS[toAgentId]?.name || toAgentId}。交接需要管理者确认后才会执行。请勿直接调用其他 Agent。`
-              };
-            }
-          } catch (e) {
-            // 解析失败，走正常权限流程
-          }
-        }
-
-        // ---- 自动放行调用交接 API 的 Bash/curl 命令 ----
-        if (toolName === 'Bash' || toolName === 'Shell' || toolName === 'Execute' || toolName === 'execute_command') {
-          const cmd = String(input.command || input.cmd || '');
-          if (cmd.includes('/api/handoffs') || cmd.includes('handoff') || cmd.includes('/api/agents/') && cmd.includes('/memories')) {
+        if (toolName.startsWith('mcp__studio-tools__')) {
+          const actualTool = toolName.replace('mcp__studio-tools__', '');
+          if (CAN_AUTO_ALLOW.includes(actualTool)) {
             return { behavior: 'allow', updatedInput: input };
           }
+          // 写操作 / 副作用操作 → 走用户确认（复用内置工具的权限请求流程）
         }
 
-        // 发送权限请求事件
+        // 发送权限请求事件（CodeBuddy 内置工具 + 需要确认的自定义工具）
         const requestId = uuidv4();
         const permEvent: StreamEvent = {
           type: 'permission_request',
@@ -390,9 +345,12 @@ class AgentManager extends EventEmitter {
           cwd: process.cwd(),
           model,
           maxTurns: 15,
-          systemPrompt: agentDef.systemPrompt,
+          systemPrompt: this.buildSystemPrompt(agentId),
           permissionMode: 'default',
           canUseTool,
+          mcpServers: {
+            'studio-tools': studioToolsServer
+          },
           ...(sdkSessionId ? { resume: sdkSessionId } : {})
         }
       });
@@ -439,7 +397,6 @@ class AgentManager extends EventEmitter {
                 const toolInput = (block as any).input || {};
                 const toolCall = { id: toolId, name: block.name, input: toolInput, status: 'running' };
                 toolCalls.push(toolCall);
-                // 记录工具调用日志
                 const inputSummary = this.summarizeToolInput(block.name, toolInput);
                 this.addLog(agentId, `调用工具: ${block.name}`, inputSummary, 'info');
                 const toolEvent: StreamEvent = { type: 'tool', agentId, id: toolId, name: block.name, input: toolInput, status: 'running', streamId };
@@ -458,7 +415,6 @@ class AgentManager extends EventEmitter {
             tool.status = isError ? 'error' : 'completed';
             tool.isError = isError;
             tool.result = typeof content === 'string' ? content : JSON.stringify(content);
-            // 记录工具结果日志
             const resultSummary = this.summarizeToolResult(tool.name, tool.result, isError);
             this.addLog(agentId, `工具结果: ${tool.name}`, resultSummary, isError ? 'error' : 'success');
             const toolResultEvent: StreamEvent = {
@@ -469,7 +425,6 @@ class AgentManager extends EventEmitter {
             if (onEvent) onEvent(toolResultEvent);
           }
         } else if (msg.type === 'result') {
-          // 记录最终回复摘要到日志
           if (fullResponse.length > 0) {
             const replyPreview = fullResponse.length > 500 ? fullResponse.slice(0, 500) + '...(已截断)' : fullResponse;
             this.addLog(agentId, '最终回复', replyPreview, 'info');
