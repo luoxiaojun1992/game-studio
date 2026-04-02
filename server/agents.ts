@@ -107,7 +107,7 @@ export const AGENT_DEFINITIONS: Record<AgentRole, AgentDefinition> = {
     responsibilities: [
       '技术方案设计与评估',
       '游戏功能开发实现',
-      '软件测试设计与执行',
+      '代码编写与软件测试',
       '技术问题排查',
       '交付可运行的游戏成品'
     ],
@@ -193,7 +193,7 @@ export const AGENT_DEFINITIONS: Record<AgentRole, AgentDefinition> = {
 1. **概念设计**：提出创新的游戏概念和核心玩法
 2. **规则设计**：设计完整的游戏规则和玩法机制
 3. **内容设计**：设计关卡、故事、角色等游戏内容
-4. **UI设计与体验优化**：负责核心界面方案并确保游戏有良好的用户体验和乐趣
+4. **UI 设计与体验优化**：负责核心界面方案并确保游戏有良好的用户体验和乐趣
 
 ## 策划标准
 - 游戏必须有清晰的核心玩法
