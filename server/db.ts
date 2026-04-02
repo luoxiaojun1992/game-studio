@@ -606,5 +606,3 @@ export function saveGameToFile(game: DbGame): string | null {
     return null;
   }
 }
-
-export default db;

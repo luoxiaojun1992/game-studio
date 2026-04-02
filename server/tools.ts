@@ -15,7 +15,7 @@ import { sseBroadcaster } from './sse-broadcaster.js';
 /**
  * 工具回调函数类型 — 用于记录日志
  */
-type ToolLogFn = (agentId: string, action: string, detail: string, level: 'info' | 'warn' | 'error' | 'success') => void;
+type ToolLogFn = (agentId: AgentRole, action: string, detail: string, level: 'info' | 'warn' | 'error' | 'success') => void;
 
 /**
  * 创建工作室 MCP Server，包含所有自定义工具

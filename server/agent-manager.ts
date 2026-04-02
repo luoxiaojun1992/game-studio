@@ -1,4 +1,6 @@
 import { EventEmitter } from 'events';
+import fs from 'fs';
+import path from 'path';
 import { query, PermissionResult, CanUseTool } from '@tencent-ai/agent-sdk';
 import { v4 as uuidv4 } from 'uuid';
 import { AgentRole, AGENT_DEFINITIONS } from './agents.js';
@@ -338,11 +340,16 @@ class AgentManager extends EventEmitter {
       };
 
       const sdkSessionId = agentDbSession.sdk_session_id;
+      const outputDir = path.resolve(process.cwd(), 'output');
+      if (!fs.existsSync(outputDir)) {
+        fs.mkdirSync(outputDir, { recursive: true });
+      }
 
       const stream = query({
         prompt: message,
         options: {
-          cwd: process.cwd(),
+          cwd: outputDir,
+          additionalDirectories: [process.cwd()],
           model,
           maxTurns: 15,
           systemPrompt: this.buildSystemPrompt(agentId),
@@ -405,16 +412,17 @@ class AgentManager extends EventEmitter {
               }
             }
           }
-        } else if (msg.type === 'tool_result') {
-          const msgAny = msg as any;
-          const toolId = msgAny.tool_use_id;
-          const isError = msgAny.is_error || false;
-          const content = msgAny.content;
-          const tool = toolCalls.find(t => t.id === toolId) || toolCalls[toolCalls.length - 1];
-          if (tool) {
+        } else if (msg.type === 'user') {
+          const contentBlocks = Array.isArray(msg.message.content) ? msg.message.content : [];
+          for (const block of contentBlocks) {
+            if (block.type !== 'tool_result') continue;
+            const toolId = block.tool_use_id;
+            const isError = block.is_error || false;
+            const tool = toolCalls.find(t => t.id === toolId) || toolCalls[toolCalls.length - 1];
+            if (!tool) continue;
             tool.status = isError ? 'error' : 'completed';
             tool.isError = isError;
-            tool.result = typeof content === 'string' ? content : JSON.stringify(content);
+            tool.result = typeof block.content === 'string' ? block.content : JSON.stringify(block.content ?? null);
             const resultSummary = this.summarizeToolResult(tool.name, tool.result, isError);
             this.addLog(agentId, `工具结果: ${tool.name}`, resultSummary, isError ? 'error' : 'success');
             const toolResultEvent: StreamEvent = {
@@ -429,7 +437,13 @@ class AgentManager extends EventEmitter {
             const replyPreview = fullResponse.length > 500 ? fullResponse.slice(0, 500) + '...(已截断)' : fullResponse;
             this.addLog(agentId, '最终回复', replyPreview, 'info');
           }
-          const doneEvent: StreamEvent = { type: 'agent_done', agentId, streamId, duration: msg.duration, cost: msg.cost };
+          const doneEvent: StreamEvent = {
+            type: 'agent_done',
+            agentId,
+            streamId,
+            duration: msg.duration_ms,
+            cost: msg.total_cost_usd
+          };
           this.emit('stream_event', doneEvent);
           if (onEvent) onEvent(doneEvent);
         }

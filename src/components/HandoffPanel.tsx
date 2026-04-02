@@ -159,6 +159,15 @@ export default function HandoffPanel({ agents }: Props) {
   };
 
   const pipeline = buildPipeline();
+  const statusTabs: { key: HandoffStatus | 'all'; label: string }[] = [
+    { key: 'all', label: '全部' },
+    { key: 'pending', label: '待接收' },
+    { key: 'accepted', label: '已接收' },
+    { key: 'working', label: '处理中' },
+    { key: 'completed', label: '已完成' },
+    { key: 'rejected', label: '已拒绝' },
+    { key: 'cancelled', label: '已取消' },
+  ];
 
   return (
     <div className="h-full flex flex-col">
@@ -253,15 +262,10 @@ export default function HandoffPanel({ agents }: Props) {
 
       {/* 筛选标签 */}
       <div className="shrink-0 flex items-center gap-1.5 mb-3">
-        {[
-          { key: 'all' as const, label: '全部' },
-          { key: 'pending' as const, label: '待接收' },
-          { key: 'accepted' as const, label: '已接收' },
-          { key: 'working' as const, label: '处理中' },
-          { key: 'completed' as const, label: '已完成' },
-        ].map(tab => (
+        {statusTabs.map(tab => (
           <button
             key={tab.key}
+            type="button"
             onClick={() => setFilterStatus(tab.key)}
             className={`text-xs px-3 py-1 rounded-lg transition-all ${
               filterStatus === tab.key
@@ -316,9 +320,16 @@ export default function HandoffPanel({ agents }: Props) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium text-white truncate">{handoff.title}</span>
-                      <span className={`text-xs px-1.5 py-0.5 rounded border shrink-0 ${statusCfg.bg} ${statusCfg.color}`}>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setFilterStatus(handoff.status);
+                        }}
+                        className={`text-xs px-1.5 py-0.5 rounded border shrink-0 transition-all hover:brightness-110 ${statusCfg.bg} ${statusCfg.color}`}
+                      >
                         {statusCfg.icon} {statusCfg.label}
-                      </span>
+                      </button>
                       {handoff.priority !== 'normal' && (
                         <span className={`text-xs shrink-0 ${priorityCfg.color}`}>
                           {priorityCfg.label}
