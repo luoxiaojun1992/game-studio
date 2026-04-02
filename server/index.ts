@@ -182,8 +182,6 @@ app.post('/api/agents/:agentId/command', async (req, res) => {
       model,
       (event) => {
         res.write(`data: ${JSON.stringify(event)}\n\n`);
-        // 同时广播到观测系统
-        sseBroadcaster.broadcast({ type: 'stream_event', event });
       }
     );
 
