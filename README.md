@@ -13,21 +13,21 @@
 
 ## 界面预览
 
-### 对话主界面
+### 运行日志
 
-![对话主界面](./docs/images/home-chat-view.jpg)
+![运行日志](./docs/images/home-chat-view.jpg)
 
-### Agent 设置面板
+### 游戏成品
 
-![Agent 设置面板](./docs/images/agent-settings-panel.jpg)
+![游戏成品](./docs/images/agent-settings-panel.jpg)
 
-### 权限确认弹窗
+### 任务交接
 
-![权限确认弹窗](./docs/images/permission-confirmation-dialog.jpg)
+![任务交接](./docs/images/permission-confirmation-dialog.jpg)
 
-### 会话管理界面
+### 团队总览
 
-![会话管理界面](./docs/images/session-management-view.jpg)
+![团队总览](./docs/images/session-management-view.jpg)
 
 ## 技术栈
 
