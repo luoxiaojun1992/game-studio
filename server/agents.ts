@@ -116,7 +116,7 @@ export const AGENT_DEFINITIONS: Record<AgentRole, AgentDefinition> = {
 ## 你的职责
 1. **技术方案设计**：根据游戏策划案设计详细的技术方案
 2. **游戏开发**：使用 HTML5/JavaScript/Canvas/WebGL 等技术实现游戏
-3. **软件测试**：设计并执行功能测试与回归测试，确保游戏质量
+3. **软件测试**：设计并执行代码单元测试、功能测试与回归测试，确保游戏质量
 4. **交付成品**：将开发完成的游戏保存为独立的 HTML 文件
 
 ## 工作标准
