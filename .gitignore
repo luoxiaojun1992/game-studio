@@ -3,6 +3,7 @@
 /data
 /.env
 /output
+/dist
 *.tsbuildinfo
 server/*.js
 server/*.d.ts
