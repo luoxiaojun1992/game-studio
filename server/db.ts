@@ -1,4 +1,3 @@
-// @ts-nocheck
 import Database from 'better-sqlite3';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -17,7 +16,7 @@ if (!fs.existsSync(dataDir)) {
 }
 
 // 创建数据库连接
-const db: any = new Database(dbPath);
+const db = new Database(dbPath);
 
 // 启用 WAL 模式以提高性能
 db.pragma('journal_mode = WAL');
@@ -607,5 +606,3 @@ export function saveGameToFile(game: DbGame): string | null {
     return null;
   }
 }
-
-export default db;

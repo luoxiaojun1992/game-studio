@@ -406,15 +406,16 @@ class AgentManager extends EventEmitter {
             }
           }
         } else if (msg.type === 'user' && msg.message.role === 'user') {
-          const msgAny = msg as any;
-          const toolId = msgAny.tool_use_id;
-          const isError = msgAny.is_error || false;
-          const content = msgAny.content;
-          const tool = toolCalls.find(t => t.id === toolId) || toolCalls[toolCalls.length - 1];
-          if (tool) {
+          const contentBlocks = Array.isArray(msg.message.content) ? msg.message.content : [];
+          for (const block of contentBlocks) {
+            if (block.type !== 'tool_result') continue;
+            const toolId = block.tool_use_id;
+            const isError = block.is_error || false;
+            const tool = toolCalls.find(t => t.id === toolId) || toolCalls[toolCalls.length - 1];
+            if (!tool) continue;
             tool.status = isError ? 'error' : 'completed';
             tool.isError = isError;
-            tool.result = typeof content === 'string' ? content : JSON.stringify(content);
+            tool.result = typeof block.content === 'string' ? block.content : JSON.stringify(block.content ?? '');
             const resultSummary = this.summarizeToolResult(tool.name, tool.result, isError);
             this.addLog(agentId, `工具结果: ${tool.name}`, resultSummary, isError ? 'error' : 'success');
             const toolResultEvent: StreamEvent = {
