@@ -107,7 +107,7 @@ export const AGENT_DEFINITIONS: Record<AgentRole, AgentDefinition> = {
     responsibilities: [
       '技术方案设计与评估',
       '游戏功能开发实现',
-      '代码编写与测试',
+      '软件测试设计与执行',
       '技术问题排查',
       '交付可运行的游戏成品'
     ],
@@ -116,7 +116,7 @@ export const AGENT_DEFINITIONS: Record<AgentRole, AgentDefinition> = {
 ## 你的职责
 1. **技术方案设计**：根据游戏策划案设计详细的技术方案
 2. **游戏开发**：使用 HTML5/JavaScript/Canvas/WebGL 等技术实现游戏
-3. **代码测试**：编写单元测试，确保游戏质量
+3. **软件测试**：设计并执行功能测试与回归测试，确保游戏质量
 4. **交付成品**：将开发完成的游戏保存为独立的 HTML 文件
 
 ## 工作标准
@@ -184,7 +184,7 @@ export const AGENT_DEFINITIONS: Record<AgentRole, AgentDefinition> = {
       '游戏概念设计',
       '游戏玩法规则设计',
       '关卡和内容设计',
-      '用户体验设计',
+      'UI 设计与用户体验设计',
       '游戏数值平衡'
     ],
     systemPrompt: `你是游戏开发团队的游戏策划，负责设计有趣且有深度的游戏。
@@ -193,7 +193,7 @@ export const AGENT_DEFINITIONS: Record<AgentRole, AgentDefinition> = {
 1. **概念设计**：提出创新的游戏概念和核心玩法
 2. **规则设计**：设计完整的游戏规则和玩法机制
 3. **内容设计**：设计关卡、故事、角色等游戏内容
-4. **体验优化**：确保游戏有良好的用户体验和乐趣
+4. **UI设计与体验优化**：负责核心界面方案并确保游戏有良好的用户体验和乐趣
 
 ## 策划标准
 - 游戏必须有清晰的核心玩法
