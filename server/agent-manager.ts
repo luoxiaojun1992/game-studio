@@ -412,7 +412,7 @@ class AgentManager extends EventEmitter {
               }
             }
           }
-        } else if (msg.type === 'user' && msg.message.role === 'user') {
+        } else if (msg.type === 'user') {
           const contentBlocks = Array.isArray(msg.message.content) ? msg.message.content : [];
           for (const block of contentBlocks) {
             if (block.type !== 'tool_result') continue;
@@ -422,7 +422,7 @@ class AgentManager extends EventEmitter {
             if (!tool) continue;
             tool.status = isError ? 'error' : 'completed';
             tool.isError = isError;
-            tool.result = typeof block.content === 'string' ? block.content : JSON.stringify(block.content ?? '');
+            tool.result = typeof block.content === 'string' ? block.content : JSON.stringify(block.content ?? null);
             const resultSummary = this.summarizeToolResult(tool.name, tool.result, isError);
             this.addLog(agentId, `工具结果: ${tool.name}`, resultSummary, isError ? 'error' : 'success');
             const toolResultEvent: StreamEvent = {
