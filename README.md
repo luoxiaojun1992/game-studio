@@ -11,6 +11,24 @@
 - 🎨 **主题切换** - 支持深色/浅色主题
 - 🤖 **自定义 Agent** - 创建和管理多个 Agent 配置
 
+## 界面预览
+
+### 对话主界面
+
+![对话主界面](./docs/images/home-chat-view.jpg)
+
+### Agent 设置面板
+
+![Agent 设置面板](./docs/images/agent-settings-panel.jpg)
+
+### 权限确认弹窗
+
+![权限确认弹窗](./docs/images/permission-confirmation-dialog.jpg)
+
+### 会话管理界面
+
+![会话管理界面](./docs/images/session-management-view.jpg)
+
 ## 技术栈
 
 - **后端**: Node.js + Express + TypeScript
