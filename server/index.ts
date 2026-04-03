@@ -259,6 +259,36 @@ app.get('/api/projects', (req, res) => {
   res.json({ projects });
 });
 
+app.get('/api/projects/:id/settings', (req, res) => {
+  const projectId = normalizeProjectId(req.params.id);
+  db.ensureProject(projectId);
+  const settings = db.getProjectSettings(projectId);
+  res.json({
+    settings: {
+      project_id: settings.project_id,
+      auto_handoff_enabled: settings.auto_handoff_enabled === 1
+    }
+  });
+});
+
+app.patch('/api/projects/:id/settings', (req, res) => {
+  const projectId = normalizeProjectId(req.params.id);
+  db.ensureProject(projectId);
+  const { auto_handoff_enabled } = req.body as { auto_handoff_enabled?: boolean };
+  if (auto_handoff_enabled === undefined) {
+    return res.status(400).json({ error: '缺少可更新字段：auto_handoff_enabled' });
+  }
+  const settings = db.updateProjectSettings(projectId, {
+    auto_handoff_enabled: auto_handoff_enabled ? 1 : 0
+  });
+  res.json({
+    settings: {
+      project_id: settings.project_id,
+      auto_handoff_enabled: settings.auto_handoff_enabled === 1
+    }
+  });
+});
+
 app.post('/api/projects', (req, res) => {
   const requestedId = typeof req.body?.id === 'string' ? req.body.id.trim() : '';
   const projectId = normalizeProjectId(requestedId);
@@ -382,6 +412,8 @@ app.post('/api/handoffs', (req, res) => {
   }
 
   const now = new Date().toISOString();
+  const settings = db.getProjectSettings(projectId);
+  const autoHandoffEnabled = settings.auto_handoff_enabled === 1;
   const handoff = db.createHandoff({
     id: uuidv4(),
     project_id: projectId,
@@ -390,10 +422,10 @@ app.post('/api/handoffs', (req, res) => {
     title,
     description,
     context: context || null,
-    status: 'pending',
+    status: autoHandoffEnabled ? 'working' : 'pending',
     priority: priority || 'normal',
     result: null,
-    accepted_at: null,
+    accepted_at: autoHandoffEnabled ? now : null,
     completed_at: null,
     source_command_id: source_command_id || null,
     created_at: now,
@@ -405,6 +437,17 @@ app.post('/api/handoffs', (req, res) => {
 
   // 记录日志
   agentManager.addLog(handoff.project_id, from_agent_id as AgentRole, '创建交接', `${from_agent_id} → ${to_agent_id}: ${title}`, 'info');
+  if (autoHandoffEnabled) {
+    agentManager.addLog(handoff.project_id, to_agent_id as AgentRole, '自动接收交接', `从 ${from_agent_id} 接手: ${title}`, 'success');
+    agentManager.addLog(handoff.project_id, to_agent_id as AgentRole, '开始执行交接任务', `${handoff.title}`, 'success');
+    agentManager.sendMessage(
+      handoff.project_id,
+      handoff.to_agent_id as AgentRole,
+      `【任务交接】你收到了来自 ${handoff.from_agent_id} 的任务交接。\n\n## 任务标题\n${handoff.title}\n\n## 任务描述\n${handoff.description}\n\n${handoff.context ? `## 上下文信息\n${handoff.context}\n\n` : ''}请按照上述要求完成任务。完成后请提交相关成果。`
+    ).catch(error => {
+      agentManager.addLog(handoff.project_id, handoff.to_agent_id as AgentRole, '交接任务执行失败', error?.message || String(error), 'error');
+    });
+  }
 
   res.json({ handoff });
 });
@@ -414,6 +457,10 @@ app.post('/api/handoffs/:id/accept', (req, res) => {
   const { id } = req.params;
   const handoff = db.getHandoff(id);
   if (!handoff) return res.status(404).json({ error: '交接记录不存在' });
+  const settings = db.getProjectSettings(handoff.project_id);
+  if (settings.auto_handoff_enabled === 1) {
+    return res.status(400).json({ error: '当前项目已开启自动交接，无需手动接收' });
+  }
   if (handoff.status !== 'pending') {
     return res.status(400).json({ error: `交接状态不是待处理，当前状态: ${handoff.status}` });
   }
@@ -433,8 +480,13 @@ app.post('/api/handoffs/:id/confirm', (req, res) => {
   const { id } = req.params;
   const handoff = db.getHandoff(id);
   if (!handoff) return res.status(404).json({ error: '交接记录不存在' });
-  if (handoff.status !== 'accepted') {
+  const settings = db.getProjectSettings(handoff.project_id);
+  const autoHandoffEnabled = settings.auto_handoff_enabled === 1;
+  if (!autoHandoffEnabled && handoff.status !== 'accepted') {
     return res.status(400).json({ error: `交接状态不是已接受，当前状态: ${handoff.status}，需要先接受交接` });
+  }
+  if (autoHandoffEnabled && handoff.status !== 'working') {
+    return res.status(400).json({ error: `自动交接模式下仅支持处理中状态，当前状态: ${handoff.status}` });
   }
 
   const now = new Date().toISOString();

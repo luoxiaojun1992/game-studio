@@ -159,6 +159,11 @@ export interface ProjectInfo {
   name: string;
 }
 
+export interface ProjectSettings {
+  project_id: string;
+  auto_handoff_enabled: boolean;
+}
+
 // SSE 事件
 export interface SSEInitEvent {
   type: 'init';
@@ -197,4 +202,4 @@ export type SSEEvent =
   | { type: 'task_updated'; task: TaskBoardTask };
 
 // 页面标签
-export type TabKey = 'overview' | 'proposals' | 'tasks' | 'games' | 'logs' | 'commands' | 'handoffs';
+export type TabKey = 'overview' | 'proposals' | 'tasks' | 'games' | 'logs' | 'commands' | 'handoffs' | 'settings';
