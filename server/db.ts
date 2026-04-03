@@ -692,7 +692,7 @@ export function getAllProjectIds(): string[] {
 
   const ids = rows
     .map(r => r.project_id)
-    .filter(id => id !== null && id !== undefined && id !== '');
+    .filter(id => id !== '');
   if (!ids.includes('default')) ids.unshift('default');
   return ids;
 }
@@ -764,7 +764,7 @@ function ensureProjectOutputDirs(projectId: string): { projectDir: string; propo
   const root = ensureOutputDir();
   const safeProjectId = normalizeProjectId(projectId);
   const projectDir = path.join(root, safeProjectId);
-  // 统一采用 output/{projectId}/proposals 与 output/{projectId}/games 两类产物目录，避免混放。
+  // 统一采用 output/{projectId}/proposals 与 output/{projectId}/games 两类产出目录，避免混放。
   const proposalsDir = path.join(projectDir, 'proposals');
   const gamesDir = path.join(projectDir, 'games');
   [projectDir, proposalsDir, gamesDir].forEach((dir) => {

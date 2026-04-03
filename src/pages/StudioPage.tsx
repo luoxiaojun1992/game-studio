@@ -205,9 +205,6 @@ export default function StudioPage() {
         list.unshift({ id: DEFAULT_PROJECT_ID, name: DEFAULT_PROJECT_ID });
       }
       setProjects(list);
-      if (!list.find(p => p.id === selectedProjectId)) {
-        setSelectedProjectId(DEFAULT_PROJECT_ID);
-      }
     }).catch((error) => {
       console.error('加载项目列表失败', error);
     });
