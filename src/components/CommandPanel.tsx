@@ -90,6 +90,17 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
     });
   }, [model, onModelChange]);
 
+  // 组件挂载时，如果没有外部指定的 Agent，从 localStorage 恢复
+  useEffect(() => {
+    // 如果外部没有指定 Agent（即从导航栏点击进入），从 localStorage 恢复
+    if (!selectedAgentId) {
+      const saved = getSavedAgent();
+      if (saved) {
+        setSelectedAgent(saved);
+      }
+    }
+  }, []);
+
   // 外部指定目标 Agent（从团队总览点击跳转）
   // 使用计数器确保每次点击都能触发，即使选中同一个 Agent
   useEffect(() => {
