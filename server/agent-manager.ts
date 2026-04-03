@@ -778,7 +778,6 @@ class AgentManager extends EventEmitter {
     const uniqueDbRequests = dbFormattedRequests.filter(r => !memoryIds.has(r.requestId));
     
     return [...memoryRequests, ...uniqueDbRequests];
-      }));
   }
 }
 

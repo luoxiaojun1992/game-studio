@@ -23,6 +23,9 @@ const TABS: { key: TabKey; label: string; icon: string }[] = [
 ];
 const DEFAULT_PROJECT_ID = 'default';
 
+// 按项目隔离的 localStorage key
+const getCommandAgentKey = (projectId: string) => `commandPanel_lastAgent_${projectId}`;
+
 export default function StudioPage() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [proposals, setProposals] = useState<Proposal[]>([]);
@@ -232,6 +235,17 @@ export default function StudioPage() {
     setSelectedProposal(null);
     setSelectedGame(null);
   }, [selectedProjectId]);
+
+  // agents 加载后 / 项目切换时，从 localStorage 读取保存的 Agent
+  useEffect(() => {
+    if (agents.length === 0) return;
+    const saved = localStorage.getItem(getCommandAgentKey(selectedProjectId));
+    if (saved && agents.find(a => a.id === saved)) {
+      setCommandTargetAgent(saved as AgentRole);
+    } else {
+      setCommandTargetAgent(undefined);
+    }
+  }, [agents, selectedProjectId]);
 
   // 连接 SSE
   useEffect(() => {
@@ -630,6 +644,9 @@ export default function StudioPage() {
             model={commandModel}
             onModelChange={handleCommandModelChange}
             onCommandSent={() => {}}
+            onAgentChange={(agentId) => {
+              setCommandTargetAgent(agentId);
+            }}
           />
         )}
 

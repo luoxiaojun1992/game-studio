@@ -10,6 +10,7 @@ interface Props {
   onCommandSent?: () => void;
   model: string;
   onModelChange: (model: string) => void;
+  onAgentChange?: (agentId: AgentRole) => void;
 }
 
 const AGENT_NAMES: Record<string, { name: string; emoji: string; color: string }> = {
@@ -31,7 +32,7 @@ interface ModelInfo {
 // 按项目隔离的 localStorage key
 const getStorageKey = (projectId: string) => `commandPanel_lastAgent_${projectId}`;
 
-export default function CommandPanel({ agents, logs, projectId, selectedAgentId, onCommandSent, model, onModelChange }: Props) {
+export default function CommandPanel({ agents, logs, projectId, selectedAgentId, onCommandSent, model, onModelChange, onAgentChange }: Props) {
   // 从 localStorage 读取上次选择的 Agent（按项目隔离）
   const getSavedAgent = (): AgentRole | null => {
     const saved = localStorage.getItem(getStorageKey(projectId));
@@ -47,9 +48,10 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
     return workingAgent?.id || agents[0]?.id || 'game_designer';
   };
 
-  // 统一状态：优先使用外部传入的 selectedAgentId，否则从 localStorage 恢复，最后使用默认值
+  // 初始化状态：优先使用 localStorage 保存的值，其次使用默认 Agent
+  // 注意：selectedAgentId 作为外部跳转参数，不在这里用于初始化（会由 useEffect 处理）
   const [selectedAgent, setSelectedAgent] = useState<AgentRole>(() => {
-    return selectedAgentId || getSavedAgent() || getDefaultAgent();
+    return getSavedAgent() || getDefaultAgent();
   });
   const [message, setMessage] = useState('');
   const [streaming, setStreaming] = useState(false);
@@ -100,10 +102,11 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
     }
   }, [selectedAgentId, projectId]);
 
-  // 在指令中心内切换 Agent 时，记住选择
+  // 在指令中心内切换 Agent 时，记住选择并通知父组件
   const handleAgentChange = (agentId: AgentRole) => {
     setSelectedAgent(agentId);
     localStorage.setItem(getStorageKey(projectId), agentId);
+    onAgentChange?.(agentId);
   };
 
   // 切换 Agent 时清空流式文本
