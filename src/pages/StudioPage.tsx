@@ -35,6 +35,7 @@ export default function StudioPage() {
   const [projectError, setProjectError] = useState<string | null>(null);
   const [creatingProject, setCreatingProject] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
+  const [commandTargetAgent, setCommandTargetAgent] = useState<AgentRole | undefined>(undefined);
   const [commandModel, setCommandModel] = useState<string>('glm-5.0');
   const handleCommandModelChange = useCallback((model: string) => {
     setCommandModel(model);
@@ -462,6 +463,7 @@ export default function StudioPage() {
                   agent={agent}
                   onPauseToggle={() => handleTogglePause(agent.id)}
                   onSendCommand={() => {
+                    setCommandTargetAgent(agent.id);
                     setActiveTab('commands');
                   }}
                   streamLog={streamLogs.filter(l => l.agentId === agent.id).slice(-1)[0]}
@@ -602,6 +604,7 @@ export default function StudioPage() {
           <CommandPanel
             agents={agents}
             projectId={selectedProjectId}
+            selectedAgentId={commandTargetAgent}
             model={commandModel}
             onModelChange={handleCommandModelChange}
             onCommandSent={() => {}}

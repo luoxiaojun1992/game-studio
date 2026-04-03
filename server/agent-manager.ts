@@ -42,6 +42,7 @@ class AgentManager extends EventEmitter {
     timestamp: number;
   }> = new Map();
   private pendingPermissionExpirations: Map<string, NodeJS.Timeout> = new Map();
+  private activeAgentStreamsByProject: Map<string, Map<AgentRole, string>> = new Map();
 
   constructor() {
     super();
@@ -62,6 +63,7 @@ class AgentManager extends EventEmitter {
 
     const projectStates: Map<AgentRole, AgentState> = new Map();
     const projectPausedSet: Set<AgentRole> = new Set();
+    const projectActiveStreams: Map<AgentRole, string> = new Map();
 
     const agentIds: AgentRole[] = ['engineer', 'architect', 'game_designer', 'biz_designer', 'ceo'];
     for (const agentId of agentIds) {
@@ -89,6 +91,7 @@ class AgentManager extends EventEmitter {
     }
     this.agentStatesByProject.set(scopedProjectId, projectStates);
     this.pausedAgentsByProject.set(scopedProjectId, projectPausedSet);
+    this.activeAgentStreamsByProject.set(scopedProjectId, projectActiveStreams);
   }
 
   getAgentState(projectId: string, agentId: AgentRole): AgentState {
@@ -262,6 +265,22 @@ class AgentManager extends EventEmitter {
   }
 
   /**
+   * 工程师任务收尾校验：若存在未完成看板任务，不允许直接结束
+   */
+  private validateEngineerTaskBoardBeforeFinish(projectId: string): string | null {
+    const tasks = db.getTaskBoardTasks(projectId)
+      .filter(t => t.created_by === 'engineer');
+    if (tasks.length === 0) return null;
+    const unfinished = tasks.filter(t => t.status !== 'done');
+    if (unfinished.length === 0) return null;
+
+    const sample = unfinished.slice(0, 3)
+      .map(t => `${t.title}(ID:${t.id}, 状态:${t.status})`)
+      .join('；');
+    return `检测到软件工程师仍有未完成看板任务，禁止直接结束并转空闲。请先调用 get_tasks / update_task_status 完成状态流转后重试。未完成任务示例：${sample}${unfinished.length > 3 ? '；等' : ''}`;
+  }
+
+  /**
    * 构建完整的 systemPrompt，注入长期记忆
    */
   private buildSystemPrompt(projectId: string, agentId: AgentRole): string {
@@ -286,11 +305,18 @@ class AgentManager extends EventEmitter {
     if (this.isAgentPaused(scopedProjectId, agentId)) {
       throw new Error(`Agent ${agentId} 当前已暂停，无法接受任务`);
     }
+    this.ensureProjectState(scopedProjectId);
+    const projectActiveStreams = this.activeAgentStreamsByProject.get(scopedProjectId)!;
+    const existingStreamId = projectActiveStreams.get(agentId);
+    if (existingStreamId) {
+      throw new Error(`Agent ${agentId} 正在执行其他任务，请稍后重试`);
+    }
 
     const agentDef = AGENT_DEFINITIONS[agentId];
     if (!agentDef) throw new Error(`未知的 Agent: ${agentId}`);
 
     const streamId = uuidv4();
+    projectActiveStreams.set(agentId, streamId);
     this.updateAgentState(scopedProjectId, agentId, {
       status: 'working',
       currentTask: message.slice(0, 100),
@@ -522,6 +548,13 @@ class AgentManager extends EventEmitter {
         created_at: new Date().toISOString()
       });
 
+      if (agentId === 'engineer') {
+        const guardError = this.validateEngineerTaskBoardBeforeFinish(scopedProjectId);
+        if (guardError) {
+          throw new Error(guardError);
+        }
+      }
+
       this.updateAgentState(scopedProjectId, agentId, {
         status: 'idle',
         currentTask: null,
@@ -544,6 +577,10 @@ class AgentManager extends EventEmitter {
       throw error;
     } finally {
       this.activeStreams.delete(streamId);
+      const current = this.activeAgentStreamsByProject.get(scopedProjectId)?.get(agentId);
+      if (current === streamId) {
+        this.activeAgentStreamsByProject.get(scopedProjectId)?.delete(agentId);
+      }
     }
 
     return fullResponse;
