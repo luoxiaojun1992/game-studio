@@ -169,7 +169,12 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
             try {
               await onAutoHandoff(handoff);
             } catch (error: any) {
-              log(to_agent_id, '交接任务执行失败', error?.message || String(error), 'error');
+              log(
+                to_agent_id,
+                '交接任务执行失败',
+                `[${title} → ${to_agent_id}] ${error?.message || String(error)}`,
+                'error'
+              );
             }
           }
           return {
