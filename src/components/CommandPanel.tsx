@@ -129,11 +129,20 @@ export default function CommandPanel({ agents, projectId, selectedAgentId, onCom
     }
   }, [selectedAgentId, selectedAgent]);
 
-  // 当有 Agent 开始工作时，自动切换到该 Agent（仅首次、且用户未手动选择时）
+  // 当有 Agent 开始工作时，自动切换到该 Agent
+  // 当前选中的 Agent 已完成工作且有新 Agent 开始时，总是切换
+  // 当前选中的 Agent 仍在工作时，仅在用户未手动选择的情况下切换
   useEffect(() => {
-    if (hasUserExplicitlySelectedAgentRef.current) return;
     const working = agents.find(a => a.state?.status === 'working');
-    if (working && working.id !== selectedAgent) {
+    if (!working || working.id === selectedAgent) return;
+
+    const currentStillWorking = agents.find(a => a.id === selectedAgent && a.state?.status === 'working');
+    if (!currentStillWorking) {
+      // 当前 Agent 已不在工作，始终切换到新的 working Agent
+      setSelectedAgent(working.id);
+      hasUserExplicitlySelectedAgentRef.current = false;
+    } else if (!hasUserExplicitlySelectedAgentRef.current) {
+      // 当前 Agent 仍在工作，仅在用户未手动选择时切换
       setSelectedAgent(working.id);
     }
   }, [agents, selectedAgent]);
