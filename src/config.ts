@@ -68,7 +68,7 @@ export const api = {
     }).then(r => r.json()),
   getProjectSettings: (projectId: string) =>
     fetch(`${API_BASE}/api/projects/${projectId}/settings`).then(r => r.json()),
-  updateProjectSettings: (projectId: string, data: { auto_handoff_enabled: boolean }) =>
+  updateProjectSettings: (projectId: string, data: { autopilot_enabled: boolean }) =>
     fetch(`${API_BASE}/api/projects/${projectId}/settings`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -76,13 +76,13 @@ export const api = {
     }).then(r => r.json()),
 
   // 日志
-  getLogs: (projectId?: string, agentId?: string, limit?: number) => {
+  getLogs: (projectId?: string, agentId?: string) => {
     const params = new URLSearchParams();
-    if (projectId) params.set('projectId', projectId);
     if (agentId) params.set('agentId', agentId);
-    if (limit) params.set('limit', String(limit));
-    return fetch(`${API_BASE}/api/logs?${params}`).then(r => r.json());
+    return fetch(`${API_BASE}/api/projects/${projectId || 'default'}/logs?${params}`).then(r => r.json());
   },
+  deleteLogs: (projectId?: string) =>
+    fetch(`${API_BASE}/api/projects/${projectId || 'default'}/logs`, { method: 'DELETE' }).then(r => r.json()),
 
   // 指令历史
   getCommands: (projectId?: string) => {
@@ -95,11 +95,11 @@ export const api = {
   getModels: () => fetch(`${API_BASE}/api/models`).then(r => r.json()),
 
   // 权限响应
-  respondPermission: (requestId: string, behavior: 'allow' | 'deny', message?: string, projectId?: string) =>
+  respondPermission: (requestId: string, behavior: 'allow' | 'deny', message?: string, projectId?: string, updatedInput?: Record<string, unknown>) =>
     fetch(`${API_BASE}/api/permission-response`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ requestId, behavior, message, projectId })
+      body: JSON.stringify({ requestId, behavior, message, projectId, updatedInput })
     }).then(r => r.json()),
 
   // 任务交接

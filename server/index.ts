@@ -33,7 +33,6 @@ app.use((req, res, next) => {
 
 // 将 AgentManager 的事件转发到 SSE
 agentManager.on('agent_status_changed', (data) => sseBroadcaster.broadcast({ type: 'agent_status_changed', ...data }, data.projectId));
-agentManager.on('agent_log', (data) => sseBroadcaster.broadcast({ type: 'agent_log', ...data }, data.projectId));
 agentManager.on('stream_event', (data) => sseBroadcaster.broadcast({ type: 'stream_event', event: data }, (data as any).projectId));
 agentManager.on('agent_paused', (data) => sseBroadcaster.broadcast({ type: 'agent_paused', ...data }, data.projectId));
 agentManager.on('agent_resumed', (data) => sseBroadcaster.broadcast({ type: 'agent_resumed', ...data }, data.projectId));
@@ -74,7 +73,7 @@ app.get('/api/observe', (req, res) => {
     agents: agentManager.getAllAgentStates(project),
     proposals: db.getAllProposals().filter(p => p.project_id === project),
     games: db.getAllGames().filter(g => g.project_id === project).map(g => ({ ...g, html_content: undefined })), // 不传 HTML 内容
-    logs: db.getAgentLogs(project, undefined, 50),
+    logs: db.getLogs(project, undefined, 1000),
     tasks: db.getTaskBoardTasks(project),
     pendingPermissions: agentManager.getPendingPermissions(project)
   };
@@ -184,6 +183,20 @@ app.post('/api/agents/:agentId/command', async (req, res) => {
     executed_at: new Date().toISOString()
   });
 
+  // 将用户指令记录到 logs，方便在指令中心显示历史记录
+  db.addLog({
+    id: uuidv4(),
+    project_id: projectId,
+    agent_id: agentId,
+    log_type: 'user_command',
+    level: 'info',
+    content: message,
+    tool_name: null,
+    action: '👤 用户指令',
+    is_error: false,
+    created_at: new Date().toISOString()
+  });
+
   // 设置 SSE 响应（流式返回）
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
@@ -266,7 +279,7 @@ app.get('/api/projects/:id/settings', (req, res) => {
   res.json({
     settings: {
       project_id: settings.project_id,
-      auto_handoff_enabled: settings.auto_handoff_enabled === 1
+      autopilot_enabled: settings.autopilot_enabled === 1
     }
   });
 });
@@ -274,17 +287,17 @@ app.get('/api/projects/:id/settings', (req, res) => {
 app.patch('/api/projects/:id/settings', (req, res) => {
   const projectId = normalizeProjectId(req.params.id);
   db.ensureProject(projectId);
-  const { auto_handoff_enabled } = req.body as { auto_handoff_enabled?: boolean };
-  if (auto_handoff_enabled === undefined) {
-    return res.status(400).json({ error: '缺少可更新字段：auto_handoff_enabled' });
+  const { autopilot_enabled } = req.body as { autopilot_enabled?: boolean };
+  if (autopilot_enabled === undefined) {
+    return res.status(400).json({ error: '缺少可更新字段：autopilot_enabled' });
   }
   const settings = db.updateProjectSettings(projectId, {
-    auto_handoff_enabled: auto_handoff_enabled ? 1 : 0
+    autopilot_enabled: autopilot_enabled ? 1 : 0
   });
   res.json({
     settings: {
       project_id: settings.project_id,
-      auto_handoff_enabled: settings.auto_handoff_enabled === 1
+      autopilot_enabled: settings.autopilot_enabled === 1
     }
   });
 });
@@ -347,11 +360,17 @@ app.patch('/api/games/:id', (req, res) => {
 
 // ============= 日志 API =============
 
-app.get('/api/logs', (req, res) => {
-  const { agentId, limit } = req.query;
-  const projectId = normalizeProjectId(req.query.projectId);
-  const logs = db.getAgentLogs(projectId, agentId as string | undefined, limit ? parseInt(limit as string) : 100);
+app.get('/api/projects/:projectId/logs', (req, res) => {
+  const projectId = normalizeProjectId(req.params.projectId);
+  const agentId = req.query.agentId as string | undefined;
+  const logs = db.getLogs(projectId, agentId, 1000);
   res.json({ logs });
+});
+
+app.delete('/api/projects/:projectId/logs', (req, res) => {
+  const projectId = normalizeProjectId(req.params.projectId);
+  db.deleteLogs(projectId);
+  res.json({ success: true });
 });
 
 // ============= 指令历史 API =============
@@ -365,9 +384,9 @@ app.get('/api/commands', (req, res) => {
 // ============= 权限响应 API =============
 
 app.post('/api/permission-response', (req, res) => {
-  const { requestId, behavior, message, projectId: bodyProjectId } = req.body;
+  const { requestId, behavior, message, projectId: bodyProjectId, updatedInput } = req.body;
   const projectId = normalizeProjectId(bodyProjectId ?? req.query.projectId);
-  const success = agentManager.respondToPermission(requestId, behavior, message, projectId);
+  const success = agentManager.respondToPermission(requestId, behavior, message, projectId, updatedInput);
   if (!success) return res.status(404).json({ error: '权限请求不存在或已超时' });
   res.json({ success: true });
 });
@@ -413,7 +432,7 @@ app.post('/api/handoffs', (req, res) => {
 
   const now = new Date().toISOString();
   const settings = db.getProjectSettings(projectId);
-  const autoHandoffEnabled = settings.auto_handoff_enabled === 1;
+  const autoHandoffEnabled = settings.autopilot_enabled === 1;
   const handoff = db.createHandoff({
     id: uuidv4(),
     project_id: projectId,
@@ -458,7 +477,7 @@ app.post('/api/handoffs/:id/accept', (req, res) => {
   const handoff = db.getHandoff(id);
   if (!handoff) return res.status(404).json({ error: '交接记录不存在' });
   const settings = db.getProjectSettings(handoff.project_id);
-  if (settings.auto_handoff_enabled === 1) {
+  if (settings.autopilot_enabled === 1) {
     if (handoff.status !== 'pending') {
       return res.status(400).json({ error: '当前项目已开启自动交接，无需手动接收' });
     }
@@ -500,7 +519,7 @@ app.post('/api/handoffs/:id/confirm', (req, res) => {
   const handoff = db.getHandoff(id);
   if (!handoff) return res.status(404).json({ error: '交接记录不存在' });
   const settings = db.getProjectSettings(handoff.project_id);
-  const autoHandoffEnabled = settings.auto_handoff_enabled === 1;
+  const autoHandoffEnabled = settings.autopilot_enabled === 1;
   if (!autoHandoffEnabled && handoff.status !== 'accepted') {
     return res.status(400).json({ error: `交接状态不是已接受，当前状态: ${handoff.status}，需要先接受交接` });
   }

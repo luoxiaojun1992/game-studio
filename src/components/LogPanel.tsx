@@ -1,24 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { AgentLog, Agent, AgentRole } from '../types';
+import { LogEntry, Agent } from '../types';
 import { api } from '../config';
 
 interface Props {
-  logs: AgentLog[];
+  logs: LogEntry[];
   agents: Agent[];
   projectId: string;
 }
 
-interface StreamLogEntry {
-  id: string;
-  agentId: string;
-  time: string;
-  type: 'text' | 'tool' | 'tool_result' | 'done' | 'error' | 'info';
-  content: string;
-  toolName?: string;
-  isError?: boolean;
-}
-
-const LEVEL_CONFIG = {
+const LEVEL_CONFIG: Record<string, { label: string; className: string; bg: string }> = {
   info: { label: 'INFO', className: 'text-blue-400', bg: '' },
   warn: { label: 'WARN', className: 'text-yellow-400', bg: 'bg-yellow-900/10' },
   error: { label: 'ERR ', className: 'text-red-400', bg: 'bg-red-900/10' },
@@ -33,16 +23,20 @@ const AGENT_NAMES: Record<string, { name: string; emoji: string }> = {
   ceo: { name: 'CEO', emoji: '👔' },
 };
 
-export default function LogPanel({ logs, agents, projectId }: Props) {
+export default function LogPanel({ logs: externalLogs, agents, projectId }: Props) {
+  const [logs, setLogs] = useState<LogEntry[]>(externalLogs);
   const [filterAgent, setFilterAgent] = useState<string>('all');
   const [filterLevel, setFilterLevel] = useState<string>('all');
   const [expandedLog, setExpandedLog] = useState<string | null>(null);
-  const [streamLogs, setStreamLogs] = useState<StreamLogEntry[]>([]);
   const [autoScroll, setAutoScroll] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
-  const streamLogIdRef = useRef(0);
 
-  // 连接 SSE 获取实时流事件
+  // 同步外部 logs（后端已在 SSE 初始化时返回最新 1000 条）
+  useEffect(() => {
+    setLogs(externalLogs);
+  }, [externalLogs]);
+
+  // SSE 实时追加流日志（合并到同一个列表）
   useEffect(() => {
     const es = new EventSource(api.observeUrl(projectId));
 
@@ -52,62 +46,80 @@ export default function LogPanel({ logs, agents, projectId }: Props) {
         if (event.type === 'stream_event') {
           const se = event.event;
           if (se.type === 'text' && se.agentId) {
-            streamLogIdRef.current += 1;
-            setStreamLogs(prev => {
+            // 追加到同一条 text 日志，或新建
+            setLogs(prev => {
               const last = prev[prev.length - 1];
-              if (last && last.type === 'text' && last.agentId === se.agentId && last.id === String(streamLogIdRef.current - 1)) {
-                // 追加到同一条 text 日志
-                return [...prev.slice(0, -1), { ...last, content: last.content + se.content }];
+              if (last && last.log_type === 'text' && last.agent_id === se.agentId) {
+                return [...prev.slice(0, -1), { ...last, content: last.content + se.content }].slice(-1000);
               }
               return [...prev, {
-                id: String(streamLogIdRef.current),
-                agentId: se.agentId,
-                time: new Date().toLocaleTimeString('zh-CN'),
-                type: 'text' as const,
-                content: se.content
-              }].slice(-200);
+                id: se.id || String(Date.now()) + Math.random(),
+                project_id: projectId,
+                agent_id: se.agentId,
+                log_type: 'text' as const,
+                level: 'info' as const,
+                content: se.content,
+                tool_name: null,
+                action: null,
+                is_error: false,
+                created_at: new Date().toISOString(),
+              }].slice(-1000);
             });
           } else if (se.type === 'tool' && se.agentId) {
-            streamLogIdRef.current += 1;
             const inputStr = se.input ? Object.entries(se.input)
               .map(([k, v]) => `${k}: ${typeof v === 'string' ? (v.length > 200 ? v.slice(0, 200) + '...' : v) : JSON.stringify(v)}`)
               .join('\n') : '';
-            setStreamLogs(prev => [...prev, {
-              id: String(streamLogIdRef.current),
-              agentId: se.agentId,
-              time: new Date().toLocaleTimeString('zh-CN'),
-              type: 'tool' as const,
+            setLogs(prev => [...prev, {
+              id: se.id || String(Date.now()) + Math.random(),
+              project_id: projectId,
+              agent_id: se.agentId,
+              log_type: 'tool' as const,
+              level: 'info' as const,
               content: inputStr,
-              toolName: se.name
-            }].slice(-200));
+              tool_name: se.name || null,
+              action: null,
+              is_error: false,
+              created_at: new Date().toISOString(),
+            }].slice(-1000));
           } else if (se.type === 'tool_result' && se.agentId) {
-            streamLogIdRef.current += 1;
-            setStreamLogs(prev => [...prev, {
-              id: String(streamLogIdRef.current),
-              agentId: se.agentId,
-              time: new Date().toLocaleTimeString('zh-CN'),
-              type: 'tool_result' as const,
+            setLogs(prev => [...prev, {
+              id: se.id || String(Date.now()) + Math.random(),
+              project_id: projectId,
+              agent_id: se.agentId,
+              log_type: 'tool_result' as const,
+              level: se.isError ? 'error' as const : 'success' as const,
               content: (se.content || '').slice(0, 500),
-              isError: se.isError
-            }].slice(-200));
+              tool_name: null,
+              action: null,
+              is_error: !!se.isError,
+              created_at: new Date().toISOString(),
+            }].slice(-1000));
           } else if (se.type === 'agent_done' && se.agentId) {
-            streamLogIdRef.current += 1;
-            setStreamLogs(prev => [...prev, {
-              id: String(streamLogIdRef.current),
-              agentId: se.agentId,
-              time: new Date().toLocaleTimeString('zh-CN'),
-              type: 'done' as const,
-              content: `完成${se.duration ? ` (耗时 ${(se.duration / 1000).toFixed(1)}s)` : ''}`
-            }].slice(-200));
+            setLogs(prev => [...prev, {
+              id: se.id || String(Date.now()) + Math.random(),
+              project_id: projectId,
+              agent_id: se.agentId,
+              log_type: 'done' as const,
+              level: 'success' as const,
+              content: `完成${se.duration ? ` (耗时 ${(se.duration / 1000).toFixed(1)}s)` : ''}`,
+              tool_name: null,
+              action: null,
+              is_error: false,
+              created_at: new Date().toISOString(),
+            }].slice(-1000));
           } else if (se.type === 'agent_error' && se.agentId) {
-            streamLogIdRef.current += 1;
-            setStreamLogs(prev => [...prev, {
-              id: String(streamLogIdRef.current),
-              agentId: se.agentId,
-              time: new Date().toLocaleTimeString('zh-CN'),
-              type: 'error' as const,
-              content: se.error || '未知错误'
-            }].slice(-200));
+            setLogs(prev => [...prev, {
+              id: se.id || String(Date.now()) + Math.random(),
+              project_id: projectId,
+              agent_id: se.agentId,
+              log_type: 'error' as const,
+              level: 'error' as const,
+              content: se.error || '未知错误',
+              tool_name: null,
+              action: null,
+              is_error: true,
+              created_at: new Date().toISOString(),
+            }].slice(-1000));
           }
         }
       } catch {}
@@ -116,27 +128,166 @@ export default function LogPanel({ logs, agents, projectId }: Props) {
     return () => es.close();
   }, [projectId]);
 
-  // 自动滚动（最新日志在顶部，滚到顶部）
+  // 自动滚动
   useEffect(() => {
     if (autoScroll && containerRef.current) {
-      containerRef.current.scrollTop = 0;
+      containerRef.current.scrollTop = containerRef.current.scrollHeight;
     }
-  }, [streamLogs, logs, autoScroll]);
+  }, [logs, autoScroll]);
 
+  // 前端过滤
   const filteredLogs = logs.filter(log => {
     if (filterAgent !== 'all' && log.agent_id !== filterAgent) return false;
     if (filterLevel !== 'all' && log.level !== filterLevel) return false;
     return true;
   });
 
-  const filteredStreams = streamLogs.filter(sl => {
-    if (filterAgent !== 'all' && sl.agentId !== filterAgent) return false;
-    return true;
-  });
-
-  // 合并日志和流日志，按时间排序（简化：流日志在后）
   const toggleExpand = (id: string) => {
     setExpandedLog(prev => prev === id ? null : id);
+  };
+
+  const renderLog = (log: LogEntry) => {
+    const agentInfo = AGENT_NAMES[log.agent_id];
+    const agentLabel = `${agentInfo?.emoji} ${agentInfo?.name || log.agent_id}`;
+    const timeStr = new Date(log.created_at).toLocaleTimeString('zh-CN');
+    const isExpanded = expandedLog === log.id;
+
+    // system 日志
+    if (log.log_type === 'system') {
+      const levelCfg = LEVEL_CONFIG[log.level] || LEVEL_CONFIG.info;
+      const longDetail = log.content && log.content.length > 200;
+      return (
+        <div
+          key={log.id}
+          className={`flex gap-2 px-2 py-1 rounded cursor-pointer hover:bg-gray-800/50 transition-colors ${levelCfg.bg}`}
+          onClick={() => longDetail && toggleExpand(log.id)}
+        >
+          <span className="text-gray-600 shrink-0 tabular-nums">{timeStr}</span>
+          <span className={`${levelCfg.className} shrink-0 font-bold`}>{levelCfg.label}</span>
+          <span className="text-purple-400 shrink-0">{agentLabel}</span>
+          {log.action && <span className="text-gray-300 shrink-0">{log.action}</span>}
+          {log.content && (
+            <span className={`text-gray-500 ${longDetail ? '' : 'truncate'}`}>
+              {isExpanded ? log.content : (longDetail ? log.content.slice(0, 200) + '...' : log.content)}
+            </span>
+          )}
+          {longDetail && (
+            <span className="text-gray-700 shrink-0">{isExpanded ? '收起 ▲' : '展开 ▼'}</span>
+          )}
+        </div>
+      );
+    }
+
+    // user_command（用户指令）
+    if (log.log_type === 'user_command') {
+      const isLong = log.content && log.content.length > 300;
+      return (
+        <div key={log.id} className="flex gap-2 px-2 py-0.5 bg-cyan-900/10 rounded">
+          <span className="text-gray-600 shrink-0 tabular-nums">{timeStr}</span>
+          <span className="text-cyan-400 shrink-0 font-bold">CMD </span>
+          <span className="text-purple-400 shrink-0">{agentLabel}</span>
+          <span className={`text-cyan-200 leading-relaxed whitespace-pre-wrap break-words ${isLong && !isExpanded ? 'line-clamp-4' : ''}`}>
+            {isExpanded ? log.content : (isLong ? log.content.slice(0, 300) : log.content)}
+          </span>
+          {isLong && (
+            <button onClick={() => toggleExpand(log.id)} className="text-cyan-500 hover:text-cyan-400 shrink-0 ml-1">
+              {isExpanded ? '收起' : '展开'}
+            </button>
+          )}
+        </div>
+      );
+    }
+
+    // text（MSG）
+    if (log.log_type === 'text') {
+      const isLong = log.content && log.content.length > 300;
+      return (
+        <div key={log.id} className="flex gap-2 px-2 py-0.5">
+          <span className="text-gray-600 shrink-0 tabular-nums">{timeStr}</span>
+          <span className="text-blue-400 shrink-0 font-bold">MSG </span>
+          <span className="text-purple-400 shrink-0">{agentLabel}</span>
+          <span className={`text-gray-300 leading-relaxed whitespace-pre-wrap break-words ${isLong && !isExpanded ? 'line-clamp-4' : ''}`}>
+            {isExpanded ? log.content : (isLong ? log.content.slice(0, 300) : log.content)}
+          </span>
+          {isLong && (
+            <button onClick={() => toggleExpand(log.id)} className="text-blue-500 hover:text-blue-400 shrink-0 ml-1">
+              {isExpanded ? '收起' : '展开'}
+            </button>
+          )}
+        </div>
+      );
+    }
+
+    // tool
+    if (log.log_type === 'tool') {
+      return (
+        <div key={log.id} className="flex gap-2 px-2 py-1 bg-yellow-900/10 rounded">
+          <span className="text-gray-600 shrink-0 tabular-nums">{timeStr}</span>
+          <span className="text-yellow-400 shrink-0 font-bold">TOOL</span>
+          <span className="text-purple-400 shrink-0">{agentLabel}</span>
+          {log.tool_name && <span className="text-white font-semibold shrink-0">🔧 {log.tool_name}</span>}
+          {log.content && (
+            <span className={`text-gray-400 whitespace-pre-wrap break-all ${!isExpanded && log.content.length > 200 ? 'truncate' : ''}`}>
+              {isExpanded ? log.content : log.content.slice(0, 200)}
+              {!isExpanded && log.content.length > 200 && '...'}
+            </span>
+          )}
+          {log.content && log.content.length > 200 && (
+            <button onClick={() => toggleExpand(log.id)} className="text-yellow-500 hover:text-yellow-400 shrink-0 ml-1">
+              {isExpanded ? '收起' : '展开'}
+            </button>
+          )}
+        </div>
+      );
+    }
+
+    // tool_result
+    if (log.log_type === 'tool_result') {
+      return (
+        <div key={log.id} className={`flex gap-2 px-2 py-1 rounded ${log.is_error ? 'bg-red-900/10' : 'bg-green-900/10'}`}>
+          <span className="text-gray-600 shrink-0 tabular-nums">{timeStr}</span>
+          <span className={`shrink-0 font-bold ${log.is_error ? 'text-red-400' : 'text-green-400'}`}>
+            {log.is_error ? 'FAIL' : 'DONE'}
+          </span>
+          <span className="text-purple-400 shrink-0">{agentLabel}</span>
+          <span className={`whitespace-pre-wrap break-all ${log.is_error ? 'text-red-300' : 'text-gray-400'} ${!isExpanded && log.content.length > 200 ? 'truncate' : ''}`}>
+            {isExpanded ? log.content : log.content.slice(0, 200)}
+            {!isExpanded && log.content.length > 200 && '...'}
+          </span>
+          {log.content.length > 200 && (
+            <button onClick={() => toggleExpand(log.id)} className={`shrink-0 ml-1 ${log.is_error ? 'text-red-500' : 'text-green-500'}`}>
+              {isExpanded ? '收起' : '展开'}
+            </button>
+          )}
+        </div>
+      );
+    }
+
+    // done
+    if (log.log_type === 'done') {
+      return (
+        <div key={log.id} className="flex gap-2 px-2 py-1 bg-green-900/5 rounded">
+          <span className="text-gray-600 shrink-0 tabular-nums">{timeStr}</span>
+          <span className="text-green-400 shrink-0 font-bold">DONE</span>
+          <span className="text-purple-400 shrink-0">{agentLabel}</span>
+          <span className="text-green-300">{log.content}</span>
+        </div>
+      );
+    }
+
+    // error
+    if (log.log_type === 'error') {
+      return (
+        <div key={log.id} className="flex gap-2 px-2 py-1 bg-red-900/15 rounded">
+          <span className="text-gray-600 shrink-0 tabular-nums">{timeStr}</span>
+          <span className="text-red-400 shrink-0 font-bold">ERR!</span>
+          <span className="text-purple-400 shrink-0">{agentLabel}</span>
+          <span className="text-red-300">{log.content}</span>
+        </div>
+      );
+    }
+
+    return null;
   };
 
   return (
@@ -168,7 +319,7 @@ export default function LogPanel({ logs, agents, projectId }: Props) {
           <option value="error">错误</option>
         </select>
 
-        <label className="flex items-center gap-1.5 text-xs text-gray-400 ml-auto cursor-pointer">
+        <label className="flex items-center gap-1.5 text-xs text-gray-400 cursor-pointer">
           <input
             type="checkbox"
             checked={autoScroll}
@@ -178,7 +329,20 @@ export default function LogPanel({ logs, agents, projectId }: Props) {
           自动滚动
         </label>
 
-        <span className="text-xs text-gray-600">{filteredLogs.length + filteredStreams.length} 条</span>
+        <button
+          onClick={async () => {
+            try {
+              await api.deleteLogs(projectId);
+              setLogs([]);
+            } catch {}
+          }}
+          className="text-xs text-gray-500 hover:text-red-400 transition-colors px-2 py-1 rounded hover:bg-red-900/20"
+          title="清除日志"
+        >
+          🗑️ 清除
+        </button>
+
+        <span className="text-xs text-gray-600">{filteredLogs.length} 条</span>
       </div>
 
       {/* 日志内容 */}
@@ -188,145 +352,15 @@ export default function LogPanel({ logs, agents, projectId }: Props) {
         onScroll={() => {
           const el = containerRef.current;
           if (el) {
-            // 最新日志在顶部，scrollTop 接近 0 时认为用户在看最新
-            if (el.scrollTop > 50 && autoScroll) setAutoScroll(false);
+            const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+            if (distFromBottom > 50 && autoScroll) setAutoScroll(false);
+            if (distFromBottom <= 10 && !autoScroll) setAutoScroll(true);
           }
         }}
       >
-        {/* 系统日志（反转，最新的在前面） */}
-        {[...filteredLogs].reverse().map(log => {
-          const levelCfg = LEVEL_CONFIG[log.level] || LEVEL_CONFIG.info;
-          const agentInfo = AGENT_NAMES[log.agent_id];
-          const isExpanded = expandedLog === log.id;
-          const longDetail = log.detail && log.detail.length > 200;
-          return (
-            <div
-              key={log.id}
-              className={`flex gap-2 px-2 py-1 rounded cursor-pointer hover:bg-gray-800/50 transition-colors ${levelCfg.bg}`}
-              onClick={() => longDetail && toggleExpand(log.id)}
-            >
-              <span className="text-gray-600 shrink-0 tabular-nums">
-                {new Date(log.created_at).toLocaleTimeString('zh-CN')}
-              </span>
-              <span className={`${levelCfg.className} shrink-0 font-bold`}>{levelCfg.label}</span>
-              <span className="text-purple-400 shrink-0">{agentInfo?.emoji} {agentInfo?.name || log.agent_id}</span>
-              <span className="text-gray-300 shrink-0">{log.action}</span>
-              {log.detail && (
-                <span className={`text-gray-500 ${longDetail ? '' : 'truncate'}`}>
-                  {isExpanded ? log.detail : (longDetail ? log.detail.slice(0, 200) + '...' : log.detail)}
-                </span>
-              )}
-              {longDetail && (
-                <span className="text-gray-700 shrink-0">
-                  {isExpanded ? '收起 ▲' : '展开 ▼'}
-                </span>
-              )}
-            </div>
-          );
-        })}
+        {filteredLogs.map(log => renderLog(log))}
 
-        {/* 流式日志（反转，最新的在前面） */}
-        {[...filteredStreams].reverse().map(sl => {
-          const agentInfo = AGENT_NAMES[sl.agentId];
-          const isExpanded = expandedLog === sl.id;
-          const isLong = sl.content && sl.content.length > 300;
-
-          if (sl.type === 'text') {
-            return (
-              <div key={sl.id} className="flex gap-2 px-2 py-0.5">
-                <span className="text-gray-600 shrink-0 tabular-nums">{sl.time}</span>
-                <span className="text-blue-400 shrink-0 font-bold">MSG </span>
-                <span className="text-purple-400 shrink-0">{agentInfo?.emoji} {agentInfo?.name || sl.agentId}</span>
-                <span className={`text-gray-300 leading-relaxed whitespace-pre-wrap break-words ${isLong && !isExpanded ? 'line-clamp-4' : ''}`}>
-                  {isExpanded ? sl.content : (isLong ? sl.content.slice(0, 300) : sl.content)}
-                </span>
-                {isLong && (
-                  <button
-                    onClick={() => toggleExpand(sl.id)}
-                    className="text-blue-500 hover:text-blue-400 shrink-0 ml-1"
-                  >
-                    {isExpanded ? '收起' : '展开'}
-                  </button>
-                )}
-              </div>
-            );
-          }
-
-          if (sl.type === 'tool') {
-            return (
-              <div key={sl.id} className="flex gap-2 px-2 py-1 bg-yellow-900/10 rounded">
-                <span className="text-gray-600 shrink-0 tabular-nums">{sl.time}</span>
-                <span className="text-yellow-400 shrink-0 font-bold">TOOL</span>
-                <span className="text-purple-400 shrink-0">{agentInfo?.emoji} {agentInfo?.name || sl.agentId}</span>
-                <span className="text-white font-semibold shrink-0">🔧 {sl.toolName}</span>
-                {sl.content && (
-                  <span className={`text-gray-400 whitespace-pre-wrap break-all ${!isExpanded && sl.content.length > 200 ? 'truncate' : ''}`}>
-                    {isExpanded ? sl.content : sl.content.slice(0, 200)}
-                    {!isExpanded && sl.content.length > 200 && '...'}
-                  </span>
-                )}
-                {sl.content && sl.content.length > 200 && (
-                  <button
-                    onClick={() => toggleExpand(sl.id)}
-                    className="text-yellow-500 hover:text-yellow-400 shrink-0 ml-1"
-                  >
-                    {isExpanded ? '收起' : '展开'}
-                  </button>
-                )}
-              </div>
-            );
-          }
-
-          if (sl.type === 'tool_result') {
-            return (
-              <div key={sl.id} className={`flex gap-2 px-2 py-1 rounded ${sl.isError ? 'bg-red-900/10' : 'bg-green-900/10'}`}>
-                <span className="text-gray-600 shrink-0 tabular-nums">{sl.time}</span>
-                <span className={`shrink-0 font-bold ${sl.isError ? 'text-red-400' : 'text-green-400'}`}>
-                  {sl.isError ? 'FAIL' : 'DONE'}
-                </span>
-                <span className="text-purple-400 shrink-0">{agentInfo?.emoji} {agentInfo?.name || sl.agentId}</span>
-                <span className={`whitespace-pre-wrap break-all ${sl.isError ? 'text-red-300' : 'text-gray-400'} ${!isExpanded && sl.content.length > 200 ? 'truncate' : ''}`}>
-                  {isExpanded ? sl.content : sl.content.slice(0, 200)}
-                  {!isExpanded && sl.content.length > 200 && '...'}
-                </span>
-                {sl.content.length > 200 && (
-                  <button
-                    onClick={() => toggleExpand(sl.id)}
-                    className={`shrink-0 ml-1 ${sl.isError ? 'text-red-500' : 'text-green-500'}`}
-                  >
-                    {isExpanded ? '收起' : '展开'}
-                  </button>
-                )}
-              </div>
-            );
-          }
-
-          if (sl.type === 'done') {
-            return (
-              <div key={sl.id} className="flex gap-2 px-2 py-1 bg-green-900/5 rounded">
-                <span className="text-gray-600 shrink-0 tabular-nums">{sl.time}</span>
-                <span className="text-green-400 shrink-0 font-bold">DONE</span>
-                <span className="text-purple-400 shrink-0">{agentInfo?.emoji} {agentInfo?.name || sl.agentId}</span>
-                <span className="text-green-300">{sl.content}</span>
-              </div>
-            );
-          }
-
-          if (sl.type === 'error') {
-            return (
-              <div key={sl.id} className="flex gap-2 px-2 py-1 bg-red-900/15 rounded">
-                <span className="text-gray-600 shrink-0 tabular-nums">{sl.time}</span>
-                <span className="text-red-400 shrink-0 font-bold">ERR!</span>
-                <span className="text-purple-400 shrink-0">{agentInfo?.emoji} {agentInfo?.name || sl.agentId}</span>
-                <span className="text-red-300">{sl.content}</span>
-              </div>
-            );
-          }
-
-          return null;
-        })}
-
-        {filteredLogs.length === 0 && filteredStreams.length === 0 && (
+        {filteredLogs.length === 0 && (
           <div className="text-center text-gray-600 py-8">
             <div className="text-3xl mb-2">📜</div>
             暂无日志，发送指令后将在此显示完整日志

@@ -145,7 +145,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           }
           const now = new Date().toISOString();
           const settings = db.getProjectSettings(scopedProjectId);
-          const autoHandoffEnabled = settings.auto_handoff_enabled === 1;
+          const autoHandoffEnabled = settings.autopilot_enabled === 1;
           const handoff = db.createHandoff({
             id: uuidv4(),
             project_id: scopedProjectId,

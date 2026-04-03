@@ -1,21 +1,15 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Agent, AgentRole, AgentMessage } from '../types';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { Agent, AgentRole, LogEntry } from '../types';
 import { api, API_BASE } from '../config';
 
 interface Props {
   agents: Agent[];
+  logs: LogEntry[];
   projectId: string;
   selectedAgentId?: AgentRole;
   onCommandSent?: () => void;
   model: string;
   onModelChange: (model: string) => void;
-}
-
-interface StreamLog {
-  type: string;
-  content?: string;
-  agentId?: string;
-  time: string;
 }
 
 const AGENT_NAMES: Record<string, { name: string; emoji: string; color: string }> = {
@@ -34,66 +28,27 @@ interface ModelInfo {
   description?: string;
 }
 
-export default function CommandPanel({ agents, projectId, selectedAgentId, onCommandSent, model, onModelChange }: Props) {
+export default function CommandPanel({ agents, logs, projectId, selectedAgentId, onCommandSent, model, onModelChange }: Props) {
   // 默认选中正在工作的 Agent，没有则选中第一个
   const workingAgent = agents.find(a => a.state?.status === 'working');
   const defaultAgent = workingAgent?.id || agents[0]?.id || 'game_designer';
   const [selectedAgent, setSelectedAgent] = useState<AgentRole>(defaultAgent);
   const [message, setMessage] = useState('');
   const [streaming, setStreaming] = useState(false);
-  const [chatHistory, setChatHistory] = useState<StreamLog[]>([]);
   const [currentStreamText, setCurrentStreamText] = useState('');
   const [models, setModels] = useState<ModelInfo[]>([]);
-  const [loadingHistory, setLoadingHistory] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const [autoScroll, setAutoScroll] = useState(true);
+  const [expandedLog, setExpandedLog] = useState<string | null>(null);
   const outputRef = useRef<HTMLDivElement>(null);
-  const streamTextIdRef = useRef(0);
-  const hasUserExplicitlySelectedAgentRef = useRef(false);
+  const lastSelectedRef = useRef<AgentRole | undefined>();
 
-  // 将历史消息转换为 StreamLog 格式
-  const convertMessagesToStreamLogs = useCallback((msgs: AgentMessage[]): StreamLog[] => {
-    const logs: StreamLog[] = [];
-    for (const msg of msgs) {
-      const time = new Date(msg.created_at).toLocaleTimeString('zh-CN');
-      if (msg.role === 'user') {
-        logs.push({ type: 'user', content: msg.content, agentId: msg.agent_id, time });
-      } else if (msg.role === 'assistant') {
-        // 解析工具调用
-        let toolCalls: any[] = [];
-        try {
-          toolCalls = msg.tool_calls ? (typeof msg.tool_calls === 'string' ? JSON.parse(msg.tool_calls) : msg.tool_calls) : [];
-        } catch {}
-        
-        if (toolCalls.length > 0) {
-          // 先输出文本内容
-          if (msg.content) {
-            logs.push({ type: 'text', content: msg.content, agentId: msg.agent_id, time });
-          }
-          // 再输出工具调用摘要
-          for (const tc of toolCalls) {
-            logs.push({ type: 'tool', content: `🔧 ${tc.name} (${tc.status === 'completed' ? '完成' : tc.status === 'error' ? '失败' : '执行'})`, agentId: msg.agent_id, time });
-          }
-        } else {
-          logs.push({ type: 'text', content: msg.content, agentId: msg.agent_id, time });
-        }
-        logs.push({ type: 'done', content: '✅ 完成', agentId: msg.agent_id, time });
-      }
-    }
-    return logs;
-  }, []);
-
-  // 加载 Agent 历史消息
-  const loadHistory = useCallback(async (agentId: AgentRole) => {
-    setLoadingHistory(true);
-    try {
-      const data = await api.getAgentMessages(agentId, projectId);
-      const messages: AgentMessage[] = data.messages || [];
-      setChatHistory(convertMessagesToStreamLogs(messages));
-    } catch {
-      setChatHistory([]);
-    }
-    setLoadingHistory(false);
-  }, [convertMessagesToStreamLogs, projectId]);
+  // 从 logs 取当前 Agent 的最新 1000 条记录
+  const agentLogs = useMemo((): LogEntry[] => {
+    return logs
+      .filter(l => l.agent_id === selectedAgent)
+      .slice(-1000);
+  }, [logs, selectedAgent]);
 
   // 动态获取可用模型列表
   useEffect(() => {
@@ -120,168 +75,215 @@ export default function CommandPanel({ agents, projectId, selectedAgentId, onCom
     });
   }, [model, onModelChange]);
 
-  // 外部指定目标 Agent（如团队总览卡片“下达指令”）
+  // 外部指定目标 Agent
   useEffect(() => {
-    if (!selectedAgentId) return;
-    if (selectedAgentId !== selectedAgent) {
+    if (selectedAgentId && selectedAgentId !== lastSelectedRef.current) {
+      lastSelectedRef.current = selectedAgentId;
       setSelectedAgent(selectedAgentId);
-      hasUserExplicitlySelectedAgentRef.current = true;
     }
-  }, [selectedAgentId, selectedAgent]);
+  }, [selectedAgentId]);
 
-  // 当有 Agent 开始工作时，自动切换到该 Agent
-  // 当前选中的 Agent 已完成工作且有新 Agent 开始时，总是切换
-  // 当前选中的 Agent 仍在工作时，仅在用户未手动选择的情况下切换
+  // 切换 Agent 时清空流式文本
   useEffect(() => {
-    const working = agents.find(a => a.state?.status === 'working');
-    if (!working || working.id === selectedAgent) return;
+    setCurrentStreamText('');
+  }, [selectedAgent]);
 
-    const currentStillWorking = agents.find(a => a.id === selectedAgent && a.state?.status === 'working');
-    if (!currentStillWorking) {
-      // 当前 Agent 已不在工作，始终切换到新的 working Agent
-      setSelectedAgent(working.id);
-      hasUserExplicitlySelectedAgentRef.current = false;
-    } else if (!hasUserExplicitlySelectedAgentRef.current) {
-      // 当前 Agent 仍在工作，仅在用户未手动选择时切换
-      setSelectedAgent(working.id);
-    }
-  }, [agents, selectedAgent]);
-
-  // 切换 Agent 时加载历史
+  // 自动滚动到底部（最新日志），与运行日志逻辑一致
   useEffect(() => {
-    loadHistory(selectedAgent);
-  }, [selectedAgent, loadHistory]);
-
-  // 自动滚动
-  useEffect(() => {
-    if (outputRef.current) {
+    if (autoScroll && outputRef.current) {
       outputRef.current.scrollTop = outputRef.current.scrollHeight;
     }
-  }, [chatHistory, currentStreamText]);
+  }, [agentLogs, currentStreamText, autoScroll]);
 
   // 清除聊天记录
   const clearHistory = async () => {
     if (clearing) return;
     setClearing(true);
     try {
-      await fetch(`${API_BASE}/api/agents/${selectedAgent}/messages`, {
+      await fetch(`${API_BASE}/api/projects/${projectId}/logs`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectId })
       });
-      setChatHistory([]);
     } catch {}
     setClearing(false);
   };
 
+  const toggleExpand = (id: string) => {
+    setExpandedLog(prev => prev === id ? null : id);
+  };
+
   const sendCommand = async () => {
     if (!message.trim() || streaming) return;
-
-    const cmd = message;
-    const time = new Date().toLocaleTimeString('zh-CN');
     setMessage('');
     setStreaming(true);
     setCurrentStreamText('');
 
-    // 添加用户消息到历史
-    setChatHistory(prev => [...prev, { type: 'user', content: cmd, agentId: selectedAgent, time }]);
-
     try {
-      const response = await fetch(`${API_BASE}/api/agents/${selectedAgent}/command`, {
+      const res = await fetch(`${API_BASE}/api/agents/${selectedAgent}/command`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: cmd, model, projectId })
+        body: JSON.stringify({ message: message.trim(), model, projectId })
       });
+      if (!res.body) { setStreaming(false); return; }
 
-      if (!response.body) {
-        setStreaming(false);
-        return;
-      }
-
-      const reader = response.body.getReader();
+      const reader = res.body.getReader();
       const decoder = new TextDecoder();
-      let buffer = '';
-      let fullText = '';
+      let buffer = '', fullText = '';
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
         buffer = lines.pop() || '';
-
         for (const line of lines) {
           if (line.startsWith('data: ')) {
             try {
-              const event = JSON.parse(line.slice(6));
-              const eventTime = new Date().toLocaleTimeString('zh-CN');
-
-              if (event.type === 'text') {
-                fullText += event.content;
+              const e = JSON.parse(line.slice(6));
+              if (e.type === 'text') {
+                fullText += e.content;
                 setCurrentStreamText(fullText);
-                streamTextIdRef.current += 1;
-              } else if (event.type === 'tool') {
-                // 工具调用时先把累积的文本加入历史
-                if (fullText) {
-                  setChatHistory(prev => [...prev, { type: 'text', content: fullText, agentId: event.agentId, time: eventTime }]);
-                  fullText = '';
-                  setCurrentStreamText('');
-                }
-                setChatHistory(prev => [...prev, {
-                  type: 'tool',
-                  content: `🔧 ${event.name}`,
-                  time: eventTime
-                }]);
-              } else if (event.type === 'agent_done') {
-                // 完成时把剩余文本加入历史
-                if (fullText) {
-                  setChatHistory(prev => [...prev, { type: 'text', content: fullText, agentId: event.agentId, time: eventTime }]);
-                  setCurrentStreamText('');
-                }
-                setChatHistory(prev => [...prev, {
-                  type: 'done',
-                  content: `✅ 完成 (${event.duration ? Math.round(event.duration / 1000) + 's' : ''})`,
-                  time: eventTime
-                }]);
-              } else if (event.type === 'agent_error') {
-                if (fullText) {
-                  setChatHistory(prev => [...prev, { type: 'text', content: fullText, agentId: event.agentId, time: eventTime }]);
-                  setCurrentStreamText('');
-                }
-                setChatHistory(prev => [...prev, {
-                  type: 'error',
-                  content: `❌ 错误：${event.error}`,
-                  time: eventTime
-                }]);
-              } else if (event.type === 'command_started') {
-                // 无需额外处理，用户消息已在前面添加
               }
             } catch {}
           }
         }
       }
-
-      // 确保剩余文本被保存
-      if (fullText) {
-        setChatHistory(prev => [...prev, { type: 'text', content: fullText, agentId: selectedAgent, time: new Date().toLocaleTimeString('zh-CN') }]);
-        setCurrentStreamText('');
-      }
-    } catch (err: any) {
-      setChatHistory(prev => [...prev, {
-        type: 'error',
-        content: `连接错误：${err.message}`,
-        time: new Date().toLocaleTimeString('zh-CN')
-      }]);
-    } finally {
-      setStreaming(false);
-      onCommandSent?.();
-    }
+      setCurrentStreamText('');
+    } catch {}
+    setStreaming(false);
+    onCommandSent?.();
   };
 
   const currentAgent = AGENT_NAMES[selectedAgent];
-  // 合并历史和当前流式文本
-  const allLogs = [...chatHistory];
+  const hasContent = agentLogs.length > 0 || currentStreamText;
+
+  // 渲染单条日志，与运行日志格式一致
+  const renderLog = (log: LogEntry) => {
+    const agentInfo = AGENT_NAMES[log.agent_id];
+    const agentLabel = `${agentInfo?.emoji} ${agentInfo?.name || log.agent_id}`;
+    const timeStr = new Date(log.created_at).toLocaleTimeString('zh-CN');
+    const isExpanded = expandedLog === log.id;
+
+    // user_command（用户指令）- 青色背景
+    if (log.log_type === 'user_command') {
+      const isLong = log.content && log.content.length > 300;
+      return (
+        <div key={log.id} className="flex gap-2 px-2 py-0.5 bg-cyan-900/10 rounded">
+          <span className="text-gray-600 shrink-0 tabular-nums">{timeStr}</span>
+          <span className="text-cyan-400 shrink-0 font-bold">CMD </span>
+          <span className="text-purple-400 shrink-0">{agentLabel}</span>
+          <span className={`text-cyan-200 leading-relaxed whitespace-pre-wrap break-words ${isLong && !isExpanded ? 'line-clamp-4' : ''}`}>
+            {isExpanded ? log.content : (isLong ? log.content.slice(0, 300) : log.content)}
+          </span>
+          {isLong && (
+            <button onClick={() => toggleExpand(log.id)} className="text-cyan-500 hover:text-cyan-400 shrink-0 ml-1">
+              {isExpanded ? '收起' : '展开'}
+            </button>
+          )}
+        </div>
+      );
+    }
+
+    // text（MSG）
+    if (log.log_type === 'text') {
+      const isLong = log.content && log.content.length > 300;
+      return (
+        <div key={log.id} className="flex gap-2 px-2 py-0.5">
+          <span className="text-gray-600 shrink-0 tabular-nums">{timeStr}</span>
+          <span className="text-blue-400 shrink-0 font-bold">MSG </span>
+          <span className="text-purple-400 shrink-0">{agentLabel}</span>
+          <span className={`text-gray-300 leading-relaxed whitespace-pre-wrap break-words ${isLong && !isExpanded ? 'line-clamp-4' : ''}`}>
+            {isExpanded ? log.content : (isLong ? log.content.slice(0, 300) : log.content)}
+          </span>
+          {isLong && (
+            <button onClick={() => toggleExpand(log.id)} className="text-blue-500 hover:text-blue-400 shrink-0 ml-1">
+              {isExpanded ? '收起' : '展开'}
+            </button>
+          )}
+        </div>
+      );
+    }
+
+    // tool
+    if (log.log_type === 'tool') {
+      return (
+        <div key={log.id} className="flex gap-2 px-2 py-1 bg-yellow-900/10 rounded">
+          <span className="text-gray-600 shrink-0 tabular-nums">{timeStr}</span>
+          <span className="text-yellow-400 shrink-0 font-bold">TOOL</span>
+          <span className="text-purple-400 shrink-0">{agentLabel}</span>
+          {log.tool_name && <span className="text-white font-semibold shrink-0">🔧 {log.tool_name}</span>}
+          {log.content && (
+            <span className={`text-gray-400 whitespace-pre-wrap break-all ${!isExpanded && log.content.length > 200 ? 'truncate' : ''}`}>
+              {isExpanded ? log.content : log.content.slice(0, 200)}
+              {!isExpanded && log.content.length > 200 && '...'}
+            </span>
+          )}
+          {log.content && log.content.length > 200 && (
+            <button onClick={() => toggleExpand(log.id)} className="text-yellow-500 hover:text-yellow-400 shrink-0 ml-1">
+              {isExpanded ? '收起' : '展开'}
+            </button>
+          )}
+        </div>
+      );
+    }
+
+    // tool_result
+    if (log.log_type === 'tool_result') {
+      return (
+        <div key={log.id} className={`flex gap-2 px-2 py-1 rounded ${log.is_error ? 'bg-red-900/10' : 'bg-green-900/10'}`}>
+          <span className="text-gray-600 shrink-0 tabular-nums">{timeStr}</span>
+          <span className={`shrink-0 font-bold ${log.is_error ? 'text-red-400' : 'text-green-400'}`}>
+            {log.is_error ? 'FAIL' : 'DONE'}
+          </span>
+          <span className="text-purple-400 shrink-0">{agentLabel}</span>
+          <span className={`whitespace-pre-wrap break-all ${log.is_error ? 'text-red-300' : 'text-gray-400'} ${!isExpanded && log.content.length > 200 ? 'truncate' : ''}`}>
+            {isExpanded ? log.content : log.content.slice(0, 200)}
+            {!isExpanded && log.content.length > 200 && '...'}
+          </span>
+          {log.content.length > 200 && (
+            <button onClick={() => toggleExpand(log.id)} className={`shrink-0 ml-1 ${log.is_error ? 'text-red-500' : 'text-green-500'}`}>
+              {isExpanded ? '收起' : '展开'}
+            </button>
+          )}
+        </div>
+      );
+    }
+
+    // done
+    if (log.log_type === 'done') {
+      return (
+        <div key={log.id} className="flex gap-2 px-2 py-1 bg-green-900/5 rounded">
+          <span className="text-gray-600 shrink-0 tabular-nums">{timeStr}</span>
+          <span className="text-green-400 shrink-0 font-bold">DONE</span>
+          <span className="text-purple-400 shrink-0">{agentLabel}</span>
+          <span className="text-green-300">{log.content}</span>
+        </div>
+      );
+    }
+
+    // error
+    if (log.log_type === 'error') {
+      return (
+        <div key={log.id} className="flex gap-2 px-2 py-1 bg-red-900/15 rounded">
+          <span className="text-gray-600 shrink-0 tabular-nums">{timeStr}</span>
+          <span className="text-red-400 shrink-0 font-bold">ERR!</span>
+          <span className="text-purple-400 shrink-0">{agentLabel}</span>
+          <span className="text-red-300">{log.content}</span>
+        </div>
+      );
+    }
+
+    // system 或其他类型
+    return (
+      <div key={log.id} className="flex gap-2 px-2 py-0.5">
+        <span className="text-gray-600 shrink-0 tabular-nums">{timeStr}</span>
+        <span className="text-blue-400 shrink-0 font-bold">INFO</span>
+        <span className="text-purple-400 shrink-0">{agentLabel}</span>
+        {log.action && <span className="text-gray-300 shrink-0">{log.action}</span>}
+        <span className="text-gray-500">{log.content}</span>
+      </div>
+    );
+  };
 
   return (
     <div className="flex gap-4 h-[calc(100vh-160px)]">
@@ -290,34 +292,25 @@ export default function CommandPanel({ agents, projectId, selectedAgentId, onCom
         <div className="text-xs text-gray-500 font-medium mb-2 px-1">选择 Agent</div>
         <div className="space-y-1">
           {agents.map(agent => {
-            const info = AGENT_NAMES[agent.id];
             const isSelected = agent.id === selectedAgent;
-            const isPaused = agent.state?.isPaused;
-            const isWorking = agent.state?.status === 'working';
             return (
               <button
                 key={agent.id}
-                  onClick={() => {
-                    hasUserExplicitlySelectedAgentRef.current = true;
-                    setSelectedAgent(agent.id);
-                  }}
+                onClick={() => setSelectedAgent(agent.id)}
                 className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left transition-all border ${
-                  isSelected
-                    ? 'bg-blue-900/30 border-blue-600/50'
-                    : 'border-transparent hover:bg-gray-800'
+                  isSelected ? 'bg-blue-900/30 border-blue-600/50' : 'border-transparent hover:bg-gray-800'
                 }`}
               >
                 <span className="text-lg">{agent.emoji}</span>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm text-gray-200 font-medium truncate">{agent.name}</div>
-                  <div className="text-xs flex items-center gap-1">
-                    {isPaused ? (
-                      <span className="text-yellow-400">已暂停</span>
-                    ) : isWorking ? (
+                  <div className="text-xs">
+                    {agent.state?.status === 'working' ? (
                       <span className="text-green-400 flex items-center gap-1">
-                        <span className="w-1 h-1 bg-green-400 rounded-full animate-pulse inline-block" />
-                        工作中
+                        <span className="w-1 h-1 bg-green-400 rounded-full animate-pulse" />工作中
                       </span>
+                    ) : agent.state?.isPaused ? (
+                      <span className="text-yellow-400">已暂停</span>
                     ) : (
                       <span className="text-gray-600">空闲</span>
                     )}
@@ -328,11 +321,10 @@ export default function CommandPanel({ agents, projectId, selectedAgentId, onCom
           })}
         </div>
 
-        {/* 清除记录按钮 */}
         <div className="mt-3 pt-3 border-t border-gray-800">
           <button
             onClick={clearHistory}
-            disabled={clearing || chatHistory.length === 0}
+            disabled={clearing || agentLogs.length === 0}
             className="w-full text-xs text-gray-500 hover:text-red-400 disabled:text-gray-700 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-1.5 py-1.5 rounded-lg hover:bg-red-900/20"
           >
             🗑️ {clearing ? '清除中...' : '清除聊天记录'}
@@ -342,14 +334,23 @@ export default function CommandPanel({ agents, projectId, selectedAgentId, onCom
 
       {/* 右侧：指令输入和输出 */}
       <div className="flex-1 flex flex-col gap-3">
-        {/* 当前 Agent 信息 */}
+        {/* 当前 Agent 信息 + 自动滚动开关 */}
         <div className="bg-gray-900 rounded-xl border border-gray-800 px-4 py-3 flex items-center gap-3 shrink-0">
           <span className="text-2xl">{currentAgent?.emoji}</span>
           <div>
             <div className="font-semibold text-white text-sm">向 {currentAgent?.name} 下达指令</div>
             <div className="text-xs text-gray-500">指令将以流式方式执行，结果实时显示</div>
           </div>
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-3">
+            <label className="flex items-center gap-1.5 text-xs text-gray-400 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={autoScroll}
+                onChange={e => setAutoScroll(e.target.checked)}
+                className="rounded border-gray-600"
+              />
+              自动滚动
+            </label>
             <select
               value={model}
               onChange={e => onModelChange(e.target.value)}
@@ -369,48 +370,36 @@ export default function CommandPanel({ agents, projectId, selectedAgentId, onCom
         </div>
 
         {/* 聊天输出区域 */}
-        <div
-          ref={outputRef}
-          className="flex-1 bg-gray-950 rounded-xl border border-gray-800 font-mono text-xs p-4 overflow-y-auto space-y-1.5"
+        <div 
+          ref={outputRef} 
+          className="flex-1 bg-gray-950 rounded-xl border border-gray-800 font-mono text-xs p-2 overflow-y-auto space-y-0.5"
+          onScroll={() => {
+            const el = outputRef.current;
+            if (el) {
+              const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+              if (distFromBottom > 50 && autoScroll) setAutoScroll(false);
+              if (distFromBottom <= 10 && !autoScroll) setAutoScroll(true);
+            }
+          }}
         >
-          {loadingHistory ? (
-            <div className="text-gray-600 text-center py-8">
-              <div className="text-2xl mb-2 animate-spin">⚙️</div>
-              加载历史记录...
-            </div>
-          ) : allLogs.length === 0 && !currentStreamText ? (
+          {!hasContent ? (
             <div className="text-gray-700 text-center py-8">
-              <div className="text-3xl mb-2">⌨️</div>
-              等待指令...
+              <div className="text-3xl mb-2">⌨️</div>等待指令...
             </div>
           ) : (
-            allLogs.map((log, i) => (
-              <div key={i} className={`flex gap-3 ${
-                log.type === 'error' ? 'text-red-400' :
-                log.type === 'done' ? 'text-green-500/60' :
-                log.type === 'system' ? 'text-gray-500' :
-                log.type === 'tool' ? 'text-yellow-400/80' :
-                log.type === 'user' ? 'text-blue-300' :
-                'text-gray-300'
-              }`}>
-                <span className="text-gray-700 shrink-0 tabular-nums">{log.time}</span>
-                {log.type === 'user' && (
-                  <span className="text-blue-500 shrink-0">YOU &gt;</span>
-                )}
-                <span className="leading-relaxed whitespace-pre-wrap break-words">{log.content}</span>
-              </div>
-            ))
+            agentLogs.map(log => renderLog(log))
           )}
-          {/* 当前流式输出（实时显示） */}
           {currentStreamText && (
-            <div className="flex gap-3 text-gray-300">
-              <span className="text-gray-700 shrink-0 tabular-nums">{new Date().toLocaleTimeString('zh-CN')}</span>
-              <span className="leading-relaxed whitespace-pre-wrap break-words">{currentStreamText}</span>
+            <div className="flex gap-2 px-2 py-0.5">
+              <span className="text-gray-600 shrink-0 tabular-nums">{new Date().toLocaleTimeString('zh-CN')}</span>
+              <span className="text-blue-400 shrink-0 font-bold">MSG </span>
+              <span className="text-purple-400 shrink-0">{currentAgent?.emoji} {currentAgent?.name}</span>
+              <span className="text-gray-300 whitespace-pre-wrap break-words">{currentStreamText}</span>
             </div>
           )}
           {streaming && (
-            <div className="text-blue-400 flex items-center gap-2">
-              <span className="w-2 h-2 bg-blue-400 rounded-full animate-pulse inline-block" />
+            <div className="text-blue-400 flex items-center gap-2 px-2 py-1">
+              <span className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" />
               Agent 正在处理...
             </div>
           )}

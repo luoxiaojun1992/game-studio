@@ -72,12 +72,17 @@ export interface Game {
 
 // 日志
 export type LogLevel = 'info' | 'warn' | 'error' | 'success';
-export interface AgentLog {
+export type LogType = 'system' | 'text' | 'tool' | 'tool_result' | 'done' | 'error' | 'user_command';
+export interface LogEntry {
   id: string;
+  project_id: string;
   agent_id: string;
-  action: string;
-  detail: string | null;
+  log_type: LogType;
   level: LogLevel;
+  content: string;
+  tool_name: string | null;
+  action: string | null;
+  is_error: boolean;
   created_at: string;
 }
 
@@ -161,7 +166,7 @@ export interface ProjectInfo {
 
 export interface ProjectSettings {
   project_id: string;
-  auto_handoff_enabled: boolean;
+  autopilot_enabled: boolean;
 }
 
 // SSE 事件
@@ -170,7 +175,7 @@ export interface SSEInitEvent {
   agents: AgentState[];
   proposals: Proposal[];
   games: Game[];
-  logs: AgentLog[];
+  logs: LogEntry[];
   tasks: TaskBoardTask[];
   pendingPermissions: PermissionRequest[];
 }
@@ -188,7 +193,6 @@ export type SSEEvent =
   | SSEInitEvent
   | SSEStreamEvent
   | { type: 'agent_status_changed'; agentId: AgentRole; state: AgentState }
-  | { type: 'agent_log'; agentId: AgentRole; log: AgentLog }
   | { type: 'proposal_created'; proposal: Proposal }
   | { type: 'proposal_decided'; proposal: Proposal; decision: string; comment: string }
   | { type: 'proposal_reviewed'; proposal: Proposal }

@@ -41,7 +41,7 @@ db.exec(`
   -- 项目配置表
   CREATE TABLE IF NOT EXISTS project_settings (
     project_id TEXT PRIMARY KEY,
-    auto_handoff_enabled INTEGER NOT NULL DEFAULT 0,
+    autopilot_enabled INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
     FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
@@ -106,16 +106,23 @@ db.exec(`
     updated_at TEXT NOT NULL
   );
 
-  -- Agent 日志表（操作记录）
-  CREATE TABLE IF NOT EXISTS agent_logs (
+  -- 统一日志表（系统日志 + 流式日志）
+  CREATE TABLE IF NOT EXISTS logs (
     id TEXT PRIMARY KEY,
     project_id TEXT NOT NULL DEFAULT 'default',
     agent_id TEXT NOT NULL,
-    action TEXT NOT NULL,
-    detail TEXT,
+    log_type TEXT NOT NULL DEFAULT 'system',
     level TEXT NOT NULL DEFAULT 'info',
+    content TEXT NOT NULL DEFAULT '',
+    tool_name TEXT,
+    action TEXT,
+    is_error INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL
   );
+
+  CREATE INDEX IF NOT EXISTS idx_logs_project ON logs(project_id);
+  CREATE INDEX IF NOT EXISTS idx_logs_project_agent ON logs(project_id, agent_id);
+  CREATE INDEX IF NOT EXISTS idx_logs_type ON logs(log_type);
 
   -- 指令表（用户向Agent下达的指令）
   CREATE TABLE IF NOT EXISTS commands (
@@ -153,8 +160,6 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_agent_sessions_project_agent ON agent_sessions(project_id, agent_id);
   CREATE INDEX IF NOT EXISTS idx_proposals_status ON proposals(status);
   CREATE INDEX IF NOT EXISTS idx_proposals_project_id ON proposals(project_id);
-  CREATE INDEX IF NOT EXISTS idx_agent_logs_agent ON agent_logs(agent_id);
-  CREATE INDEX IF NOT EXISTS idx_agent_logs_project ON agent_logs(project_id);
   CREATE INDEX IF NOT EXISTS idx_games_project_id ON games(project_id);
   CREATE INDEX IF NOT EXISTS idx_commands_status ON commands(status);
   CREATE INDEX IF NOT EXISTS idx_commands_project ON commands(project_id);
@@ -201,20 +206,20 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_task_board_project ON task_board_tasks(project_id);
 `);
 
-function hasColumn(tableName: 'proposals' | 'games' | 'agent_sessions' | 'agent_logs' | 'commands' | 'handoffs' | 'agent_memories', columnName: string): boolean {
+function hasColumn(tableName: 'proposals' | 'games' | 'agent_sessions' | 'commands' | 'handoffs' | 'agent_memories' | 'task_board_tasks', columnName: string): boolean {
   const pragmaSql = tableName === 'proposals'
     ? 'PRAGMA table_info(proposals)'
     : tableName === 'games'
       ? 'PRAGMA table_info(games)'
       : tableName === 'agent_sessions'
         ? 'PRAGMA table_info(agent_sessions)'
-        : tableName === 'agent_logs'
-          ? 'PRAGMA table_info(agent_logs)'
-          : tableName === 'commands'
-            ? 'PRAGMA table_info(commands)'
-            : tableName === 'handoffs'
-              ? 'PRAGMA table_info(handoffs)'
-              : 'PRAGMA table_info(agent_memories)';
+        : tableName === 'commands'
+          ? 'PRAGMA table_info(commands)'
+          : tableName === 'handoffs'
+            ? 'PRAGMA table_info(handoffs)'
+            : tableName === 'agent_memories'
+              ? 'PRAGMA table_info(agent_memories)'
+              : 'PRAGMA table_info(task_board_tasks)';
   const rows = db.prepare(pragmaSql).all() as Array<{ name: string }>;
   return rows.some(row => row.name === columnName);
 }
@@ -234,13 +239,11 @@ ensureProjectColumns();
 
 function ensureProjectIsolationColumns(): void {
   if (!hasColumn('agent_sessions', 'project_id')) db.exec(`ALTER TABLE agent_sessions ADD COLUMN project_id TEXT NOT NULL DEFAULT 'default';`);
-  if (!hasColumn('agent_logs', 'project_id')) db.exec(`ALTER TABLE agent_logs ADD COLUMN project_id TEXT NOT NULL DEFAULT 'default';`);
   if (!hasColumn('commands', 'project_id')) db.exec(`ALTER TABLE commands ADD COLUMN project_id TEXT NOT NULL DEFAULT 'default';`);
   if (!hasColumn('handoffs', 'project_id')) db.exec(`ALTER TABLE handoffs ADD COLUMN project_id TEXT NOT NULL DEFAULT 'default';`);
   if (!hasColumn('agent_memories', 'project_id')) db.exec(`ALTER TABLE agent_memories ADD COLUMN project_id TEXT NOT NULL DEFAULT 'default';`);
 
   db.exec(`UPDATE agent_sessions SET project_id = 'default' WHERE project_id IS NULL OR project_id = '';`);
-  db.exec(`UPDATE agent_logs SET project_id = 'default' WHERE project_id IS NULL OR project_id = '';`);
   db.exec(`UPDATE commands SET project_id = 'default' WHERE project_id IS NULL OR project_id = '';`);
   db.exec(`UPDATE handoffs SET project_id = 'default' WHERE project_id IS NULL OR project_id = '';`);
   db.exec(`UPDATE agent_memories SET project_id = 'default' WHERE project_id IS NULL OR project_id = '';`);
@@ -305,13 +308,21 @@ export interface DbGame {
   updated_at: string;
 }
 
-export interface DbAgentLog {
+// ============= 统一日志 =============
+
+export type LogLevel = 'info' | 'warn' | 'error' | 'success';
+export type LogType = 'system' | 'text' | 'tool' | 'tool_result' | 'done' | 'error' | 'user_command';
+
+export interface DbLog {
   id: string;
   project_id: string;
   agent_id: string;
-  action: string;
-  detail: string | null;
-  level: 'info' | 'warn' | 'error' | 'success';
+  log_type: LogType;
+  level: LogLevel;
+  content: string;
+  tool_name: string | null;
+  action: string | null;
+  is_error: boolean;
   created_at: string;
 }
 
@@ -374,7 +385,7 @@ export interface DbTaskBoardTask {
 
 export interface DbProjectSettings {
   project_id: string;
-  auto_handoff_enabled: number;
+  autopilot_enabled: number;
   created_at: string;
   updated_at: string;
 }
@@ -545,24 +556,29 @@ export function updateGame(id: string, updates: Partial<DbGame>): boolean {
   return result.changes > 0;
 }
 
-// ============= 日志操作 =============
+// ============= 统一日志操作 =============
 
-export function addAgentLog(log: DbAgentLog): void {
+export function addLog(log: DbLog): void {
   const stmt = db.prepare(`
-    INSERT INTO agent_logs (id, project_id, agent_id, action, detail, level, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO logs (id, project_id, agent_id, log_type, level, content, tool_name, action, is_error, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
-  stmt.run(log.id, log.project_id, log.agent_id, log.action, log.detail, log.level, log.created_at);
+  stmt.run(log.id, log.project_id, log.agent_id, log.log_type, log.level, log.content, log.tool_name || null, log.action || null, log.is_error ? 1 : 0, log.created_at);
 }
 
-export function getAgentLogs(projectId: string, agentId?: string, limit = 100): DbAgentLog[] {
+export function getLogs(projectId: string, agentId?: string, limit = 1000): DbLog[] {
   if (agentId) {
-    const stmt = db.prepare('SELECT * FROM agent_logs WHERE project_id = ? AND agent_id = ? ORDER BY created_at DESC LIMIT ?');
-    return stmt.all(projectId, agentId, limit) as DbAgentLog[];
+    const stmt = db.prepare('SELECT * FROM logs WHERE project_id = ? AND agent_id = ? ORDER BY created_at DESC LIMIT ?');
+    return (stmt.all(projectId, agentId, limit) as DbLog[]).reverse();
   } else {
-    const stmt = db.prepare('SELECT * FROM agent_logs WHERE project_id = ? ORDER BY created_at DESC LIMIT ?');
-    return stmt.all(projectId, limit) as DbAgentLog[];
+    const stmt = db.prepare('SELECT * FROM logs WHERE project_id = ? ORDER BY created_at DESC LIMIT ?');
+    return (stmt.all(projectId, limit) as DbLog[]).reverse();
   }
+}
+
+export function deleteLogs(projectId: string): void {
+  const stmt = db.prepare('DELETE FROM logs WHERE project_id = ?');
+  stmt.run(projectId);
 }
 
 // ============= 指令操作 =============
@@ -775,15 +791,15 @@ function createDefaultProjectSettings(projectId: string): DbProjectSettings {
   const now = new Date().toISOString();
   const settings: DbProjectSettings = {
     project_id: projectId,
-    auto_handoff_enabled: 0,
+    autopilot_enabled: 0,
     created_at: now,
     updated_at: now
   };
   const stmt = db.prepare(`
-    INSERT INTO project_settings (project_id, auto_handoff_enabled, created_at, updated_at)
+    INSERT INTO project_settings (project_id, autopilot_enabled, created_at, updated_at)
     VALUES (?, ?, ?, ?)
   `);
-  stmt.run(settings.project_id, settings.auto_handoff_enabled, settings.created_at, settings.updated_at);
+  stmt.run(settings.project_id, settings.autopilot_enabled, settings.created_at, settings.updated_at);
   return settings;
 }
 
@@ -797,15 +813,15 @@ export function getProjectSettings(projectId: string): DbProjectSettings {
 
 export function updateProjectSettings(
   projectId: string,
-  updates: Partial<Pick<DbProjectSettings, 'auto_handoff_enabled'>>
+  updates: Partial<Pick<DbProjectSettings, 'autopilot_enabled'>>
 ): DbProjectSettings {
   const safeProjectId = normalizeProjectId(projectId);
   getProjectSettings(safeProjectId);
   const fields: string[] = [];
   const values: any[] = [];
-  if (updates.auto_handoff_enabled !== undefined) {
-    fields.push('auto_handoff_enabled = ?');
-    values.push(updates.auto_handoff_enabled);
+  if (updates.autopilot_enabled !== undefined) {
+    fields.push('autopilot_enabled = ?');
+    values.push(updates.autopilot_enabled);
   }
   if (fields.length === 0) {
     return getProjectSettings(safeProjectId);

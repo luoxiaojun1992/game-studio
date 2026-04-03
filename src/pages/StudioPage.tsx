@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Agent, AgentRole, AgentState, Proposal, Game, AgentLog, SSEEvent, TabKey, PermissionRequest, Handoff, TaskBoardTask, ProjectInfo, ProjectSettings } from '../types';
+import { Agent, AgentRole, AgentState, Proposal, Game, LogEntry, SSEEvent, TabKey, PermissionRequest, Handoff, TaskBoardTask, ProjectInfo, ProjectSettings } from '../types';
 import { api } from '../config';
 import AgentCard from '../components/AgentCard';
 import ProposalList from '../components/ProposalList';
@@ -27,10 +27,10 @@ export default function StudioPage() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [games, setGames] = useState<Game[]>([]);
-  const [logs, setLogs] = useState<AgentLog[]>([]);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
   const [handoffs, setHandoffs] = useState<Handoff[]>([]);
   const [tasks, setTasks] = useState<TaskBoardTask[]>([]);
-  const [projectSettings, setProjectSettings] = useState<ProjectSettings>({ project_id: DEFAULT_PROJECT_ID, auto_handoff_enabled: false });
+  const [projectSettings, setProjectSettings] = useState<ProjectSettings>({ project_id: DEFAULT_PROJECT_ID, autopilot_enabled: false });
   const [projects, setProjects] = useState<ProjectInfo[]>([{ id: DEFAULT_PROJECT_ID, name: DEFAULT_PROJECT_ID }]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>(DEFAULT_PROJECT_ID);
   const [newProjectName, setNewProjectName] = useState('');
@@ -46,7 +46,6 @@ export default function StudioPage() {
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
   const [pendingPermissions, setPendingPermissions] = useState<PermissionRequest[]>([]);
   const [connected, setConnected] = useState(false);
-  const [streamLogs, setStreamLogs] = useState<{ agentId: AgentRole; content: string; time: string }[]>([]);
   const eventSourceRef = useRef<EventSource | null>(null);
 
   // 初始化 SSE 观测连接
@@ -80,25 +79,8 @@ export default function StudioPage() {
         ));
         break;
 
-      case 'agent_log':
-        setLogs(prev => [(event as any).log, ...prev].slice(0, 500));
-        break;
-
       case 'stream_event': {
         const streamEvent = (event as any).event;
-        if (streamEvent.type === 'text' && streamEvent.agentId) {
-          setStreamLogs(prev => {
-            const last = prev[prev.length - 1];
-            if (last && last.agentId === streamEvent.agentId) {
-              return [...prev.slice(0, -1), { ...last, content: last.content + streamEvent.content }];
-            }
-            return [...prev, {
-              agentId: streamEvent.agentId,
-              content: streamEvent.content,
-              time: new Date().toLocaleTimeString('zh-CN')
-            }].slice(-100);
-          });
-        }
         if (streamEvent.type === 'permission_request') {
           setPendingPermissions(prev => [...prev, {
             requestId: streamEvent.requestId,
@@ -107,6 +89,24 @@ export default function StudioPage() {
             agentId: streamEvent.agentId,
             timestamp: Date.now()
           }]);
+        }
+        // 实时更新 logs，让指令中心能显示最新聊天记录
+        if (streamEvent.agentId && ['text', 'tool', 'tool_result', 'agent_done', 'agent_error'].includes(streamEvent.type)) {
+          setLogs(prev => {
+            const newLog: LogEntry = {
+              id: streamEvent.id || String(Date.now()) + Math.random(),
+              project_id: selectedProjectId,
+              agent_id: streamEvent.agentId,
+              log_type: streamEvent.type === 'agent_done' ? 'done' : streamEvent.type === 'agent_error' ? 'error' : streamEvent.type,
+              level: streamEvent.type === 'agent_error' ? 'error' : streamEvent.isError ? 'error' : 'info',
+              content: streamEvent.content || streamEvent.error || '',
+              tool_name: streamEvent.name || null,
+              action: null,
+              is_error: !!streamEvent.isError || streamEvent.type === 'agent_error',
+              created_at: new Date().toISOString()
+            };
+            return [...prev, newLog].slice(-1000);
+          });
         }
         break;
       }
@@ -243,8 +243,8 @@ export default function StudioPage() {
   }, [connectSSE, selectedProjectId]);
 
   // 处理权限响应
-  const handlePermissionResponse = async (requestId: string, behavior: 'allow' | 'deny') => {
-    await api.respondPermission(requestId, behavior, undefined, selectedProjectId);
+  const handlePermissionResponse = async (requestId: string, behavior: 'allow' | 'deny', message?: string, updatedInput?: Record<string, unknown>) => {
+    await api.respondPermission(requestId, behavior, message, selectedProjectId, updatedInput);
     setPendingPermissions(prev => prev.filter(p => p.requestId !== requestId));
   };
 
@@ -295,7 +295,7 @@ export default function StudioPage() {
   };
 
   const handleToggleAutoHandoff = async (enabled: boolean) => {
-    const data = await api.updateProjectSettings(selectedProjectId, { auto_handoff_enabled: enabled });
+    const data = await api.updateProjectSettings(selectedProjectId, { autopilot_enabled: enabled });
     if (data?.settings) {
       setProjectSettings(data.settings);
     }
@@ -401,41 +401,64 @@ export default function StudioPage() {
         <div className="shrink-0 bg-orange-950/50 border-b border-orange-900/50 px-6 py-2">
           <div className="text-xs text-orange-300 font-medium mb-1">⚠️ 有 Agent 正在请求操作权限，需要您确认：</div>
           <div className="space-y-2">
-            {pendingPermissions.map(perm => (
-              <div key={perm.requestId} className="bg-orange-900/40 border border-orange-700/50 rounded-lg px-4 py-2.5">
-                <div className="flex items-center gap-2 mb-1.5">
-                  <span className="text-orange-300 font-medium">{getAgentEmoji(perm.agentId)} {perm.agentId}</span>
-                  <span className="text-gray-500">→</span>
-                  <span className="text-white font-mono font-semibold">{perm.toolName}</span>
-                </div>
-                {/* 显示具体的工具输入内容 */}
-                {perm.input && Object.keys(perm.input).length > 0 && (
-                  <div className="bg-gray-900/60 rounded-md p-2 mb-2 font-mono text-xs text-gray-300 overflow-x-auto whitespace-pre-wrap break-all max-h-40 overflow-y-auto border border-gray-700/50">
-                    {Object.entries(perm.input).map(([key, value]) => (
-                      <div key={key}>
-                        <span className="text-blue-400">{key}</span>
-                        <span className="text-gray-500">: </span>
-                        <span className="text-gray-200">{formatToolValue(value)}</span>
-                      </div>
-                    ))}
+            {pendingPermissions.map(perm => {
+              const isAskUser = perm.toolName === 'AskUserQuestion';
+              const question = perm.input?.question as string || '';
+              const options = perm.input?.options as string[] | undefined;
+              const singleSelect = !(perm.input?.multiSelect);
+
+              return (
+                <div key={perm.requestId} className={`rounded-lg px-4 py-2.5 border ${isAskUser ? 'bg-blue-900/40 border-blue-700/50' : 'bg-orange-900/40 border-orange-700/50'}`}>
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span className="text-orange-300 font-medium">{getAgentEmoji(perm.agentId)} {perm.agentId}</span>
+                    <span className="text-gray-500">→</span>
+                    <span className="text-white font-mono font-semibold">{perm.toolName}</span>
                   </div>
-                )}
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handlePermissionResponse(perm.requestId, 'allow')}
-                    className="bg-green-600 hover:bg-green-500 text-white rounded px-3 py-1 text-xs font-medium transition-colors"
-                  >
-                    ✅ 允许执行
-                  </button>
-                  <button
-                    onClick={() => handlePermissionResponse(perm.requestId, 'deny')}
-                    className="bg-red-700 hover:bg-red-600 text-white rounded px-3 py-1 text-xs font-medium transition-colors"
-                  >
-                    ❌ 拒绝
-                  </button>
+
+                  {isAskUser ? (
+                    /* AskUserQuestion: 显示问题 + 输入框 */
+                    <div>
+                      {question && <div className="text-sm text-gray-200 mb-2">{question}</div>}
+                      <AskUserQuestionForm
+                        options={options}
+                        singleSelect={singleSelect}
+                        onReply={(answer) => handlePermissionResponse(perm.requestId, 'allow', undefined, { response: answer })}
+                        onDeny={() => handlePermissionResponse(perm.requestId, 'deny')}
+                      />
+                    </div>
+                  ) : (
+                    /* 普通工具权限请求 */
+                    <>
+                      {perm.input && Object.keys(perm.input).length > 0 && (
+                        <div className="bg-gray-900/60 rounded-md p-2 mb-2 font-mono text-xs text-gray-300 overflow-x-auto whitespace-pre-wrap break-all max-h-40 overflow-y-auto border border-gray-700/50">
+                          {Object.entries(perm.input).map(([key, value]) => (
+                            <div key={key}>
+                              <span className="text-blue-400">{key}</span>
+                              <span className="text-gray-500">: </span>
+                              <span className="text-gray-200">{formatToolValue(value)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handlePermissionResponse(perm.requestId, 'allow')}
+                          className="bg-green-600 hover:bg-green-500 text-white rounded px-3 py-1 text-xs font-medium transition-colors"
+                        >
+                          ✅ 允许执行
+                        </button>
+                        <button
+                          onClick={() => handlePermissionResponse(perm.requestId, 'deny')}
+                          className="bg-red-700 hover:bg-red-600 text-white rounded px-3 py-1 text-xs font-medium transition-colors"
+                        >
+                          ❌ 拒绝
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -483,31 +506,12 @@ export default function StudioPage() {
                     setCommandTargetAgent(agent.id);
                     setActiveTab('commands');
                   }}
-                  streamLog={streamLogs.filter(l => l.agentId === agent.id).slice(-1)[0]}
+                  streamLog={logs.filter(l => l.agent_id === agent.id && l.log_type === 'text').slice(-1)[0] ? { agentId: agent.id, content: logs.filter(l => l.agent_id === agent.id && l.log_type === 'text').slice(-1)[0].content, time: logs.filter(l => l.agent_id === agent.id && l.log_type === 'text').slice(-1)[0].created_at } : undefined}
                   pendingHandoffs={pendingHandoffs}
                   activeHandoffs={handoffs.filter(h => ['pending', 'accepted', 'working'].includes(h.status))}
                 />
               ))}
             </div>
-
-            {/* 实时流日志 */}
-            {streamLogs.length > 0 && (
-              <div className="bg-gray-900 rounded-xl border border-gray-800 p-4">
-                <h3 className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
-                  <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                  实时输出流
-                </h3>
-                <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {streamLogs.slice(-20).map((log, i) => (
-                    <div key={i} className="flex gap-3 text-xs">
-                      <span className="text-gray-500 shrink-0">{log.time}</span>
-                      <span className="text-blue-400 font-medium shrink-0">[{log.agentId}]</span>
-                      <span className="text-gray-300 font-mono text-xs leading-relaxed">{log.content.slice(0, 300)}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* 最新提案预览 */}
             {proposals.length > 0 && (
@@ -590,9 +594,9 @@ export default function StudioPage() {
           </div>
         )}
 
-        {activeTab === 'logs' && (
+        <div className={activeTab === 'logs' ? '' : 'hidden'}>
           <LogPanel logs={logs} agents={agents} projectId={selectedProjectId} />
-        )}
+        </div>
 
         {activeTab === 'handoffs' && (
           <HandoffPanel agents={agents} projectId={selectedProjectId} />
@@ -620,6 +624,7 @@ export default function StudioPage() {
         {activeTab === 'commands' && (
           <CommandPanel
             agents={agents}
+            logs={logs}
             projectId={selectedProjectId}
             selectedAgentId={commandTargetAgent}
             model={commandModel}
@@ -635,20 +640,20 @@ export default function StudioPage() {
               <p className="text-xs text-gray-500 mb-4">当前项目：{selectedProjectId}</p>
               <div className="flex items-center justify-between rounded-lg border border-gray-800 bg-gray-900/60 px-4 py-3">
                 <div>
-                  <div className="text-sm text-white font-medium">自动交接（无需授权直接交接）</div>
+                  <div className="text-sm text-white font-medium">🤖 自动驾驶模式</div>
                   <div className="text-xs text-gray-400 mt-1">
-                    开启后，交接创建即视为已接收，可直接确认执行；关闭后需先接收再确认。
+                    开启后，所有工具调用（交接、提交方案、提交成品等）自动放行，无需手动审批。
                   </div>
                 </div>
                 <button
-                  onClick={() => handleToggleAutoHandoff(!projectSettings.auto_handoff_enabled)}
+                  onClick={() => handleToggleAutoHandoff(!projectSettings.autopilot_enabled)}
                   className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
-                    projectSettings.auto_handoff_enabled
+                    projectSettings.autopilot_enabled
                       ? 'bg-green-600/20 text-green-300 border-green-600/40 hover:bg-green-600/30'
                       : 'bg-gray-800 text-gray-300 border-gray-700 hover:bg-gray-700'
                   }`}
                 >
-                  {projectSettings.auto_handoff_enabled ? '已开启' : '已关闭'}
+                  {projectSettings.autopilot_enabled ? '已开启' : '已关闭'}
                 </button>
               </div>
             </div>
@@ -700,4 +705,96 @@ function formatToolValue(value: any): string {
   if (Array.isArray(value)) return JSON.stringify(value, null, 2);
   if (typeof value === 'object') return JSON.stringify(value, null, 2);
   return String(value);
+}
+
+// AskUserQuestion 回复表单
+function AskUserQuestionForm({ options, singleSelect, onReply, onDeny }: {
+  options?: string[];
+  singleSelect: boolean;
+  onReply: (answer: string) => void;
+  onDeny: () => void;
+}) {
+  const [selected, setSelected] = useState<string[]>([]);
+  const [customText, setCustomText] = useState('');
+
+  if (options && options.length > 0) {
+    // 有预设选项
+    return (
+      <div className="space-y-2">
+        <div className="flex flex-wrap gap-1.5">
+          {options.map((opt, idx) => {
+            const isSelected = selected.includes(opt);
+            return (
+              <button
+                key={idx}
+                onClick={() => {
+                  if (singleSelect) {
+                    setSelected([opt]);
+                  } else {
+                    setSelected(prev => prev.includes(opt) ? prev.filter(o => o !== opt) : [...prev, opt]);
+                  }
+                }}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors border ${
+                  isSelected
+                    ? 'bg-blue-600 border-blue-500 text-white'
+                    : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'
+                }`}
+              >
+                {opt}
+              </button>
+            );
+          })}
+        </div>
+        <div className="flex gap-2 items-center">
+          <button
+            onClick={() => selected.length > 0 && onReply(selected.join(', '))}
+            disabled={selected.length === 0}
+            className="bg-green-600 hover:bg-green-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded px-3 py-1 text-xs font-medium transition-colors"
+          >
+            ✅ 提交回复
+          </button>
+          <button
+            onClick={onDeny}
+            className="bg-red-700 hover:bg-red-600 text-white rounded px-3 py-1 text-xs font-medium transition-colors"
+          >
+            ❌ 跳过
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // 无预设选项，自由输入
+  return (
+    <div className="space-y-2">
+      <input
+        type="text"
+        value={customText}
+        onChange={e => setCustomText(e.target.value)}
+        onKeyDown={e => {
+          if (e.key === 'Enter' && customText.trim()) {
+            onReply(customText.trim());
+          }
+        }}
+        placeholder="输入你的回复..."
+        className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-500"
+        autoFocus
+      />
+      <div className="flex gap-2">
+        <button
+          onClick={() => customText.trim() && onReply(customText.trim())}
+          disabled={!customText.trim()}
+          className="bg-green-600 hover:bg-green-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded px-3 py-1 text-xs font-medium transition-colors"
+        >
+          ✅ 提交回复
+        </button>
+        <button
+          onClick={onDeny}
+          className="bg-red-700 hover:bg-red-600 text-white rounded px-3 py-1 text-xs font-medium transition-colors"
+        >
+          ❌ 跳过
+        </button>
+      </div>
+    </div>
+  );
 }

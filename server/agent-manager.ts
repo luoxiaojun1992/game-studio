@@ -174,21 +174,50 @@ class AgentManager extends EventEmitter {
   }
 
   /**
-   * 添加日志
+   * 添加系统日志（action/detail 风格）
    */
-  addLog(projectId: string, agentId: AgentRole, action: string, detail: string | null, level: 'info' | 'warn' | 'error' | 'success' = 'info'): void {
+  addLog(projectId: string, agentId: AgentRole, action: string, detail: string | null, level: db.LogLevel = 'info'): void {
     const scopedProjectId = this.normalizeProjectId(projectId);
-    const log = {
+    const entry: db.DbLog = {
       id: uuidv4(),
       project_id: scopedProjectId,
       agent_id: agentId,
-      action,
-      detail,
+      log_type: 'system',
       level,
+      content: detail || '',
+      tool_name: null,
+      action,
+      is_error: level === 'error',
       created_at: new Date().toISOString()
     };
-    db.addAgentLog(log);
-    this.emit('agent_log', { projectId: scopedProjectId, agentId, log });
+    db.addLog(entry);
+  }
+
+  /**
+   * 添加 Agent 输出日志（text/tool/tool_result/done/error）
+   */
+  addAgentLogEntry(
+    projectId: string,
+    agentId: string,
+    logType: db.LogType,
+    content: string,
+    extra?: { toolName?: string; isError?: boolean }
+  ): void {
+    const scopedProjectId = this.normalizeProjectId(projectId);
+    const level: db.LogLevel = logType === 'error' || extra?.isError ? 'error' : 'info';
+    const entry: db.DbLog = {
+      id: uuidv4(),
+      project_id: scopedProjectId,
+      agent_id: agentId,
+      log_type: logType,
+      level,
+      content,
+      tool_name: extra?.toolName || null,
+      action: null,
+      is_error: extra?.isError || false,
+      created_at: new Date().toISOString()
+    };
+    db.addLog(entry);
   }
 
   /**
@@ -405,7 +434,7 @@ class AgentManager extends EventEmitter {
       //    - 写操作 + 有副作用的（create_handoff, submit_proposal, submit_game）→ 需要用户确认
       // 2. CodeBuddy 内置工具走正常权限流程
       const settings = db.getProjectSettings(scopedProjectId);
-      const autoHandoffEnabled = settings.auto_handoff_enabled === 1;
+      const autopilotEnabled = settings.autopilot_enabled === 1;
 
       const CAN_AUTO_ALLOW = [
         'save_memory',
@@ -417,10 +446,11 @@ class AgentManager extends EventEmitter {
         'get_pending_handoffs',
         'get_task',
         'get_tasks',
-        ...(autoHandoffEnabled ? ['create_handoff'] : []),
+        // autopilot 模式下自动放行所有写操作工具
+        ...(autopilotEnabled ? ['create_handoff', 'submit_proposal', 'submit_game'] : []),
         ...(agentId === 'engineer' ? ['split_dev_test_tasks', 'update_task_status'] : [])
       ];
-      const STUDIO_TOOL_PREFIX = 'mcp__studio-tools__';
+      const STUDIO_TOOL_PREFIX = 'mcp__studio_tools__';
       const STUDIO_TOOL_NAMES = new Set<string>([
         'create_handoff',
         'split_dev_test_tasks',
@@ -429,18 +459,29 @@ class AgentManager extends EventEmitter {
         'submit_game'
       ]);
 
+      // SDK 内置的纯读操作工具，自动放行（不弹窗）
+      const READ_ONLY_SDK_TOOLS = ['Read', 'Grep', 'WebSearch', 'WebFetch', 'Glob'];
+
       const canUseTool: CanUseTool = async (toolName, input, options) => {
         const hasStudioPrefix = toolName.startsWith(STUDIO_TOOL_PREFIX);
         const actualTool = hasStudioPrefix ? toolName.replace(STUDIO_TOOL_PREFIX, '') : toolName;
         const isStudioTool = hasStudioPrefix || STUDIO_TOOL_NAMES.has(actualTool);
+
+        // 1. 自定义工具白名单自动放行
         if (isStudioTool) {
           if (CAN_AUTO_ALLOW.includes(actualTool)) {
             return { behavior: 'allow', updatedInput: input };
           }
-          // 写操作 / 副作用操作 → 走用户确认（复用内置工具的权限请求流程）
+          // 写操作 / 副作用操作 → 走用户确认
         }
 
-        // 发送权限请求事件（CodeBuddy 内置工具 + 需要确认的自定义工具）
+        // 2. SDK 内置读操作工具自动放行（Read/Grep/WebSearch 等）
+        if (READ_ONLY_SDK_TOOLS.includes(actualTool)) {
+          return { behavior: 'allow', updatedInput: input };
+        }
+
+        // 3. 其余工具（Write/Bash 等写操作）→ 走用户确认
+        console.log(`[permission] Agent ${agentId} 请求权限: toolName=${toolName}, actualTool=${actualTool}, input=${JSON.stringify(input).slice(0, 200)}`);
         const requestId = uuidv4();
         const permEvent: StreamEvent = {
           type: 'permission_request',
@@ -545,6 +586,8 @@ class AgentManager extends EventEmitter {
                 const toolEvent: StreamEvent = { type: 'tool', projectId: scopedProjectId, agentId, id: toolId, name: block.name, input: toolInput, status: 'running', streamId };
                 this.emit('stream_event', toolEvent);
                 if (onEvent) onEvent(toolEvent);
+                // 持久化工具调用
+                this.addAgentLogEntry(scopedProjectId, agentId, 'tool', inputSummary, { toolName: block.name });
               }
             }
           }
@@ -567,8 +610,15 @@ class AgentManager extends EventEmitter {
             };
             this.emit('stream_event', toolResultEvent);
             if (onEvent) onEvent(toolResultEvent);
+            // 持久化工具结果
+            const resultContent = (tool.result || '').slice(0, 500);
+            this.addAgentLogEntry(scopedProjectId, agentId, 'tool_result', resultContent, { toolName: tool.name, isError });
           }
         } else if (msg.type === 'result') {
+          // 持久化最终文本回复
+          if (fullResponse.length > 0) {
+            this.addAgentLogEntry(scopedProjectId, agentId, 'text', fullResponse);
+          }
           if (fullResponse.length > 0) {
             const replyPreview = fullResponse.length > 500 ? fullResponse.slice(0, 500) + '...(已截断)' : fullResponse;
             this.addLog(scopedProjectId, agentId, '最终回复', replyPreview, 'info');
@@ -583,6 +633,9 @@ class AgentManager extends EventEmitter {
           };
           this.emit('stream_event', doneEvent);
           if (onEvent) onEvent(doneEvent);
+          // 持久化完成标记
+          const doneContent = `完成${msg.duration_ms ? ` (耗时 ${(msg.duration_ms / 1000).toFixed(1)}s)` : ''}`;
+          this.addAgentLogEntry(scopedProjectId, agentId, 'done', doneContent);
         }
       }
 
@@ -600,9 +653,10 @@ class AgentManager extends EventEmitter {
       });
 
       if (agentId === 'engineer') {
-        const guardError = this.validateEngineerTaskBoardBeforeFinish(scopedProjectId);
-        if (guardError) {
-          throw new Error(guardError);
+        const guardWarning = this.validateEngineerTaskBoardBeforeFinish(scopedProjectId);
+        if (guardWarning) {
+          // 不中断 Agent，仅记录警告日志，下次启动时 Agent 会在 systemPrompt 中看到看板状态
+          this.addLog(scopedProjectId, agentId, '任务板提醒', guardWarning, 'warn');
         }
       }
 
@@ -627,6 +681,8 @@ class AgentManager extends EventEmitter {
       const errorEvent: StreamEvent = { type: 'agent_error', projectId: scopedProjectId, agentId, streamId, error: error?.message || String(error) };
       this.emit('stream_event', errorEvent);
       if (onEvent) onEvent(errorEvent);
+      // 持久化错误
+      this.addAgentLogEntry(scopedProjectId, agentId, 'error', error?.message || String(error), { isError: true });
       throw error;
     } finally {
       releaseActiveStream();
@@ -638,7 +694,7 @@ class AgentManager extends EventEmitter {
   /**
    * 响应权限请求
    */
-  respondToPermission(requestId: string, behavior: 'allow' | 'deny', message?: string, projectId?: string): boolean {
+  respondToPermission(requestId: string, behavior: 'allow' | 'deny', message?: string, projectId?: string, updatedInput?: Record<string, unknown>): boolean {
     const pending = this.pendingPermissions.get(requestId);
     if (!pending) return false;
     if (projectId && this.normalizeProjectId(projectId) !== this.normalizeProjectId(pending.projectId)) {
@@ -651,7 +707,7 @@ class AgentManager extends EventEmitter {
       this.pendingPermissionExpirations.delete(requestId);
     }
     if (behavior === 'allow') {
-      pending.resolve({ behavior: 'allow', updatedInput: pending.input });
+      pending.resolve({ behavior: 'allow', updatedInput: updatedInput || pending.input });
     } else {
       pending.resolve({ behavior: 'deny', message: message || '用户拒绝了此操作' });
     }

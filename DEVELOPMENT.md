@@ -45,7 +45,7 @@ src/
 - `agent_sessions` / `agent_messages`：Agent 会话与消息
 - `proposals`：提案与审批状态
 - `games`：游戏成品（`html_content`）
-- `agent_logs`：Agent 行为日志
+- `logs`：统一日志（系统日志 + Agent 输出日志，通过 `log_type` 区分）
 - `commands`：指令执行记录
 - `handoffs`：任务交接
 - `task_board_tasks`：任务看板（开发/测试）
