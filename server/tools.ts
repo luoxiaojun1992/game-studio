@@ -40,6 +40,8 @@ export function createStudioToolsServer(agentId: AgentRole, logFn?: ToolLogFn): 
     blocked: '阻塞',
     done: '已完成'
   };
+  const SHORT_TASK_ID_LEN = 8;
+  const shortTaskId = (id: string): string => id.slice(0, Math.min(SHORT_TASK_ID_LEN, id.length));
 
   const server = createSdkMcpServer({
     name: 'studio-tools',
@@ -219,8 +221,8 @@ export function createStudioToolsServer(agentId: AgentRole, logFn?: ToolLogFn): 
             return { content: [{ type: 'text' as const, text: '没有匹配的看板任务。' }] };
           }
           const text = tasks.map(t => {
-            const rel = t.source_task_id ? ` | 来源:${t.source_task_id.slice(0, 8)}` : '';
-            return `[${t.status}/${t.task_type}] ${t.title} (ID:${t.id.slice(0, 8)})${rel}`;
+            const rel = t.source_task_id ? ` | 来源:${shortTaskId(t.source_task_id)}` : '';
+            return `[${t.status}/${t.task_type}] ${t.title} (ID:${shortTaskId(t.id)})${rel}`;
           }).join('\n');
           return { content: [{ type: 'text' as const, text }] };
         }
@@ -243,7 +245,7 @@ export function createStudioToolsServer(agentId: AgentRole, logFn?: ToolLogFn): 
           if (!task && prefixMatches.length > 1) {
             const candidates = prefixMatches
               .slice(0, MAX_AMBIGUOUS_TASK_CANDIDATES)
-              .map(t => `${t.id.slice(0, 8)}(${t.title})`)
+              .map(t => `${shortTaskId(t.id)} (${t.title})`)
               .join('、');
             return {
               content: [{ type: 'text' as const, text: `任务 ID 前缀不唯一: ${normalizedTaskId}，候选: ${candidates}` }]
@@ -286,7 +288,7 @@ export function createStudioToolsServer(agentId: AgentRole, logFn?: ToolLogFn): 
           log(agentId, '维护任务状态', `${task.title}: ${task.status} -> ${status}`, 'success');
 
           return {
-            content: [{ type: 'text' as const, text: `任务状态已更新: ${task.id.slice(0, 8)} -> ${status}` }]
+            content: [{ type: 'text' as const, text: `任务状态已更新: ${shortTaskId(task.id)} -> ${status}` }]
           };
         }
       ),
