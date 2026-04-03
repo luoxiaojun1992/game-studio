@@ -422,7 +422,6 @@ class AgentManager extends EventEmitter {
       ];
       const STUDIO_TOOL_PREFIX = 'mcp__studio-tools__';
       const STUDIO_TOOL_NAMES = new Set<string>([
-        ...CAN_AUTO_ALLOW,
         'create_handoff',
         'split_dev_test_tasks',
         'update_task_status',
@@ -431,10 +430,9 @@ class AgentManager extends EventEmitter {
       ]);
 
       const canUseTool: CanUseTool = async (toolName, input, options) => {
-        const actualTool = toolName.startsWith(STUDIO_TOOL_PREFIX)
-          ? toolName.replace(STUDIO_TOOL_PREFIX, '')
-          : toolName;
-        const isStudioTool = toolName.startsWith(STUDIO_TOOL_PREFIX) || STUDIO_TOOL_NAMES.has(actualTool);
+        const hasStudioPrefix = toolName.startsWith(STUDIO_TOOL_PREFIX);
+        const actualTool = hasStudioPrefix ? toolName.replace(STUDIO_TOOL_PREFIX, '') : toolName;
+        const isStudioTool = hasStudioPrefix || STUDIO_TOOL_NAMES.has(actualTool);
         if (isStudioTool) {
           if (CAN_AUTO_ALLOW.includes(actualTool)) {
             return { behavior: 'allow', updatedInput: input };
