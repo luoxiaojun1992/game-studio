@@ -32,7 +32,6 @@ export function createStudioToolsServer(agentId: AgentRole, logFn?: ToolLogFn): 
     blocked: ['todo', 'developing', 'testing'],
     done: []
   };
-  const MAX_AMBIGUOUS_TASK_CANDIDATES = 5;
   const TASK_STATUS_LABEL: Record<string, string> = {
     todo: '待开发',
     developing: '开发中',
@@ -40,8 +39,6 @@ export function createStudioToolsServer(agentId: AgentRole, logFn?: ToolLogFn): 
     blocked: '阻塞',
     done: '已完成'
   };
-  const SHORT_TASK_ID_LEN = 8;
-  const shortTaskId = (id: string): string => id.slice(0, Math.min(SHORT_TASK_ID_LEN, id.length));
 
   const server = createSdkMcpServer({
     name: 'studio-tools',
@@ -197,7 +194,7 @@ export function createStudioToolsServer(agentId: AgentRole, logFn?: ToolLogFn): 
           return {
             content: [{
               type: 'text' as const,
-              text: `已拆分任务：开发任务 ${devTask.id.slice(0, 8)}，测试任务 ${testTask.id.slice(0, 8)}。`
+              text: `已拆分任务：开发任务 ${devTask.id}，测试任务 ${testTask.id}。`
             }]
           };
         }
@@ -221,8 +218,8 @@ export function createStudioToolsServer(agentId: AgentRole, logFn?: ToolLogFn): 
             return { content: [{ type: 'text' as const, text: '没有匹配的看板任务。' }] };
           }
           const text = tasks.map(t => {
-            const rel = t.source_task_id ? ` | 来源:${shortTaskId(t.source_task_id)}` : '';
-            return `[${t.status}/${t.task_type}] ${t.title} (ID:${shortTaskId(t.id)})${rel}`;
+            const rel = t.source_task_id ? ` | 来源:${t.source_task_id}` : '';
+            return `[${t.status}/${t.task_type}] ${t.title} (ID:${t.id})${rel}`;
           }).join('\n');
           return { content: [{ type: 'text' as const, text }] };
         }
@@ -236,24 +233,11 @@ export function createStudioToolsServer(agentId: AgentRole, logFn?: ToolLogFn): 
           status: z.enum(['todo', 'developing', 'testing', 'blocked', 'done']).describe('目标状态')
         },
         async ({ task_id, status }) => {
-          const allTasks = db.getTaskBoardTasks();
           const normalizedTaskId = task_id.trim();
-          const exactTask = db.getTaskBoardTask(normalizedTaskId);
-          const prefixMatches = allTasks.filter(t => t.id.startsWith(normalizedTaskId));
-          const task = exactTask || (prefixMatches.length === 1 ? prefixMatches[0] : undefined);
-
-          if (!task && prefixMatches.length > 1) {
-            const candidates = prefixMatches
-              .slice(0, MAX_AMBIGUOUS_TASK_CANDIDATES)
-              .map(t => `${shortTaskId(t.id)} (${t.title})`)
-              .join('、');
-            return {
-              content: [{ type: 'text' as const, text: `任务 ID 前缀不唯一: ${normalizedTaskId}，候选: ${candidates}` }]
-            };
-          }
+          const task = db.getTaskBoardTask(normalizedTaskId);
 
           if (!task) {
-            return { content: [{ type: 'text' as const, text: `任务不存在: ${normalizedTaskId}` }] };
+            return { content: [{ type: 'text' as const, text: `任务不存在: ${normalizedTaskId}。请先调用 get_tasks 获取完整任务 ID 后重试。` }] };
           }
           if (!TASK_STATUS_FLOW[task.status]?.includes(status)) {
             const allowed = TASK_STATUS_FLOW[task.status] || [];
@@ -288,7 +272,7 @@ export function createStudioToolsServer(agentId: AgentRole, logFn?: ToolLogFn): 
           log(agentId, '维护任务状态', `${task.title}: ${task.status} -> ${status}`, 'success');
 
           return {
-            content: [{ type: 'text' as const, text: `任务状态已更新: ${shortTaskId(task.id)} -> ${status}` }]
+            content: [{ type: 'text' as const, text: `任务状态已更新: ${task.id} -> ${status}` }]
           };
         }
       ),
