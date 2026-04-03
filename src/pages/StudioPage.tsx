@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Agent, AgentRole, AgentState, Proposal, Game, AgentLog, SSEEvent, TabKey, PermissionRequest, Handoff } from '../types';
+import { Agent, AgentRole, AgentState, Proposal, Game, AgentLog, SSEEvent, TabKey, PermissionRequest, Handoff, TaskBoardTask } from '../types';
 import { api } from '../config';
 import AgentCard from '../components/AgentCard';
 import ProposalList from '../components/ProposalList';
@@ -9,10 +9,12 @@ import CommandPanel from '../components/CommandPanel';
 import ProposalDetail from '../components/ProposalDetail';
 import GamePreview from '../components/GamePreview';
 import HandoffPanel from '../components/HandoffPanel';
+import TaskBoardPanel from '../components/TaskBoardPanel';
 
 const TABS: { key: TabKey; label: string; icon: string }[] = [
   { key: 'overview', label: '团队总览', icon: '🏠' },
   { key: 'proposals', label: '策划案', icon: '📋' },
+  { key: 'tasks', label: '任务看板', icon: '🗂️' },
   { key: 'handoffs', label: '任务交接', icon: '🔄' },
   { key: 'games', label: '游戏成品', icon: '🎮' },
   { key: 'logs', label: '运行日志', icon: '📜' },
@@ -25,6 +27,7 @@ export default function StudioPage() {
   const [games, setGames] = useState<Game[]>([]);
   const [logs, setLogs] = useState<AgentLog[]>([]);
   const [handoffs, setHandoffs] = useState<Handoff[]>([]);
+  const [tasks, setTasks] = useState<TaskBoardTask[]>([]);
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
@@ -79,6 +82,7 @@ export default function StudioPage() {
         setProposals((event as any).proposals || []);
         setGames((event as any).games || []);
         setLogs((event as any).logs || []);
+        setTasks((event as any).tasks || []);
         setPendingPermissions((event as any).pendingPermissions || []);
         break;
 
@@ -166,6 +170,20 @@ export default function StudioPage() {
           return [updated, ...prev];
         });
         break;
+
+      case 'task_created':
+      case 'task_updated':
+        setTasks(prev => {
+          const task = (event as any).task as TaskBoardTask;
+          const idx = prev.findIndex(t => t.id === task.id);
+          if (idx >= 0) {
+            const next = [...prev];
+            next[idx] = task;
+            return next;
+          }
+          return [task, ...prev];
+        });
+        break;
     }
   }, []);
 
@@ -215,6 +233,7 @@ export default function StudioPage() {
   const pendingProposals = proposals.filter(p => p.status === 'pending_review' || p.status === 'under_review');
   const workingAgents = agents.filter(a => a.state?.status === 'working');
   const pendingHandoffs = handoffs.filter(h => h.status === 'pending');
+  const activeTasks = tasks.filter(t => ['todo', 'developing', 'testing', 'blocked'].includes(t.status));
 
   return (
     <div className="flex flex-col h-screen bg-gray-950 text-gray-100">
@@ -246,6 +265,12 @@ export default function StudioPage() {
             <div className="flex items-center gap-1.5 bg-purple-500/20 border border-purple-500/40 rounded-full px-3 py-1 text-xs text-purple-300 animate-pulse cursor-pointer" onClick={() => setActiveTab('handoffs')}>
               <span>🔄</span>
               <span>{pendingHandoffs.length} 个待接收交接</span>
+            </div>
+          )}
+          {activeTasks.length > 0 && (
+            <div className="flex items-center gap-1.5 bg-cyan-500/20 border border-cyan-500/40 rounded-full px-3 py-1 text-xs text-cyan-300 cursor-pointer" onClick={() => setActiveTab('tasks')}>
+              <span>🗂️</span>
+              <span>{activeTasks.length} 个看板任务进行中</span>
             </div>
           )}
           {workingAgents.length > 0 && (
@@ -460,6 +485,24 @@ export default function StudioPage() {
 
         {activeTab === 'handoffs' && (
           <HandoffPanel agents={agents} />
+        )}
+
+        {activeTab === 'tasks' && (
+          <TaskBoardPanel
+            agents={agents}
+            tasks={tasks}
+            onTaskUpdated={(task) => {
+              setTasks(prev => {
+                const idx = prev.findIndex(t => t.id === task.id);
+                if (idx >= 0) {
+                  const next = [...prev];
+                  next[idx] = task;
+                  return next;
+                }
+                return [task, ...prev];
+              });
+            }}
+          />
         )}
 
         {activeTab === 'commands' && (
