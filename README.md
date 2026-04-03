@@ -13,21 +13,33 @@
 
 ## 界面预览
 
-### 运行日志
+### 团队总览
 
-![运行日志](./docs/images/home-chat-view.jpg)
+![团队总览](./docs/images/team.png)
 
-### 游戏成品
+### 策划案
 
-![游戏成品](./docs/images/agent-settings-panel.jpg)
+![策划案](./docs/images/proposal.png)
+
+### 任务看板
+
+![任务看板](./docs/images/task.png)
 
 ### 任务交接
 
-![任务交接](./docs/images/permission-confirmation-dialog.jpg)
+![任务交接](./docs/images/handoff.png)
 
-### 团队总览
+### 游戏成品
 
-![团队总览](./docs/images/session-management-view.jpg)
+![游戏成品](./docs/images/artifact.png)
+
+### 运行日志
+
+![运行日志](./docs/images/log.png)
+
+### 指令中心
+
+![指令中心](./docs/images/command.png)
 
 ## 技术栈
 
