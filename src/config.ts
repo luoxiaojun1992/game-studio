@@ -94,6 +94,32 @@ export const api = {
   cancelHandoff: (id: string) =>
     fetch(`${API_BASE}/api/handoffs/${id}/cancel`, { method: 'POST' }).then(r => r.json()),
 
+  // 任务看板
+  getTasks: (projectId?: string) => {
+    const params = new URLSearchParams();
+    if (projectId) params.set('projectId', projectId);
+    return fetch(`${API_BASE}/api/tasks?${params}`).then(r => r.json());
+  },
+  createTask: (data: {
+    project_id?: string;
+    title: string;
+    description?: string;
+    task_type: 'development' | 'testing';
+    created_by: string;
+    split_testing_task?: boolean;
+  }) =>
+    fetch(`${API_BASE}/api/tasks`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }).then(r => r.json()),
+  updateTaskStatus: (id: string, status: 'todo' | 'developing' | 'testing' | 'blocked' | 'done', updated_by?: string) =>
+    fetch(`${API_BASE}/api/tasks/${id}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status, updated_by })
+    }).then(r => r.json()),
+
   // Agent 记忆
   getAgentMemories: (agentId: string, category?: string) => {
     const params = new URLSearchParams();

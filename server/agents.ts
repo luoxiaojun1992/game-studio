@@ -119,6 +119,13 @@ export const AGENT_DEFINITIONS: Record<AgentRole, AgentDefinition> = {
 3. **软件测试**：设计并执行单元测试、功能测试与回归测试，确保游戏质量
 4. **交付成品**：将开发完成的游戏保存为独立的 HTML 文件
 
+## 任务看板执行要求（必须遵守）
+1. 收到需求后，先调用 \`split_dev_test_tasks\` 将需求拆分为开发任务与测试任务后再开工。
+2. 开始开发前将开发任务更新为 \`developing\`；开发完成后流转到 \`testing\`。
+3. 测试执行期间持续维护测试任务状态（\`testing\` / \`blocked\` / \`done\`）。
+4. 如遇阻塞，立即将相关任务状态更新为 \`blocked\`，并在后续恢复时改回有效状态。
+5. 每完成一个里程碑（开发完成、测试完成），必须调用 \`update_task_status\` 维护看板。
+
 ## 工作标准
 - 游戏必须是完整可运行的单文件 HTML（包含所有 CSS/JS）
 - 代码清晰，有注释

@@ -145,6 +145,27 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_agent_memories_agent ON agent_memories(agent_id);
   CREATE INDEX IF NOT EXISTS idx_agent_memories_category ON agent_memories(category);
+
+  -- 任务看板表（开发/测试任务及状态）
+  CREATE TABLE IF NOT EXISTS task_board_tasks (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL DEFAULT 'default',
+    title TEXT NOT NULL,
+    description TEXT,
+    task_type TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'todo',
+    source_task_id TEXT,
+    created_by TEXT NOT NULL,
+    updated_by TEXT,
+    started_at TEXT,
+    completed_at TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_task_board_status ON task_board_tasks(status);
+  CREATE INDEX IF NOT EXISTS idx_task_board_type ON task_board_tasks(task_type);
+  CREATE INDEX IF NOT EXISTS idx_task_board_project ON task_board_tasks(project_id);
 `);
 
 function hasColumn(tableName: 'proposals' | 'games', columnName: string): boolean {
@@ -266,6 +287,22 @@ export interface DbAgentMemory {
   content: string;
   importance: 'low' | 'normal' | 'high' | 'critical';
   source_task: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DbTaskBoardTask {
+  id: string;
+  project_id: string;
+  title: string;
+  description: string | null;
+  task_type: 'development' | 'testing';
+  status: 'todo' | 'developing' | 'testing' | 'blocked' | 'done';
+  source_task_id: string | null;
+  created_by: string;
+  updated_by: string | null;
+  started_at: string | null;
+  completed_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -600,6 +637,66 @@ export function clearAgentMemories(agentId: string): boolean {
   const stmt = db.prepare('DELETE FROM agent_memories WHERE agent_id = ?');
   stmt.run(agentId);
   return true;
+}
+
+// ============= 任务看板操作 =============
+
+export function createTaskBoardTask(task: DbTaskBoardTask): DbTaskBoardTask {
+  const stmt = db.prepare(`
+    INSERT INTO task_board_tasks (
+      id, project_id, title, description, task_type, status, source_task_id,
+      created_by, updated_by, started_at, completed_at, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  stmt.run(
+    task.id,
+    task.project_id,
+    task.title,
+    task.description,
+    task.task_type,
+    task.status,
+    task.source_task_id,
+    task.created_by,
+    task.updated_by,
+    task.started_at,
+    task.completed_at,
+    task.created_at,
+    task.updated_at
+  );
+  return task;
+}
+
+export function getTaskBoardTask(id: string): DbTaskBoardTask | undefined {
+  const stmt = db.prepare('SELECT * FROM task_board_tasks WHERE id = ?');
+  return stmt.get(id) as DbTaskBoardTask | undefined;
+}
+
+export function getTaskBoardTasks(projectId?: string): DbTaskBoardTask[] {
+  if (projectId) {
+    const stmt = db.prepare('SELECT * FROM task_board_tasks WHERE project_id = ? ORDER BY created_at DESC');
+    return stmt.all(projectId) as DbTaskBoardTask[];
+  }
+  const stmt = db.prepare('SELECT * FROM task_board_tasks ORDER BY created_at DESC');
+  return stmt.all() as DbTaskBoardTask[];
+}
+
+export function updateTaskBoardTask(id: string, updates: Partial<DbTaskBoardTask>): boolean {
+  const fields: string[] = [];
+  const values: any[] = [];
+  const allowed: (keyof DbTaskBoardTask)[] = ['title', 'description', 'status', 'updated_by', 'started_at', 'completed_at'];
+  for (const key of allowed) {
+    if (updates[key] !== undefined) {
+      fields.push(`${key} = ?`);
+      values.push(updates[key]);
+    }
+  }
+  if (fields.length === 0) return false;
+  fields.push('updated_at = ?');
+  values.push(new Date().toISOString());
+  values.push(id);
+  const stmt = db.prepare(`UPDATE task_board_tasks SET ${fields.join(', ')} WHERE id = ?`);
+  const result = stmt.run(...values);
+  return result.changes > 0;
 }
 
 // ============= 产出目录操作 =============

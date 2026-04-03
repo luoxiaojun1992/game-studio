@@ -134,6 +134,26 @@ export interface Handoff {
   updated_at: string;
 }
 
+// 任务看板
+export type TaskType = 'development' | 'testing';
+export type TaskStatus = 'todo' | 'developing' | 'testing' | 'blocked' | 'done';
+
+export interface TaskBoardTask {
+  id: string;
+  project_id: string;
+  title: string;
+  description: string | null;
+  task_type: TaskType;
+  status: TaskStatus;
+  source_task_id: string | null;
+  created_by: string;
+  updated_by: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 // SSE 事件
 export interface SSEInitEvent {
   type: 'init';
@@ -141,6 +161,7 @@ export interface SSEInitEvent {
   proposals: Proposal[];
   games: Game[];
   logs: AgentLog[];
+  tasks: TaskBoardTask[];
   pendingPermissions: PermissionRequest[];
 }
 
@@ -166,7 +187,9 @@ export type SSEEvent =
   | { type: 'agent_paused'; agentId: AgentRole }
   | { type: 'agent_resumed'; agentId: AgentRole }
   | { type: 'handoff_created'; handoff: Handoff }
-  | { type: 'handoff_updated'; handoff: Handoff };
+  | { type: 'handoff_updated'; handoff: Handoff }
+  | { type: 'task_created'; task: TaskBoardTask }
+  | { type: 'task_updated'; task: TaskBoardTask };
 
 // 页面标签
-export type TabKey = 'overview' | 'proposals' | 'games' | 'logs' | 'commands' | 'handoffs';
+export type TabKey = 'overview' | 'proposals' | 'tasks' | 'games' | 'logs' | 'commands' | 'handoffs';

@@ -66,6 +66,7 @@ app.get('/api/observe', (req, res) => {
     proposals: db.getAllProposals(),
     games: db.getAllGames().map(g => ({ ...g, html_content: undefined })), // 不传 HTML 内容
     logs: db.getAgentLogs(undefined, 50),
+    tasks: db.getTaskBoardTasks(),
     pendingPermissions: agentManager.getPendingPermissions()
   };
   res.write(`data: ${JSON.stringify(initialState)}\n\n`);
@@ -457,6 +458,114 @@ app.post('/api/handoffs/:id/cancel', (req, res) => {
   agentManager.addLog(handoff.from_agent_id as AgentRole, '取消交接', `取消了: ${handoff.title}`, 'warn');
 
   res.json({ handoff: updated });
+});
+
+// ============= 任务看板 API =============
+
+const TASK_STATUS_FLOW: Record<string, string[]> = {
+  todo: ['developing', 'blocked'],
+  developing: ['testing', 'blocked'],
+  testing: ['done', 'blocked', 'developing'],
+  blocked: ['todo', 'developing', 'testing'],
+  done: []
+};
+
+app.get('/api/tasks', (req, res) => {
+  const { projectId } = req.query;
+  const tasks = db.getTaskBoardTasks(projectId as string | undefined);
+  res.json({ tasks });
+});
+
+app.post('/api/tasks', (req, res) => {
+  const {
+    project_id,
+    title,
+    description,
+    task_type,
+    created_by,
+    split_testing_task
+  } = req.body;
+
+  if (!title || !task_type || !created_by) {
+    return res.status(400).json({ error: '缺少必要字段：title, task_type, created_by' });
+  }
+  if (!['development', 'testing'].includes(task_type)) {
+    return res.status(400).json({ error: 'task_type 仅支持 development 或 testing' });
+  }
+
+  const now = new Date().toISOString();
+  const task = db.createTaskBoardTask({
+    id: uuidv4(),
+    project_id: project_id || 'default',
+    title: String(title).trim(),
+    description: description ? String(description).trim() : null,
+    task_type,
+    status: 'todo',
+    source_task_id: null,
+    created_by,
+    updated_by: created_by,
+    started_at: null,
+    completed_at: null,
+    created_at: now,
+    updated_at: now
+  });
+
+  sseBroadcaster.broadcast({ type: 'task_created', task });
+  agentManager.addLog(created_by as AgentRole, '创建看板任务', `${task_type === 'development' ? '开发' : '测试'}任务: ${task.title}`, 'info');
+
+  let testingTask: db.DbTaskBoardTask | null = null;
+  if (split_testing_task && task_type === 'development') {
+    testingTask = db.createTaskBoardTask({
+      id: uuidv4(),
+      project_id: project_id || 'default',
+      title: `${String(title).trim()}（测试）`,
+      description: description ? `由开发任务拆分：${String(description).trim()}` : '由开发任务自动拆分的测试任务',
+      task_type: 'testing',
+      status: 'todo',
+      source_task_id: task.id,
+      created_by,
+      updated_by: created_by,
+      started_at: null,
+      completed_at: null,
+      created_at: now,
+      updated_at: now
+    });
+    sseBroadcaster.broadcast({ type: 'task_created', task: testingTask });
+    agentManager.addLog(created_by as AgentRole, '拆分测试任务', `从开发任务拆分测试任务: ${testingTask.title}`, 'info');
+  }
+
+  res.json({ task, testingTask });
+});
+
+app.patch('/api/tasks/:id/status', (req, res) => {
+  const { id } = req.params;
+  const { status, updated_by } = req.body;
+  const task = db.getTaskBoardTask(id);
+  if (!task) return res.status(404).json({ error: '任务不存在' });
+  if (!status || !TASK_STATUS_FLOW[task.status]?.includes(status)) {
+    return res.status(400).json({ error: `非法状态流转: ${task.status} -> ${status}` });
+  }
+
+  const now = new Date().toISOString();
+  const updates: Partial<db.DbTaskBoardTask> = {
+    status,
+    updated_by: updated_by || null
+  };
+
+  if (status === 'developing' || status === 'testing') {
+    updates.started_at = task.started_at || now;
+  }
+  if (status === 'done') {
+    updates.completed_at = now;
+  } else if (task.status === 'done') {
+    updates.completed_at = null;
+  }
+
+  db.updateTaskBoardTask(id, updates);
+  const updated = db.getTaskBoardTask(id)!;
+  sseBroadcaster.broadcast({ type: 'task_updated', task: updated });
+  agentManager.addLog((updated_by || task.created_by) as AgentRole, '更新任务状态', `${task.title}: ${task.status} → ${status}`, 'success');
+  res.json({ task: updated });
 });
 
 // ============= Agent 消息 API =============
