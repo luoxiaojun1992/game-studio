@@ -248,6 +248,27 @@ export default function StudioPage() {
     // 状态会通过 SSE 更新
   };
 
+  const handleCreateProject = async () => {
+    const name = newProjectName.trim();
+    if (!name || creatingProject) return;
+    setCreatingProject(true);
+    try {
+      const id = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9_-]/g, '') || DEFAULT_PROJECT_ID;
+      const data = await api.createProject({ id, name });
+      const project = data.project as ProjectInfo | undefined;
+      if (project) {
+        setProjects(prev => {
+          if (prev.find(p => p.id === project.id)) return prev;
+          return [...prev, project];
+        });
+        setSelectedProjectId(project.id);
+      }
+      setNewProjectName('');
+    } finally {
+      setCreatingProject(false);
+    }
+  };
+
   // 审批提案
   const handleDecideProposal = async (proposalId: string, decision: 'approved' | 'rejected', comment: string) => {
     await api.decideProposal(proposalId, decision, comment);
@@ -616,23 +637,3 @@ function formatToolValue(value: any): string {
   if (typeof value === 'object') return JSON.stringify(value, null, 2);
   return String(value);
 }
-  const handleCreateProject = async () => {
-    const name = newProjectName.trim();
-    if (!name || creatingProject) return;
-    setCreatingProject(true);
-    try {
-      const id = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9_-]/g, '') || DEFAULT_PROJECT_ID;
-      const data = await api.createProject({ id, name });
-      const project = data.project as ProjectInfo | undefined;
-      if (project) {
-        setProjects(prev => {
-          if (prev.find(p => p.id === project.id)) return prev;
-          return [...prev, project];
-        });
-        setSelectedProjectId(project.id);
-      }
-      setNewProjectName('');
-    } finally {
-      setCreatingProject(false);
-    }
-  };
