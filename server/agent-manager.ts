@@ -277,7 +277,7 @@ class AgentManager extends EventEmitter {
     const sample = unfinished.slice(0, 3)
       .map(t => `${t.title}(ID:${t.id}, 状态:${t.status})`)
       .join('；');
-    return `检测到软件工程师仍有未完成看板任务，禁止直接结束并转空闲。请先调用 get_tasks / update_task_status 完成状态流转后重试。未完成任务示例：${sample}${unfinished.length > 3 ? '；...' : ''}`;
+    return `检测到软件工程师仍有未完成看板任务，禁止直接结束并转空闲。请先调用 get_tasks / update_task_status 完成状态流转后重试。未完成任务示例：${sample}${unfinished.length > 3 ? '；等' : ''}`;
   }
 
   /**
