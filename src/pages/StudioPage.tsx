@@ -468,7 +468,13 @@ export default function StudioPage() {
         {TABS.map(tab => (
           <button
             key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
+            onClick={() => {
+              // 点击指令中心 tab 时，清除 commandTargetAgent，让 CommandPanel 从 localStorage 恢复
+              if (tab.key === 'commands') {
+                setCommandTargetAgent(undefined);
+              }
+              setActiveTab(tab.key);
+            }}
             className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
               activeTab === tab.key
                 ? 'bg-blue-600 text-white'
