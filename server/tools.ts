@@ -32,6 +32,7 @@ export function createStudioToolsServer(agentId: AgentRole, logFn?: ToolLogFn): 
     blocked: ['todo', 'developing', 'testing'],
     done: []
   };
+  const MAX_AMBIGUOUS_TASK_CANDIDATES = 5;
   const TASK_STATUS_LABEL: Record<string, string> = {
     todo: '待开发',
     developing: '开发中',
@@ -240,7 +241,10 @@ export function createStudioToolsServer(agentId: AgentRole, logFn?: ToolLogFn): 
           const task = exactTask || (prefixMatches.length === 1 ? prefixMatches[0] : undefined);
 
           if (!task && prefixMatches.length > 1) {
-            const candidates = prefixMatches.slice(0, 5).map(t => `${t.id.slice(0, 8)}(${t.title})`).join('、');
+            const candidates = prefixMatches
+              .slice(0, MAX_AMBIGUOUS_TASK_CANDIDATES)
+              .map(t => `${t.id.slice(0, 8)}(${t.title})`)
+              .join('、');
             return {
               content: [{ type: 'text' as const, text: `任务 ID 前缀不唯一: ${normalizedTaskId}，候选: ${candidates}` }]
             };
