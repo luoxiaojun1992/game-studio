@@ -690,7 +690,9 @@ export function getAllProjectIds(): string[] {
     ORDER BY project_id ASC
   `).all() as { project_id: string }[];
 
-  const ids = rows.map(r => r.project_id).filter(Boolean);
+  const ids = rows
+    .map(r => r.project_id)
+    .filter(id => id !== null && id !== undefined && id !== '');
   if (!ids.includes('default')) ids.unshift('default');
   return ids;
 }

@@ -181,7 +181,7 @@ export default function StudioPage() {
     es.onerror = () => {
       setConnected(false);
       connectedRef.current = false; // 允许重连
-      setTimeout(() => connectSSE(), 3000);
+      setTimeout(connectSSE, 3000);
     };
 
     es.onmessage = (e) => {
@@ -208,7 +208,7 @@ export default function StudioPage() {
         setSelectedProjectId('default');
       }
     });
-  }, [selectedProjectId]);
+  }, []);
 
   useEffect(() => {
     setSelectedProposal(null);
