@@ -682,11 +682,11 @@ export function getTaskBoardTasks(projectId?: string): DbTaskBoardTask[] {
 
 export function getAllProjectIds(): string[] {
   const rows = db.prepare(`
-    SELECT project_id FROM proposals
+    SELECT project_id FROM proposals WHERE project_id IS NOT NULL
     UNION
-    SELECT project_id FROM games
+    SELECT project_id FROM games WHERE project_id IS NOT NULL
     UNION
-    SELECT project_id FROM task_board_tasks
+    SELECT project_id FROM task_board_tasks WHERE project_id IS NOT NULL
     ORDER BY project_id ASC
   `).all() as { project_id: string }[];
 
@@ -764,6 +764,7 @@ function ensureProjectOutputDirs(projectId: string): { projectDir: string; propo
   const root = ensureOutputDir();
   const safeProjectId = normalizeProjectId(projectId);
   const projectDir = path.join(root, safeProjectId);
+  // 统一采用 output/{projectId}/proposals 与 output/{projectId}/games 两类产物目录，避免混放。
   const proposalsDir = path.join(projectDir, 'proposals');
   const gamesDir = path.join(projectDir, 'games');
   [projectDir, proposalsDir, gamesDir].forEach((dir) => {

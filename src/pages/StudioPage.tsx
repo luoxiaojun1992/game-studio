@@ -20,6 +20,7 @@ const TABS: { key: TabKey; label: string; icon: string }[] = [
   { key: 'logs', label: '运行日志', icon: '📜' },
   { key: 'commands', label: '指令中心', icon: '⌨️' },
 ];
+const DEFAULT_PROJECT_ID = 'default';
 
 export default function StudioPage() {
   const [agents, setAgents] = useState<Agent[]>([]);
@@ -28,8 +29,8 @@ export default function StudioPage() {
   const [logs, setLogs] = useState<AgentLog[]>([]);
   const [handoffs, setHandoffs] = useState<Handoff[]>([]);
   const [tasks, setTasks] = useState<TaskBoardTask[]>([]);
-  const [projects, setProjects] = useState<ProjectInfo[]>([{ id: 'default', name: 'default' }]);
-  const [selectedProjectId, setSelectedProjectId] = useState<string>('default');
+  const [projects, setProjects] = useState<ProjectInfo[]>([{ id: DEFAULT_PROJECT_ID, name: DEFAULT_PROJECT_ID }]);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>(DEFAULT_PROJECT_ID);
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
@@ -200,13 +201,15 @@ export default function StudioPage() {
   useEffect(() => {
     api.getProjects().then(data => {
       const list = (data.projects || []) as ProjectInfo[];
-      if (!list.find(p => p.id === 'default')) {
-        list.unshift({ id: 'default', name: 'default' });
+      if (!list.find(p => p.id === DEFAULT_PROJECT_ID)) {
+        list.unshift({ id: DEFAULT_PROJECT_ID, name: DEFAULT_PROJECT_ID });
       }
       setProjects(list);
       if (!list.find(p => p.id === selectedProjectId)) {
-        setSelectedProjectId('default');
+        setSelectedProjectId(DEFAULT_PROJECT_ID);
       }
+    }).catch((error) => {
+      console.error('加载项目列表失败', error);
     });
   }, []);
 
