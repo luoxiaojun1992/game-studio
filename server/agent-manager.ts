@@ -265,6 +265,22 @@ class AgentManager extends EventEmitter {
   }
 
   /**
+   * 工程师任务收尾校验：若存在未完成看板任务，不允许直接结束
+   */
+  private validateEngineerTaskBoardBeforeFinish(projectId: string): string | null {
+    const tasks = db.getTaskBoardTasks(projectId)
+      .filter(t => t.created_by === 'engineer');
+    if (tasks.length === 0) return null;
+    const unfinished = tasks.filter(t => t.status !== 'done');
+    if (unfinished.length === 0) return null;
+
+    const sample = unfinished.slice(0, 3)
+      .map(t => `${t.title}(ID:${t.id}, 状态:${t.status})`)
+      .join('；');
+    return `检测到软件工程师仍有未完成看板任务，禁止直接结束并转空闲。请先调用 get_tasks / update_task_status 完成状态流转后重试。未完成任务示例：${sample}${unfinished.length > 3 ? '；...' : ''}`;
+  }
+
+  /**
    * 构建完整的 systemPrompt，注入长期记忆
    */
   private buildSystemPrompt(projectId: string, agentId: AgentRole): string {
@@ -531,6 +547,13 @@ class AgentManager extends EventEmitter {
         tool_calls: toolCalls.length > 0 ? JSON.stringify(toolCalls) : null,
         created_at: new Date().toISOString()
       });
+
+      if (agentId === 'engineer') {
+        const guardError = this.validateEngineerTaskBoardBeforeFinish(scopedProjectId);
+        if (guardError) {
+          throw new Error(guardError);
+        }
+      }
 
       this.updateAgentState(scopedProjectId, agentId, {
         status: 'idle',
