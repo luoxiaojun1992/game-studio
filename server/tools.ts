@@ -172,7 +172,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
               log(
                 to_agent_id,
                 '交接任务执行失败',
-                `[${title} → ${to_agent_id}] ${error?.message || String(error)}`,
+                `[${agentId} → ${to_agent_id}: ${title}] ${error?.message || String(error)}`,
                 'error'
               );
             }
