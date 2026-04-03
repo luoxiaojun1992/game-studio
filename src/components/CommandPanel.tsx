@@ -28,11 +28,20 @@ interface ModelInfo {
   description?: string;
 }
 
+const STORAGE_KEY = 'commandPanel_lastAgent';
+
 export default function CommandPanel({ agents, logs, projectId, selectedAgentId, onCommandSent, model, onModelChange }: Props) {
-  // 默认选中正在工作的 Agent，没有则选中第一个
-  const workingAgent = agents.find(a => a.state?.status === 'working');
-  const defaultAgent = workingAgent?.id || agents[0]?.id || 'game_designer';
-  const [selectedAgent, setSelectedAgent] = useState<AgentRole>(defaultAgent);
+  // 从 localStorage 读取上次选择的 Agent，或使用默认值
+  const getInitialAgent = (): AgentRole => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved && agents.find(a => a.id === saved)) {
+      return saved as AgentRole;
+    }
+    const workingAgent = agents.find(a => a.state?.status === 'working');
+    return workingAgent?.id || agents[0]?.id || 'game_designer';
+  };
+
+  const [selectedAgent, setSelectedAgent] = useState<AgentRole>(getInitialAgent);
   const [message, setMessage] = useState('');
   const [streaming, setStreaming] = useState(false);
   const [currentStreamText, setCurrentStreamText] = useState('');
@@ -41,7 +50,7 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
   const [autoScroll, setAutoScroll] = useState(true);
   const [expandedLog, setExpandedLog] = useState<string | null>(null);
   const outputRef = useRef<HTMLDivElement>(null);
-  const lastSelectedRef = useRef<AgentRole | undefined>();
+  const prevSelectedAgentIdRef = useRef<AgentRole | undefined>(selectedAgentId);
 
   // 从 logs 取当前 Agent 的最新 1000 条记录
   const agentLogs = useMemo((): LogEntry[] => {
@@ -75,13 +84,20 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
     });
   }, [model, onModelChange]);
 
-  // 外部指定目标 Agent
+  // 外部指定目标 Agent（从团队总览点击跳转）
   useEffect(() => {
-    if (selectedAgentId && selectedAgentId !== lastSelectedRef.current) {
-      lastSelectedRef.current = selectedAgentId;
+    if (selectedAgentId && selectedAgentId !== prevSelectedAgentIdRef.current) {
+      prevSelectedAgentIdRef.current = selectedAgentId;
       setSelectedAgent(selectedAgentId);
+      localStorage.setItem(STORAGE_KEY, selectedAgentId);
     }
   }, [selectedAgentId]);
+
+  // 在指令中心内切换 Agent 时，记住选择
+  const handleAgentChange = (agentId: AgentRole) => {
+    setSelectedAgent(agentId);
+    localStorage.setItem(STORAGE_KEY, agentId);
+  };
 
   // 切换 Agent 时清空流式文本
   useEffect(() => {
@@ -296,7 +312,7 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
             return (
               <button
                 key={agent.id}
-                onClick={() => setSelectedAgent(agent.id)}
+                onClick={() => handleAgentChange(agent.id)}
                 className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left transition-all border ${
                   isSelected ? 'bg-blue-900/30 border-blue-600/50' : 'border-transparent hover:bg-gray-800'
                 }`}
