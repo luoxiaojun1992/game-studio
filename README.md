@@ -15,19 +15,19 @@
 
 ### 运行日志
 
-![运行日志](./docs/images/home-chat-view.jpg)
+![运行日志](./docs/images/log.png)
 
 ### 游戏成品
 
-![游戏成品](./docs/images/agent-settings-panel.jpg)
+![游戏成品](./docs/images/task.png)
 
 ### 任务交接
 
-![任务交接](./docs/images/permission-confirmation-dialog.jpg)
+![任务交接](./docs/images/handoff.png)
 
 ### 团队总览
 
-![团队总览](./docs/images/session-management-view.jpg)
+![团队总览](./docs/images/team.png)
 
 ## 技术栈
 
