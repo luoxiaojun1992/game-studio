@@ -25,6 +25,10 @@
 
 ![任务看板](./docs/images/task.png)
 
+### 任务交接
+
+![任务交接](./docs/images/handoff.png)
+
 ### 游戏成品
 
 ![游戏成品](./docs/images/artifact.png)
