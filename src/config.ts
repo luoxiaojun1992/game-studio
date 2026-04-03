@@ -66,6 +66,14 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     }).then(r => r.json()),
+  getProjectSettings: (projectId: string) =>
+    fetch(`${API_BASE}/api/projects/${projectId}/settings`).then(r => r.json()),
+  updateProjectSettings: (projectId: string, data: { auto_handoff_enabled: boolean }) =>
+    fetch(`${API_BASE}/api/projects/${projectId}/settings`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }).then(r => r.json()),
 
   // 日志
   getLogs: (projectId?: string, agentId?: string, limit?: number) => {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Agent, AgentRole, AgentState, Proposal, Game, AgentLog, SSEEvent, TabKey, PermissionRequest, Handoff, TaskBoardTask, ProjectInfo } from '../types';
+import { Agent, AgentRole, AgentState, Proposal, Game, AgentLog, SSEEvent, TabKey, PermissionRequest, Handoff, TaskBoardTask, ProjectInfo, ProjectSettings } from '../types';
 import { api } from '../config';
 import AgentCard from '../components/AgentCard';
 import ProposalList from '../components/ProposalList';
@@ -16,6 +16,7 @@ const TABS: { key: TabKey; label: string; icon: string }[] = [
   { key: 'proposals', label: '策划案', icon: '📋' },
   { key: 'tasks', label: '任务看板', icon: '🗂️' },
   { key: 'handoffs', label: '任务交接', icon: '🔄' },
+  { key: 'settings', label: '配置中心', icon: '⚙️' },
   { key: 'games', label: '游戏成品', icon: '🎮' },
   { key: 'logs', label: '运行日志', icon: '📜' },
   { key: 'commands', label: '指令中心', icon: '⌨️' },
@@ -29,6 +30,7 @@ export default function StudioPage() {
   const [logs, setLogs] = useState<AgentLog[]>([]);
   const [handoffs, setHandoffs] = useState<Handoff[]>([]);
   const [tasks, setTasks] = useState<TaskBoardTask[]>([]);
+  const [projectSettings, setProjectSettings] = useState<ProjectSettings>({ project_id: DEFAULT_PROJECT_ID, auto_handoff_enabled: false });
   const [projects, setProjects] = useState<ProjectInfo[]>([{ id: DEFAULT_PROJECT_ID, name: DEFAULT_PROJECT_ID }]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>(DEFAULT_PROJECT_ID);
   const [newProjectName, setNewProjectName] = useState('');
@@ -207,6 +209,14 @@ export default function StudioPage() {
   }, [selectedProjectId]);
 
   useEffect(() => {
+    api.getProjectSettings(selectedProjectId).then(data => {
+      if (data?.settings) setProjectSettings(data.settings);
+    }).catch((error) => {
+      console.error('加载项目配置失败', error);
+    });
+  }, [selectedProjectId]);
+
+  useEffect(() => {
     api.getProjects().then(data => {
       const list = (data.projects || []) as ProjectInfo[];
       if (!list.find(p => p.id === DEFAULT_PROJECT_ID)) {
@@ -281,6 +291,13 @@ export default function StudioPage() {
       setNewProjectName('');
     } finally {
       setCreatingProject(false);
+    }
+  };
+
+  const handleToggleAutoHandoff = async (enabled: boolean) => {
+    const data = await api.updateProjectSettings(selectedProjectId, { auto_handoff_enabled: enabled });
+    if (data?.settings) {
+      setProjectSettings(data.settings);
     }
   };
 
@@ -609,6 +626,33 @@ export default function StudioPage() {
             onModelChange={handleCommandModelChange}
             onCommandSent={() => {}}
           />
+        )}
+
+        {activeTab === 'settings' && (
+          <div className="max-w-2xl space-y-4">
+            <div className="bg-gray-900 rounded-xl border border-gray-800 p-4">
+              <h3 className="text-sm font-semibold text-gray-300 mb-1">配置中心</h3>
+              <p className="text-xs text-gray-500 mb-4">当前项目：{selectedProjectId}</p>
+              <div className="flex items-center justify-between rounded-lg border border-gray-800 bg-gray-900/60 px-4 py-3">
+                <div>
+                  <div className="text-sm text-white font-medium">自动交接（无需授权直接交接）</div>
+                  <div className="text-xs text-gray-400 mt-1">
+                    开启后，交接创建即视为已接收，可直接确认执行；关闭后需先接收再确认。
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleToggleAutoHandoff(!projectSettings.auto_handoff_enabled)}
+                  className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
+                    projectSettings.auto_handoff_enabled
+                      ? 'bg-green-600/20 text-green-300 border-green-600/40 hover:bg-green-600/30'
+                      : 'bg-gray-800 text-gray-300 border-gray-700 hover:bg-gray-700'
+                  }`}
+                >
+                  {projectSettings.auto_handoff_enabled ? '已开启' : '已关闭'}
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </main>
 

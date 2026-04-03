@@ -38,6 +38,15 @@ db.exec(`
     updated_at TEXT NOT NULL
   );
 
+  -- 项目配置表
+  CREATE TABLE IF NOT EXISTS project_settings (
+    project_id TEXT PRIMARY KEY,
+    auto_handoff_enabled INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+  );
+
   -- Agent 会话表（每个Agent有自己的独立会话）
   CREATE TABLE IF NOT EXISTS agent_sessions (
     id TEXT PRIMARY KEY,
@@ -359,6 +368,13 @@ export interface DbTaskBoardTask {
   updated_by: string | null;
   started_at: string | null;
   completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DbProjectSettings {
+  project_id: string;
+  auto_handoff_enabled: number;
   created_at: string;
   updated_at: string;
 }
@@ -755,6 +771,53 @@ export function getAllProjectIds(): string[] {
   return ids;
 }
 
+function createDefaultProjectSettings(projectId: string): DbProjectSettings {
+  const now = new Date().toISOString();
+  const settings: DbProjectSettings = {
+    project_id: projectId,
+    auto_handoff_enabled: 0,
+    created_at: now,
+    updated_at: now
+  };
+  const stmt = db.prepare(`
+    INSERT INTO project_settings (project_id, auto_handoff_enabled, created_at, updated_at)
+    VALUES (?, ?, ?, ?)
+  `);
+  stmt.run(settings.project_id, settings.auto_handoff_enabled, settings.created_at, settings.updated_at);
+  return settings;
+}
+
+export function getProjectSettings(projectId: string): DbProjectSettings {
+  const safeProjectId = normalizeProjectId(projectId);
+  const stmt = db.prepare('SELECT * FROM project_settings WHERE project_id = ?');
+  const found = stmt.get(safeProjectId) as DbProjectSettings | undefined;
+  if (found) return found;
+  return createDefaultProjectSettings(safeProjectId);
+}
+
+export function updateProjectSettings(
+  projectId: string,
+  updates: Partial<Pick<DbProjectSettings, 'auto_handoff_enabled'>>
+): DbProjectSettings {
+  const safeProjectId = normalizeProjectId(projectId);
+  getProjectSettings(safeProjectId);
+  const fields: string[] = [];
+  const values: any[] = [];
+  if (updates.auto_handoff_enabled !== undefined) {
+    fields.push('auto_handoff_enabled = ?');
+    values.push(updates.auto_handoff_enabled);
+  }
+  if (fields.length === 0) {
+    return getProjectSettings(safeProjectId);
+  }
+  fields.push('updated_at = ?');
+  values.push(new Date().toISOString());
+  values.push(safeProjectId);
+  const stmt = db.prepare(`UPDATE project_settings SET ${fields.join(', ')} WHERE project_id = ?`);
+  stmt.run(...values);
+  return getProjectSettings(safeProjectId);
+}
+
 export function createProject(project: { id: string; name: string; created_at: string; updated_at: string }): { id: string; name: string; created_at: string; updated_at: string } {
   const stmt = db.prepare(`
     INSERT INTO projects (id, name, created_at, updated_at)
@@ -772,9 +835,11 @@ export function getProject(projectId: string): { id: string; name: string; creat
 export function ensureProject(projectId: string): void {
   const safeProjectId = normalizeProjectId(projectId);
   if (!safeProjectId) return;
-  if (getProject(safeProjectId)) return;
-  const now = new Date().toISOString();
-  createProject({ id: safeProjectId, name: safeProjectId, created_at: now, updated_at: now });
+  if (!getProject(safeProjectId)) {
+    const now = new Date().toISOString();
+    createProject({ id: safeProjectId, name: safeProjectId, created_at: now, updated_at: now });
+  }
+  getProjectSettings(safeProjectId);
 }
 
 export function updateTaskBoardTask(id: string, updates: Partial<DbTaskBoardTask>): boolean {
