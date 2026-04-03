@@ -39,6 +39,8 @@ export function createStudioToolsServer(agentId: AgentRole, logFn?: ToolLogFn): 
     blocked: '阻塞',
     done: '已完成'
   };
+  const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  const TASK_ID_HELP_TEXT = '请先调用 get_tasks 获取完整任务 ID（UUID）后重试。';
 
   const server = createSdkMcpServer({
     name: 'studio-tools',
@@ -234,10 +236,13 @@ export function createStudioToolsServer(agentId: AgentRole, logFn?: ToolLogFn): 
         },
         async ({ task_id, status }) => {
           const normalizedTaskId = task_id.trim();
+          if (!UUID_PATTERN.test(normalizedTaskId)) {
+            return { content: [{ type: 'text' as const, text: `任务 ID 格式非法: ${normalizedTaskId}。${TASK_ID_HELP_TEXT}` }] };
+          }
           const task = db.getTaskBoardTask(normalizedTaskId);
 
           if (!task) {
-            return { content: [{ type: 'text' as const, text: `任务不存在: ${normalizedTaskId}。请先调用 get_tasks 获取完整任务 ID 后重试。` }] };
+            return { content: [{ type: 'text' as const, text: `任务不存在: ${normalizedTaskId}。${TASK_ID_HELP_TEXT}` }] };
           }
           if (!TASK_STATUS_FLOW[task.status]?.includes(status)) {
             const allowed = TASK_STATUS_FLOW[task.status] || [];
