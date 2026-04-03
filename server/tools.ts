@@ -245,7 +245,10 @@ export function createStudioToolsServer(agentId: AgentRole, logFn?: ToolLogFn): 
             updates.completed_at = null;
           }
 
-          db.updateTaskBoardTask(task.id, updates);
+          const success = db.updateTaskBoardTask(task.id, updates);
+          if (!success) {
+            return { content: [{ type: 'text' as const, text: `任务状态更新失败: ${task_id}` }] };
+          }
           const updated = db.getTaskBoardTask(task.id)!;
           sseBroadcaster.broadcast({ type: 'task_updated', task: updated });
           log(agentId, '维护任务状态', `${task.title}: ${task.status} -> ${status}`, 'success');

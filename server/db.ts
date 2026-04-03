@@ -680,6 +680,23 @@ export function getTaskBoardTasks(projectId?: string): DbTaskBoardTask[] {
   return stmt.all() as DbTaskBoardTask[];
 }
 
+export function getAllProjectIds(): string[] {
+  const rows = db.prepare(`
+    SELECT project_id FROM proposals WHERE project_id IS NOT NULL
+    UNION
+    SELECT project_id FROM games WHERE project_id IS NOT NULL
+    UNION
+    SELECT project_id FROM task_board_tasks WHERE project_id IS NOT NULL
+    ORDER BY project_id ASC
+  `).all() as { project_id: string }[];
+
+  const ids = rows
+    .map(r => r.project_id)
+    .filter(id => id !== '');
+  if (!ids.includes('default')) ids.unshift('default');
+  return ids;
+}
+
 export function updateTaskBoardTask(id: string, updates: Partial<DbTaskBoardTask>): boolean {
   const fields: string[] = [];
   const values: any[] = [];
@@ -743,29 +760,27 @@ export function ensureOutputDir(): string {
   return OUTPUT_DIR;
 }
 
-function ensureProjectOutputDirs(projectId: string): { projectDir: string; docsDir: string; designsDir: string; codeDir: string } {
+function ensureProjectOutputDirs(projectId: string): { projectDir: string; proposalsDir: string; gamesDir: string } {
   const root = ensureOutputDir();
   const safeProjectId = normalizeProjectId(projectId);
   const projectDir = path.join(root, safeProjectId);
-  const docsDir = path.join(projectDir, 'docs');
-  const designsDir = path.join(projectDir, 'designs');
-  const codeDir = path.join(projectDir, 'code');
-  [projectDir, docsDir, designsDir, codeDir].forEach((dir) => {
+  // 统一采用 output/{projectId}/proposals 与 output/{projectId}/games 两类产出目录，避免混放。
+  const proposalsDir = path.join(projectDir, 'proposals');
+  const gamesDir = path.join(projectDir, 'games');
+  [projectDir, proposalsDir, gamesDir].forEach((dir) => {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
   });
-  return { projectDir, docsDir, designsDir, codeDir };
+  return { projectDir, proposalsDir, gamesDir };
 }
 
 /**
  * 保存策划案到产出目录
  */
 export function saveProposalToFile(proposal: DbProposal): string | null {
-  const { docsDir, designsDir } = ensureProjectOutputDirs(proposal.project_id);
-  const isDesignDoc = proposal.type === 'game_design' || proposal.type === 'biz_design';
-  const targetDir = isDesignDoc ? designsDir : docsDir;
+  const { proposalsDir } = ensureProjectOutputDirs(proposal.project_id);
   const safeType = sanitizeFilename(proposal.type, 20) || 'proposal';
 
-  const filePath = resolveSafePath(targetDir, `${safeType}_${proposal.id.slice(0, 8)}.md`);
+  const filePath = resolveSafePath(proposalsDir, `${safeType}_${proposal.id.slice(0, 8)}.md`);
   
   try {
     const content = `# ${proposal.title}\n\n` +
@@ -786,11 +801,11 @@ export function saveProposalToFile(proposal: DbProposal): string | null {
  * 保存游戏到产出目录
  */
 export function saveGameToFile(game: DbGame): string | null {
-  const { codeDir } = ensureProjectOutputDirs(game.project_id);
+  const { gamesDir } = ensureProjectOutputDirs(game.project_id);
 
   const safeName = sanitizeFilename(game.name, MAX_FILENAME_LENGTH);
   const safeVersion = sanitizeFilename(game.version, MAX_VERSION_LENGTH);
-  const filePath = resolveSafePath(codeDir, `${safeName}_v${safeVersion}_${game.id.slice(0, 8)}.html`);
+  const filePath = resolveSafePath(gamesDir, `${safeName}_v${safeVersion}_${game.id.slice(0, 8)}.html`);
   
   try {
     fs.writeFileSync(filePath, game.html_content, 'utf-8');

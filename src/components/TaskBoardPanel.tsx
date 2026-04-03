@@ -5,6 +5,7 @@ import { api } from '../config';
 interface Props {
   agents: Agent[];
   tasks: TaskBoardTask[];
+  projectId: string;
   onTaskUpdated: (task: TaskBoardTask) => void;
 }
 
@@ -33,7 +34,7 @@ function typeLabel(type: TaskType): string {
   return type === 'development' ? '开发' : '测试';
 }
 
-export default function TaskBoardPanel({ agents, tasks, onTaskUpdated }: Props) {
+export default function TaskBoardPanel({ agents, tasks, projectId, onTaskUpdated }: Props) {
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -60,6 +61,7 @@ export default function TaskBoardPanel({ agents, tasks, onTaskUpdated }: Props) 
     setCreating(true);
     try {
       const data = await api.createTask({
+        project_id: projectId,
         title: formTitle.trim(),
         description: formDesc.trim() || undefined,
         task_type: formType,

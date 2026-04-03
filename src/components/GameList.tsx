@@ -37,6 +37,7 @@ export default function GameList({ games, selectedId, onSelect }: Props) {
               </span>
             </div>
             <p className="text-sm text-gray-200 font-medium">{game.name}</p>
+            <p className="text-[11px] text-gray-500 mt-1">项目：{game.project_id}</p>
             {game.description && (
               <p className="text-xs text-gray-500 mt-1 line-clamp-2">{game.description}</p>
             )}

@@ -79,6 +79,7 @@ function ProposalItem({ proposal, selected, onClick }: { proposal: Proposal; sel
         <span className="text-xs text-gray-500">{TYPE_LABELS[proposal.type] || proposal.type}</span>
       </div>
       <p className="text-sm text-gray-200 font-medium leading-snug truncate">{proposal.title}</p>
+      <p className="text-[11px] text-gray-500 mt-1">项目：{proposal.project_id}</p>
       <div className="flex items-center justify-between mt-1.5">
         <span className={`text-xs px-1.5 py-0.5 rounded border ${statusCfg.className}`}>
           {statusCfg.label}
