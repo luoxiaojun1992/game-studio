@@ -43,33 +43,6 @@ export default function StudioPage() {
   // 通过标记位避免建立重复连接
   const connectedRef = useRef(false);
 
-  const connectSSE = useCallback(() => {
-    // 防止 StrictMode 重复连接
-    if (connectedRef.current) return;
-    connectedRef.current = true;
-
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-    }
-
-    const es = new EventSource(api.observeUrl(selectedProjectId));
-    eventSourceRef.current = es;
-
-    es.onopen = () => setConnected(true);
-    es.onerror = () => {
-      setConnected(false);
-      connectedRef.current = false; // 允许重连
-      setTimeout(() => connectSSE(), 3000);
-    };
-
-    es.onmessage = (e) => {
-      try {
-        const event: SSEEvent = JSON.parse(e.data);
-        handleSSEEvent(event);
-      } catch {}
-    };
-  }, [handleSSEEvent, selectedProjectId]);
-
   const handleSSEEvent = useCallback((event: SSEEvent) => {
     switch (event.type) {
       case 'init':
@@ -191,6 +164,33 @@ export default function StudioPage() {
         break;
     }
   }, [selectedProjectId]);
+
+  const connectSSE = useCallback(() => {
+    // 防止 StrictMode 重复连接
+    if (connectedRef.current) return;
+    connectedRef.current = true;
+
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+    }
+
+    const es = new EventSource(api.observeUrl(selectedProjectId));
+    eventSourceRef.current = es;
+
+    es.onopen = () => setConnected(true);
+    es.onerror = () => {
+      setConnected(false);
+      connectedRef.current = false; // 允许重连
+      setTimeout(() => connectSSE(), 3000);
+    };
+
+    es.onmessage = (e) => {
+      try {
+        const event: SSEEvent = JSON.parse(e.data);
+        handleSSEEvent(event);
+      } catch {}
+    };
+  }, [handleSSEEvent, selectedProjectId]);
 
   // 加载 Agents
   useEffect(() => {
