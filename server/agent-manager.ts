@@ -483,6 +483,18 @@ class AgentManager extends EventEmitter {
         // 3. 其余工具（Write/Bash 等写操作）→ 走用户确认
         console.log(`[permission] Agent ${agentId} 请求权限: toolName=${toolName}, actualTool=${actualTool}, input=${JSON.stringify(input).slice(0, 200)}`);
         const requestId = uuidv4();
+        
+        // 持久化到数据库
+        db.createPermissionRequest({
+          id: requestId,
+          project_id: scopedProjectId,
+          agent_id: agentId,
+          tool_name: toolName,
+          input: JSON.stringify(input),
+          status: 'pending',
+          created_at: new Date().toISOString()
+        });
+        
         const permEvent: StreamEvent = {
           type: 'permission_request',
           projectId: scopedProjectId,
@@ -510,6 +522,8 @@ class AgentManager extends EventEmitter {
             if (!pending) return;
             this.pendingPermissions.delete(requestId);
             this.pendingPermissionExpirations.delete(requestId);
+            // 更新数据库状态为过期
+            db.expirePermissionRequest(requestId);
             pending.resolve({ behavior: 'deny', message: '权限请求已过期（24小时），请重新发起' });
           }, 24 * 60 * 60 * 1000);
           this.pendingPermissionExpirations.set(requestId, timer);
@@ -696,7 +710,17 @@ class AgentManager extends EventEmitter {
    */
   respondToPermission(requestId: string, behavior: 'allow' | 'deny', message?: string, projectId?: string, updatedInput?: Record<string, unknown>): boolean {
     const pending = this.pendingPermissions.get(requestId);
-    if (!pending) return false;
+    if (!pending) {
+      // 如果内存中没有，尝试从数据库恢复（服务重启后的情况）
+      const dbRequest = db.getPermissionRequest(requestId);
+      if (!dbRequest || dbRequest.status !== 'pending') return false;
+      if (projectId && this.normalizeProjectId(projectId) !== this.normalizeProjectId(dbRequest.project_id)) {
+        return false;
+      }
+      // 更新数据库状态
+      db.respondToPermissionRequest(requestId, behavior, message, updatedInput);
+      return true;
+    }
     if (projectId && this.normalizeProjectId(projectId) !== this.normalizeProjectId(pending.projectId)) {
       return false;
     }
@@ -706,6 +730,8 @@ class AgentManager extends EventEmitter {
       clearTimeout(timer);
       this.pendingPermissionExpirations.delete(requestId);
     }
+    // 更新数据库状态
+    db.respondToPermissionRequest(requestId, behavior, message, updatedInput);
     if (behavior === 'allow') {
       pending.resolve({ behavior: 'allow', updatedInput: updatedInput || pending.input });
     } else {
@@ -719,15 +745,39 @@ class AgentManager extends EventEmitter {
    */
   getPendingPermissions(projectId?: string): Array<{ requestId: string; toolName: string; input: any; projectId: string; agentId: AgentRole; timestamp: number }> {
     const scopedProjectId = projectId ? this.normalizeProjectId(projectId) : undefined;
-    return Array.from(this.pendingPermissions.entries())
+    
+    // 从数据库读取待处理的权限请求
+    const dbRequests = scopedProjectId 
+      ? db.getPendingPermissionRequests(scopedProjectId)
+      : [];
+    
+    // 合并内存中的请求（优先内存中的，因为可能有未持久化的实时请求）
+    const memoryRequests = Array.from(this.pendingPermissions.entries())
       .filter(([, perm]) => !scopedProjectId || perm.projectId === scopedProjectId)
       .map(([requestId, perm]) => ({
-      requestId,
-      toolName: perm.toolName,
-      input: perm.input,
-      projectId: perm.projectId,
-      agentId: perm.agentId,
-      timestamp: perm.timestamp
+        requestId,
+        toolName: perm.toolName,
+        input: perm.input,
+        projectId: perm.projectId,
+        agentId: perm.agentId,
+        timestamp: perm.timestamp
+      }));
+    
+    // 将数据库请求转换为相同格式
+    const dbFormattedRequests = dbRequests.map(req => ({
+      requestId: req.id,
+      toolName: req.tool_name,
+      input: JSON.parse(req.input),
+      projectId: req.project_id,
+      agentId: req.agent_id as AgentRole,
+      timestamp: new Date(req.created_at).getTime()
+    }));
+    
+    // 合并并去重（内存中的优先）
+    const memoryIds = new Set(memoryRequests.map(r => r.requestId));
+    const uniqueDbRequests = dbFormattedRequests.filter(r => !memoryIds.has(r.requestId));
+    
+    return [...memoryRequests, ...uniqueDbRequests];
       }));
   }
 }

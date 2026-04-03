@@ -136,6 +136,25 @@ db.exec(`
     executed_at TEXT
   );
 
+  -- 权限请求表（工具执行审批消息）
+  CREATE TABLE IF NOT EXISTS permission_requests (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL DEFAULT 'default',
+    agent_id TEXT NOT NULL,
+    tool_name TEXT NOT NULL,
+    input TEXT NOT NULL, -- JSON 序列化后的输入参数
+    status TEXT NOT NULL DEFAULT 'pending', -- pending, allowed, denied, expired
+    behavior TEXT, -- allow, deny
+    message TEXT, -- 用户回复的消息
+    updated_input TEXT, -- 用户修改后的输入参数（JSON）
+    created_at TEXT NOT NULL,
+    responded_at TEXT
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_permission_requests_project ON permission_requests(project_id);
+  CREATE INDEX IF NOT EXISTS idx_permission_requests_status ON permission_requests(status);
+  CREATE INDEX IF NOT EXISTS idx_permission_requests_project_status ON permission_requests(project_id, status);
+
   -- 任务交接表（Agent之间的任务传递）
   CREATE TABLE IF NOT EXISTS handoffs (
     id TEXT PRIMARY KEY,
@@ -613,6 +632,70 @@ export function updateCommand(id: string, updates: Partial<DbCommand>): boolean 
 export function getAllCommands(projectId: string, limit = 50): DbCommand[] {
   const stmt = db.prepare('SELECT * FROM commands WHERE project_id = ? ORDER BY created_at DESC LIMIT ?');
   return stmt.all(projectId, limit) as DbCommand[];
+}
+
+// ============= 权限请求操作 =============
+
+export interface DbPermissionRequest {
+  id: string;
+  project_id: string;
+  agent_id: string;
+  tool_name: string;
+  input: string; // JSON string
+  status: 'pending' | 'allowed' | 'denied' | 'expired';
+  behavior?: 'allow' | 'deny';
+  message?: string;
+  updated_input?: string; // JSON string
+  created_at: string;
+  responded_at?: string;
+}
+
+export function createPermissionRequest(request: DbPermissionRequest): DbPermissionRequest {
+  const stmt = db.prepare(`
+    INSERT INTO permission_requests (id, project_id, agent_id, tool_name, input, status, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `);
+  stmt.run(request.id, request.project_id, request.agent_id, request.tool_name, request.input, request.status, request.created_at);
+  return request;
+}
+
+export function getPendingPermissionRequests(projectId: string): DbPermissionRequest[] {
+  const stmt = db.prepare("SELECT * FROM permission_requests WHERE project_id = ? AND status = 'pending' ORDER BY created_at ASC");
+  return stmt.all(projectId) as DbPermissionRequest[];
+}
+
+export function respondToPermissionRequest(
+  id: string,
+  behavior: 'allow' | 'deny',
+  message?: string,
+  updatedInput?: Record<string, unknown>
+): boolean {
+  const stmt = db.prepare(`
+    UPDATE permission_requests 
+    SET status = ?, behavior = ?, message = ?, updated_input = ?, responded_at = ?
+    WHERE id = ? AND status = 'pending'
+  `);
+  const result = stmt.run(
+    behavior === 'allow' ? 'allowed' : 'denied',
+    behavior,
+    message || null,
+    updatedInput ? JSON.stringify(updatedInput) : null,
+    new Date().toISOString(),
+    id
+  );
+  return result.changes > 0;
+}
+
+export function expirePermissionRequest(id: string): boolean {
+  const stmt = db.prepare("UPDATE permission_requests SET status = 'expired' WHERE id = ? AND status = 'pending'");
+  const result = stmt.run(id);
+  return result.changes > 0;
+}
+
+export function getPermissionRequest(id: string): DbPermissionRequest | null {
+  const stmt = db.prepare('SELECT * FROM permission_requests WHERE id = ?');
+  const result = stmt.get(id) as DbPermissionRequest | undefined;
+  return result || null;
 }
 
 // ============= 任务交接操作 =============
