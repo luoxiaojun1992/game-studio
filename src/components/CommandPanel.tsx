@@ -28,12 +28,13 @@ interface ModelInfo {
   description?: string;
 }
 
-const STORAGE_KEY = 'commandPanel_lastAgent';
+// 按项目隔离的 localStorage key
+const getStorageKey = (projectId: string) => `commandPanel_lastAgent_${projectId}`;
 
 export default function CommandPanel({ agents, logs, projectId, selectedAgentId, onCommandSent, model, onModelChange }: Props) {
-  // 从 localStorage 读取上次选择的 Agent
+  // 从 localStorage 读取上次选择的 Agent（按项目隔离）
   const getSavedAgent = (): AgentRole | null => {
-    const saved = localStorage.getItem(STORAGE_KEY);
+    const saved = localStorage.getItem(getStorageKey(projectId));
     if (saved && agents.find(a => a.id === saved)) {
       return saved as AgentRole;
     }
@@ -95,14 +96,14 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
   useEffect(() => {
     if (selectedAgentId && selectedAgentId !== selectedAgent) {
       setSelectedAgent(selectedAgentId);
-      localStorage.setItem(STORAGE_KEY, selectedAgentId);
+      localStorage.setItem(getStorageKey(projectId), selectedAgentId);
     }
-  }, [selectedAgentId]);
+  }, [selectedAgentId, projectId]);
 
   // 在指令中心内切换 Agent 时，记住选择
   const handleAgentChange = (agentId: AgentRole) => {
     setSelectedAgent(agentId);
-    localStorage.setItem(STORAGE_KEY, agentId);
+    localStorage.setItem(getStorageKey(projectId), agentId);
   };
 
   // 切换 Agent 时清空流式文本
