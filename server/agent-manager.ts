@@ -299,7 +299,14 @@ class AgentManager extends EventEmitter {
       //    - 读操作（save_memory, get_*, 无副作用）→ 自动放行
       //    - 写操作 + 有副作用的（create_handoff, submit_proposal, submit_game）→ 需要用户确认
       // 2. CodeBuddy 内置工具走正常权限流程
-      const CAN_AUTO_ALLOW = ['save_memory', 'get_memories', 'get_proposals', 'get_pending_handoffs'];
+      const CAN_AUTO_ALLOW = [
+        'save_memory',
+        'get_memories',
+        'get_proposals',
+        'get_pending_handoffs',
+        'get_tasks',
+        ...(agentId === 'engineer' ? ['split_dev_test_tasks', 'update_task_status'] : [])
+      ];
 
       const canUseTool: CanUseTool = async (toolName, input, options) => {
         if (toolName.startsWith('mcp__studio-tools__')) {

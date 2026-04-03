@@ -25,6 +25,13 @@ type ToolLogFn = (agentId: AgentRole, action: string, detail: string, level: 'in
  */
 export function createStudioToolsServer(agentId: AgentRole, logFn?: ToolLogFn): SdkMcpServerResult {
   const log = logFn || (() => {});
+  const TASK_STATUS_FLOW: Record<string, string[]> = {
+    todo: ['developing', 'blocked'],
+    developing: ['testing', 'blocked'],
+    testing: ['done', 'blocked', 'developing'],
+    blocked: ['todo', 'developing', 'testing'],
+    done: []
+  };
 
   const server = createSdkMcpServer({
     name: 'studio-tools',
@@ -123,6 +130,128 @@ export function createStudioToolsServer(agentId: AgentRole, logFn?: ToolLogFn): 
           log(agentId, '创建交接', `${agentId} → ${to_agent_id}: ${title}`, 'success');
           return {
             content: [{ type: 'text' as const, text: `交接已创建 (ID: ${handoff.id.slice(0, 8)})，等待管理者确认后 ${to_agent_id} 才会开始工作。` }]
+          };
+        }
+      ),
+
+      // ==================== 任务看板工具 ====================
+
+      tool(
+        'split_dev_test_tasks',
+        '将一个功能目标拆分为开发任务和测试任务，并写入任务看板。',
+        {
+          project_id: z.string().optional().default('default').describe('项目 ID'),
+          feature_title: z.string().describe('功能标题'),
+          development_description: z.string().describe('开发任务描述'),
+          testing_description: z.string().optional().describe('测试任务描述（不填则自动生成）'),
+          priority_hint: z.enum(['low', 'normal', 'high', 'urgent']).optional().default('normal').describe('优先级提示（用于描述，不影响状态机）')
+        },
+        async ({ project_id, feature_title, development_description, testing_description, priority_hint }) => {
+          const now = new Date().toISOString();
+          const devTask = db.createTaskBoardTask({
+            id: uuidv4(),
+            project_id: project_id || 'default',
+            title: `开发：${feature_title}`,
+            description: `[优先级:${priority_hint || 'normal'}] ${development_description}`,
+            task_type: 'development',
+            status: 'todo',
+            source_task_id: null,
+            created_by: agentId,
+            updated_by: agentId,
+            started_at: null,
+            completed_at: null,
+            created_at: now,
+            updated_at: now
+          });
+
+          const testTask = db.createTaskBoardTask({
+            id: uuidv4(),
+            project_id: project_id || 'default',
+            title: `测试：${feature_title}`,
+            description: testing_description || `验证“${feature_title}”功能正确性与回归影响，覆盖功能、边界和异常路径。`,
+            task_type: 'testing',
+            status: 'todo',
+            source_task_id: devTask.id,
+            created_by: agentId,
+            updated_by: agentId,
+            started_at: null,
+            completed_at: null,
+            created_at: now,
+            updated_at: now
+          });
+
+          sseBroadcaster.broadcast({ type: 'task_created', task: devTask });
+          sseBroadcaster.broadcast({ type: 'task_created', task: testTask });
+          log(agentId, '拆分任务看板', `${feature_title} -> 开发+测试`, 'success');
+
+          return {
+            content: [{
+              type: 'text' as const,
+              text: `已拆分任务：开发任务 ${devTask.id.slice(0, 8)}，测试任务 ${testTask.id.slice(0, 8)}。`
+            }]
+          };
+        }
+      ),
+
+      tool(
+        'get_tasks',
+        '查询任务看板中的任务，用于查看待办和当前进度。',
+        {
+          project_id: z.string().optional().describe('项目 ID，不填默认全部'),
+          status: z.enum(['todo', 'developing', 'testing', 'blocked', 'done']).optional().describe('按状态筛选'),
+          task_type: z.enum(['development', 'testing']).optional().describe('按任务类型筛选'),
+          limit: z.number().min(1).max(100).optional().default(20).describe('返回条数上限')
+        },
+        async ({ project_id, status, task_type, limit }) => {
+          let tasks = db.getTaskBoardTasks(project_id || undefined);
+          if (status) tasks = tasks.filter(t => t.status === status);
+          if (task_type) tasks = tasks.filter(t => t.task_type === task_type);
+          tasks = tasks.slice(0, limit || 20);
+          if (tasks.length === 0) {
+            return { content: [{ type: 'text' as const, text: '没有匹配的看板任务。' }] };
+          }
+          const text = tasks.map(t => {
+            const rel = t.source_task_id ? ` | 来源:${t.source_task_id.slice(0, 8)}` : '';
+            return `[${t.status}/${t.task_type}] ${t.title} (ID:${t.id.slice(0, 8)})${rel}`;
+          }).join('\n');
+          return { content: [{ type: 'text' as const, text }] };
+        }
+      ),
+
+      tool(
+        'update_task_status',
+        '更新看板任务状态，维护开发与测试过程进度。',
+        {
+          task_id: z.string().describe('任务 ID'),
+          status: z.enum(['todo', 'developing', 'testing', 'blocked', 'done']).describe('目标状态')
+        },
+        async ({ task_id, status }) => {
+          const task = db.getTaskBoardTask(task_id);
+          if (!task) {
+            return { content: [{ type: 'text' as const, text: `任务不存在: ${task_id}` }] };
+          }
+          if (!TASK_STATUS_FLOW[task.status]?.includes(status)) {
+            return { content: [{ type: 'text' as const, text: `状态流转非法: ${task.status} -> ${status}` }] };
+          }
+
+          const now = new Date().toISOString();
+          const updates: Partial<db.DbTaskBoardTask> = { status, updated_by: agentId };
+          if (status === 'developing' || status === 'testing') {
+            updates.started_at = task.started_at || now;
+          }
+          if (status === 'done') {
+            updates.completed_at = now;
+          } else if (task.status === 'done') {
+            updates.completed_at = null;
+          }
+
+          db.updateTaskBoardTask(task.id, updates);
+          const updated = db.getTaskBoardTask(task.id)!;
+          sseBroadcaster.broadcast({ type: 'task_updated', task: updated });
+          log(agentId, '维护任务状态', `${task.title}: ${task.status} -> ${status}`, 'success');
+
+          return {
+            content: [{ type: 'text' as const, text: `任务状态已更新: ${task.id.slice(0, 8)} -> ${status}` }]
           };
         }
       ),
