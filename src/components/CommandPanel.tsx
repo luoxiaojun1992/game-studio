@@ -5,6 +5,8 @@ import { api, API_BASE } from '../config';
 interface Props {
   agents: Agent[];
   onCommandSent?: () => void;
+  model: string;
+  onModelChange: (model: string) => void;
 }
 
 interface StreamLog {
@@ -30,7 +32,7 @@ interface ModelInfo {
   description?: string;
 }
 
-export default function CommandPanel({ agents, onCommandSent }: Props) {
+export default function CommandPanel({ agents, onCommandSent, model, onModelChange }: Props) {
   // 默认选中正在工作的 Agent，没有则选中第一个
   const workingAgent = agents.find(a => a.state?.status === 'working');
   const defaultAgent = workingAgent?.id || agents[0]?.id || 'game_designer';
@@ -40,7 +42,6 @@ export default function CommandPanel({ agents, onCommandSent }: Props) {
   const [chatHistory, setChatHistory] = useState<StreamLog[]>([]);
   const [currentStreamText, setCurrentStreamText] = useState('');
   const [models, setModels] = useState<ModelInfo[]>([]);
-  const [model, setModel] = useState('glm-5.0');
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [clearing, setClearing] = useState(false);
   const outputRef = useRef<HTMLDivElement>(null);
@@ -98,18 +99,23 @@ export default function CommandPanel({ agents, onCommandSent }: Props) {
         setModels(res.models);
         const ids = res.models.map((m: any) => m.modelId || m.id || m.model);
         if (!ids.includes(model)) {
-          setModel(ids[0]);
+          onModelChange(ids[0]);
         }
       }
     }).catch(() => {
-      setModels([
+      const fallback = [
         { modelId: 'glm-5.0', name: 'glm-5.0' },
         { modelId: 'glm-5.0-turbo', name: 'glm-5.0-turbo' },
         { modelId: 'kimi-k2.5', name: 'kimi-k2.5' },
         { modelId: 'deepseek-v3-2-volc', name: 'deepseek-v3-2-volc' },
-      ]);
+      ];
+      setModels(fallback);
+      const ids = fallback.map((m: any) => m.modelId || m.id || m.model);
+      if (!ids.includes(model)) {
+        onModelChange(ids[0]);
+      }
     });
-  }, []);
+  }, [model, onModelChange]);
 
   // 当有 Agent 开始工作时，自动切换到该 Agent
   useEffect(() => {
@@ -317,7 +323,7 @@ export default function CommandPanel({ agents, onCommandSent }: Props) {
           <div className="ml-auto">
             <select
               value={model}
-              onChange={e => setModel(e.target.value)}
+              onChange={e => onModelChange(e.target.value)}
               className="bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-xs text-gray-300 focus:outline-none"
             >
               {models.length > 0 ? models.map(m => {

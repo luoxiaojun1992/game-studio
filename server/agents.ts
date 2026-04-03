@@ -88,6 +88,9 @@ const TOOLS_OVERVIEW = `
 | \`save_memory\` | 保存长期记忆（重要决策、经验、成果等） |
 | \`get_memories\` | 查询你之前保存的记忆 |
 | \`create_handoff\` | 将任务移交给其他团队成员 |
+| \`split_dev_test_tasks\` | 将需求拆分为开发任务和测试任务 |
+| \`get_tasks\` | 查询任务看板任务 |
+| \`update_task_status\` | 更新任务看板状态（遵循状态流转约束） |
 | \`submit_proposal\` | 提交策划案或方案文档 |
 | \`submit_game\` | 提交游戏成品（单文件 HTML） |
 | \`get_proposals\` | 查询已有的提案列表 |
@@ -125,6 +128,7 @@ export const AGENT_DEFINITIONS: Record<AgentRole, AgentDefinition> = {
 3. 测试执行期间持续维护测试任务状态（\`testing\` / \`blocked\` / \`done\`）。
 4. 如遇阻塞，立即将相关任务状态更新为 \`blocked\`，并在后续恢复时改回有效状态。
 5. 每完成一个里程碑（开发完成、测试完成），必须调用 \`update_task_status\` 维护看板。
+6. 每次状态更新前先调用 \`get_tasks\` 确认任务当前状态；若收到“状态流转非法”提示，必须按返回的“合法流转”执行。
 
 ## 工作标准
 - 游戏必须是完整可运行的单文件 HTML（包含所有 CSS/JS）
