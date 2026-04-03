@@ -342,6 +342,16 @@ class AgentManager extends EventEmitter {
 
     const abortController = new AbortController();
     this.activeStreams.set(streamId, { projectId: scopedProjectId, agentId, abortController });
+    let streamReleased = false;
+    const releaseActiveStream = () => {
+      if (streamReleased) return;
+      this.activeStreams.delete(streamId);
+      const current = this.activeAgentStreamsByProject.get(scopedProjectId)?.get(agentId);
+      if (current === streamId) {
+        this.activeAgentStreamsByProject.get(scopedProjectId)?.delete(agentId);
+      }
+      streamReleased = true;
+    };
 
     // 获取或创建 Agent 的数据库会话
     let agentDbSession = db.getAgentSession(scopedProjectId, agentId);
@@ -374,7 +384,6 @@ class AgentManager extends EventEmitter {
 
     let fullResponse = '';
     let toolCalls: any[] = [];
-    const deferredAutoHandoffsById = new Map<string, db.DbHandoff>();
 
     try {
       // ---- 创建 MCP 自定义工具服务器 ----
@@ -385,7 +394,7 @@ class AgentManager extends EventEmitter {
           this.addLog(scopedProjectId, aid, action, detail, level);
         },
         async (handoff) => {
-          deferredAutoHandoffsById.set(handoff.id, handoff);
+          this.dispatchAutoHandoffTask(handoff);
         }
       );
 
@@ -599,6 +608,7 @@ class AgentManager extends EventEmitter {
         }
       }
 
+      releaseActiveStream();
       this.updateAgentState(scopedProjectId, agentId, {
         status: 'idle',
         currentTask: null,
@@ -608,6 +618,7 @@ class AgentManager extends EventEmitter {
       this.addLog(scopedProjectId, agentId, '任务完成', `完成: ${message.slice(0, 100)}`, 'success');
 
     } catch (error: any) {
+      releaseActiveStream();
       this.updateAgentState(scopedProjectId, agentId, {
         status: 'error',
         currentTask: null,
@@ -620,14 +631,7 @@ class AgentManager extends EventEmitter {
       if (onEvent) onEvent(errorEvent);
       throw error;
     } finally {
-      this.activeStreams.delete(streamId);
-      const current = this.activeAgentStreamsByProject.get(scopedProjectId)?.get(agentId);
-      if (current === streamId) {
-        this.activeAgentStreamsByProject.get(scopedProjectId)?.delete(agentId);
-      }
-      for (const handoff of deferredAutoHandoffsById.values()) {
-        this.dispatchAutoHandoffTask(handoff);
-      }
+      releaseActiveStream();
     }
 
     return fullResponse;
