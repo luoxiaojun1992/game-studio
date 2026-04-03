@@ -46,7 +46,10 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
     return workingAgent?.id || agents[0]?.id || 'game_designer';
   };
 
-  const [selectedAgent, setSelectedAgent] = useState<AgentRole>(getSavedAgent() || getDefaultAgent());
+  // 统一状态：优先使用外部传入的 selectedAgentId，否则从 localStorage 恢复，最后使用默认值
+  const [selectedAgent, setSelectedAgent] = useState<AgentRole>(() => {
+    return selectedAgentId || getSavedAgent() || getDefaultAgent();
+  });
   const [message, setMessage] = useState('');
   const [streaming, setStreaming] = useState(false);
   const [currentStreamText, setCurrentStreamText] = useState('');
@@ -55,8 +58,6 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
   const [autoScroll, setAutoScroll] = useState(true);
   const [expandedLog, setExpandedLog] = useState<string | null>(null);
   const outputRef = useRef<HTMLDivElement>(null);
-  // 使用计数器来确保每次从团队总览点击都能触发切换
-  const [jumpCounter, setJumpCounter] = useState(0);
 
   // 从 logs 取当前 Agent 的最新 1000 条记录
   const agentLogs = useMemo((): LogEntry[] => {
@@ -90,32 +91,13 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
     });
   }, [model, onModelChange]);
 
-  // 组件挂载时，如果没有外部指定的 Agent，从 localStorage 恢复
-  useEffect(() => {
-    // 如果外部没有指定 Agent（即从导航栏点击进入），从 localStorage 恢复
-    if (!selectedAgentId) {
-      const saved = getSavedAgent();
-      if (saved) {
-        setSelectedAgent(saved);
-      }
-    }
-  }, []);
-
   // 外部指定目标 Agent（从团队总览点击跳转）
-  // 使用计数器确保每次点击都能触发，即使选中同一个 Agent
   useEffect(() => {
-    if (selectedAgentId) {
-      setJumpCounter(c => c + 1);
-    }
-  }, [selectedAgentId]);
-
-  // 当计数器变化时，执行 Agent 切换
-  useEffect(() => {
-    if (selectedAgentId && jumpCounter > 0) {
+    if (selectedAgentId && selectedAgentId !== selectedAgent) {
       setSelectedAgent(selectedAgentId);
       localStorage.setItem(STORAGE_KEY, selectedAgentId);
     }
-  }, [jumpCounter]);
+  }, [selectedAgentId]);
 
   // 在指令中心内切换 Agent 时，记住选择
   const handleAgentChange = (agentId: AgentRole) => {
