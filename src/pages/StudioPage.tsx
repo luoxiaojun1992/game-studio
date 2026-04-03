@@ -32,6 +32,7 @@ export default function StudioPage() {
   const [projects, setProjects] = useState<ProjectInfo[]>([{ id: DEFAULT_PROJECT_ID, name: DEFAULT_PROJECT_ID }]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>(DEFAULT_PROJECT_ID);
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
+  const [commandModel, setCommandModel] = useState<string>('glm-5.0');
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
   const [pendingPermissions, setPendingPermissions] = useState<PermissionRequest[]>([]);
@@ -542,7 +543,12 @@ export default function StudioPage() {
         )}
 
         {activeTab === 'commands' && (
-          <CommandPanel agents={agents} onCommandSent={() => {}} />
+          <CommandPanel
+            agents={agents}
+            model={commandModel}
+            onModelChange={setCommandModel}
+            onCommandSent={() => {}}
+          />
         )}
       </main>
 

@@ -88,6 +88,9 @@ const TOOLS_OVERVIEW = `
 | \`save_memory\` | 保存长期记忆（重要决策、经验、成果等） |
 | \`get_memories\` | 查询你之前保存的记忆 |
 | \`create_handoff\` | 将任务移交给其他团队成员 |
+| \`split_dev_test_tasks\` | 将需求拆分为开发任务和测试任务 |
+| \`get_tasks\` | 查询任务看板任务 |
+| \`update_task_status\` | 更新任务看板状态（遵循状态流转约束） |
 | \`submit_proposal\` | 提交策划案或方案文档 |
 | \`submit_game\` | 提交游戏成品（单文件 HTML） |
 | \`get_proposals\` | 查询已有的提案列表 |

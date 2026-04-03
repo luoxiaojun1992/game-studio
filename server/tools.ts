@@ -32,6 +32,13 @@ export function createStudioToolsServer(agentId: AgentRole, logFn?: ToolLogFn): 
     blocked: ['todo', 'developing', 'testing'],
     done: []
   };
+  const TASK_STATUS_LABEL: Record<string, string> = {
+    todo: '待开发',
+    developing: '开发中',
+    testing: '测试中',
+    blocked: '阻塞',
+    done: '已完成'
+  };
 
   const server = createSdkMcpServer({
     name: 'studio-tools',
@@ -226,12 +233,33 @@ export function createStudioToolsServer(agentId: AgentRole, logFn?: ToolLogFn): 
           status: z.enum(['todo', 'developing', 'testing', 'blocked', 'done']).describe('目标状态')
         },
         async ({ task_id, status }) => {
-          const task = db.getTaskBoardTask(task_id);
+          const allTasks = db.getTaskBoardTasks();
+          const normalizedTaskId = task_id.trim();
+          const exactTask = db.getTaskBoardTask(normalizedTaskId);
+          const prefixMatches = allTasks.filter(t => t.id.startsWith(normalizedTaskId));
+          const task = exactTask || (prefixMatches.length === 1 ? prefixMatches[0] : undefined);
+
+          if (!task && prefixMatches.length > 1) {
+            const candidates = prefixMatches.slice(0, 5).map(t => `${t.id.slice(0, 8)}(${t.title})`).join('、');
+            return {
+              content: [{ type: 'text' as const, text: `任务 ID 前缀不唯一: ${normalizedTaskId}，候选: ${candidates}` }]
+            };
+          }
+
           if (!task) {
-            return { content: [{ type: 'text' as const, text: `任务不存在: ${task_id}` }] };
+            return { content: [{ type: 'text' as const, text: `任务不存在: ${normalizedTaskId}` }] };
           }
           if (!TASK_STATUS_FLOW[task.status]?.includes(status)) {
-            return { content: [{ type: 'text' as const, text: `状态流转非法: ${task.status} -> ${status}` }] };
+            const allowed = TASK_STATUS_FLOW[task.status] || [];
+            const allowedLabel = allowed.length > 0
+              ? allowed.map(s => TASK_STATUS_LABEL[s] || s).join('、')
+              : '无（终态）';
+            return {
+              content: [{
+                type: 'text' as const,
+                text: `状态流转非法: ${TASK_STATUS_LABEL[task.status] || task.status} -> ${TASK_STATUS_LABEL[status] || status}。合法流转: ${allowedLabel}`
+              }]
+            };
           }
 
           const now = new Date().toISOString();
