@@ -49,6 +49,17 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
   };
   const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   const TASK_ID_HELP_TEXT = '请先调用 get_tasks 获取完整任务 ID（UUID）后重试。';
+  const requireAgent = (allowed: AgentRole[], action: string): void => {
+    if (allowed.includes(agentId)) return;
+    throw new Error(`权限不足：${action} 仅允许 ${allowed.join(' / ')}，当前为 ${agentId}`);
+  };
+  const ALLOWED_HANDOFF_TARGETS: Record<AgentRole, AgentRole[]> = {
+    game_designer: ['ceo'],
+    ceo: ['architect', 'biz_designer'],
+    architect: ['engineer'],
+    engineer: ['biz_designer'],
+    biz_designer: ['ceo']
+  };
 
   const server = createSdkMcpServer({
     name: 'studio-tools',
@@ -127,6 +138,10 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           priority: z.enum(['low', 'normal', 'high', 'urgent']).optional().default('normal').describe('任务优先级')
         },
         async ({ to_agent_id, title, description, context, priority }) => {
+          const allowedTargets = ALLOWED_HANDOFF_TARGETS[agentId] || [];
+          if (!allowedTargets.includes(to_agent_id)) {
+            throw new Error(`交接目标不合法：${agentId} 仅可移交给 ${allowedTargets.join(' / ') || '无'}`);
+          }
           const now = new Date().toISOString();
           const handoff = db.createHandoff({
             id: uuidv4(),
@@ -166,6 +181,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           priority_hint: z.enum(['low', 'normal', 'high', 'urgent']).optional().default('normal').describe('优先级提示（用于描述，不影响状态机）')
         },
         async ({ project_id, feature_title, development_description, testing_description, priority_hint }) => {
+          requireAgent(['engineer'], '拆分开发与测试任务');
           const targetProjectId = enforceProject(project_id);
           const now = new Date().toISOString();
           const devTask = db.createTaskBoardTask({
@@ -247,6 +263,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           status: z.enum(['todo', 'developing', 'testing', 'blocked', 'done']).describe('目标状态')
         },
         async ({ task_id, status }) => {
+          requireAgent(['engineer'], '更新任务看板状态');
           const normalizedTaskId = task_id.trim();
           if (!UUID_PATTERN.test(normalizedTaskId)) {
             return { content: [{ type: 'text' as const, text: `任务 ID 格式非法: ${normalizedTaskId}。${TASK_ID_HELP_TEXT}` }] };
@@ -308,6 +325,17 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           content: z.string().describe('提案的完整内容（Markdown 格式）')
         },
         async ({ project_id, type, title, content }) => {
+          if (type === 'game_design') {
+            requireAgent(['game_designer'], '提交游戏策划案');
+          } else if (type === 'biz_design') {
+            requireAgent(['biz_designer'], '提交商业策划案');
+          } else if (type === 'tech_arch') {
+            requireAgent(['architect'], '提交技术架构方案');
+          } else if (type === 'tech_impl') {
+            requireAgent(['engineer'], '提交技术实现方案');
+          } else if (type === 'ceo_review') {
+            requireAgent(['ceo'], '提交 CEO 评审结论');
+          }
           const targetProjectId = enforceProject(project_id);
           const now = new Date().toISOString();
           const proposal = db.createProposal({
@@ -350,6 +378,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           proposal_id: z.string().optional().describe('关联的策划案 ID（如果有）')
         },
         async ({ project_id, name, html_content, description, version, proposal_id }) => {
+          requireAgent(['engineer'], '提交游戏成品');
           const targetProjectId = enforceProject(project_id);
           const now = new Date().toISOString();
           const game = db.createGame({

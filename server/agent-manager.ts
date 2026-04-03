@@ -42,6 +42,7 @@ class AgentManager extends EventEmitter {
     timestamp: number;
   }> = new Map();
   private pendingPermissionExpirations: Map<string, NodeJS.Timeout> = new Map();
+  private activeAgentStreamsByProject: Map<string, Map<AgentRole, string>> = new Map();
 
   constructor() {
     super();
@@ -62,6 +63,7 @@ class AgentManager extends EventEmitter {
 
     const projectStates: Map<AgentRole, AgentState> = new Map();
     const projectPausedSet: Set<AgentRole> = new Set();
+    const projectActiveStreams: Map<AgentRole, string> = new Map();
 
     const agentIds: AgentRole[] = ['engineer', 'architect', 'game_designer', 'biz_designer', 'ceo'];
     for (const agentId of agentIds) {
@@ -89,6 +91,7 @@ class AgentManager extends EventEmitter {
     }
     this.agentStatesByProject.set(scopedProjectId, projectStates);
     this.pausedAgentsByProject.set(scopedProjectId, projectPausedSet);
+    this.activeAgentStreamsByProject.set(scopedProjectId, projectActiveStreams);
   }
 
   getAgentState(projectId: string, agentId: AgentRole): AgentState {
@@ -286,11 +289,18 @@ class AgentManager extends EventEmitter {
     if (this.isAgentPaused(scopedProjectId, agentId)) {
       throw new Error(`Agent ${agentId} 当前已暂停，无法接受任务`);
     }
+    this.ensureProjectState(scopedProjectId);
+    const projectActiveStreams = this.activeAgentStreamsByProject.get(scopedProjectId)!;
+    const existingStreamId = projectActiveStreams.get(agentId);
+    if (existingStreamId) {
+      throw new Error(`Agent ${agentId} 正在执行其他任务，请稍后重试`);
+    }
 
     const agentDef = AGENT_DEFINITIONS[agentId];
     if (!agentDef) throw new Error(`未知的 Agent: ${agentId}`);
 
     const streamId = uuidv4();
+    projectActiveStreams.set(agentId, streamId);
     this.updateAgentState(scopedProjectId, agentId, {
       status: 'working',
       currentTask: message.slice(0, 100),
@@ -544,6 +554,10 @@ class AgentManager extends EventEmitter {
       throw error;
     } finally {
       this.activeStreams.delete(streamId);
+      const current = this.activeAgentStreamsByProject.get(scopedProjectId)?.get(agentId);
+      if (current === streamId) {
+        this.activeAgentStreamsByProject.get(scopedProjectId)?.delete(agentId);
+      }
     }
 
     return fullResponse;
