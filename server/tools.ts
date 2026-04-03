@@ -23,8 +23,16 @@ type ToolLogFn = (agentId: AgentRole, action: string, detail: string, level: 'in
  * @param agentId - 当前 Agent 的角色 ID，用于标识操作来源
  * @param logFn - 日志记录函数
  */
-export function createStudioToolsServer(agentId: AgentRole, logFn?: ToolLogFn): SdkMcpServerResult {
+export function createStudioToolsServer(projectId: string, agentId: AgentRole, logFn?: ToolLogFn): SdkMcpServerResult {
   const log = logFn || (() => {});
+  const scopedProjectId = (projectId || 'default').trim() || 'default';
+  const enforceProject = (requested?: string): string => {
+    const normalized = (requested || scopedProjectId).trim() || scopedProjectId;
+    if (normalized !== scopedProjectId) {
+      throw new Error(`禁止跨项目操作：当前项目为 ${scopedProjectId}，请求项目为 ${normalized}`);
+    }
+    return scopedProjectId;
+  };
   const TASK_STATUS_FLOW: Record<string, string[]> = {
     todo: ['developing', 'blocked'],
     developing: ['testing', 'blocked'],
@@ -63,6 +71,7 @@ export function createStudioToolsServer(agentId: AgentRole, logFn?: ToolLogFn): 
           const now = new Date().toISOString();
           const memory = db.createAgentMemory({
             id: uuidv4(),
+            project_id: scopedProjectId,
             agent_id: agentId,
             category,
             content,
@@ -86,7 +95,7 @@ export function createStudioToolsServer(agentId: AgentRole, logFn?: ToolLogFn): 
           limit: z.number().min(1).max(50).optional().default(20).describe('返回条数上限')
         },
         async ({ category, limit }) => {
-          const memories = db.getAgentMemories(agentId, category, limit || 20);
+          const memories = db.getAgentMemories(scopedProjectId, agentId, category, limit || 20);
           if (memories.length === 0) {
             return {
               content: [{ type: 'text' as const, text: '暂无保存的记忆。' }]
@@ -121,6 +130,7 @@ export function createStudioToolsServer(agentId: AgentRole, logFn?: ToolLogFn): 
           const now = new Date().toISOString();
           const handoff = db.createHandoff({
             id: uuidv4(),
+            project_id: scopedProjectId,
             from_agent_id: agentId,
             to_agent_id,
             title,
@@ -135,7 +145,7 @@ export function createStudioToolsServer(agentId: AgentRole, logFn?: ToolLogFn): 
             created_at: now,
             updated_at: now,
           });
-          sseBroadcaster.broadcast({ type: 'handoff_created', handoff });
+          sseBroadcaster.broadcast({ type: 'handoff_created', handoff }, scopedProjectId);
           log(agentId, '创建交接', `${agentId} → ${to_agent_id}: ${title}`, 'success');
           return {
             content: [{ type: 'text' as const, text: `交接已创建 (ID: ${handoff.id.slice(0, 8)})，等待管理者确认后 ${to_agent_id} 才会开始工作。` }]
@@ -156,10 +166,11 @@ export function createStudioToolsServer(agentId: AgentRole, logFn?: ToolLogFn): 
           priority_hint: z.enum(['low', 'normal', 'high', 'urgent']).optional().default('normal').describe('优先级提示（用于描述，不影响状态机）')
         },
         async ({ project_id, feature_title, development_description, testing_description, priority_hint }) => {
+          const targetProjectId = enforceProject(project_id);
           const now = new Date().toISOString();
           const devTask = db.createTaskBoardTask({
             id: uuidv4(),
-            project_id: project_id || 'default',
+            project_id: targetProjectId,
             title: `开发：${feature_title}`,
             description: `[优先级:${priority_hint || 'normal'}] ${development_description}`,
             task_type: 'development',
@@ -175,7 +186,7 @@ export function createStudioToolsServer(agentId: AgentRole, logFn?: ToolLogFn): 
 
           const testTask = db.createTaskBoardTask({
             id: uuidv4(),
-            project_id: project_id || 'default',
+            project_id: targetProjectId,
             title: `测试：${feature_title}`,
             description: testing_description || `验证“${feature_title}”功能正确性与回归影响，覆盖功能、边界和异常路径。`,
             task_type: 'testing',
@@ -189,8 +200,8 @@ export function createStudioToolsServer(agentId: AgentRole, logFn?: ToolLogFn): 
             updated_at: now
           });
 
-          sseBroadcaster.broadcast({ type: 'task_created', task: devTask });
-          sseBroadcaster.broadcast({ type: 'task_created', task: testTask });
+          sseBroadcaster.broadcast({ type: 'task_created', task: devTask }, targetProjectId);
+          sseBroadcaster.broadcast({ type: 'task_created', task: testTask }, targetProjectId);
           log(agentId, '拆分任务看板', `${feature_title} -> 开发+测试`, 'success');
 
           return {
@@ -212,7 +223,8 @@ export function createStudioToolsServer(agentId: AgentRole, logFn?: ToolLogFn): 
           limit: z.number().min(1).max(100).optional().default(20).describe('返回条数上限')
         },
         async ({ project_id, status, task_type, limit }) => {
-          let tasks = db.getTaskBoardTasks(project_id || undefined);
+          const targetProjectId = enforceProject(project_id);
+          let tasks = db.getTaskBoardTasks(targetProjectId);
           if (status) tasks = tasks.filter(t => t.status === status);
           if (task_type) tasks = tasks.filter(t => t.task_type === task_type);
           tasks = tasks.slice(0, limit || 20);
@@ -273,7 +285,7 @@ export function createStudioToolsServer(agentId: AgentRole, logFn?: ToolLogFn): 
             return { content: [{ type: 'text' as const, text: `任务状态更新失败: ${task_id}` }] };
           }
           const updated = db.getTaskBoardTask(task.id)!;
-          sseBroadcaster.broadcast({ type: 'task_updated', task: updated });
+          sseBroadcaster.broadcast({ type: 'task_updated', task: updated }, task.project_id);
           log(agentId, '维护任务状态', `${task.title}: ${task.status} -> ${status}`, 'success');
 
           return {
@@ -296,10 +308,11 @@ export function createStudioToolsServer(agentId: AgentRole, logFn?: ToolLogFn): 
           content: z.string().describe('提案的完整内容（Markdown 格式）')
         },
         async ({ project_id, type, title, content }) => {
+          const targetProjectId = enforceProject(project_id);
           const now = new Date().toISOString();
           const proposal = db.createProposal({
             id: uuidv4(),
-            project_id: project_id || 'default',
+            project_id: targetProjectId,
             type,
             title,
             content,
@@ -315,7 +328,7 @@ export function createStudioToolsServer(agentId: AgentRole, logFn?: ToolLogFn): 
             updated_at: now
           });
           const filePath = db.saveProposalToFile(proposal);
-          sseBroadcaster.broadcast({ type: 'proposal_created', proposal, filePath });
+          sseBroadcaster.broadcast({ type: 'proposal_created', proposal, filePath }, targetProjectId);
           log(agentId, '提交提案', `提案: ${title}${filePath ? ' → 已保存' : ''}`, 'success');
           return {
             content: [{ type: 'text' as const, text: `提案已提交 (ID: ${proposal.id.slice(0, 8)})，等待审批。` }]
@@ -337,10 +350,11 @@ export function createStudioToolsServer(agentId: AgentRole, logFn?: ToolLogFn): 
           proposal_id: z.string().optional().describe('关联的策划案 ID（如果有）')
         },
         async ({ project_id, name, html_content, description, version, proposal_id }) => {
+          const targetProjectId = enforceProject(project_id);
           const now = new Date().toISOString();
           const game = db.createGame({
             id: uuidv4(),
-            project_id: project_id || 'default',
+            project_id: targetProjectId,
             name,
             description: description || null,
             html_content,
@@ -352,7 +366,7 @@ export function createStudioToolsServer(agentId: AgentRole, logFn?: ToolLogFn): 
             updated_at: now
           });
           const filePath = db.saveGameToFile(game);
-          sseBroadcaster.broadcast({ type: 'game_submitted', game: { ...game, html_content: undefined as any, hasContent: true }, filePath });
+          sseBroadcaster.broadcast({ type: 'game_submitted', game: { ...game, html_content: undefined as any, hasContent: true }, filePath }, targetProjectId);
           log(agentId, '提交游戏', `游戏: ${name} v${version || '1.0.0'}${filePath ? ' → 已保存' : ''}`, 'success');
           return {
             content: [{ type: 'text' as const, text: `游戏已提交 (ID: ${game.id.slice(0, 8)})，名称: ${name}，版本: ${version || '1.0.0'}。` }]
@@ -370,7 +384,7 @@ export function createStudioToolsServer(agentId: AgentRole, logFn?: ToolLogFn): 
           limit: z.number().min(1).max(50).optional().default(10).describe('返回条数上限')
         },
         async ({ status, limit }) => {
-          let proposals = db.getAllProposals();
+          let proposals = db.getAllProposals().filter(p => p.project_id === scopedProjectId);
           if (status) {
             proposals = proposals.filter(p => p.status === status);
           }
@@ -396,7 +410,7 @@ export function createStudioToolsServer(agentId: AgentRole, logFn?: ToolLogFn): 
           limit: z.number().min(1).max(20).optional().default(5).describe('返回条数上限')
         },
         async ({ limit }) => {
-          const handoffs = db.getPendingHandoffs(agentId);
+          const handoffs = db.getPendingHandoffs(scopedProjectId, agentId);
           const relevant = handoffs.slice(0, limit || 5);
           if (relevant.length === 0) {
             return {
@@ -420,8 +434,8 @@ export function createStudioToolsServer(agentId: AgentRole, logFn?: ToolLogFn): 
 /**
  * 获取 Agent 的记忆摘要，用于注入到 systemPrompt
  */
-export function getMemorySummaryForPrompt(agentId: AgentRole): string {
-  const memories = db.getAgentMemories(agentId, undefined, 20);
+export function getMemorySummaryForPrompt(projectId: string, agentId: AgentRole): string {
+  const memories = db.getAgentMemories(projectId, agentId, undefined, 20);
   if (memories.length === 0) return '';
 
   const summary = memories.map(m =>

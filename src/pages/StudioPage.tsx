@@ -31,6 +31,8 @@ export default function StudioPage() {
   const [tasks, setTasks] = useState<TaskBoardTask[]>([]);
   const [projects, setProjects] = useState<ProjectInfo[]>([{ id: DEFAULT_PROJECT_ID, name: DEFAULT_PROJECT_ID }]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>(DEFAULT_PROJECT_ID);
+  const [newProjectName, setNewProjectName] = useState('');
+  const [creatingProject, setCreatingProject] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
   const [commandModel, setCommandModel] = useState<string>('glm-5.0');
   const handleCommandModelChange = useCallback((model: string) => {
@@ -199,8 +201,8 @@ export default function StudioPage() {
 
   // 加载 Agents
   useEffect(() => {
-    api.getAgents().then(data => setAgents(data.agents || []));
-  }, []);
+    api.getAgents(selectedProjectId).then(data => setAgents(data.agents || []));
+  }, [selectedProjectId]);
 
   useEffect(() => {
     api.getProjects().then(data => {
@@ -230,7 +232,7 @@ export default function StudioPage() {
 
   // 处理权限响应
   const handlePermissionResponse = async (requestId: string, behavior: 'allow' | 'deny') => {
-    await api.respondPermission(requestId, behavior);
+    await api.respondPermission(requestId, behavior, undefined, selectedProjectId);
     setPendingPermissions(prev => prev.filter(p => p.requestId !== requestId));
   };
 
@@ -239,9 +241,9 @@ export default function StudioPage() {
     const agent = agents.find(a => a.id === agentId);
     if (!agent) return;
     if (agent.state.isPaused) {
-      await api.resumeAgent(agentId);
+      await api.resumeAgent(agentId, selectedProjectId);
     } else {
-      await api.pauseAgent(agentId);
+      await api.pauseAgent(agentId, selectedProjectId);
     }
     // 状态会通过 SSE 更新
   };
@@ -317,6 +319,19 @@ export default function StudioPage() {
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
             </select>
+            <input
+              value={newProjectName}
+              onChange={e => setNewProjectName(e.target.value)}
+              placeholder="新建项目名"
+              className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-gray-200 w-28"
+            />
+            <button
+              onClick={handleCreateProject}
+              disabled={!newProjectName.trim() || creatingProject}
+              className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded px-2 py-1"
+            >
+              {creatingProject ? '创建中' : '新建'}
+            </button>
           </div>
           <div className={`flex items-center gap-1.5 text-xs ${connected ? 'text-green-400' : 'text-red-400'}`}>
             <span className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-green-400' : 'bg-red-400'} ${connected ? '' : 'animate-pulse'}`} />
@@ -519,11 +534,11 @@ export default function StudioPage() {
         )}
 
         {activeTab === 'logs' && (
-          <LogPanel logs={logs} agents={agents} />
+          <LogPanel logs={logs} agents={agents} projectId={selectedProjectId} />
         )}
 
         {activeTab === 'handoffs' && (
-          <HandoffPanel agents={agents} />
+          <HandoffPanel agents={agents} projectId={selectedProjectId} />
         )}
 
         {activeTab === 'tasks' && (
@@ -548,6 +563,7 @@ export default function StudioPage() {
         {activeTab === 'commands' && (
           <CommandPanel
             agents={agents}
+            projectId={selectedProjectId}
             model={commandModel}
             onModelChange={handleCommandModelChange}
             onCommandSent={() => {}}
@@ -600,3 +616,23 @@ function formatToolValue(value: any): string {
   if (typeof value === 'object') return JSON.stringify(value, null, 2);
   return String(value);
 }
+  const handleCreateProject = async () => {
+    const name = newProjectName.trim();
+    if (!name || creatingProject) return;
+    setCreatingProject(true);
+    try {
+      const id = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9_-]/g, '') || DEFAULT_PROJECT_ID;
+      const data = await api.createProject({ id, name });
+      const project = data.project as ProjectInfo | undefined;
+      if (project) {
+        setProjects(prev => {
+          if (prev.find(p => p.id === project.id)) return prev;
+          return [...prev, project];
+        });
+        setSelectedProjectId(project.id);
+      }
+      setNewProjectName('');
+    } finally {
+      setCreatingProject(false);
+    }
+  };

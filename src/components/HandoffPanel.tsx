@@ -4,6 +4,7 @@ import { api, API_BASE } from '../config';
 
 interface Props {
   agents: Agent[];
+  projectId: string;
 }
 
 const STATUS_CONFIG: Record<HandoffStatus, { label: string; color: string; bg: string; icon: string }> = {
@@ -32,7 +33,7 @@ function getAgentName(agents: Agent[], agentId: string): string {
   return agent ? agent.name : agentId;
 }
 
-export default function HandoffPanel({ agents }: Props) {
+export default function HandoffPanel({ agents, projectId }: Props) {
   const [handoffs, setHandoffs] = useState<Handoff[]>([]);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -50,7 +51,7 @@ export default function HandoffPanel({ agents }: Props) {
 
   const loadHandoffs = async () => {
     try {
-      const data = await api.getHandoffs();
+      const data = await api.getHandoffs(projectId);
       if (Array.isArray(data)) {
         setHandoffs(data);
       } else if (data.handoffs) {
@@ -61,13 +62,14 @@ export default function HandoffPanel({ agents }: Props) {
 
   useEffect(() => {
     loadHandoffs();
-  }, []);
+  }, [projectId]);
 
   const handleCreateHandoff = async () => {
     if (!formTitle.trim() || !formDesc.trim()) return;
     setSubmitting(true);
     try {
       await api.createHandoff({
+        project_id: projectId,
         from_agent_id: formFrom,
         to_agent_id: formTo,
         title: formTitle.trim(),
@@ -95,7 +97,11 @@ export default function HandoffPanel({ agents }: Props) {
   const handleConfirm = async (id: string) => {
     setConfirmingId(id);
     try {
-      await fetch(`${API_BASE}/api/handoffs/${id}/confirm`, { method: 'POST' }).then(r => r.json());
+      await fetch(`${API_BASE}/api/handoffs/${id}/confirm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId })
+      }).then(r => r.json());
       loadHandoffs();
     } catch (e) {
       console.error('确认交接失败:', e);
