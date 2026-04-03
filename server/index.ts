@@ -459,7 +459,26 @@ app.post('/api/handoffs/:id/accept', (req, res) => {
   if (!handoff) return res.status(404).json({ error: '交接记录不存在' });
   const settings = db.getProjectSettings(handoff.project_id);
   if (settings.auto_handoff_enabled === 1) {
-    return res.status(400).json({ error: '当前项目已开启自动交接，无需手动接收' });
+    if (handoff.status !== 'pending') {
+      return res.status(400).json({ error: '当前项目已开启自动交接，无需手动接收' });
+    }
+
+    const now = new Date().toISOString();
+    db.updateHandoff(id, { status: 'working', accepted_at: now });
+    const updated = db.getHandoff(id)!;
+
+    sseBroadcaster.broadcast({ type: 'handoff_updated', handoff: updated }, handoff.project_id);
+    agentManager.addLog(handoff.project_id, handoff.to_agent_id as AgentRole, '兼容处理：自动接收自动交接开启前历史待处理交接', `从 ${handoff.from_agent_id} 接手: ${handoff.title}`, 'success');
+
+    agentManager.sendMessage(
+      handoff.project_id,
+      handoff.to_agent_id as AgentRole,
+      `【任务交接】你收到了来自 ${handoff.from_agent_id} 的任务交接。\n\n## 任务标题\n${handoff.title}\n\n## 任务描述\n${handoff.description}\n\n${handoff.context ? `## 上下文信息\n${handoff.context}\n\n` : ''}请按照上述要求完成任务。完成后请提交相关成果。`
+    ).catch(error => {
+      agentManager.addLog(handoff.project_id, handoff.to_agent_id as AgentRole, '交接任务执行失败', error?.message || String(error), 'error');
+    });
+
+    return res.json({ handoff: updated });
   }
   if (handoff.status !== 'pending') {
     return res.status(400).json({ error: `交接状态不是待处理，当前状态: ${handoff.status}` });

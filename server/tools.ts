@@ -143,6 +143,8 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
             throw new Error(`交接目标不合法：${agentId} 仅可移交给 ${allowedTargets.join(' / ') || '无'}`);
           }
           const now = new Date().toISOString();
+          const settings = db.getProjectSettings(scopedProjectId);
+          const autoHandoffEnabled = settings.auto_handoff_enabled === 1;
           const handoff = db.createHandoff({
             id: uuidv4(),
             project_id: scopedProjectId,
@@ -151,10 +153,10 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
             title,
             description,
             context: context || null,
-            status: 'pending',
+            status: autoHandoffEnabled ? 'working' : 'pending',
             priority: priority || 'normal',
             result: null,
-            accepted_at: null,
+            accepted_at: autoHandoffEnabled ? now : null,
             completed_at: null,
             source_command_id: null,
             created_at: now,
@@ -163,7 +165,12 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           sseBroadcaster.broadcast({ type: 'handoff_created', handoff }, scopedProjectId);
           log(agentId, '创建交接', `${agentId} → ${to_agent_id}: ${title}`, 'success');
           return {
-            content: [{ type: 'text' as const, text: `交接已创建 (ID: ${handoff.id.slice(0, 8)})，等待管理者确认后 ${to_agent_id} 才会开始工作。` }]
+            content: [{
+              type: 'text' as const,
+              text: autoHandoffEnabled
+                ? `交接已创建并自动接收 (ID: ${handoff.id})，${to_agent_id} 已进入执行状态。`
+                : `交接已创建 (ID: ${handoff.id})，等待管理者确认后 ${to_agent_id} 才会开始工作。`
+            }]
           };
         }
       ),
