@@ -260,12 +260,16 @@ app.get('/api/projects', (req, res) => {
 });
 
 app.post('/api/projects', (req, res) => {
-  const projectId = normalizeProjectId(req.body?.id);
+  const requestedId = typeof req.body?.id === 'string' ? req.body.id.trim() : '';
+  const projectId = normalizeProjectId(requestedId);
+  if (!requestedId || projectId === DEFAULT_PROJECT_ID) {
+    return res.status(400).json({ error: '项目ID不合法，请使用字母数字下划线或短横线，且不能与默认项目冲突' });
+  }
   const nameRaw = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
   const name = nameRaw || projectId;
   const existing = db.getProject(projectId);
   if (existing) {
-    return res.status(409).json({ error: '项目已存在', project: existing });
+    return res.status(409).json({ error: '项目已存在' });
   }
   const now = new Date().toISOString();
   const project = db.createProject({ id: projectId, name, created_at: now, updated_at: now });
@@ -306,7 +310,8 @@ app.patch('/api/games/:id', (req, res) => {
   if (!success) return res.status(404).json({ error: '游戏不存在' });
 
   const game = db.getGame(id);
-  sseBroadcaster.broadcast({ type: 'game_updated', game: { ...game, html_content: undefined } }, game?.project_id);
+  if (!game) return res.status(500).json({ error: '游戏更新后读取失败' });
+  sseBroadcaster.broadcast({ type: 'game_updated', game: { ...game, html_content: undefined } }, game.project_id);
   res.json({ success: true, game: { ...game, html_content: undefined } });
 });
 

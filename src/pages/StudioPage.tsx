@@ -32,6 +32,7 @@ export default function StudioPage() {
   const [projects, setProjects] = useState<ProjectInfo[]>([{ id: DEFAULT_PROJECT_ID, name: DEFAULT_PROJECT_ID }]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>(DEFAULT_PROJECT_ID);
   const [newProjectName, setNewProjectName] = useState('');
+  const [projectError, setProjectError] = useState<string | null>(null);
   const [creatingProject, setCreatingProject] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
   const [commandModel, setCommandModel] = useState<string>('glm-5.0');
@@ -251,10 +252,23 @@ export default function StudioPage() {
   const handleCreateProject = async () => {
     const name = newProjectName.trim();
     if (!name || creatingProject) return;
+    setProjectError(null);
     setCreatingProject(true);
     try {
-      const id = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9_-]/g, '') || DEFAULT_PROJECT_ID;
+      const id = name.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64);
+      if (!id) {
+        setProjectError('项目名无效，请使用字母数字下划线或短横线。');
+        return;
+      }
+      if (id === DEFAULT_PROJECT_ID) {
+        setProjectError('不能创建与默认项目同名的项目。');
+        return;
+      }
       const data = await api.createProject({ id, name });
+      if (data?.error) {
+        setProjectError(data.error);
+        return;
+      }
       const project = data.project as ProjectInfo | undefined;
       if (project) {
         setProjects(prev => {
@@ -353,6 +367,9 @@ export default function StudioPage() {
             >
               {creatingProject ? '创建中' : '新建'}
             </button>
+            {projectError && (
+              <span className="text-red-400">{projectError}</span>
+            )}
           </div>
           <div className={`flex items-center gap-1.5 text-xs ${connected ? 'text-green-400' : 'text-red-400'}`}>
             <span className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-green-400' : 'bg-red-400'} ${connected ? '' : 'animate-pulse'}`} />

@@ -41,6 +41,7 @@ class AgentManager extends EventEmitter {
     agentId: AgentRole;
     timestamp: number;
   }> = new Map();
+  private pendingPermissionExpirations: Map<string, NodeJS.Timeout> = new Map();
 
   constructor() {
     super();
@@ -49,8 +50,10 @@ class AgentManager extends EventEmitter {
   }
 
   private normalizeProjectId(projectId?: string): string {
-    const normalized = (projectId || 'default').trim();
-    return normalized || 'default';
+    const raw = (projectId || 'default').trim();
+    if (!raw) return 'default';
+    if (!/^[a-zA-Z0-9_-]{1,64}$/.test(raw)) return 'default';
+    return raw;
   }
 
   private ensureProjectState(projectId: string): void {
@@ -380,11 +383,23 @@ class AgentManager extends EventEmitter {
           this.pendingPermissions.set(requestId, {
             resolve, reject, toolName, input, projectId: scopedProjectId, agentId, timestamp: Date.now()
           });
+          if (this.pendingPermissionExpirations.has(requestId)) {
+            clearTimeout(this.pendingPermissionExpirations.get(requestId)!);
+            this.pendingPermissionExpirations.delete(requestId);
+          }
+          const timer = setTimeout(() => {
+            const pending = this.pendingPermissions.get(requestId);
+            if (!pending) return;
+            this.pendingPermissions.delete(requestId);
+            this.pendingPermissionExpirations.delete(requestId);
+            pending.resolve({ behavior: 'deny', message: '权限请求已过期（24小时），请重新发起' });
+          }, 24 * 60 * 60 * 1000);
+          this.pendingPermissionExpirations.set(requestId, timer);
         });
       };
 
       const sdkSessionId = agentDbSession.sdk_session_id;
-      const outputDir = path.resolve(process.cwd(), 'output', scopedProjectId);
+      const outputDir = path.resolve(process.cwd(), 'output');
       if (!fs.existsSync(outputDir)) {
         fs.mkdirSync(outputDir, { recursive: true });
       }
@@ -544,6 +559,11 @@ class AgentManager extends EventEmitter {
       return false;
     }
     this.pendingPermissions.delete(requestId);
+    const timer = this.pendingPermissionExpirations.get(requestId);
+    if (timer) {
+      clearTimeout(timer);
+      this.pendingPermissionExpirations.delete(requestId);
+    }
     if (behavior === 'allow') {
       pending.resolve({ behavior: 'allow', updatedInput: pending.input });
     } else {

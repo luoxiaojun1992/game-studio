@@ -186,8 +186,20 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_task_board_project ON task_board_tasks(project_id);
 `);
 
-function hasColumn(tableName: string, columnName: string): boolean {
-  const pragmaSql = `PRAGMA table_info(${tableName})`;
+function hasColumn(tableName: 'proposals' | 'games' | 'agent_sessions' | 'agent_logs' | 'commands' | 'handoffs' | 'agent_memories', columnName: string): boolean {
+  const pragmaSql = tableName === 'proposals'
+    ? 'PRAGMA table_info(proposals)'
+    : tableName === 'games'
+      ? 'PRAGMA table_info(games)'
+      : tableName === 'agent_sessions'
+        ? 'PRAGMA table_info(agent_sessions)'
+        : tableName === 'agent_logs'
+          ? 'PRAGMA table_info(agent_logs)'
+          : tableName === 'commands'
+            ? 'PRAGMA table_info(commands)'
+            : tableName === 'handoffs'
+              ? 'PRAGMA table_info(handoffs)'
+              : 'PRAGMA table_info(agent_memories)';
   const rows = db.prepare(pragmaSql).all() as Array<{ name: string }>;
   return rows.some(row => row.name === columnName);
 }
@@ -206,13 +218,17 @@ function ensureProjectColumns(): void {
 ensureProjectColumns();
 
 function ensureProjectIsolationColumns(): void {
-  const tables = ['agent_sessions', 'agent_logs', 'commands', 'handoffs', 'agent_memories'] as const;
-  for (const table of tables) {
-    if (!hasColumn(table, 'project_id')) {
-      db.exec(`ALTER TABLE ${table} ADD COLUMN project_id TEXT NOT NULL DEFAULT 'default';`);
-    }
-    db.exec(`UPDATE ${table} SET project_id = 'default' WHERE project_id IS NULL OR project_id = '';`);
-  }
+  if (!hasColumn('agent_sessions', 'project_id')) db.exec(`ALTER TABLE agent_sessions ADD COLUMN project_id TEXT NOT NULL DEFAULT 'default';`);
+  if (!hasColumn('agent_logs', 'project_id')) db.exec(`ALTER TABLE agent_logs ADD COLUMN project_id TEXT NOT NULL DEFAULT 'default';`);
+  if (!hasColumn('commands', 'project_id')) db.exec(`ALTER TABLE commands ADD COLUMN project_id TEXT NOT NULL DEFAULT 'default';`);
+  if (!hasColumn('handoffs', 'project_id')) db.exec(`ALTER TABLE handoffs ADD COLUMN project_id TEXT NOT NULL DEFAULT 'default';`);
+  if (!hasColumn('agent_memories', 'project_id')) db.exec(`ALTER TABLE agent_memories ADD COLUMN project_id TEXT NOT NULL DEFAULT 'default';`);
+
+  db.exec(`UPDATE agent_sessions SET project_id = 'default' WHERE project_id IS NULL OR project_id = '';`);
+  db.exec(`UPDATE agent_logs SET project_id = 'default' WHERE project_id IS NULL OR project_id = '';`);
+  db.exec(`UPDATE commands SET project_id = 'default' WHERE project_id IS NULL OR project_id = '';`);
+  db.exec(`UPDATE handoffs SET project_id = 'default' WHERE project_id IS NULL OR project_id = '';`);
+  db.exec(`UPDATE agent_memories SET project_id = 'default' WHERE project_id IS NULL OR project_id = '';`);
 }
 
 ensureProjectIsolationColumns();
@@ -358,10 +374,10 @@ export function upsertAgentSession(session: DbAgentSession): DbAgentSession {
   if (existing) {
     const stmt = db.prepare(`
       UPDATE agent_sessions SET
-        sdk_session_id = ?, status = ?, current_task = ?, updated_at = ?, project_id = ?
+        sdk_session_id = ?, status = ?, current_task = ?, updated_at = ?
       WHERE id = ?
     `);
-    stmt.run(session.sdk_session_id, session.status, session.current_task, new Date().toISOString(), session.project_id, existing.id);
+    stmt.run(session.sdk_session_id, session.status, session.current_task, new Date().toISOString(), existing.id);
     return { ...existing, ...session, id: existing.id };
   } else {
     const stmt = db.prepare(`
