@@ -280,6 +280,22 @@ class AgentManager extends EventEmitter {
     return `检测到软件工程师仍有未完成看板任务，禁止直接结束并转空闲。请先调用 get_tasks / update_task_status 完成状态流转后重试。未完成任务示例：${sample}${unfinished.length > 3 ? '；等' : ''}`;
   }
 
+  private buildHandoffTaskMessage(handoff: db.DbHandoff): string {
+    return `【任务交接】你收到了来自 ${handoff.from_agent_id} 的任务交接。\n\n## 任务标题\n${handoff.title}\n\n## 任务描述\n${handoff.description}\n\n${handoff.context ? `## 上下文信息\n${handoff.context}\n\n` : ''}请按照上述要求完成任务。完成后请提交相关成果。`;
+  }
+
+  private dispatchAutoHandoffTask(handoff: db.DbHandoff): void {
+    this.addLog(handoff.project_id, handoff.to_agent_id as AgentRole, '自动接收交接', `从 ${handoff.from_agent_id} 接手: ${handoff.title}`, 'success');
+    this.addLog(handoff.project_id, handoff.to_agent_id as AgentRole, '开始执行交接任务', `${handoff.title}`, 'success');
+    this.sendMessage(
+      handoff.project_id,
+      handoff.to_agent_id as AgentRole,
+      this.buildHandoffTaskMessage(handoff)
+    ).catch((error: any) => {
+      this.addLog(handoff.project_id, handoff.to_agent_id as AgentRole, '交接任务执行失败', error?.message || String(error), 'error');
+    });
+  }
+
   /**
    * 构建完整的 systemPrompt，注入长期记忆
    */
@@ -326,6 +342,16 @@ class AgentManager extends EventEmitter {
 
     const abortController = new AbortController();
     this.activeStreams.set(streamId, { projectId: scopedProjectId, agentId, abortController });
+    let streamReleased = false;
+    const releaseActiveStream = () => {
+      if (streamReleased) return;
+      this.activeStreams.delete(streamId);
+      const current = this.activeAgentStreamsByProject.get(scopedProjectId)?.get(agentId);
+      if (current === streamId) {
+        this.activeAgentStreamsByProject.get(scopedProjectId)?.delete(agentId);
+      }
+      streamReleased = true;
+    };
 
     // 获取或创建 Agent 的数据库会话
     let agentDbSession = db.getAgentSession(scopedProjectId, agentId);
@@ -368,17 +394,7 @@ class AgentManager extends EventEmitter {
           this.addLog(scopedProjectId, aid, action, detail, level);
         },
         async (handoff) => {
-          this.addLog(handoff.project_id, handoff.to_agent_id as AgentRole, '自动接收交接', `从 ${handoff.from_agent_id} 接手: ${handoff.title}`, 'success');
-          this.addLog(handoff.project_id, handoff.to_agent_id as AgentRole, '开始执行交接任务', `${handoff.title}`, 'success');
-          try {
-            await this.sendMessage(
-              handoff.project_id,
-              handoff.to_agent_id as AgentRole,
-              `【任务交接】你收到了来自 ${handoff.from_agent_id} 的任务交接。\n\n## 任务标题\n${handoff.title}\n\n## 任务描述\n${handoff.description}\n\n${handoff.context ? `## 上下文信息\n${handoff.context}\n\n` : ''}请按照上述要求完成任务。完成后请提交相关成果。`
-            );
-          } catch (error: any) {
-            throw new Error(`下发交接任务给 ${handoff.to_agent_id} 失败: ${error?.message || String(error)}`);
-          }
+          this.dispatchAutoHandoffTask(handoff);
         }
       );
 
@@ -394,16 +410,30 @@ class AgentManager extends EventEmitter {
       const CAN_AUTO_ALLOW = [
         'save_memory',
         'get_memories',
+        'get_proposal',
         'get_proposals',
+        'get_handoff',
+        'get_handoffs',
         'get_pending_handoffs',
+        'get_task',
         'get_tasks',
         ...(autoHandoffEnabled ? ['create_handoff'] : []),
         ...(agentId === 'engineer' ? ['split_dev_test_tasks', 'update_task_status'] : [])
       ];
+      const STUDIO_TOOL_PREFIX = 'mcp__studio-tools__';
+      const STUDIO_TOOL_NAMES = new Set<string>([
+        'create_handoff',
+        'split_dev_test_tasks',
+        'update_task_status',
+        'submit_proposal',
+        'submit_game'
+      ]);
 
       const canUseTool: CanUseTool = async (toolName, input, options) => {
-        if (toolName.startsWith('mcp__studio-tools__')) {
-          const actualTool = toolName.replace('mcp__studio-tools__', '');
+        const hasStudioPrefix = toolName.startsWith(STUDIO_TOOL_PREFIX);
+        const actualTool = hasStudioPrefix ? toolName.replace(STUDIO_TOOL_PREFIX, '') : toolName;
+        const isStudioTool = hasStudioPrefix || STUDIO_TOOL_NAMES.has(actualTool);
+        if (isStudioTool) {
           if (CAN_AUTO_ALLOW.includes(actualTool)) {
             return { behavior: 'allow', updatedInput: input };
           }
@@ -576,6 +606,7 @@ class AgentManager extends EventEmitter {
         }
       }
 
+      releaseActiveStream();
       this.updateAgentState(scopedProjectId, agentId, {
         status: 'idle',
         currentTask: null,
@@ -585,6 +616,7 @@ class AgentManager extends EventEmitter {
       this.addLog(scopedProjectId, agentId, '任务完成', `完成: ${message.slice(0, 100)}`, 'success');
 
     } catch (error: any) {
+      releaseActiveStream();
       this.updateAgentState(scopedProjectId, agentId, {
         status: 'error',
         currentTask: null,
@@ -597,11 +629,7 @@ class AgentManager extends EventEmitter {
       if (onEvent) onEvent(errorEvent);
       throw error;
     } finally {
-      this.activeStreams.delete(streamId);
-      const current = this.activeAgentStreamsByProject.get(scopedProjectId)?.get(agentId);
-      if (current === streamId) {
-        this.activeAgentStreamsByProject.get(scopedProjectId)?.delete(agentId);
-      }
+      releaseActiveStream();
     }
 
     return fullResponse;
