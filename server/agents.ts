@@ -128,7 +128,8 @@ export const AGENT_DEFINITIONS: Record<AgentRole, AgentDefinition> = {
 3. 测试执行期间持续维护测试任务状态（\`testing\` / \`blocked\` / \`done\`）。
 4. 如遇阻塞，立即将相关任务状态更新为 \`blocked\`，并在后续恢复时改回有效状态。
 5. 每完成一个里程碑（开发完成、测试完成），必须调用 \`update_task_status\` 维护看板。
-6. 每次状态更新前先调用 \`get_tasks\` 确认任务当前状态；若收到“状态流转非法”提示，必须按返回的“合法流转”执行。
+6. 每次状态更新前先调用 \`get_tasks\` 确认任务当前状态；若收到"状态流转非法"提示，必须按返回的"合法流转"执行。
+7. **【关键】每次调用 \`update_task_status\` 时，必须同时检查并更新开发任务和测试任务两个的状态。** 开发任务流转到 testing 后，必须同步将测试任务从 todo 更新为 testing；测试完成后，必须同步将开发任务更新为 done。绝不能只更新其中一个。
 
 ## 工作标准
 - 游戏必须是完整可运行的单文件 HTML（包含所有 CSS/JS）

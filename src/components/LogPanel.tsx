@@ -116,10 +116,10 @@ export default function LogPanel({ logs, agents, projectId }: Props) {
     return () => es.close();
   }, [projectId]);
 
-  // 自动滚动
+  // 自动滚动（最新日志在顶部，滚到顶部）
   useEffect(() => {
     if (autoScroll && containerRef.current) {
-      containerRef.current.scrollTop = containerRef.current.scrollHeight;
+      containerRef.current.scrollTop = 0;
     }
   }, [streamLogs, logs, autoScroll]);
 
@@ -188,13 +188,13 @@ export default function LogPanel({ logs, agents, projectId }: Props) {
         onScroll={() => {
           const el = containerRef.current;
           if (el) {
-            const isAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 50;
-            if (!isAtBottom && autoScroll) setAutoScroll(false);
+            // 最新日志在顶部，scrollTop 接近 0 时认为用户在看最新
+            if (el.scrollTop > 50 && autoScroll) setAutoScroll(false);
           }
         }}
       >
-        {/* 系统日志 */}
-        {filteredLogs.map(log => {
+        {/* 系统日志（反转，最新的在前面） */}
+        {[...filteredLogs].reverse().map(log => {
           const levelCfg = LEVEL_CONFIG[log.level] || LEVEL_CONFIG.info;
           const agentInfo = AGENT_NAMES[log.agent_id];
           const isExpanded = expandedLog === log.id;
@@ -225,8 +225,8 @@ export default function LogPanel({ logs, agents, projectId }: Props) {
           );
         })}
 
-        {/* 流式日志 */}
-        {filteredStreams.map(sl => {
+        {/* 流式日志（反转，最新的在前面） */}
+        {[...filteredStreams].reverse().map(sl => {
           const agentInfo = AGENT_NAMES[sl.agentId];
           const isExpanded = expandedLog === sl.id;
           const isLong = sl.content && sl.content.length > 300;
