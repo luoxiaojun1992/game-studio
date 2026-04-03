@@ -8,13 +8,28 @@ export const api = {
   checkLogin: () => fetch(`${API_BASE}/api/check-login`).then(r => r.json()),
 
   // Agent
-  getAgents: () => fetch(`${API_BASE}/api/agents`).then(r => r.json()),
-  getAgentMessages: (agentId: string) =>
-    fetch(`${API_BASE}/api/agents/${agentId}/messages`).then(r => r.json()),
-  pauseAgent: (agentId: string) =>
-    fetch(`${API_BASE}/api/agents/${agentId}/pause`, { method: 'POST' }).then(r => r.json()),
-  resumeAgent: (agentId: string) =>
-    fetch(`${API_BASE}/api/agents/${agentId}/resume`, { method: 'POST' }).then(r => r.json()),
+  getAgents: (projectId?: string) => {
+    const params = new URLSearchParams();
+    if (projectId) params.set('projectId', projectId);
+    return fetch(`${API_BASE}/api/agents?${params}`).then(r => r.json());
+  },
+  getAgentMessages: (agentId: string, projectId?: string) => {
+    const params = new URLSearchParams();
+    if (projectId) params.set('projectId', projectId);
+    return fetch(`${API_BASE}/api/agents/${agentId}/messages?${params}`).then(r => r.json());
+  },
+  pauseAgent: (agentId: string, projectId?: string) =>
+    fetch(`${API_BASE}/api/agents/${agentId}/pause`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ projectId })
+    }).then(r => r.json()),
+  resumeAgent: (agentId: string, projectId?: string) =>
+    fetch(`${API_BASE}/api/agents/${agentId}/resume`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ projectId })
+    }).then(r => r.json()),
 
   // 提案
   getProposals: (projectId?: string) => {
@@ -45,42 +60,55 @@ export const api = {
   getGame: (id: string) => fetch(`${API_BASE}/api/games/${id}`).then(r => r.json()),
   getGamePreviewUrl: (id: string) => `${API_BASE}/api/games/${id}/preview`,
   getProjects: () => fetch(`${API_BASE}/api/projects`).then(r => r.json()),
+  createProject: (data: { id: string; name?: string }) =>
+    fetch(`${API_BASE}/api/projects`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }).then(r => r.json()),
 
   // 日志
-  getLogs: (agentId?: string, limit?: number) => {
+  getLogs: (projectId?: string, agentId?: string, limit?: number) => {
     const params = new URLSearchParams();
+    if (projectId) params.set('projectId', projectId);
     if (agentId) params.set('agentId', agentId);
     if (limit) params.set('limit', String(limit));
     return fetch(`${API_BASE}/api/logs?${params}`).then(r => r.json());
   },
 
   // 指令历史
-  getCommands: () => fetch(`${API_BASE}/api/commands`).then(r => r.json()),
+  getCommands: (projectId?: string) => {
+    const params = new URLSearchParams();
+    if (projectId) params.set('projectId', projectId);
+    return fetch(`${API_BASE}/api/commands?${params}`).then(r => r.json());
+  },
 
   // 查询可用模型
   getModels: () => fetch(`${API_BASE}/api/models`).then(r => r.json()),
 
   // 权限响应
-  respondPermission: (requestId: string, behavior: 'allow' | 'deny', message?: string) =>
+  respondPermission: (requestId: string, behavior: 'allow' | 'deny', message?: string, projectId?: string) =>
     fetch(`${API_BASE}/api/permission-response`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ requestId, behavior, message })
+      body: JSON.stringify({ requestId, behavior, message, projectId })
     }).then(r => r.json()),
 
   // 任务交接
-  getHandoffs: (agentId?: string, status?: string) => {
+  getHandoffs: (projectId?: string, agentId?: string, status?: string) => {
     const params = new URLSearchParams();
+    if (projectId) params.set('projectId', projectId);
     if (agentId) params.set('agentId', agentId);
     if (status) params.set('status', status);
     return fetch(`${API_BASE}/api/handoffs?${params}`).then(r => r.json());
   },
-  getPendingHandoffs: (toAgentId?: string) => {
+  getPendingHandoffs: (projectId?: string, toAgentId?: string) => {
     const params = new URLSearchParams();
+    if (projectId) params.set('projectId', projectId);
     if (toAgentId) params.set('toAgentId', toAgentId);
     return fetch(`${API_BASE}/api/handoffs/pending?${params}`).then(r => r.json());
   },
-  createHandoff: (data: { from_agent_id: string; to_agent_id: string; title: string; description: string; context?: string; priority?: string }) =>
+  createHandoff: (data: { project_id?: string; from_agent_id: string; to_agent_id: string; title: string; description: string; context?: string; priority?: string }) =>
     fetch(`${API_BASE}/api/handoffs`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -130,12 +158,13 @@ export const api = {
     }).then(r => r.json()),
 
   // Agent 记忆
-  getAgentMemories: (agentId: string, category?: string) => {
+  getAgentMemories: (agentId: string, projectId?: string, category?: string) => {
     const params = new URLSearchParams();
+    if (projectId) params.set('projectId', projectId);
     if (category) params.set('category', category);
     return fetch(`${API_BASE}/api/agents/${agentId}/memories?${params}`).then(r => r.json());
   },
-  createMemory: (agentId: string, data: { category?: string; content: string; importance?: string; source_task?: string }) =>
+  createMemory: (agentId: string, data: { category?: string; content: string; importance?: string; source_task?: string; projectId?: string }) =>
     fetch(`${API_BASE}/api/agents/${agentId}/memories`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -153,10 +182,10 @@ export const api = {
 
   // 发送指令 (SSE)
   commandAgentUrl: (agentId: string) => `${API_BASE}/api/agents/${agentId}/command`,
-  commandAgent: (agentId: string, message: string, model?: string) =>
+  commandAgent: (agentId: string, message: string, model?: string, projectId?: string) =>
     fetch(`${API_BASE}/api/agents/${agentId}/command`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message, model: model || 'glm-5.0' })
+      body: JSON.stringify({ message, model: model || 'glm-5.0', projectId })
     })
 };

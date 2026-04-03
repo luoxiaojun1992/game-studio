@@ -4,6 +4,7 @@ import { api, API_BASE } from '../config';
 
 interface Props {
   agents: Agent[];
+  projectId: string;
   onCommandSent?: () => void;
   model: string;
   onModelChange: (model: string) => void;
@@ -32,7 +33,7 @@ interface ModelInfo {
   description?: string;
 }
 
-export default function CommandPanel({ agents, onCommandSent, model, onModelChange }: Props) {
+export default function CommandPanel({ agents, projectId, onCommandSent, model, onModelChange }: Props) {
   // 默认选中正在工作的 Agent，没有则选中第一个
   const workingAgent = agents.find(a => a.state?.status === 'working');
   const defaultAgent = workingAgent?.id || agents[0]?.id || 'game_designer';
@@ -83,14 +84,14 @@ export default function CommandPanel({ agents, onCommandSent, model, onModelChan
   const loadHistory = useCallback(async (agentId: AgentRole) => {
     setLoadingHistory(true);
     try {
-      const data = await api.getAgentMessages(agentId);
+      const data = await api.getAgentMessages(agentId, projectId);
       const messages: AgentMessage[] = data.messages || [];
       setChatHistory(convertMessagesToStreamLogs(messages));
     } catch {
       setChatHistory([]);
     }
     setLoadingHistory(false);
-  }, [convertMessagesToStreamLogs]);
+  }, [convertMessagesToStreamLogs, projectId]);
 
   // 动态获取可用模型列表
   useEffect(() => {
@@ -142,7 +143,11 @@ export default function CommandPanel({ agents, onCommandSent, model, onModelChan
     if (clearing) return;
     setClearing(true);
     try {
-      await fetch(`${API_BASE}/api/agents/${selectedAgent}/messages`, { method: 'DELETE' });
+      await fetch(`${API_BASE}/api/agents/${selectedAgent}/messages`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId })
+      });
       setChatHistory([]);
     } catch {}
     setClearing(false);
@@ -164,7 +169,7 @@ export default function CommandPanel({ agents, onCommandSent, model, onModelChan
       const response = await fetch(`${API_BASE}/api/agents/${selectedAgent}/command`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: cmd, model })
+        body: JSON.stringify({ message: cmd, model, projectId })
       });
 
       if (!response.body) {

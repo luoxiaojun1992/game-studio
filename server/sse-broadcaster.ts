@@ -4,23 +4,35 @@
 import express from 'express';
 
 class SSEBroadcaster {
-  private clients = new Set<express.Response>();
+  private clientsByProject = new Map<string, Set<express.Response>>();
 
-  addClient(res: express.Response): void {
-    this.clients.add(res);
+  addClient(res: express.Response, projectId: string = 'default'): void {
+    if (!this.clientsByProject.has(projectId)) {
+      this.clientsByProject.set(projectId, new Set());
+    }
+    this.clientsByProject.get(projectId)!.add(res);
   }
 
   removeClient(res: express.Response): void {
-    this.clients.delete(res);
+    for (const clients of this.clientsByProject.values()) {
+      clients.delete(res);
+    }
   }
 
-  broadcast(event: object): void {
+  broadcast(event: object, projectId?: string): void {
     const data = `data: ${JSON.stringify(event)}\n\n`;
-    for (const client of this.clients) {
-      try {
-        client.write(data);
-      } catch (e) {
-        this.clients.delete(client);
+
+    const targets = projectId
+      ? [this.clientsByProject.get(projectId) || new Set<express.Response>()]
+      : Array.from(this.clientsByProject.values());
+
+    for (const clients of targets) {
+      for (const client of clients) {
+        try {
+          client.write(data);
+        } catch (e) {
+          clients.delete(client);
+        }
       }
     }
   }

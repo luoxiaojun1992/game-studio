@@ -5,6 +5,7 @@ import { api } from '../config';
 interface Props {
   logs: AgentLog[];
   agents: Agent[];
+  projectId: string;
 }
 
 interface StreamLogEntry {
@@ -32,7 +33,7 @@ const AGENT_NAMES: Record<string, { name: string; emoji: string }> = {
   ceo: { name: 'CEO', emoji: '👔' },
 };
 
-export default function LogPanel({ logs, agents }: Props) {
+export default function LogPanel({ logs, agents, projectId }: Props) {
   const [filterAgent, setFilterAgent] = useState<string>('all');
   const [filterLevel, setFilterLevel] = useState<string>('all');
   const [expandedLog, setExpandedLog] = useState<string | null>(null);
@@ -43,7 +44,7 @@ export default function LogPanel({ logs, agents }: Props) {
 
   // 连接 SSE 获取实时流事件
   useEffect(() => {
-    const es = new EventSource(api.observeUrl());
+    const es = new EventSource(api.observeUrl(projectId));
 
     es.onmessage = (e) => {
       try {
@@ -113,7 +114,7 @@ export default function LogPanel({ logs, agents }: Props) {
     };
 
     return () => es.close();
-  }, []);
+  }, [projectId]);
 
   // 自动滚动
   useEffect(() => {

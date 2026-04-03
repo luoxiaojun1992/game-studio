@@ -24,9 +24,18 @@ db.pragma('foreign_keys = ON');
 
 // 初始化数据库表
 db.exec(`
+  -- 项目表
+  CREATE TABLE IF NOT EXISTS projects (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+
   -- Agent 会话表（每个Agent有自己的独立会话）
   CREATE TABLE IF NOT EXISTS agent_sessions (
     id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL DEFAULT 'default',
     agent_id TEXT NOT NULL,
     sdk_session_id TEXT,
     status TEXT NOT NULL DEFAULT 'idle',
@@ -85,6 +94,7 @@ db.exec(`
   -- Agent 日志表（操作记录）
   CREATE TABLE IF NOT EXISTS agent_logs (
     id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL DEFAULT 'default',
     agent_id TEXT NOT NULL,
     action TEXT NOT NULL,
     detail TEXT,
@@ -95,6 +105,7 @@ db.exec(`
   -- 指令表（用户向Agent下达的指令）
   CREATE TABLE IF NOT EXISTS commands (
     id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL DEFAULT 'default',
     target_agent_id TEXT NOT NULL,
     content TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'pending',
@@ -106,6 +117,7 @@ db.exec(`
   -- 任务交接表（Agent之间的任务传递）
   CREATE TABLE IF NOT EXISTS handoffs (
     id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL DEFAULT 'default',
     from_agent_id TEXT NOT NULL,
     to_agent_id TEXT NOT NULL,
     title TEXT NOT NULL,
@@ -123,17 +135,22 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_agent_messages_session ON agent_messages(agent_session_id);
   CREATE INDEX IF NOT EXISTS idx_agent_messages_agent ON agent_messages(agent_id);
+  CREATE INDEX IF NOT EXISTS idx_agent_sessions_project_agent ON agent_sessions(project_id, agent_id);
   CREATE INDEX IF NOT EXISTS idx_proposals_status ON proposals(status);
   CREATE INDEX IF NOT EXISTS idx_proposals_project_id ON proposals(project_id);
   CREATE INDEX IF NOT EXISTS idx_agent_logs_agent ON agent_logs(agent_id);
+  CREATE INDEX IF NOT EXISTS idx_agent_logs_project ON agent_logs(project_id);
   CREATE INDEX IF NOT EXISTS idx_games_project_id ON games(project_id);
   CREATE INDEX IF NOT EXISTS idx_commands_status ON commands(status);
+  CREATE INDEX IF NOT EXISTS idx_commands_project ON commands(project_id);
   CREATE INDEX IF NOT EXISTS idx_handoffs_status ON handoffs(status);
   CREATE INDEX IF NOT EXISTS idx_handoffs_to_agent ON handoffs(to_agent_id);
+  CREATE INDEX IF NOT EXISTS idx_handoffs_project ON handoffs(project_id);
 
   -- Agent 长期记忆表（Agent 自主保存的重要信息）
   CREATE TABLE IF NOT EXISTS agent_memories (
     id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL DEFAULT 'default',
     agent_id TEXT NOT NULL,
     category TEXT NOT NULL DEFAULT 'general',
     content TEXT NOT NULL,
@@ -144,6 +161,7 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS idx_agent_memories_agent ON agent_memories(agent_id);
+  CREATE INDEX IF NOT EXISTS idx_agent_memories_project_agent ON agent_memories(project_id, agent_id);
   CREATE INDEX IF NOT EXISTS idx_agent_memories_category ON agent_memories(category);
 
   -- 任务看板表（开发/测试任务及状态）
@@ -168,10 +186,20 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_task_board_project ON task_board_tasks(project_id);
 `);
 
-function hasColumn(tableName: 'proposals' | 'games', columnName: string): boolean {
+function hasColumn(tableName: 'proposals' | 'games' | 'agent_sessions' | 'agent_logs' | 'commands' | 'handoffs' | 'agent_memories', columnName: string): boolean {
   const pragmaSql = tableName === 'proposals'
     ? 'PRAGMA table_info(proposals)'
-    : 'PRAGMA table_info(games)';
+    : tableName === 'games'
+      ? 'PRAGMA table_info(games)'
+      : tableName === 'agent_sessions'
+        ? 'PRAGMA table_info(agent_sessions)'
+        : tableName === 'agent_logs'
+          ? 'PRAGMA table_info(agent_logs)'
+          : tableName === 'commands'
+            ? 'PRAGMA table_info(commands)'
+            : tableName === 'handoffs'
+              ? 'PRAGMA table_info(handoffs)'
+              : 'PRAGMA table_info(agent_memories)';
   const rows = db.prepare(pragmaSql).all() as Array<{ name: string }>;
   return rows.some(row => row.name === columnName);
 }
@@ -189,10 +217,28 @@ function ensureProjectColumns(): void {
 
 ensureProjectColumns();
 
+function ensureProjectIsolationColumns(): void {
+  if (!hasColumn('agent_sessions', 'project_id')) db.exec(`ALTER TABLE agent_sessions ADD COLUMN project_id TEXT NOT NULL DEFAULT 'default';`);
+  if (!hasColumn('agent_logs', 'project_id')) db.exec(`ALTER TABLE agent_logs ADD COLUMN project_id TEXT NOT NULL DEFAULT 'default';`);
+  if (!hasColumn('commands', 'project_id')) db.exec(`ALTER TABLE commands ADD COLUMN project_id TEXT NOT NULL DEFAULT 'default';`);
+  if (!hasColumn('handoffs', 'project_id')) db.exec(`ALTER TABLE handoffs ADD COLUMN project_id TEXT NOT NULL DEFAULT 'default';`);
+  if (!hasColumn('agent_memories', 'project_id')) db.exec(`ALTER TABLE agent_memories ADD COLUMN project_id TEXT NOT NULL DEFAULT 'default';`);
+
+  db.exec(`UPDATE agent_sessions SET project_id = 'default' WHERE project_id IS NULL OR project_id = '';`);
+  db.exec(`UPDATE agent_logs SET project_id = 'default' WHERE project_id IS NULL OR project_id = '';`);
+  db.exec(`UPDATE commands SET project_id = 'default' WHERE project_id IS NULL OR project_id = '';`);
+  db.exec(`UPDATE handoffs SET project_id = 'default' WHERE project_id IS NULL OR project_id = '';`);
+  db.exec(`UPDATE agent_memories SET project_id = 'default' WHERE project_id IS NULL OR project_id = '';`);
+}
+
+ensureProjectIsolationColumns();
+ensureProject('default');
+
 // ============= 类型定义 =============
 
 export interface DbAgentSession {
   id: string;
+  project_id: string;
   agent_id: string;
   sdk_session_id: string | null;
   status: 'idle' | 'working' | 'paused' | 'error';
@@ -246,6 +292,7 @@ export interface DbGame {
 
 export interface DbAgentLog {
   id: string;
+  project_id: string;
   agent_id: string;
   action: string;
   detail: string | null;
@@ -255,6 +302,7 @@ export interface DbAgentLog {
 
 export interface DbCommand {
   id: string;
+  project_id: string;
   target_agent_id: string;
   content: string;
   status: 'pending' | 'executing' | 'done' | 'failed';
@@ -265,6 +313,7 @@ export interface DbCommand {
 
 export interface DbHandoff {
   id: string;
+  project_id: string;
   from_agent_id: string;
   to_agent_id: string;
   title: string;
@@ -282,6 +331,7 @@ export interface DbHandoff {
 
 export interface DbAgentMemory {
   id: string;
+  project_id: string;
   agent_id: string;
   category: 'general' | 'preference' | 'decision' | 'lesson' | 'achievement';
   content: string;
@@ -309,9 +359,9 @@ export interface DbTaskBoardTask {
 
 // ============= Agent 会话操作 =============
 
-export function getAgentSession(agentId: string): DbAgentSession | undefined {
-  const stmt = db.prepare('SELECT * FROM agent_sessions WHERE agent_id = ? ORDER BY updated_at DESC LIMIT 1');
-  return stmt.get(agentId) as DbAgentSession | undefined;
+export function getAgentSession(projectId: string, agentId: string): DbAgentSession | undefined {
+  const stmt = db.prepare('SELECT * FROM agent_sessions WHERE project_id = ? AND agent_id = ? ORDER BY updated_at DESC LIMIT 1');
+  return stmt.get(projectId, agentId) as DbAgentSession | undefined;
 }
 
 export function getAllAgentSessions(): DbAgentSession[] {
@@ -320,7 +370,7 @@ export function getAllAgentSessions(): DbAgentSession[] {
 }
 
 export function upsertAgentSession(session: DbAgentSession): DbAgentSession {
-  const existing = getAgentSession(session.agent_id);
+  const existing = getAgentSession(session.project_id, session.agent_id);
   if (existing) {
     const stmt = db.prepare(`
       UPDATE agent_sessions SET
@@ -331,16 +381,16 @@ export function upsertAgentSession(session: DbAgentSession): DbAgentSession {
     return { ...existing, ...session, id: existing.id };
   } else {
     const stmt = db.prepare(`
-      INSERT INTO agent_sessions (id, agent_id, sdk_session_id, status, current_task, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO agent_sessions (id, project_id, agent_id, sdk_session_id, status, current_task, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
-    stmt.run(session.id, session.agent_id, session.sdk_session_id, session.status, session.current_task, session.created_at, session.updated_at);
+    stmt.run(session.id, session.project_id, session.agent_id, session.sdk_session_id, session.status, session.current_task, session.created_at, session.updated_at);
     return session;
   }
 }
 
-export function updateAgentStatus(agentId: string, status: DbAgentSession['status'], currentTask?: string | null): void {
-  const existing = getAgentSession(agentId);
+export function updateAgentStatus(projectId: string, agentId: string, status: DbAgentSession['status'], currentTask?: string | null): void {
+  const existing = getAgentSession(projectId, agentId);
   if (existing) {
     const stmt = db.prepare('UPDATE agent_sessions SET status = ?, current_task = ?, updated_at = ? WHERE id = ?');
     stmt.run(status, currentTask !== undefined ? currentTask : existing.current_task, new Date().toISOString(), existing.id);
@@ -349,8 +399,8 @@ export function updateAgentStatus(agentId: string, status: DbAgentSession['statu
 
 // ============= Agent 消息操作 =============
 
-export function getAgentMessages(agentId: string, limit = 50): DbAgentMessage[] {
-  const session = getAgentSession(agentId);
+export function getAgentMessages(projectId: string, agentId: string, limit = 50): DbAgentMessage[] {
+  const session = getAgentSession(projectId, agentId);
   if (!session) return [];
   const stmt = db.prepare('SELECT * FROM agent_messages WHERE agent_session_id = ? ORDER BY created_at ASC LIMIT ?');
   return stmt.all(session.id, limit) as DbAgentMessage[];
@@ -477,19 +527,19 @@ export function updateGame(id: string, updates: Partial<DbGame>): boolean {
 
 export function addAgentLog(log: DbAgentLog): void {
   const stmt = db.prepare(`
-    INSERT INTO agent_logs (id, agent_id, action, detail, level, created_at)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT INTO agent_logs (id, project_id, agent_id, action, detail, level, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
   `);
-  stmt.run(log.id, log.agent_id, log.action, log.detail, log.level, log.created_at);
+  stmt.run(log.id, log.project_id, log.agent_id, log.action, log.detail, log.level, log.created_at);
 }
 
-export function getAgentLogs(agentId?: string, limit = 100): DbAgentLog[] {
+export function getAgentLogs(projectId: string, agentId?: string, limit = 100): DbAgentLog[] {
   if (agentId) {
-    const stmt = db.prepare('SELECT * FROM agent_logs WHERE agent_id = ? ORDER BY created_at DESC LIMIT ?');
-    return stmt.all(agentId, limit) as DbAgentLog[];
+    const stmt = db.prepare('SELECT * FROM agent_logs WHERE project_id = ? AND agent_id = ? ORDER BY created_at DESC LIMIT ?');
+    return stmt.all(projectId, agentId, limit) as DbAgentLog[];
   } else {
-    const stmt = db.prepare('SELECT * FROM agent_logs ORDER BY created_at DESC LIMIT ?');
-    return stmt.all(limit) as DbAgentLog[];
+    const stmt = db.prepare('SELECT * FROM agent_logs WHERE project_id = ? ORDER BY created_at DESC LIMIT ?');
+    return stmt.all(projectId, limit) as DbAgentLog[];
   }
 }
 
@@ -497,16 +547,16 @@ export function getAgentLogs(agentId?: string, limit = 100): DbAgentLog[] {
 
 export function createCommand(command: DbCommand): DbCommand {
   const stmt = db.prepare(`
-    INSERT INTO commands (id, target_agent_id, content, status, result, created_at, executed_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO commands (id, project_id, target_agent_id, content, status, result, created_at, executed_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `);
-  stmt.run(command.id, command.target_agent_id, command.content, command.status, command.result, command.created_at, command.executed_at);
+  stmt.run(command.id, command.project_id, command.target_agent_id, command.content, command.status, command.result, command.created_at, command.executed_at);
   return command;
 }
 
-export function getPendingCommands(agentId: string): DbCommand[] {
-  const stmt = db.prepare("SELECT * FROM commands WHERE target_agent_id = ? AND status = 'pending' ORDER BY created_at ASC");
-  return stmt.all(agentId) as DbCommand[];
+export function getPendingCommands(projectId: string, agentId: string): DbCommand[] {
+  const stmt = db.prepare("SELECT * FROM commands WHERE project_id = ? AND target_agent_id = ? AND status = 'pending' ORDER BY created_at ASC");
+  return stmt.all(projectId, agentId) as DbCommand[];
 }
 
 export function updateCommand(id: string, updates: Partial<DbCommand>): boolean {
@@ -522,19 +572,19 @@ export function updateCommand(id: string, updates: Partial<DbCommand>): boolean 
   return result.changes > 0;
 }
 
-export function getAllCommands(limit = 50): DbCommand[] {
-  const stmt = db.prepare('SELECT * FROM commands ORDER BY created_at DESC LIMIT ?');
-  return stmt.all(limit) as DbCommand[];
+export function getAllCommands(projectId: string, limit = 50): DbCommand[] {
+  const stmt = db.prepare('SELECT * FROM commands WHERE project_id = ? ORDER BY created_at DESC LIMIT ?');
+  return stmt.all(projectId, limit) as DbCommand[];
 }
 
 // ============= 任务交接操作 =============
 
 export function createHandoff(handoff: DbHandoff): DbHandoff {
   const stmt = db.prepare(`
-    INSERT INTO handoffs (id, from_agent_id, to_agent_id, title, description, context, status, priority, result, accepted_at, completed_at, source_command_id, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO handoffs (id, project_id, from_agent_id, to_agent_id, title, description, context, status, priority, result, accepted_at, completed_at, source_command_id, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
-  stmt.run(handoff.id, handoff.from_agent_id, handoff.to_agent_id, handoff.title, handoff.description, handoff.context, handoff.status, handoff.priority, handoff.result, handoff.accepted_at, handoff.completed_at, handoff.source_command_id, handoff.created_at, handoff.updated_at);
+  stmt.run(handoff.id, handoff.project_id, handoff.from_agent_id, handoff.to_agent_id, handoff.title, handoff.description, handoff.context, handoff.status, handoff.priority, handoff.result, handoff.accepted_at, handoff.completed_at, handoff.source_command_id, handoff.created_at, handoff.updated_at);
   return handoff;
 }
 
@@ -543,23 +593,23 @@ export function getHandoff(id: string): DbHandoff | undefined {
   return stmt.get(id) as DbHandoff | undefined;
 }
 
-export function getAllHandoffs(limit = 50): DbHandoff[] {
-  const stmt = db.prepare('SELECT * FROM handoffs ORDER BY created_at DESC LIMIT ?');
-  return stmt.all(limit) as DbHandoff[];
+export function getAllHandoffs(projectId: string, limit = 50): DbHandoff[] {
+  const stmt = db.prepare('SELECT * FROM handoffs WHERE project_id = ? ORDER BY created_at DESC LIMIT ?');
+  return stmt.all(projectId, limit) as DbHandoff[];
 }
 
-export function getPendingHandoffs(toAgentId?: string): DbHandoff[] {
+export function getPendingHandoffs(projectId: string, toAgentId?: string): DbHandoff[] {
   if (toAgentId) {
-    const stmt = db.prepare("SELECT * FROM handoffs WHERE to_agent_id = ? AND status IN ('pending', 'accepted', 'working') ORDER BY created_at DESC");
-    return stmt.all(toAgentId) as DbHandoff[];
+    const stmt = db.prepare("SELECT * FROM handoffs WHERE project_id = ? AND to_agent_id = ? AND status IN ('pending', 'accepted', 'working') ORDER BY created_at DESC");
+    return stmt.all(projectId, toAgentId) as DbHandoff[];
   }
-  const stmt = db.prepare("SELECT * FROM handoffs WHERE status IN ('pending', 'accepted', 'working') ORDER BY created_at DESC");
-  return stmt.all() as DbHandoff[];
+  const stmt = db.prepare("SELECT * FROM handoffs WHERE project_id = ? AND status IN ('pending', 'accepted', 'working') ORDER BY created_at DESC");
+  return stmt.all(projectId) as DbHandoff[];
 }
 
-export function getHandoffsForAgent(agentId: string, limit = 20): { incoming: DbHandoff[]; outgoing: DbHandoff[] } {
-  const incoming = db.prepare("SELECT * FROM handoffs WHERE to_agent_id = ? ORDER BY created_at DESC LIMIT ?").all(agentId, limit) as DbHandoff[];
-  const outgoing = db.prepare("SELECT * FROM handoffs WHERE from_agent_id = ? ORDER BY created_at DESC LIMIT ?").all(agentId, limit) as DbHandoff[];
+export function getHandoffsForAgent(projectId: string, agentId: string, limit = 20): { incoming: DbHandoff[]; outgoing: DbHandoff[] } {
+  const incoming = db.prepare("SELECT * FROM handoffs WHERE project_id = ? AND to_agent_id = ? ORDER BY created_at DESC LIMIT ?").all(projectId, agentId, limit) as DbHandoff[];
+  const outgoing = db.prepare("SELECT * FROM handoffs WHERE project_id = ? AND from_agent_id = ? ORDER BY created_at DESC LIMIT ?").all(projectId, agentId, limit) as DbHandoff[];
   return { incoming, outgoing };
 }
 
@@ -587,8 +637,8 @@ export function updateHandoff(id: string, updates: Partial<DbHandoff>): boolean 
 /**
  * 清除指定 Agent 的所有消息和会话，重置 SDK session
  */
-export function clearAgentMessages(agentId: string): boolean {
-  const session = getAgentSession(agentId);
+export function clearAgentMessages(projectId: string, agentId: string): boolean {
+  const session = getAgentSession(projectId, agentId);
   if (!session) return true;
 
   // 删除该会话的所有消息
@@ -606,25 +656,25 @@ export function clearAgentMessages(agentId: string): boolean {
 
 export function createAgentMemory(memory: DbAgentMemory): DbAgentMemory {
   const stmt = db.prepare(`
-    INSERT INTO agent_memories (id, agent_id, category, content, importance, source_task, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO agent_memories (id, project_id, agent_id, category, content, importance, source_task, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
-  stmt.run(memory.id, memory.agent_id, memory.category, memory.content, memory.importance, memory.source_task, memory.created_at, memory.updated_at);
+  stmt.run(memory.id, memory.project_id, memory.agent_id, memory.category, memory.content, memory.importance, memory.source_task, memory.created_at, memory.updated_at);
   return memory;
 }
 
-export function getAgentMemories(agentId: string, category?: string, limit = 50): DbAgentMemory[] {
+export function getAgentMemories(projectId: string, agentId: string, category?: string, limit = 50): DbAgentMemory[] {
   if (category) {
-    const stmt = db.prepare('SELECT * FROM agent_memories WHERE agent_id = ? AND category = ? ORDER BY importance DESC, created_at DESC LIMIT ?');
-    return stmt.all(agentId, category, limit) as DbAgentMemory[];
+    const stmt = db.prepare('SELECT * FROM agent_memories WHERE project_id = ? AND agent_id = ? AND category = ? ORDER BY importance DESC, created_at DESC LIMIT ?');
+    return stmt.all(projectId, agentId, category, limit) as DbAgentMemory[];
   }
-  const stmt = db.prepare('SELECT * FROM agent_memories WHERE agent_id = ? ORDER BY importance DESC, created_at DESC LIMIT ?');
-  return stmt.all(agentId, limit) as DbAgentMemory[];
+  const stmt = db.prepare('SELECT * FROM agent_memories WHERE project_id = ? AND agent_id = ? ORDER BY importance DESC, created_at DESC LIMIT ?');
+  return stmt.all(projectId, agentId, limit) as DbAgentMemory[];
 }
 
-export function getAllAgentMemories(limit = 100): DbAgentMemory[] {
-  const stmt = db.prepare('SELECT * FROM agent_memories ORDER BY created_at DESC LIMIT ?');
-  return stmt.all(limit) as DbAgentMemory[];
+export function getAllAgentMemories(projectId: string, limit = 100): DbAgentMemory[] {
+  const stmt = db.prepare('SELECT * FROM agent_memories WHERE project_id = ? ORDER BY created_at DESC LIMIT ?');
+  return stmt.all(projectId, limit) as DbAgentMemory[];
 }
 
 export function deleteAgentMemory(id: string): boolean {
@@ -633,9 +683,9 @@ export function deleteAgentMemory(id: string): boolean {
   return result.changes > 0;
 }
 
-export function clearAgentMemories(agentId: string): boolean {
-  const stmt = db.prepare('DELETE FROM agent_memories WHERE agent_id = ?');
-  stmt.run(agentId);
+export function clearAgentMemories(projectId: string, agentId: string): boolean {
+  const stmt = db.prepare('DELETE FROM agent_memories WHERE project_id = ? AND agent_id = ?');
+  stmt.run(projectId, agentId);
   return true;
 }
 
@@ -682,6 +732,8 @@ export function getTaskBoardTasks(projectId?: string): DbTaskBoardTask[] {
 
 export function getAllProjectIds(): string[] {
   const rows = db.prepare(`
+    SELECT id AS project_id FROM projects
+    UNION
     SELECT project_id FROM proposals WHERE project_id IS NOT NULL
     UNION
     SELECT project_id FROM games WHERE project_id IS NOT NULL
@@ -695,6 +747,28 @@ export function getAllProjectIds(): string[] {
     .filter(id => id !== '');
   if (!ids.includes('default')) ids.unshift('default');
   return ids;
+}
+
+export function createProject(project: { id: string; name: string; created_at: string; updated_at: string }): { id: string; name: string; created_at: string; updated_at: string } {
+  const stmt = db.prepare(`
+    INSERT INTO projects (id, name, created_at, updated_at)
+    VALUES (?, ?, ?, ?)
+  `);
+  stmt.run(project.id, project.name, project.created_at, project.updated_at);
+  return project;
+}
+
+export function getProject(projectId: string): { id: string; name: string; created_at: string; updated_at: string } | undefined {
+  const stmt = db.prepare('SELECT * FROM projects WHERE id = ?');
+  return stmt.get(projectId) as { id: string; name: string; created_at: string; updated_at: string } | undefined;
+}
+
+export function ensureProject(projectId: string): void {
+  const safeProjectId = normalizeProjectId(projectId);
+  if (!safeProjectId) return;
+  if (getProject(safeProjectId)) return;
+  const now = new Date().toISOString();
+  createProject({ id: safeProjectId, name: safeProjectId, created_at: now, updated_at: now });
 }
 
 export function updateTaskBoardTask(id: string, updates: Partial<DbTaskBoardTask>): boolean {
