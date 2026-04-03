@@ -361,9 +361,22 @@ class AgentManager extends EventEmitter {
 
     try {
       // ---- 创建 MCP 自定义工具服务器 ----
-      const studioToolsServer = createStudioToolsServer(scopedProjectId, agentId, (aid, action, detail, level) => {
-        this.addLog(scopedProjectId, aid, action, detail, level);
-      });
+      const studioToolsServer = createStudioToolsServer(
+        scopedProjectId,
+        agentId,
+        (aid, action, detail, level) => {
+          this.addLog(scopedProjectId, aid, action, detail, level);
+        },
+        async (handoff) => {
+          this.addLog(handoff.project_id, handoff.to_agent_id as AgentRole, '自动接收交接', `从 ${handoff.from_agent_id} 接手: ${handoff.title}`, 'success');
+          this.addLog(handoff.project_id, handoff.to_agent_id as AgentRole, '开始执行交接任务', `${handoff.title}`, 'success');
+          await this.sendMessage(
+            handoff.project_id,
+            handoff.to_agent_id as AgentRole,
+            `【任务交接】你收到了来自 ${handoff.from_agent_id} 的任务交接。\n\n## 任务标题\n${handoff.title}\n\n## 任务描述\n${handoff.description}\n\n${handoff.context ? `## 上下文信息\n${handoff.context}\n\n` : ''}请按照上述要求完成任务。完成后请提交相关成果。`
+          );
+        }
+      );
 
       // ---- canUseTool 回调 ----
       // 现在逻辑大幅简化：
@@ -371,12 +384,16 @@ class AgentManager extends EventEmitter {
       //    - 读操作（save_memory, get_*, 无副作用）→ 自动放行
       //    - 写操作 + 有副作用的（create_handoff, submit_proposal, submit_game）→ 需要用户确认
       // 2. CodeBuddy 内置工具走正常权限流程
+      const settings = db.getProjectSettings(scopedProjectId);
+      const autoHandoffEnabled = settings.auto_handoff_enabled === 1;
+
       const CAN_AUTO_ALLOW = [
         'save_memory',
         'get_memories',
         'get_proposals',
         'get_pending_handoffs',
         'get_tasks',
+        ...(autoHandoffEnabled ? ['create_handoff'] : []),
         ...(agentId === 'engineer' ? ['split_dev_test_tasks', 'update_task_status'] : [])
       ];
 

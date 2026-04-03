@@ -16,6 +16,7 @@ import { sseBroadcaster } from './sse-broadcaster.js';
  * 工具回调函数类型 — 用于记录日志
  */
 type ToolLogFn = (agentId: AgentRole, action: string, detail: string, level: 'info' | 'warn' | 'error' | 'success') => void;
+type AutoHandoffHook = (handoff: db.DbHandoff) => Promise<void> | void;
 
 /**
  * 创建工作室 MCP Server，包含所有自定义工具
@@ -23,7 +24,7 @@ type ToolLogFn = (agentId: AgentRole, action: string, detail: string, level: 'in
  * @param agentId - 当前 Agent 的角色 ID，用于标识操作来源
  * @param logFn - 日志记录函数
  */
-export function createStudioToolsServer(projectId: string, agentId: AgentRole, logFn?: ToolLogFn): SdkMcpServerResult {
+export function createStudioToolsServer(projectId: string, agentId: AgentRole, logFn?: ToolLogFn, onAutoHandoff?: AutoHandoffHook): SdkMcpServerResult {
   const log = logFn || (() => {});
   const scopedProjectId = (projectId || 'default').trim() || 'default';
   const enforceProject = (requested?: string): string => {
@@ -164,6 +165,13 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           });
           sseBroadcaster.broadcast({ type: 'handoff_created', handoff }, scopedProjectId);
           log(agentId, '创建交接', `${agentId} → ${to_agent_id}: ${title}`, 'success');
+          if (autoHandoffEnabled && onAutoHandoff) {
+            try {
+              await onAutoHandoff(handoff);
+            } catch (error: any) {
+              log(to_agent_id, '交接任务执行失败', error?.message || String(error), 'error');
+            }
+          }
           return {
             content: [{
               type: 'text' as const,
