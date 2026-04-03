@@ -485,14 +485,11 @@ app.post('/api/handoffs/:id/confirm', (req, res) => {
   if (!autoHandoffEnabled && handoff.status !== 'accepted') {
     return res.status(400).json({ error: `交接状态不是已接受，当前状态: ${handoff.status}，需要先接受交接` });
   }
-  if (autoHandoffEnabled && !['pending', 'accepted'].includes(handoff.status)) {
-    return res.status(400).json({ error: `自动交接仅支持待接收或已接收状态，当前状态: ${handoff.status}` });
+  if (autoHandoffEnabled && handoff.status !== 'working') {
+    return res.status(400).json({ error: `自动交接模式下仅支持处理中状态，当前状态: ${handoff.status}` });
   }
 
   const now = new Date().toISOString();
-  if (autoHandoffEnabled && handoff.status === 'pending') {
-    db.updateHandoff(id, { accepted_at: now });
-  }
   db.updateHandoff(id, { status: 'working' });
   const updated = db.getHandoff(id)!;
 

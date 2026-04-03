@@ -839,6 +839,7 @@ export function ensureProject(projectId: string): void {
     const now = new Date().toISOString();
     createProject({ id: safeProjectId, name: safeProjectId, created_at: now, updated_at: now });
   }
+  // 确保项目配置存在（首次访问项目时自动初始化默认配置）
   getProjectSettings(safeProjectId);
 }
 
