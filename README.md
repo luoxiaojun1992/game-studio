@@ -17,9 +17,9 @@
 
 ![运行日志](./docs/images/log.png)
 
-### 游戏成品
+### 指令中心
 
-![游戏成品](./docs/images/task.png)
+![指令中心](./docs/images/command.png)
 
 ### 任务交接
 
@@ -28,6 +28,18 @@
 ### 团队总览
 
 ![团队总览](./docs/images/team.png)
+
+### 策划案
+
+![策划案](./docs/images/proposal.png)
+
+### 任务看板
+
+![任务看板](./docs/images/task.png)
+
+### 游戏成品
+
+![游戏成品](./docs/images/artifact.png)
 
 ## 技术栈
 
