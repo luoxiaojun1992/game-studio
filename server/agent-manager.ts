@@ -415,6 +415,7 @@ class AgentManager extends EventEmitter {
       ];
       const STUDIO_TOOL_PREFIX = 'mcp__studio-tools__';
       const STUDIO_TOOL_NAMES = new Set([
+        ...CAN_AUTO_ALLOW,
         'save_memory',
         'get_memories',
         'create_handoff',
@@ -424,7 +425,11 @@ class AgentManager extends EventEmitter {
         'submit_proposal',
         'submit_game',
         'get_proposals',
-        'get_pending_handoffs'
+        'get_pending_handoffs',
+        'get_proposal',
+        'get_handoff',
+        'get_handoffs',
+        'get_task'
       ]);
 
       const canUseTool: CanUseTool = async (toolName, input, options) => {
