@@ -13,18 +13,6 @@
 
 ## 界面预览
 
-### 运行日志
-
-![运行日志](./docs/images/log.png)
-
-### 指令中心
-
-![指令中心](./docs/images/command.png)
-
-### 任务交接
-
-![任务交接](./docs/images/handoff.png)
-
 ### 团队总览
 
 ![团队总览](./docs/images/team.png)
@@ -40,6 +28,14 @@
 ### 游戏成品
 
 ![游戏成品](./docs/images/artifact.png)
+
+### 运行日志
+
+![运行日志](./docs/images/log.png)
+
+### 指令中心
+
+![指令中心](./docs/images/command.png)
 
 ## 技术栈
 
