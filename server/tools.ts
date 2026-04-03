@@ -168,8 +168,8 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
             content: [{
               type: 'text' as const,
               text: autoHandoffEnabled
-                ? `交接已创建并自动接收 (ID: ${handoff.id.slice(0, 8)})，${to_agent_id} 已进入执行状态。`
-                : `交接已创建 (ID: ${handoff.id.slice(0, 8)})，等待管理者确认后 ${to_agent_id} 才会开始工作。`
+                ? `交接已创建并自动接收 (ID: ${handoff.id})，${to_agent_id} 已进入执行状态。`
+                : `交接已创建 (ID: ${handoff.id})，等待管理者确认后 ${to_agent_id} 才会开始工作。`
             }]
           };
         }

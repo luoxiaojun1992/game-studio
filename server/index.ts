@@ -468,8 +468,7 @@ app.post('/api/handoffs/:id/accept', (req, res) => {
     const updated = db.getHandoff(id)!;
 
     sseBroadcaster.broadcast({ type: 'handoff_updated', handoff: updated }, handoff.project_id);
-    agentManager.addLog(handoff.project_id, handoff.to_agent_id as AgentRole, '自动接收交接', `从 ${handoff.from_agent_id} 接手: ${handoff.title}`, 'success');
-    agentManager.addLog(handoff.project_id, handoff.to_agent_id as AgentRole, '开始执行交接任务', `${handoff.title}`, 'success');
+    agentManager.addLog(handoff.project_id, handoff.to_agent_id as AgentRole, '自动接收并开始执行交接任务', `从 ${handoff.from_agent_id} 接手: ${handoff.title}`, 'success');
 
     agentManager.sendMessage(
       handoff.project_id,
