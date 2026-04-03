@@ -85,10 +85,13 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
   }, [model, onModelChange]);
 
   // 外部指定目标 Agent（从团队总览点击跳转）
+  // 当 selectedAgentId 变化时，总是切换到该 Agent（即使和当前选中相同，也确保同步）
   useEffect(() => {
-    if (selectedAgentId && selectedAgentId !== prevSelectedAgentIdRef.current) {
+    if (selectedAgentId) {
       prevSelectedAgentIdRef.current = selectedAgentId;
-      setSelectedAgent(selectedAgentId);
+      if (selectedAgentId !== selectedAgent) {
+        setSelectedAgent(selectedAgentId);
+      }
       localStorage.setItem(STORAGE_KEY, selectedAgentId);
     }
   }, [selectedAgentId]);
