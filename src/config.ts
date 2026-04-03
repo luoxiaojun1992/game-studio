@@ -17,7 +17,11 @@ export const api = {
     fetch(`${API_BASE}/api/agents/${agentId}/resume`, { method: 'POST' }).then(r => r.json()),
 
   // 提案
-  getProposals: () => fetch(`${API_BASE}/api/proposals`).then(r => r.json()),
+  getProposals: (projectId?: string) => {
+    const params = new URLSearchParams();
+    if (projectId) params.set('projectId', projectId);
+    return fetch(`${API_BASE}/api/proposals?${params}`).then(r => r.json());
+  },
   getProposal: (id: string) => fetch(`${API_BASE}/api/proposals/${id}`).then(r => r.json()),
   createProposal: (data: any) =>
     fetch(`${API_BASE}/api/proposals`, {
@@ -33,9 +37,14 @@ export const api = {
     }).then(r => r.json()),
 
   // 游戏
-  getGames: () => fetch(`${API_BASE}/api/games`).then(r => r.json()),
+  getGames: (projectId?: string) => {
+    const params = new URLSearchParams();
+    if (projectId) params.set('projectId', projectId);
+    return fetch(`${API_BASE}/api/games?${params}`).then(r => r.json());
+  },
   getGame: (id: string) => fetch(`${API_BASE}/api/games/${id}`).then(r => r.json()),
   getGamePreviewUrl: (id: string) => `${API_BASE}/api/games/${id}/preview`,
+  getProjects: () => fetch(`${API_BASE}/api/projects`).then(r => r.json()),
 
   // 日志
   getLogs: (agentId?: string, limit?: number) => {
@@ -136,7 +145,11 @@ export const api = {
     fetch(`${API_BASE}/api/memories/${id}`, { method: 'DELETE' }).then(r => r.json()),
 
   // SSE 观测流
-  observeUrl: `${API_BASE}/api/observe`,
+  observeUrl: (projectId?: string) => {
+    const params = new URLSearchParams();
+    if (projectId) params.set('projectId', projectId);
+    return `${API_BASE}/api/observe?${params}`;
+  },
 
   // 发送指令 (SSE)
   commandAgentUrl: (agentId: string) => `${API_BASE}/api/agents/${agentId}/command`,

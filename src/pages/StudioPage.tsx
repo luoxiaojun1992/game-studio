@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Agent, AgentRole, AgentState, Proposal, Game, AgentLog, SSEEvent, TabKey, PermissionRequest, Handoff, TaskBoardTask } from '../types';
+import { Agent, AgentRole, AgentState, Proposal, Game, AgentLog, SSEEvent, TabKey, PermissionRequest, Handoff, TaskBoardTask, ProjectInfo } from '../types';
 import { api } from '../config';
 import AgentCard from '../components/AgentCard';
 import ProposalList from '../components/ProposalList';
@@ -28,6 +28,8 @@ export default function StudioPage() {
   const [logs, setLogs] = useState<AgentLog[]>([]);
   const [handoffs, setHandoffs] = useState<Handoff[]>([]);
   const [tasks, setTasks] = useState<TaskBoardTask[]>([]);
+  const [projects, setProjects] = useState<ProjectInfo[]>([{ id: 'default', name: 'default' }]);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('default');
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
@@ -50,14 +52,14 @@ export default function StudioPage() {
       eventSourceRef.current.close();
     }
 
-    const es = new EventSource(api.observeUrl);
+    const es = new EventSource(api.observeUrl(selectedProjectId));
     eventSourceRef.current = es;
 
     es.onopen = () => setConnected(true);
     es.onerror = () => {
       setConnected(false);
       connectedRef.current = false; // 允许重连
-      setTimeout(connectSSE, 3000);
+      setTimeout(() => connectSSE(), 3000);
     };
 
     es.onmessage = (e) => {
@@ -66,7 +68,7 @@ export default function StudioPage() {
         handleSSEEvent(event);
       } catch {}
     };
-  }, []);
+  }, [handleSSEEvent, selectedProjectId]);
 
   const handleSSEEvent = useCallback((event: SSEEvent) => {
     switch (event.type) {
@@ -130,6 +132,7 @@ export default function StudioPage() {
       case 'proposal_reviewed':
         setProposals(prev => {
           const proposal = (event as any).proposal as Proposal;
+          if (proposal.project_id !== selectedProjectId) return prev;
           const idx = prev.findIndex(p => p.id === proposal.id);
           if (idx >= 0) {
             const next = [...prev];
@@ -144,6 +147,7 @@ export default function StudioPage() {
       case 'game_updated':
         setGames(prev => {
           const game = (event as any).game as Game;
+          if (game.project_id !== selectedProjectId) return prev;
           const idx = prev.findIndex(g => g.id === game.id);
           if (idx >= 0) {
             const next = [...prev];
@@ -175,6 +179,7 @@ export default function StudioPage() {
       case 'task_updated':
         setTasks(prev => {
           const task = (event as any).task as TaskBoardTask;
+          if (task.project_id !== selectedProjectId) return prev;
           const idx = prev.findIndex(t => t.id === task.id);
           if (idx >= 0) {
             const next = [...prev];
@@ -185,12 +190,30 @@ export default function StudioPage() {
         });
         break;
     }
-  }, []);
+  }, [selectedProjectId]);
 
   // 加载 Agents
   useEffect(() => {
     api.getAgents().then(data => setAgents(data.agents || []));
   }, []);
+
+  useEffect(() => {
+    api.getProjects().then(data => {
+      const list = (data.projects || []) as ProjectInfo[];
+      if (!list.find(p => p.id === 'default')) {
+        list.unshift({ id: 'default', name: 'default' });
+      }
+      setProjects(list);
+      if (!list.find(p => p.id === selectedProjectId)) {
+        setSelectedProjectId('default');
+      }
+    });
+  }, [selectedProjectId]);
+
+  useEffect(() => {
+    setSelectedProposal(null);
+    setSelectedGame(null);
+  }, [selectedProjectId]);
 
   // 连接 SSE
   useEffect(() => {
@@ -199,7 +222,7 @@ export default function StudioPage() {
       eventSourceRef.current?.close();
       connectedRef.current = false; // StrictMode cleanup 后允许重建连接
     };
-  }, [connectSSE]);
+  }, [connectSSE, selectedProjectId]);
 
   // 处理权限响应
   const handlePermissionResponse = async (requestId: string, behavior: 'allow' | 'deny') => {
@@ -243,7 +266,7 @@ export default function StudioPage() {
           <span className="text-2xl">🎮</span>
           <div>
             <h1 className="text-lg font-bold text-white">Game Dev Studio</h1>
-            <p className="text-xs text-gray-400">游戏开发 Agent 团队 · 观测控制台</p>
+            <p className="text-xs text-gray-400">游戏开发 Agent 团队 · 观测控制台 · 项目 {selectedProjectId}</p>
           </div>
         </div>
 
@@ -279,6 +302,18 @@ export default function StudioPage() {
               <span>{workingAgents.length} 个 Agent 工作中</span>
             </div>
           )}
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-gray-400">项目</span>
+            <select
+              value={selectedProjectId}
+              onChange={e => setSelectedProjectId(e.target.value)}
+              className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-gray-200"
+            >
+              {projects.map(p => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
           <div className={`flex items-center gap-1.5 text-xs ${connected ? 'text-green-400' : 'text-red-400'}`}>
             <span className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-green-400' : 'bg-red-400'} ${connected ? '' : 'animate-pulse'}`} />
             {connected ? '已连接' : '连接中...'}
@@ -491,6 +526,7 @@ export default function StudioPage() {
           <TaskBoardPanel
             agents={agents}
             tasks={tasks}
+            projectId={selectedProjectId}
             onTaskUpdated={(task) => {
               setTasks(prev => {
                 const idx = prev.findIndex(t => t.id === task.id);

@@ -154,6 +154,11 @@ export interface TaskBoardTask {
   updated_at: string;
 }
 
+export interface ProjectInfo {
+  id: string;
+  name: string;
+}
+
 // SSE 事件
 export interface SSEInitEvent {
   type: 'init';

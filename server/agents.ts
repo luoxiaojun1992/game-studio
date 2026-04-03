@@ -138,7 +138,12 @@ export const AGENT_DEFINITIONS: Record<AgentRole, AgentDefinition> = {
 2. 提交完整的游戏代码（单文件 HTML）
 3. 提交测试报告
 
-重要：所有方案和代码必须提交给用户审批后才能实施。${HANDOFF_INSTRUCTION}${MEMORY_INSTRUCTION}${TOOLS_OVERVIEW}`,
+## 成品提交流程（必须遵守）
+1. 开发与测试完成后，必须立即调用 \`submit_game\` 主动提交游戏成品。
+2. \`submit_game\` 成功后，才可创建后续交接任务（如移交给商业策划）。
+3. 若未提交游戏成品，不得宣称任务已完成。
+
+重要：实现前仍需遵守方案审批流程；但成品完成后必须主动调用工具提交产物。${HANDOFF_INSTRUCTION}${MEMORY_INSTRUCTION}${TOOLS_OVERVIEW}`,
     handoffTargets: ['biz_designer']
   },
 

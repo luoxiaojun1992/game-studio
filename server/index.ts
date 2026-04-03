@@ -60,13 +60,16 @@ app.get('/api/observe', (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
 
   // 发送初始状态
+  const { projectId } = req.query;
+  const project = typeof projectId === 'string' && projectId.trim() ? projectId.trim() : undefined;
+
   const initialState = {
     type: 'init',
     agents: agentManager.getAllAgentStates(),
-    proposals: db.getAllProposals(),
-    games: db.getAllGames().map(g => ({ ...g, html_content: undefined })), // 不传 HTML 内容
+    proposals: db.getAllProposals().filter(p => !project || p.project_id === project),
+    games: db.getAllGames().filter(g => !project || g.project_id === project).map(g => ({ ...g, html_content: undefined })), // 不传 HTML 内容
     logs: db.getAgentLogs(undefined, 50),
-    tasks: db.getTaskBoardTasks(),
+    tasks: db.getTaskBoardTasks(project),
     pendingPermissions: agentManager.getPendingPermissions()
   };
   res.write(`data: ${JSON.stringify(initialState)}\n\n`);
@@ -200,7 +203,9 @@ app.post('/api/agents/:agentId/command', async (req, res) => {
 
 // 获取所有提案
 app.get('/api/proposals', (req, res) => {
-  const proposals = db.getAllProposals();
+  const { projectId } = req.query;
+  const project = typeof projectId === 'string' && projectId.trim() ? projectId.trim() : undefined;
+  const proposals = db.getAllProposals().filter(p => !project || p.project_id === project);
   res.json({ proposals });
 });
 
@@ -237,9 +242,16 @@ app.post('/api/proposals/:id/review', (req, res) => {
 
 // ============= 游戏成品 API =============
 
+app.get('/api/projects', (req, res) => {
+  const projects = db.getAllProjectIds().map(id => ({ id, name: id }));
+  res.json({ projects });
+});
+
 // 获取游戏列表
 app.get('/api/games', (req, res) => {
-  const games = db.getAllGames().map(g => ({
+  const { projectId } = req.query;
+  const project = typeof projectId === 'string' && projectId.trim() ? projectId.trim() : undefined;
+  const games = db.getAllGames().filter(g => !project || g.project_id === project).map(g => ({
     ...g,
     html_content: undefined,
     hasContent: !!g.html_content
@@ -561,7 +573,8 @@ app.patch('/api/tasks/:id/status', (req, res) => {
     updates.completed_at = null;
   }
 
-  db.updateTaskBoardTask(id, updates);
+  const success = db.updateTaskBoardTask(id, updates);
+  if (!success) return res.status(500).json({ error: '任务状态更新失败' });
   const updated = db.getTaskBoardTask(id)!;
   sseBroadcaster.broadcast({ type: 'task_updated', task: updated });
   agentManager.addLog((updated_by || task.created_by) as AgentRole, '更新任务状态', `${task.title}: ${task.status} → ${status}`, 'success');

@@ -43,7 +43,7 @@ export default function LogPanel({ logs, agents }: Props) {
 
   // 连接 SSE 获取实时流事件
   useEffect(() => {
-    const es = new EventSource(api.observeUrl);
+    const es = new EventSource(api.observeUrl());
 
     es.onmessage = (e) => {
       try {
