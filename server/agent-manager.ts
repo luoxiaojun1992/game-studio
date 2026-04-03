@@ -374,7 +374,7 @@ class AgentManager extends EventEmitter {
 
     let fullResponse = '';
     let toolCalls: any[] = [];
-    const deferredAutoHandoffs: db.DbHandoff[] = [];
+    const deferredAutoHandoffsById = new Map<string, db.DbHandoff>();
 
     try {
       // ---- 创建 MCP 自定义工具服务器 ----
@@ -385,9 +385,7 @@ class AgentManager extends EventEmitter {
           this.addLog(scopedProjectId, aid, action, detail, level);
         },
         async (handoff) => {
-          if (!deferredAutoHandoffs.find(h => h.id === handoff.id)) {
-            deferredAutoHandoffs.push(handoff);
-          }
+          deferredAutoHandoffsById.set(handoff.id, handoff);
         }
       );
 
@@ -414,22 +412,13 @@ class AgentManager extends EventEmitter {
         ...(agentId === 'engineer' ? ['split_dev_test_tasks', 'update_task_status'] : [])
       ];
       const STUDIO_TOOL_PREFIX = 'mcp__studio-tools__';
-      const STUDIO_TOOL_NAMES = new Set([
+      const STUDIO_TOOL_NAMES = new Set<string>([
         ...CAN_AUTO_ALLOW,
-        'save_memory',
-        'get_memories',
         'create_handoff',
         'split_dev_test_tasks',
-        'get_tasks',
         'update_task_status',
         'submit_proposal',
-        'submit_game',
-        'get_proposals',
-        'get_pending_handoffs',
-        'get_proposal',
-        'get_handoff',
-        'get_handoffs',
-        'get_task'
+        'submit_game'
       ]);
 
       const canUseTool: CanUseTool = async (toolName, input, options) => {
@@ -636,7 +625,7 @@ class AgentManager extends EventEmitter {
       if (current === streamId) {
         this.activeAgentStreamsByProject.get(scopedProjectId)?.delete(agentId);
       }
-      for (const handoff of deferredAutoHandoffs) {
+      for (const handoff of deferredAutoHandoffsById.values()) {
         this.dispatchAutoHandoffTask(handoff);
       }
     }
