@@ -48,7 +48,7 @@ export default function CommandPanel({ agents, projectId, selectedAgentId, onCom
   const [clearing, setClearing] = useState(false);
   const outputRef = useRef<HTMLDivElement>(null);
   const streamTextIdRef = useRef(0);
-  const userSelectedRef = useRef(false);
+  const hasUserExplicitlySelectedAgentRef = useRef(false);
 
   // 将历史消息转换为 StreamLog 格式
   const convertMessagesToStreamLogs = useCallback((msgs: AgentMessage[]): StreamLog[] => {
@@ -125,13 +125,13 @@ export default function CommandPanel({ agents, projectId, selectedAgentId, onCom
     if (!selectedAgentId) return;
     if (selectedAgentId !== selectedAgent) {
       setSelectedAgent(selectedAgentId);
-      userSelectedRef.current = true;
+      hasUserExplicitlySelectedAgentRef.current = true;
     }
   }, [selectedAgentId, selectedAgent]);
 
   // 当有 Agent 开始工作时，自动切换到该 Agent（仅首次、且用户未手动选择时）
   useEffect(() => {
-    if (userSelectedRef.current) return;
+    if (hasUserExplicitlySelectedAgentRef.current) return;
     const working = agents.find(a => a.state?.status === 'working');
     if (working && working.id !== selectedAgent) {
       setSelectedAgent(working.id);
@@ -289,7 +289,7 @@ export default function CommandPanel({ agents, projectId, selectedAgentId, onCom
               <button
                 key={agent.id}
                   onClick={() => {
-                    userSelectedRef.current = true;
+                    hasUserExplicitlySelectedAgentRef.current = true;
                     setSelectedAgent(agent.id);
                   }}
                 className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left transition-all border ${
