@@ -7,6 +7,14 @@ interface Props {
   handoffs: Handoff[];
 }
 
+const MAX_TASK_DISPLAY_LENGTH = 20;
+const PROGRESS_WIDTH_BY_STATUS: Record<string, string> = {
+  working: '66%',
+  error: '25%',
+  idle: '40%',
+  paused: '40%',
+};
+
 const WORK_LABEL: Record<string, string> = {
   idle: 'IDLE',
   working: 'WORK',
@@ -29,7 +37,8 @@ export default function PixelAgentWorkspace({ agents, handoffs }: Props) {
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
           {agents.map(agent => {
             const isWorking = agent.state?.status === 'working';
-            const brief = agent.state?.currentTask ? agent.state.currentTask.slice(0, 20) : 'WAITING';
+            const status = agent.state?.status || 'idle';
+            const brief = agent.state?.currentTask ? agent.state.currentTask.slice(0, MAX_TASK_DISPLAY_LENGTH) : 'WAITING';
             return (
               <div key={agent.id} className="bg-gray-950/90 border border-gray-800 rounded-lg p-2 min-h-[96px]">
                 <div className="flex items-center gap-2 mb-2">
@@ -46,7 +55,7 @@ export default function PixelAgentWorkspace({ agents, handoffs }: Props) {
                 <div className="mt-2 h-1.5 bg-gray-800 border border-gray-700">
                   <div
                     className={`h-full ${isWorking ? 'pixel-progress' : ''}`}
-                    style={{ width: isWorking ? '66%' : agent.state?.status === 'error' ? '25%' : '40%', backgroundColor: isWorking ? '#22C55E' : '#6B7280' }}
+                    style={{ width: PROGRESS_WIDTH_BY_STATUS[status], backgroundColor: isWorking ? '#22C55E' : '#6B7280' }}
                   />
                 </div>
               </div>

@@ -8,6 +8,9 @@ interface Props {
   className?: string;
 }
 
+const AVATAR_GRID_SIZE = 12;
+const MIN_PIXEL_SIZE = 2;
+
 const STATUS_COLOR: Record<AgentStatus, string> = {
   idle: '#6B7280',
   working: '#22C55E',
@@ -48,7 +51,7 @@ const ROLE_BADGE: Record<AgentRole, string[]> = {
 
 export default function PixelAgentAvatar({ agentId, status, size = 32, className }: Props) {
   const colors = ROLE_COLORS[agentId];
-  const pixel = Math.max(2, Math.floor(size / 12));
+  const pixel = Math.max(MIN_PIXEL_SIZE, Math.floor(size / AVATAR_GRID_SIZE));
   const badge = ROLE_BADGE[agentId];
   const matrix = [...PIXELS];
   matrix[1] = badge[0];
@@ -68,9 +71,11 @@ export default function PixelAgentAvatar({ agentId, status, size = 32, className
     5: '#FCA5A5',
   };
 
+  const avatarSize = pixel * AVATAR_GRID_SIZE;
+
   return (
-    <div className={`relative inline-flex ${className || ''}`} style={{ width: pixel * 12, height: pixel * 12 }}>
-      <svg width={pixel * 12} height={pixel * 12} viewBox="0 0 12 12" style={{ imageRendering: 'pixelated' }}>
+    <div className={`relative inline-flex ${className || ''}`} style={{ width: avatarSize, height: avatarSize }}>
+      <svg width={avatarSize} height={avatarSize} viewBox={`0 0 ${AVATAR_GRID_SIZE} ${AVATAR_GRID_SIZE}`} style={{ imageRendering: 'pixelated' }}>
         {matrix.map((row, y) =>
           row.split('').map((char, x) => {
             if (char === '.') return null;
