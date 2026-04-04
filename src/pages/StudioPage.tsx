@@ -10,6 +10,7 @@ import ProposalDetail from '../components/ProposalDetail';
 import GamePreview from '../components/GamePreview';
 import HandoffPanel from '../components/HandoffPanel';
 import TaskBoardPanel from '../components/TaskBoardPanel';
+import PixelAgentWorkspace from '../components/PixelAgentWorkspace';
 
 const TABS: { key: TabKey; label: string; icon: string }[] = [
   { key: 'overview', label: '团队总览', icon: '🏠' },
@@ -509,6 +510,7 @@ export default function StudioPage() {
       <main className="flex-1 overflow-auto p-4">
         {activeTab === 'overview' && (
           <div className="space-y-4">
+            <PixelAgentWorkspace agents={agents} handoffs={handoffs} />
             {/* Agent 卡片网格 */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
               {agents.map(agent => (

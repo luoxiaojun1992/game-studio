@@ -1,5 +1,6 @@
 import React from 'react';
 import { Agent, AgentRole, Handoff } from '../types';
+import PixelAgentAvatar from './PixelAgentAvatar';
 
 interface Props {
   agent: Agent;
@@ -32,14 +33,14 @@ export default function AgentCard({ agent, onPauseToggle, onSendCommand, streamL
       style={{ borderTopColor: agent.color, borderTopWidth: 3 }}
     >
       {/* 头部 */}
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-2xl">{agent.emoji}</span>
-          <div>
-            <div className="font-semibold text-white text-sm">{agent.name}</div>
-            <div className="text-xs text-gray-500">{agent.title}</div>
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-2">
+            <PixelAgentAvatar agentId={agent.id} status={status} size={32} />
+            <div>
+              <div className="font-semibold text-white text-sm pixel-font tracking-wide">{agent.name}</div>
+              <div className="text-xs text-gray-500">{agent.title}</div>
+            </div>
           </div>
-        </div>
 
         {/* 状态点和交接指示 */}
         <div className="flex items-center gap-1.5">
