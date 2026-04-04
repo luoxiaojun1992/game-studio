@@ -54,10 +54,12 @@ export default function PixelAgentAvatar({ agentId, status, size = 32, className
   const colors = ROLE_COLORS[agentId];
   const pixelSize = Math.max(MIN_PIXEL_SIZE, Math.floor(size / AVATAR_GRID_SIZE));
   const badge = ROLE_BADGE[agentId];
-  const matrix = [...PIXELS];
-  matrix[BADGE_START_ROW] = badge[0];
-  matrix[BADGE_START_ROW + 1] = badge[1];
-  matrix[BADGE_START_ROW + 2] = badge[2];
+  const matrix = PIXELS.map((row, index) => {
+    if (index === BADGE_START_ROW) return badge[0];
+    if (index === BADGE_START_ROW + 1) return badge[1];
+    if (index === BADGE_START_ROW + 2) return badge[2];
+    return row;
+  });
 
   const colorByChar: Record<string, string> = {
     h: '#111827',
