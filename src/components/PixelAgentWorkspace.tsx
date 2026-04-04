@@ -1,5 +1,5 @@
 import React from 'react';
-import { Agent, Handoff } from '../types';
+import { Agent, AgentStatus, Handoff } from '../types';
 import PixelAgentAvatar from './PixelAgentAvatar';
 
 interface Props {
@@ -8,14 +8,14 @@ interface Props {
 }
 
 const MAX_TASK_DISPLAY_LENGTH = 20;
-const PROGRESS_WIDTH_BY_STATUS: Record<string, string> = {
+const PROGRESS_WIDTH_BY_STATUS: Record<AgentStatus, string> = {
   working: '66%',
   error: '25%',
   idle: '40%',
   paused: '40%',
 };
 
-const WORK_LABEL: Record<string, string> = {
+const WORK_LABEL: Record<AgentStatus, string> = {
   idle: 'IDLE',
   working: 'WORK',
   paused: 'PAUSE',
