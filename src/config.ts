@@ -81,8 +81,12 @@ export const api = {
     if (agentId) params.set('agentId', agentId);
     return fetch(`${API_BASE}/api/projects/${projectId || 'default'}/logs?${params}`).then(r => r.json());
   },
-  deleteLogs: (projectId?: string) =>
-    fetch(`${API_BASE}/api/projects/${projectId || 'default'}/logs`, { method: 'DELETE' }).then(r => r.json()),
+  deleteLogs: (projectId?: string, agentId?: string) => {
+    const params = new URLSearchParams();
+    if (agentId) params.set('agentId', agentId);
+    const query = params.toString();
+    return fetch(`${API_BASE}/api/projects/${projectId || 'default'}/logs${query ? `?${query}` : ''}`, { method: 'DELETE' }).then(r => r.json());
+  },
 
   // 指令历史
   getCommands: (projectId?: string) => {

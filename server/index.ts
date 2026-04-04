@@ -369,7 +369,8 @@ app.get('/api/projects/:projectId/logs', (req, res) => {
 
 app.delete('/api/projects/:projectId/logs', (req, res) => {
   const projectId = normalizeProjectId(req.params.projectId);
-  db.deleteLogs(projectId);
+  const agentId = typeof req.query.agentId === 'string' ? req.query.agentId.trim() : '';
+  db.deleteLogs(projectId, agentId || undefined);
   res.json({ success: true });
 });
 

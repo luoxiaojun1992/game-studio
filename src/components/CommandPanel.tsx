@@ -126,10 +126,7 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
     if (clearing) return;
     setClearing(true);
     try {
-      await fetch(`${API_BASE}/api/projects/${projectId}/logs`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-      });
+      await api.deleteLogs(projectId, selectedAgent);
     } catch {}
     setClearing(false);
   };

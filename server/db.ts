@@ -595,7 +595,12 @@ export function getLogs(projectId: string, agentId?: string, limit = 1000): DbLo
   }
 }
 
-export function deleteLogs(projectId: string): void {
+export function deleteLogs(projectId: string, agentId?: string): void {
+  if (agentId) {
+    const stmt = db.prepare('DELETE FROM logs WHERE project_id = ? AND agent_id = ?');
+    stmt.run(projectId, agentId);
+    return;
+  }
   const stmt = db.prepare('DELETE FROM logs WHERE project_id = ?');
   stmt.run(projectId);
 }
