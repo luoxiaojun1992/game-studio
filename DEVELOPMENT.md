@@ -62,13 +62,16 @@ src/
 
 - 系统：`GET /api/health`，`GET /api/models`，`GET /api/check-login`
 - 观测：`GET /api/observe`（SSE）
-- Agent：查询、消息、暂停/恢复、发送指令
+- Agent：查询、消息查询/清理、暂停/恢复、发送指令
 - 提案：创建、查询、评审、用户决策
 - 游戏：提交、查询、预览、状态更新
 - 任务：创建、查询、状态更新
 - 交接：创建、接受、确认执行、完成、拒绝、取消
 - 记忆：按 Agent 或项目查询/新增/删除
-- 项目：创建与查询
+- 项目：创建、查询、项目设置读取/更新（`autopilot_enabled`）
+- 日志：`GET/DELETE /api/projects/:projectId/logs`
+- 指令：`GET /api/commands`
+- 权限：`POST /api/permission-response`
 
 ## 4.2 SSE 事件（前端消费：`StudioPage.tsx`）
 
@@ -78,6 +81,7 @@ src/
 - `agent_status_changed`
 - `agent_log`
 - `stream_event`（含文本流、权限请求等）
+- `agent_paused` / `agent_resumed`
 - `proposal_created` / `proposal_reviewed` / `proposal_decided`
 - `game_submitted` / `game_updated`
 - `handoff_created` / `handoff_updated`
@@ -172,8 +176,7 @@ npm run build
 
 ## 10. 常见注意事项
 
-- 修改任务看板逻辑时，前后端都要同步更新状态定义与流转规则
+- 修改任务看板逻辑时，前后端都要同步更新状态定义与流转规则（`todo -> developing -> testing -> done`，含 `blocked` 分支）
 - 新增事件时，记得更新 `src/types.ts` 的 `SSEEvent` 联合类型
 - 游戏预览接口直接返回 HTML，注意内容安全与来源可控
 - 产物写盘逻辑在 `db.ts`，改路径规则时需兼容历史数据
-

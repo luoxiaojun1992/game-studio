@@ -8,6 +8,7 @@
 - 指令中心（向指定 Agent 下达任务，SSE 流式回传）
 - 任务看板（开发/测试任务拆分与状态流转）
 - 任务交接（跨角色移交、确认执行、完成回传）
+- 项目设置（自动交接开关）
 - 提案管理（创建、评审、人工决策）
 - 游戏成品管理（HTML 成品提交、预览、版本状态）
 - Agent 长期记忆（保存/查询/清理）
@@ -104,14 +105,15 @@ game-studio/
 
 - 基础：`/health` `/models` `/check-login` `/observe`
 - Agent：`/agents` `/agents/:agentId/messages` `/agents/:agentId/command` `/agents/:agentId/pause` `/agents/:agentId/resume`
-- 提案：`/proposals` `/proposals/:id` `/proposals/:id/review` `/proposals/:id/decide`
-- 游戏：`/games` `/games/:id` `/games/:id/preview` `/games/:id`(PATCH)
-- 项目：`/projects`(GET/POST)
+- 提案：`/proposals` `/proposals/:id` `/proposals`(POST) `/proposals/:id/review` `/proposals/:id/decide`
+- 游戏：`/games` `/games/:id` `/games`(POST) `/games/:id/preview` `/games/:id`(PATCH)
+- 项目：`/projects`(GET/POST) `/projects/:id/settings`(GET/PATCH)
 - 交接：`/handoffs` `/handoffs/pending` `/handoffs/:id/(accept|confirm|complete|reject|cancel)`
 - 任务：`/tasks` `/tasks/:id/status`
-- 记忆：`/agents/:agentId/memories` `/memories` `/memories/:id`
+- 记忆：`/agents/:agentId/memories`(GET/POST/DELETE) `/memories` `/memories/:id`
+- 日志：`/projects/:projectId/logs`(GET/DELETE)
+- 会话与指令：`/agents/:agentId/messages`(DELETE) `/commands`
 - 权限：`/permission-response`
-- 运行记录：`/logs` `/commands`
 
 ## 项目与数据产出
 
@@ -122,4 +124,3 @@ game-studio/
 ## 二次开发
 
 详见 [DEVELOPMENT.md](./DEVELOPMENT.md)。
-
