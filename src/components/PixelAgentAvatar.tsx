@@ -11,6 +11,7 @@ interface Props {
 const AVATAR_GRID_SIZE = 12;
 const MIN_PIXEL_SIZE = 2;
 const BADGE_START_ROW = 1;
+const BADGE_END_ROW = BADGE_START_ROW + 2;
 
 const STATUS_COLOR: Record<AgentStatus, string> = {
   idle: '#6B7280',
@@ -55,9 +56,7 @@ export default function PixelAgentAvatar({ agentId, status, size = 32, className
   const pixelSize = Math.max(MIN_PIXEL_SIZE, Math.floor(size / AVATAR_GRID_SIZE));
   const badge = ROLE_BADGE[agentId];
   const matrix = PIXELS.map((row, index) => {
-    if (index === BADGE_START_ROW) return badge[0];
-    if (index === BADGE_START_ROW + 1) return badge[1];
-    if (index === BADGE_START_ROW + 2) return badge[2];
+    if (index >= BADGE_START_ROW && index <= BADGE_END_ROW) return badge[index - BADGE_START_ROW];
     return row;
   });
 

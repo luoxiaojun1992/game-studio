@@ -37,7 +37,7 @@ export default function AgentCard({ agent, onPauseToggle, onSendCommand, streamL
           <div className="flex items-center gap-2">
             <PixelAgentAvatar agentId={agent.id} status={status} size={32} />
             <div>
-              <div className="font-semibold text-white text-sm pixel-font tracking-wide">{agent.name}</div>
+              <div className="font-semibold text-white text-sm tracking-wide">{agent.name}</div>
               <div className="text-xs text-gray-500">{agent.title}</div>
             </div>
           </div>

@@ -22,6 +22,11 @@ const WORK_LABEL: Record<AgentStatus, string> = {
   error: 'ERROR',
 };
 
+function truncateTask(task: string | null | undefined, maxLength: number): string {
+  if (!task) return 'WAITING';
+  return `${task.slice(0, maxLength)}${task.length > maxLength ? '...' : ''}`;
+}
+
 export default function PixelAgentWorkspace({ agents, handoffs }: Props) {
   const activeHandoffs = handoffs.filter(h => ['pending', 'accepted', 'working'].includes(h.status));
   return (
@@ -38,10 +43,7 @@ export default function PixelAgentWorkspace({ agents, handoffs }: Props) {
           {agents.map(agent => {
             const status = agent.state?.status || 'idle';
             const isWorking = status === 'working';
-            const rawTask = agent.state?.currentTask;
-            const brief = rawTask
-              ? `${rawTask.slice(0, MAX_TASK_DISPLAY_LENGTH)}${rawTask.length > MAX_TASK_DISPLAY_LENGTH ? '...' : ''}`
-              : 'WAITING';
+            const brief = truncateTask(agent.state?.currentTask, MAX_TASK_DISPLAY_LENGTH);
             return (
               <div key={agent.id} className="bg-gray-950/90 border border-gray-800 rounded-lg p-2 min-h-[96px]">
                 <div className="flex items-center gap-2 mb-2">
