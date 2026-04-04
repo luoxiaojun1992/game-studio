@@ -38,7 +38,10 @@ export default function PixelAgentWorkspace({ agents, handoffs }: Props) {
           {agents.map(agent => {
             const isWorking = agent.state?.status === 'working';
             const status = agent.state?.status || 'idle';
-            const brief = agent.state?.currentTask ? agent.state.currentTask.slice(0, MAX_TASK_DISPLAY_LENGTH) : 'WAITING';
+            const rawTask = agent.state?.currentTask;
+            const brief = rawTask
+              ? `${rawTask.slice(0, MAX_TASK_DISPLAY_LENGTH)}${rawTask.length > MAX_TASK_DISPLAY_LENGTH ? '...' : ''}`
+              : 'WAITING';
             return (
               <div key={agent.id} className="bg-gray-950/90 border border-gray-800 rounded-lg p-2 min-h-[96px]">
                 <div className="flex items-center gap-2 mb-2">

@@ -51,7 +51,7 @@ const ROLE_BADGE: Record<AgentRole, string[]> = {
 
 export default function PixelAgentAvatar({ agentId, status, size = 32, className }: Props) {
   const colors = ROLE_COLORS[agentId];
-  const pixel = Math.max(MIN_PIXEL_SIZE, Math.floor(size / AVATAR_GRID_SIZE));
+  const pixelSize = Math.max(MIN_PIXEL_SIZE, Math.floor(size / AVATAR_GRID_SIZE));
   const badge = ROLE_BADGE[agentId];
   const matrix = [...PIXELS];
   matrix[1] = badge[0];
@@ -71,7 +71,7 @@ export default function PixelAgentAvatar({ agentId, status, size = 32, className
     5: '#FCA5A5',
   };
 
-  const avatarSize = pixel * AVATAR_GRID_SIZE;
+  const avatarSize = pixelSize * AVATAR_GRID_SIZE;
 
   return (
     <div className={`relative inline-flex ${className || ''}`} style={{ width: avatarSize, height: avatarSize }}>
