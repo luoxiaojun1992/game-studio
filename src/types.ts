@@ -206,4 +206,4 @@ export type SSEEvent =
   | { type: 'task_updated'; task: TaskBoardTask };
 
 // 页面标签
-export type TabKey = 'overview' | 'proposals' | 'tasks' | 'games' | 'logs' | 'commands' | 'handoffs' | 'settings';
+export type TabKey = 'overview' | 'pixel_studio' | 'proposals' | 'tasks' | 'games' | 'logs' | 'commands' | 'handoffs' | 'settings';
