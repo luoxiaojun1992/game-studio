@@ -20,6 +20,7 @@ const WORK_LABEL: Record<AgentStatus, string> = {
   paused: 'PAUSE',
   error: 'ERROR',
 };
+const MAX_ROLE_BADGE_LENGTH = 4;
 
 const ROLE_SHORT_NAME: Record<string, string> = {
   engineer: 'ENG',
@@ -33,8 +34,8 @@ function getRoleShortName(agentId: string): string {
   const normalizedId = agentId.toLowerCase();
   if (ROLE_SHORT_NAME[normalizedId]) return ROLE_SHORT_NAME[normalizedId];
   const compact = normalizedId.split('_').filter(Boolean).map(part => part[0]).join('');
-  if (compact) return compact.slice(0, 4).toUpperCase();
-  return normalizedId.slice(0, 4).toUpperCase();
+  if (compact) return compact.slice(0, MAX_ROLE_BADGE_LENGTH).toUpperCase();
+  return normalizedId.slice(0, MAX_ROLE_BADGE_LENGTH).toUpperCase();
 }
 
 function truncateTask(task: string | null | undefined, maxLength: number): string {
@@ -48,7 +49,7 @@ export default function PixelAgentWorkspace({ agents, handoffs }: Props) {
   return (
     <section className="bg-gray-900 rounded-xl border border-gray-800 p-4 overflow-hidden">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-xs md:text-sm text-gray-300 tracking-wider">3D STUDIO COLLABORATION ROOM</h3>
+        <h3 className="text-xs md:text-sm text-gray-300 tracking-wider">3D Studio</h3>
         <span className="text-[10px] md:text-xs text-gray-500">
           AGENTS: {agents.length} · HANDOFFS: {activeHandoffs.length}
         </span>
@@ -77,7 +78,7 @@ export default function PixelAgentWorkspace({ agents, handoffs }: Props) {
                     <span className="studio3d-role-badge">{getRoleShortName(agent.id)}</span>
                   </div>
                   <div className="studio3d-agent-screen">
-                    <span className={isWorking ? 'studio3d-typing' : ''}>{isWorking ? 'typing...' : 'standby'}</span>
+                    <span className={isWorking ? 'studio3d-typing' : ''}>{isWorking ? 'writing...' : 'standby'}</span>
                   </div>
                 </div>
                 <div className="studio3d-seat-panel">
