@@ -29,6 +29,9 @@ const FLOOR_NORMAL_STRIPE_STEP = 12;
 const FLOOR_NORMAL_STRIPE_BAND = 4;
 const FLOOR_NORMAL_VARIATION_OFFSET = 1.5;
 const FLOOR_NORMAL_VARIATION_AMOUNT = 8;
+const FLOOR_NORMAL_RED_MIN = 112;
+const FLOOR_NORMAL_RED_MAX = 142;
+const FLOOR_NORMAL_LINE_WIDTH = 2;
 const BODY_STRIPE_SPACING = 24;
 const BODY_STRIPE_WIDTH = 10;
 const CANVAS_TEXTURE_SIZE = 256;
@@ -44,7 +47,12 @@ const WALL_NORMAL_BASE_RED = 124;
 const WALL_NORMAL_RED_VARIATION = 24;
 const WALL_NORMAL_BASE_GREEN = 120;
 const WALL_NORMAL_GREEN_VARIATION = 14;
+const WALL_NORMAL_STEP = 16;
+const WALL_NORMAL_RECT_WIDTH = 22;
+const WALL_NORMAL_RECT_HEIGHT = 4;
 const SHADOW_BIAS_TUNING = -0.00012;
+const SHADOW_MAP_SIZE_LOW = 512;
+const SHADOW_MAP_SIZE_HIGH = 2048;
 const ROLE_LABEL = 'ROLE';
 const MAX_ROLE_BADGE_LENGTH = 4;
 const ROLE_COLOR: Record<AgentRole, string> = {
@@ -158,8 +166,8 @@ function SceneFloor({ lowDetail }: { lowDetail: boolean }) {
             128 +
             ((i / FLOOR_NORMAL_STRIPE_STEP) % FLOOR_NORMAL_STRIPE_BAND - FLOOR_NORMAL_VARIATION_OFFSET) *
               FLOOR_NORMAL_VARIATION_AMOUNT;
-          ctx.strokeStyle = `rgb(${Math.max(112, Math.min(142, Math.round(v)))},128,255)`;
-          ctx.lineWidth = 2;
+          ctx.strokeStyle = `rgb(${Math.max(FLOOR_NORMAL_RED_MIN, Math.min(FLOOR_NORMAL_RED_MAX, Math.round(v)))},128,255)`;
+          ctx.lineWidth = FLOOR_NORMAL_LINE_WIDTH;
           ctx.beginPath();
           ctx.moveTo(i, 0);
           ctx.lineTo(i, size);
@@ -236,11 +244,11 @@ function SceneProps({ lowDetail }: { lowDetail: boolean }) {
       createCanvasTexture((ctx, size) => {
         ctx.fillStyle = 'rgb(128,128,255)';
         ctx.fillRect(0, 0, size, size);
-        for (let i = 0; i < size; i += 16) {
+        for (let i = 0; i < size; i += WALL_NORMAL_STEP) {
           const y = (i * 7) % size;
           const x = (i * 13) % size;
           ctx.fillStyle = `rgb(${WALL_NORMAL_BASE_RED + (i % WALL_NORMAL_RED_VARIATION)},${WALL_NORMAL_BASE_GREEN + (i % WALL_NORMAL_GREEN_VARIATION)},255)`;
-          ctx.fillRect(x, y, 22, 4);
+          ctx.fillRect(x, y, WALL_NORMAL_RECT_WIDTH, WALL_NORMAL_RECT_HEIGHT);
         }
       }, [2, 1], false),
     []
@@ -517,8 +525,8 @@ function StudioScene({
         position={[7, 9, 5]}
         intensity={1.3}
         castShadow={shadowsEnabled && !lowDetail}
-        shadow-mapSize-width={lowDetail ? 512 : 2048}
-        shadow-mapSize-height={lowDetail ? 512 : 2048}
+        shadow-mapSize-width={lowDetail ? SHADOW_MAP_SIZE_LOW : SHADOW_MAP_SIZE_HIGH}
+        shadow-mapSize-height={lowDetail ? SHADOW_MAP_SIZE_LOW : SHADOW_MAP_SIZE_HIGH}
         shadow-bias={SHADOW_BIAS_TUNING}
         shadow-normalBias={0.02}
         shadow-camera-near={1}
