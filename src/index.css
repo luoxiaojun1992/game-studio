@@ -777,7 +777,7 @@ t-chat-sender::part(send-btn):disabled,
   position: relative;
   margin: 0 auto 44px;
   width: 72px;
-  height: 62px;
+  height: 82px;
 }
 
 .studio3d-agent-head {
@@ -790,6 +790,7 @@ t-chat-sender::part(send-btn):disabled,
   border-radius: 9999px;
   background: radial-gradient(circle at 35% 30%, rgba(250, 250, 250, 0.85), rgba(148, 163, 184, 0.75) 62%, rgba(71, 85, 105, 0.8));
   border: 1px solid rgba(148, 163, 184, 0.5);
+  z-index: 4;
 }
 
 .studio3d-role-badge {
@@ -804,10 +805,94 @@ t-chat-sender::part(send-btn):disabled,
   font-weight: 700;
 }
 
+.studio3d-agent-limb {
+  position: absolute;
+  background: linear-gradient(180deg, rgba(251, 191, 153, 0.96), rgba(245, 158, 11, 0.82));
+  border: 1px solid rgba(180, 83, 9, 0.35);
+  border-radius: 9999px;
+}
+
+.studio3d-agent-arm {
+  top: 34px;
+  width: 10px;
+  height: 34px;
+  z-index: 2;
+}
+
+.studio3d-agent-arm-left {
+  left: 8px;
+  transform: rotate(14deg);
+}
+
+.studio3d-agent-arm-right {
+  right: 8px;
+  transform: rotate(-14deg);
+}
+
+.studio3d-agent-leg {
+  top: 68px;
+  width: 11px;
+  height: 20px;
+  z-index: 1;
+}
+
+.studio3d-agent-leg-left {
+  left: 24px;
+}
+
+.studio3d-agent-leg-right {
+  right: 24px;
+}
+
+.studio3d-agent-torso {
+  position: absolute;
+  left: 50%;
+  top: 26px;
+  width: 42px;
+  height: 48px;
+  transform: translateX(-50%);
+  border-radius: 10px 10px 8px 8px;
+  border: 1px solid rgba(148, 163, 184, 0.42);
+  background: linear-gradient(180deg, rgba(30, 41, 59, 0.92), rgba(15, 23, 42, 0.95));
+  z-index: 3;
+}
+
+.studio3d-agent-neckline {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 24px;
+  height: 12px;
+  transform: translateX(-50%);
+  border-radius: 0 0 10px 10px;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.studio3d-agent-tie {
+  position: absolute;
+  left: 50%;
+  top: 12px;
+  width: 8px;
+  height: 26px;
+  transform: translateX(-50%);
+  border-radius: 3px;
+  background: linear-gradient(180deg, rgba(220, 38, 38, 0.95), rgba(153, 27, 27, 0.95));
+}
+
+.studio3d-agent-badge {
+  position: absolute;
+  right: 6px;
+  top: 16px;
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: rgba(148, 163, 184, 0.85);
+}
+
 .studio3d-agent-screen {
   position: absolute;
   left: 50%;
-  bottom: 0;
+  bottom: -4px;
   width: 72px;
   height: 26px;
   transform: translateX(-50%);
@@ -844,4 +929,57 @@ t-chat-sender::part(send-btn):disabled,
 
 .studio3d-working .studio3d-agent-head {
   animation: studio3d-bob 0.75s ease-in-out infinite;
+}
+
+.studio3d-working .studio3d-agent-arm-left {
+  animation: studio3d-bob 0.65s ease-in-out infinite;
+}
+
+.studio3d-working .studio3d-agent-arm-right {
+  animation: studio3d-bob 0.65s ease-in-out infinite reverse;
+}
+
+.studio3d-role-engineer .studio3d-agent-torso {
+  background: linear-gradient(180deg, rgba(37, 99, 235, 0.96), rgba(29, 78, 216, 0.95));
+}
+
+.studio3d-role-engineer .studio3d-agent-badge {
+  background: rgba(191, 219, 254, 0.95);
+}
+
+.studio3d-role-architect .studio3d-agent-torso {
+  background: linear-gradient(180deg, rgba(15, 118, 110, 0.96), rgba(6, 95, 70, 0.94));
+}
+
+.studio3d-role-architect .studio3d-agent-tie {
+  background: linear-gradient(180deg, rgba(16, 185, 129, 0.95), rgba(5, 150, 105, 0.95));
+}
+
+.studio3d-role-game_designer .studio3d-agent-torso {
+  background: linear-gradient(180deg, rgba(124, 58, 237, 0.96), rgba(91, 33, 182, 0.94));
+}
+
+.studio3d-role-game_designer .studio3d-agent-neckline {
+  background: rgba(233, 213, 255, 0.94);
+}
+
+.studio3d-role-biz_designer .studio3d-agent-torso {
+  background: linear-gradient(180deg, rgba(234, 88, 12, 0.96), rgba(194, 65, 12, 0.95));
+}
+
+.studio3d-role-biz_designer .studio3d-agent-tie {
+  background: linear-gradient(180deg, rgba(251, 146, 60, 0.95), rgba(234, 88, 12, 0.95));
+}
+
+.studio3d-role-ceo .studio3d-agent-torso {
+  background: linear-gradient(180deg, rgba(31, 41, 55, 0.98), rgba(17, 24, 39, 0.98));
+  border-color: rgba(250, 204, 21, 0.35);
+}
+
+.studio3d-role-ceo .studio3d-agent-tie {
+  background: linear-gradient(180deg, rgba(250, 204, 21, 0.95), rgba(202, 138, 4, 0.95));
+}
+
+.studio3d-role-ceo .studio3d-agent-badge {
+  background: rgba(253, 224, 71, 0.95);
 }

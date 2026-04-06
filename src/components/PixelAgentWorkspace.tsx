@@ -1,5 +1,5 @@
 import React from 'react';
-import { Agent, AgentStatus, Handoff } from '../types';
+import { Agent, AgentRole, AgentStatus, Handoff } from '../types';
 
 interface Props {
   agents: Agent[];
@@ -43,6 +43,14 @@ function truncateTask(task: string | null | undefined, maxLength: number): strin
   return `${task.slice(0, maxLength)}${task.length > maxLength ? '...' : ''}`;
 }
 
+function getRoleClass(agentId: string): string {
+  const normalized = agentId.toLowerCase() as AgentRole;
+  if (['engineer', 'architect', 'game_designer', 'biz_designer', 'ceo'].includes(normalized)) {
+    return `studio3d-role-${normalized}`;
+  }
+  return 'studio3d-role-engineer';
+}
+
 export default function PixelAgentWorkspace({ agents, handoffs }: Props) {
   const activeHandoffs = handoffs.filter(h => ['pending', 'accepted', 'working'].includes(h.status));
 
@@ -70,13 +78,22 @@ export default function PixelAgentWorkspace({ agents, handoffs }: Props) {
             return (
               <div
                 key={agent.id}
-                className={`studio3d-seat studio3d-seat-${agent.id} ${isWorking ? 'studio3d-working' : ''}`}
+                className={`studio3d-seat ${getRoleClass(agent.id)} ${isWorking ? 'studio3d-working' : ''}`}
               >
                 <div className="studio3d-chair" />
                 <div className="studio3d-agent-body">
                   <div className="studio3d-agent-head">
                     <span className="studio3d-role-badge">{getRoleShortName(agent.id)}</span>
                   </div>
+                  <div className="studio3d-agent-limb studio3d-agent-arm studio3d-agent-arm-left" />
+                  <div className="studio3d-agent-limb studio3d-agent-arm studio3d-agent-arm-right" />
+                  <div className="studio3d-agent-torso">
+                    <div className="studio3d-agent-neckline" />
+                    <div className="studio3d-agent-tie" />
+                    <div className="studio3d-agent-badge" />
+                  </div>
+                  <div className="studio3d-agent-limb studio3d-agent-leg studio3d-agent-leg-left" />
+                  <div className="studio3d-agent-limb studio3d-agent-leg studio3d-agent-leg-right" />
                   <div className="studio3d-agent-screen">
                     <span className={isWorking ? 'studio3d-typing' : ''}>{isWorking ? 'writing...' : 'standby'}</span>
                   </div>
