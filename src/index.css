@@ -772,6 +772,12 @@ t-chat-sender::part(send-btn):disabled,
   padding: 3px 8px;
 }
 
+.studio2d-handoff-label {
+  display: inline-flex;
+  align-items: center;
+  letter-spacing: 0.02em;
+}
+
 .studio2d-handoff-dot {
   display: inline-block;
   animation: studio2d-float 0.9s ease-in-out infinite;

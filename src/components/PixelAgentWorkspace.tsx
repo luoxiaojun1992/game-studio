@@ -110,10 +110,14 @@ function Studio2DScene({ agents, activeHandoffs }: { agents: Agent[]; activeHand
 
       <div className="studio2d-handoff-layer">
         {handoffFlows.map(h => (
-          <div key={h.id} className={`studio2d-handoff-line studio2d-priority-${h.priority}`}>
+          <div
+            key={h.id}
+            className={`studio2d-handoff-line studio2d-priority-${h.priority}`}
+            aria-label={`handoff from ${h.from_agent_id} to ${h.to_agent_id}`}
+          >
             <span className="studio2d-handoff-dot" role="img" aria-label="handoff package">📦</span>
             <span className="studio2d-handoff-label">
-              {h.from_agent_id} → {h.to_agent_id}
+              {h.from_agent_id} to {h.to_agent_id}
             </span>
           </div>
         ))}
