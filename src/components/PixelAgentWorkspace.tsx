@@ -1,5 +1,6 @@
 import React from 'react';
 import { Agent, AgentRole, AgentStatus, Handoff } from '../types';
+import PixelAgentAvatar from './PixelAgentAvatar';
 
 interface Props {
   agents: Agent[];
@@ -50,6 +51,14 @@ function getRoleClass(agentId: string): string {
     return `studio3d-role-${normalized}`;
   }
   return 'studio3d-role-engineer';
+}
+
+function getRoleId(agentId: string): AgentRole {
+  const normalized = agentId.toLowerCase() as AgentRole;
+  if (KNOWN_ROLE_IDS.has(normalized)) {
+    return normalized;
+  }
+  return 'engineer';
 }
 
 export default function PixelAgentWorkspace({ agents, handoffs }: Props) {
@@ -111,20 +120,14 @@ export default function PixelAgentWorkspace({ agents, handoffs }: Props) {
                 key={agent.id}
                 className={`studio3d-seat ${getRoleClass(agent.id)} ${isWorking ? 'studio3d-working' : ''}`}
               >
-                <div className="studio3d-chair" />
-                <div className="studio3d-agent-body">
-                  <div className="studio3d-agent-head">
-                    <span className="studio3d-role-badge">{getRoleBadgeFromAgentId(agent.id)}</span>
-                  </div>
-                  <div className="studio3d-agent-limb studio3d-agent-arm studio3d-agent-arm-left" />
-                  <div className="studio3d-agent-limb studio3d-agent-arm studio3d-agent-arm-right" />
-                  <div className="studio3d-agent-torso">
-                    <div className="studio3d-agent-neckline" />
-                    <div className="studio3d-agent-tie" />
-                    <div className="studio3d-agent-badge" />
-                  </div>
-                  <div className="studio3d-agent-limb studio3d-agent-leg studio3d-agent-leg-left" />
-                  <div className="studio3d-agent-limb studio3d-agent-leg studio3d-agent-leg-right" />
+                <div className="studio3d-character-stage">
+                  <div className="studio3d-character-holo" />
+                  <PixelAgentAvatar
+                    agentId={getRoleId(agent.id)}
+                    status={status}
+                    size={58}
+                    className="studio3d-character-avatar"
+                  />
                   <div className="studio3d-agent-screen">
                     <span className={isWorking ? 'studio3d-typing' : ''}>{isWorking ? 'Writing...' : 'Standby'}</span>
                   </div>
@@ -136,6 +139,7 @@ export default function PixelAgentWorkspace({ agents, handoffs }: Props) {
                       {WORK_LABEL[agent.state?.status || 'idle']}
                     </div>
                   </div>
+                  <div className="text-[9px] text-blue-200/90 uppercase tracking-wide mb-1">角色 {getRoleBadgeFromAgentId(agent.id)}</div>
                   <div className="text-[9px] text-gray-400 truncate">{brief}</div>
                   <div className="mt-2 h-1.5 bg-gray-800 border border-gray-700">
                     <div
