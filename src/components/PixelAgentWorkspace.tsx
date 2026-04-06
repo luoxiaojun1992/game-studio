@@ -70,40 +70,113 @@ function getStatusColor(status: AgentStatus): string {
   return '#6B7280';
 }
 
+function createCanvasTexture(
+  painter: (ctx: CanvasRenderingContext2D, size: number) => void,
+  repeat: [number, number] = [1, 1]
+) {
+  if (typeof document === 'undefined') return undefined;
+  const size = 256;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return undefined;
+  painter(ctx, size);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(repeat[0], repeat[1]);
+  texture.anisotropy = 8;
+  texture.needsUpdate = true;
+  return texture;
+}
+
 function SceneFloor({ lowDetail }: { lowDetail: boolean }) {
+  const floorTexture = useMemo(
+    () =>
+      createCanvasTexture((ctx, size) => {
+        ctx.fillStyle = '#0A1022';
+        ctx.fillRect(0, 0, size, size);
+        for (let i = 0; i <= size; i += 16) {
+          ctx.strokeStyle = i % 64 === 0 ? 'rgba(56,189,248,0.28)' : 'rgba(56,189,248,0.12)';
+          ctx.lineWidth = i % 64 === 0 ? 2 : 1;
+          ctx.beginPath();
+          ctx.moveTo(i, 0);
+          ctx.lineTo(i, size);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(0, i);
+          ctx.lineTo(size, i);
+          ctx.stroke();
+        }
+      }, [8, 8]),
+    []
+  );
   return (
     <group>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow={!lowDetail}>
         <planeGeometry args={[24, 24]} />
-        <meshStandardMaterial color="#0B1227" metalness={0.2} roughness={0.8} />
+        <meshStandardMaterial color="#0B1227" metalness={0.22} roughness={0.78} map={floorTexture} />
       </mesh>
-      <gridHelper args={[24, 24, '#1E40AF', '#0EA5E9']} position={[0, 0.02, 0]} />
+      <gridHelper args={[24, 24, '#1E40AF', '#0EA5E9']} position={[0, 0.03, 0]} />
     </group>
   );
 }
 
 function SceneProps({ lowDetail }: { lowDetail: boolean }) {
+  const wallTexture = useMemo(
+    () =>
+      createCanvasTexture((ctx, size) => {
+        ctx.fillStyle = '#101b33';
+        ctx.fillRect(0, 0, size, size);
+        for (let i = 0; i < 20; i++) {
+          const x = Math.random() * size;
+          const y = Math.random() * size;
+          const w = 30 + Math.random() * 80;
+          const h = 6 + Math.random() * 20;
+          ctx.fillStyle = `rgba(56,189,248,${0.05 + Math.random() * 0.15})`;
+          ctx.fillRect(x, y, w, h);
+        }
+      }, [2, 1]),
+    []
+  );
+  const deskTexture = useMemo(
+    () =>
+      createCanvasTexture((ctx, size) => {
+        ctx.fillStyle = '#0F172A';
+        ctx.fillRect(0, 0, size, size);
+        for (let i = 0; i <= size; i += 8) {
+          ctx.strokeStyle = 'rgba(148,163,184,0.08)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(0, i);
+          ctx.lineTo(size, i);
+          ctx.stroke();
+        }
+      }, [3, 2]),
+    []
+  );
   return (
     <group>
       <mesh position={[0, 2.1, -5.4]} castShadow={!lowDetail} receiveShadow={!lowDetail}>
         <boxGeometry args={[8.4, 2.2, 0.3]} />
-        <meshStandardMaterial color="#0F172A" emissive="#1D4ED8" emissiveIntensity={0.2} />
+        <meshStandardMaterial color="#0F172A" emissive="#1D4ED8" emissiveIntensity={0.24} map={wallTexture} />
       </mesh>
       <mesh position={[-6.4, 1.2, -3.2]} castShadow={!lowDetail} receiveShadow={!lowDetail}>
         <boxGeometry args={[2.1, 2.4, 1.6]} />
-        <meshStandardMaterial color="#1E293B" emissive="#7C3AED" emissiveIntensity={0.15} />
+        <meshStandardMaterial color="#1E293B" emissive="#7C3AED" emissiveIntensity={0.16} map={wallTexture} />
       </mesh>
       <mesh position={[6.4, 1.2, -3.2]} castShadow={!lowDetail} receiveShadow={!lowDetail}>
         <boxGeometry args={[2.1, 2.4, 1.6]} />
-        <meshStandardMaterial color="#1E293B" emissive="#22C55E" emissiveIntensity={0.15} />
+        <meshStandardMaterial color="#1E293B" emissive="#22C55E" emissiveIntensity={0.16} map={wallTexture} />
       </mesh>
       <mesh position={[0, 0.55, 0]} castShadow={!lowDetail} receiveShadow={!lowDetail}>
         <boxGeometry args={[10.6, 0.3, 5.4]} />
-        <meshStandardMaterial color="#111827" metalness={0.45} roughness={0.42} />
+        <meshStandardMaterial color="#111827" metalness={0.45} roughness={0.42} map={deskTexture} />
       </mesh>
       <mesh position={[0, 1.45, -0.2]} castShadow={!lowDetail}>
         <boxGeometry args={[3.4, 1.4, 0.15]} />
-        <meshStandardMaterial color="#082F49" emissive="#38BDF8" emissiveIntensity={0.24} />
+        <meshStandardMaterial color="#082F49" emissive="#38BDF8" emissiveIntensity={0.24} map={wallTexture} />
       </mesh>
     </group>
   );
@@ -131,6 +204,38 @@ function AgentUnit({
   const position = useMemo<[number, number, number]>(() => [Math.cos(angle) * radius, 0, Math.sin(angle) * radius], [angle, radius]);
   const emissive = status === 'error' ? '#DC2626' : status === 'working' ? '#22C55E' : status === 'paused' ? '#F59E0B' : '#1E293B';
   const pulse = status === 'working' ? 0.12 : status === 'error' ? 0.08 : 0.03;
+  const bodyTexture = useMemo(
+    () =>
+      createCanvasTexture((ctx, size) => {
+        ctx.fillStyle = ROLE_COLOR[role];
+        ctx.fillRect(0, 0, size, size);
+        ctx.fillStyle = 'rgba(255,255,255,0.18)';
+        for (let i = -size; i < size * 2; i += 24) {
+          ctx.fillRect(i, 0, 10, size);
+        }
+      }, [2, 2]),
+    [role]
+  );
+  const headTexture = useMemo(
+    () =>
+      createCanvasTexture((ctx, size) => {
+        ctx.fillStyle = '#E5E7EB';
+        ctx.fillRect(0, 0, size, size);
+        ctx.fillStyle = '#111827';
+        ctx.beginPath();
+        ctx.arc(size * 0.35, size * 0.42, size * 0.06, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(size * 0.65, size * 0.42, size * 0.06, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.lineWidth = 6;
+        ctx.strokeStyle = '#1F2937';
+        ctx.beginPath();
+        ctx.arc(size * 0.5, size * 0.58, size * 0.12, 0.2, Math.PI - 0.2);
+        ctx.stroke();
+      }, [1, 1]),
+    []
+  );
 
   useFrame(({ clock }) => {
     if (!groupRef.current) return;
@@ -147,11 +252,11 @@ function AgentUnit({
       </mesh>
       <mesh position={[0, 0.78, 0]} castShadow={shadowsEnabled && !lowDetail}>
         <boxGeometry args={[0.52, 0.72, 0.42]} />
-        <meshStandardMaterial color={ROLE_COLOR[role]} emissive={emissive} emissiveIntensity={0.26} roughness={0.45} />
+        <meshStandardMaterial color={ROLE_COLOR[role]} emissive={emissive} emissiveIntensity={0.26} roughness={0.45} map={bodyTexture} />
       </mesh>
       <mesh position={[0, 1.28, 0]} castShadow={shadowsEnabled && !lowDetail}>
         <sphereGeometry args={[0.24, lowDetail ? 8 : 16, lowDetail ? 8 : 16]} />
-        <meshStandardMaterial color="#E5E7EB" roughness={0.65} metalness={0.08} />
+        <meshStandardMaterial color="#E5E7EB" roughness={0.65} metalness={0.08} map={headTexture} />
       </mesh>
       <mesh position={[0, 0.24, 0]} castShadow={shadowsEnabled && !lowDetail}>
         <boxGeometry args={[0.22, 0.24, 0.22]} />
@@ -175,22 +280,23 @@ function StudioScene({
   return (
     <Canvas
       className="studio3d-canvas"
+      style={{ width: '100%', height: '100%' }}
       shadows={shadowsEnabled && !lowDetail}
       dpr={lowDetail ? [1, 1] : [1, 1.8]}
-      camera={{ position: [0, 6.2, 9.4], fov: lowDetail ? 52 : 48 }}
+      camera={{ position: [0, 4.8, 8], fov: lowDetail ? 54 : 46 }}
     >
       <color attach="background" args={['#020617']} />
-      <fog attach="fog" args={['#020617', 10, 20]} />
+      <fog attach="fog" args={['#020617', 8, 18]} />
       <ambientLight intensity={0.6} />
       <hemisphereLight intensity={0.42} color="#93C5FD" groundColor="#020617" />
       <directionalLight
-        position={[8, 10, 6]}
-        intensity={1.05}
+        position={[7, 9, 5]}
+        intensity={1.12}
         castShadow={shadowsEnabled && !lowDetail}
         shadow-mapSize-width={1024}
         shadow-mapSize-height={1024}
       />
-      <pointLight position={[0, 3.2, -2]} color="#38BDF8" intensity={1.3} />
+      <pointLight position={[0, 3.2, -2]} color="#38BDF8" intensity={1.45} />
       <SceneFloor lowDetail={lowDetail} />
       <SceneProps lowDetail={lowDetail} />
       {agents.map((agent, index) => (
@@ -207,11 +313,11 @@ function StudioScene({
         <OrbitControls
           enablePan={false}
           enableZoom={!lowDetail}
-          minDistance={6.5}
-          maxDistance={13}
+          minDistance={5.8}
+          maxDistance={11.8}
           maxPolarAngle={Math.PI / 2.1}
           minPolarAngle={Math.PI / 4}
-          target={[0, 0.9, 0]}
+          target={[0, 1.05, 0]}
         />
       )}
     </Canvas>
