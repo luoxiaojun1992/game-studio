@@ -130,11 +130,12 @@ function SceneProps({ lowDetail }: { lowDetail: boolean }) {
         ctx.fillStyle = '#101b33';
         ctx.fillRect(0, 0, size, size);
         for (let i = 0; i < 20; i++) {
-          const x = Math.random() * size;
-          const y = Math.random() * size;
-          const w = 30 + Math.random() * 80;
-          const h = 6 + Math.random() * 20;
-          ctx.fillStyle = `rgba(56,189,248,${0.05 + Math.random() * 0.15})`;
+          const x = ((i * 37) % 21) / 20 * size;
+          const y = ((i * 19 + 7) % 21) / 20 * size;
+          const w = 30 + ((i * 13) % 9) * 10;
+          const h = 6 + ((i * 7) % 5) * 4;
+          const alpha = 0.05 + (((i * 11) % 9) / 8) * 0.15;
+          ctx.fillStyle = `rgba(56,189,248,${alpha.toFixed(3)})`;
           ctx.fillRect(x, y, w, h);
         }
       }, [2, 1]),
