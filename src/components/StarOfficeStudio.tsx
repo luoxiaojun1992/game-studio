@@ -7,7 +7,7 @@ function isTrustedSameOriginUrl(rawUrl: string): boolean {
   try {
     const url = new URL(rawUrl, window.location.origin);
     if (url.origin === window.location.origin) return true;
-    return ['localhost', '127.0.0.1'].includes(url.hostname);
+    return ['localhost', '127.0.0.1', '::1'].includes(url.hostname) || url.hostname.endsWith('.localhost');
   } catch {
     return false;
   }
@@ -21,17 +21,27 @@ export default function StarOfficeStudio() {
   const sandboxValue = allowSameOrigin
     ? 'allow-scripts allow-same-origin allow-forms allow-popups'
     : 'allow-scripts allow-forms allow-popups';
+  const isInsecureRemoteHttp = (() => {
+    try {
+      const parsed = new URL(STAR_OFFICE_UI_URL, window.location.origin);
+      const isLocal = ['localhost', '127.0.0.1', '::1'].includes(parsed.hostname) || parsed.hostname.endsWith('.localhost');
+      return parsed.protocol === 'http:' && !isLocal;
+    } catch {
+      return false;
+    }
+  })();
 
   useEffect(() => {
     setLoadFailed(false);
     setLoaded(false);
+    if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
     timeoutRef.current = window.setTimeout(() => {
       setLoadFailed(true);
     }, LOAD_TIMEOUT_MS);
     return () => {
       if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
     };
-  }, []);
+  }, [STAR_OFFICE_UI_URL]);
 
   useEffect(() => {
     if (loaded && timeoutRef.current) {
@@ -60,6 +70,16 @@ export default function StarOfficeStudio() {
         </div>
       </div>
       <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
+        {isInsecureRemoteHttp && (
+          <div className="px-4 py-2 text-xs text-yellow-300 bg-yellow-950/30 border-b border-yellow-900/60">
+            检测到非本地 HTTP 地址，生产环境建议使用 HTTPS：{STAR_OFFICE_UI_URL}
+          </div>
+        )}
+        {!loaded && !loadFailed && (
+          <div className="absolute pointer-events-none text-xs text-gray-400 px-4 py-2">
+            正在加载 Star-Office-UI...
+          </div>
+        )}
         {loadFailed ? (
           <div className="h-[76vh] min-h-[560px] flex items-center justify-center text-gray-300 text-sm px-6 text-center">
             Star-Office-UI 加载失败，请确认服务已启动并检查地址：{STAR_OFFICE_UI_URL}
@@ -69,10 +89,12 @@ export default function StarOfficeStudio() {
             title="Star-Office-UI"
             src={STAR_OFFICE_UI_URL}
             className="w-full h-[76vh] min-h-[560px] bg-black"
-            style={{ visibility: loaded ? 'visible' : 'hidden' }}
             referrerPolicy="no-referrer"
             sandbox={sandboxValue}
-            onLoad={() => setLoaded(true)}
+            onLoad={() => {
+              setLoaded(true);
+              setLoadFailed(false);
+            }}
           />
         )}
       </div>
