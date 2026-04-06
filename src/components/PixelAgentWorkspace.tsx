@@ -29,7 +29,7 @@ const ROLE_SHORT_NAME: Record<string, string> = {
   biz_designer: 'BIZ',
   ceo: 'CEO',
 };
-const KNOWN_ROLE_IDS = new Set(Object.keys(ROLE_SHORT_NAME));
+const KNOWN_ROLE_IDS = new Set(['engineer', 'architect', 'game_designer', 'biz_designer', 'ceo']);
 
 function getRoleBadgeFromAgentId(agentId: string): string {
   const normalizedId = agentId.toLowerCase();
@@ -126,7 +126,7 @@ export default function PixelAgentWorkspace({ agents, handoffs }: Props) {
                   <div className="studio3d-agent-limb studio3d-agent-leg studio3d-agent-leg-left" />
                   <div className="studio3d-agent-limb studio3d-agent-leg studio3d-agent-leg-right" />
                   <div className="studio3d-agent-screen">
-                    <span className={isWorking ? 'studio3d-typing' : ''}>{isWorking ? 'writing...' : 'standby'}</span>
+                    <span className={isWorking ? 'studio3d-typing' : ''}>{isWorking ? 'Writing...' : 'Standby'}</span>
                   </div>
                 </div>
                 <div className="studio3d-seat-panel">

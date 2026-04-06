@@ -651,14 +651,16 @@ t-chat-sender::part(send-btn):disabled,
 }
 
 .studio3d-room {
+  --studio-gradient-stop: 58%;
   position: relative;
-  background: radial-gradient(circle at 50% 20%, rgba(59, 130, 246, 0.12), rgba(2, 6, 23, 0.95) 58%);
+  background: radial-gradient(circle at 50% 20%, rgba(59, 130, 246, 0.12), rgba(2, 6, 23, 0.95) var(--studio-gradient-stop));
 }
 
 .studio3d-scene {
+  --studio-perspective: 1100px;
   position: relative;
   min-height: 420px;
-  perspective: 1100px;
+  perspective: var(--studio-perspective);
   transform-style: preserve-3d;
   overflow: hidden;
 }
