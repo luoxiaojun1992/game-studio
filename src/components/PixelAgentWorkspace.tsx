@@ -125,6 +125,7 @@ function AgentUnit({
   const groupRef = React.useRef<THREE.Group>(null);
   const status = agent.state?.status || 'idle';
   const role = getRoleId(agent.id);
+  const statusColor = getStatusColor(status);
   const radius = total <= 3 ? 3.6 : 4.4;
   const angle = total === 1 ? Math.PI : Math.PI * (0.75 + (index / Math.max(1, total - 1)) * 0.5);
   const position = useMemo<[number, number, number]>(() => [Math.cos(angle) * radius, 0, Math.sin(angle) * radius], [angle, radius]);
@@ -142,7 +143,7 @@ function AgentUnit({
     <group ref={groupRef} position={position}>
       <mesh position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow={shadowsEnabled && !lowDetail}>
         <ringGeometry args={[0.42, 0.55, 24]} />
-        <meshBasicMaterial color={status === 'working' ? '#22C55E' : status === 'error' ? '#EF4444' : '#38BDF8'} />
+        <meshBasicMaterial color={statusColor} />
       </mesh>
       <mesh position={[0, 0.78, 0]} castShadow={shadowsEnabled && !lowDetail}>
         <boxGeometry args={[0.52, 0.72, 0.42]} />
@@ -225,7 +226,7 @@ export default function PixelAgentWorkspace({ agents, handoffs }: Props) {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const mediaQuery = window.matchMedia('(max-width: 900px)');
+    const mediaQuery = window.matchMedia('(max-width: 1023px)');
     const applyMode = () => {
       setLowDetail(mediaQuery.matches);
       if (mediaQuery.matches) {
