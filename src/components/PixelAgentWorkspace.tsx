@@ -47,6 +47,8 @@ const WALL_NORMAL_BASE_RED = 124;
 const WALL_NORMAL_RED_VARIATION = 24;
 const WALL_NORMAL_BASE_GREEN = 120;
 const WALL_NORMAL_GREEN_VARIATION = 14;
+const WALL_NORMAL_Y_MULTIPLIER = 7;
+const WALL_NORMAL_X_MULTIPLIER = 13;
 const WALL_NORMAL_STEP = 16;
 const WALL_NORMAL_RECT_WIDTH = 22;
 const WALL_NORMAL_RECT_HEIGHT = 4;
@@ -162,11 +164,11 @@ function SceneFloor({ lowDetail }: { lowDetail: boolean }) {
         ctx.fillStyle = 'rgb(128,128,255)';
         ctx.fillRect(0, 0, size, size);
         for (let i = 0; i < size; i += FLOOR_NORMAL_STRIPE_STEP) {
-          const v =
+          const normalRedValue =
             128 +
             ((i / FLOOR_NORMAL_STRIPE_STEP) % FLOOR_NORMAL_STRIPE_BAND - FLOOR_NORMAL_VARIATION_OFFSET) *
               FLOOR_NORMAL_VARIATION_AMOUNT;
-          ctx.strokeStyle = `rgb(${Math.max(FLOOR_NORMAL_RED_MIN, Math.min(FLOOR_NORMAL_RED_MAX, Math.round(v)))},128,255)`;
+          ctx.strokeStyle = `rgb(${Math.max(FLOOR_NORMAL_RED_MIN, Math.min(FLOOR_NORMAL_RED_MAX, Math.round(normalRedValue)))},128,255)`;
           ctx.lineWidth = FLOOR_NORMAL_LINE_WIDTH;
           ctx.beginPath();
           ctx.moveTo(i, 0);
@@ -245,8 +247,8 @@ function SceneProps({ lowDetail }: { lowDetail: boolean }) {
         ctx.fillStyle = 'rgb(128,128,255)';
         ctx.fillRect(0, 0, size, size);
         for (let i = 0; i < size; i += WALL_NORMAL_STEP) {
-          const y = (i * 7) % size;
-          const x = (i * 13) % size;
+          const y = (i * WALL_NORMAL_Y_MULTIPLIER) % size;
+          const x = (i * WALL_NORMAL_X_MULTIPLIER) % size;
           ctx.fillStyle = `rgb(${WALL_NORMAL_BASE_RED + (i % WALL_NORMAL_RED_VARIATION)},${WALL_NORMAL_BASE_GREEN + (i % WALL_NORMAL_GREEN_VARIATION)},255)`;
           ctx.fillRect(x, y, WALL_NORMAL_RECT_WIDTH, WALL_NORMAL_RECT_HEIGHT);
         }
