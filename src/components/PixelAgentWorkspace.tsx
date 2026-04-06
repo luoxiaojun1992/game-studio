@@ -1,7 +1,4 @@
-import React, { Suspense, useEffect, useMemo, useState } from 'react';
-import { Canvas, useFrame, useLoader } from '@react-three/fiber';
-import { OrbitControls } from '@react-three/drei';
-import * as THREE from 'three';
+import React from 'react';
 import { Agent, AgentRole, AgentStatus, Handoff } from '../types';
 
 interface Props {
@@ -23,18 +20,7 @@ const WORK_LABEL: Record<AgentStatus, string> = {
   paused: 'PAUSE',
   error: 'ERROR',
 };
-const BODY_STRIPE_SPACING = 24;
-const BODY_STRIPE_WIDTH = 10;
-const CANVAS_TEXTURE_SIZE = 256;
-const SHADOW_BIAS_TUNING = -0.00012;
-const SHADOW_MAP_SIZE_LOW = 512;
-const SHADOW_MAP_SIZE_HIGH = 2048;
-const FLOOR_COLOR_TEXTURE_PATH = '/textures/studio/floor-color.svg';
-const FLOOR_NORMAL_TEXTURE_PATH = '/textures/studio/floor-normal.svg';
-const WALL_COLOR_TEXTURE_PATH = '/textures/studio/wall-color.svg';
-const WALL_NORMAL_TEXTURE_PATH = '/textures/studio/wall-normal.svg';
-const DESK_COLOR_TEXTURE_PATH = '/textures/studio/desk-color.svg';
-const DESK_NORMAL_TEXTURE_PATH = '/textures/studio/desk-normal.svg';
+
 const ROLE_LABEL = 'ROLE';
 const MAX_ROLE_BADGE_LENGTH = 4;
 const ROLE_COLOR: Record<AgentRole, string> = {
@@ -45,18 +31,34 @@ const ROLE_COLOR: Record<AgentRole, string> = {
   ceo: '#FACC15',
 };
 
-const ROLE_SHORT_NAME: Record<string, string> = {
-  engineer: 'ENG',
-  architect: 'ARCH',
-  game_designer: 'GAME',
-  biz_designer: 'BIZ',
-  ceo: 'CEO',
-};
 const KNOWN_ROLE_IDS = new Set(['engineer', 'architect', 'game_designer', 'biz_designer', 'ceo']);
+const MAP_COLUMNS = 3;
+
+const SCENE_TILE_CLASSES = [
+  'studio2d-tile-floor',
+  'studio2d-tile-path',
+  'studio2d-tile-floor',
+  'studio2d-tile-console',
+  'studio2d-tile-path',
+  'studio2d-tile-plant',
+  'studio2d-tile-floor',
+  'studio2d-tile-portal',
+  'studio2d-tile-floor',
+  'studio2d-tile-path',
+  'studio2d-tile-floor',
+  'studio2d-tile-path',
+  'studio2d-tile-floor',
+  'studio2d-tile-floor',
+  'studio2d-tile-floor',
+];
 
 function getRoleBadgeFromAgentId(agentId: string): string {
   const normalizedId = agentId.toLowerCase();
-  if (ROLE_SHORT_NAME[normalizedId]) return ROLE_SHORT_NAME[normalizedId];
+  if (normalizedId === 'engineer') return 'ENG';
+  if (normalizedId === 'architect') return 'ARCH';
+  if (normalizedId === 'game_designer') return 'GAME';
+  if (normalizedId === 'biz_designer') return 'BIZ';
+  if (normalizedId === 'ceo') return 'CEO';
   const compact = normalizedId.split('_').filter(Boolean).map(part => part[0]).join('');
   if (compact) return compact.slice(0, MAX_ROLE_BADGE_LENGTH).toUpperCase();
   return normalizedId.slice(0, MAX_ROLE_BADGE_LENGTH).toUpperCase();
@@ -69,9 +71,7 @@ function truncateTask(task: string | null | undefined, maxLength: number): strin
 
 function getRoleId(agentId: string): AgentRole {
   const normalized = agentId.toLowerCase() as AgentRole;
-  if (KNOWN_ROLE_IDS.has(normalized)) {
-    return normalized;
-  }
+  if (KNOWN_ROLE_IDS.has(normalized)) return normalized;
   return 'engineer';
 }
 
@@ -82,497 +82,85 @@ function getStatusColor(status: AgentStatus): string {
   return '#6B7280';
 }
 
-function createCanvasTexture(
-  painter: (ctx: CanvasRenderingContext2D, size: number) => void,
-  repeat: [number, number] = [1, 1],
-  applySRGBColorSpace = true
-) {
-  if (typeof document === 'undefined') return undefined;
-  const size = CANVAS_TEXTURE_SIZE;
-  const canvas = document.createElement('canvas');
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return undefined;
-  painter(ctx, size);
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.wrapS = THREE.RepeatWrapping;
-  texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(repeat[0], repeat[1]);
-  texture.anisotropy = 8;
-  texture.colorSpace = applySRGBColorSpace ? THREE.SRGBColorSpace : THREE.NoColorSpace;
-  texture.needsUpdate = true;
-  return texture;
+function getSeatPosition(index: number) {
+  const row = Math.floor(index / MAP_COLUMNS);
+  const column = index % MAP_COLUMNS;
+  return {
+    left: `${16 + column * 31}%`,
+    top: `${18 + row * 26}%`,
+  };
 }
 
-function configureTexture(texture: THREE.Texture, repeat: [number, number], applySRGBColorSpace = true): THREE.Texture {
-  texture.wrapS = THREE.RepeatWrapping;
-  texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(repeat[0], repeat[1]);
-  texture.colorSpace = applySRGBColorSpace ? THREE.SRGBColorSpace : THREE.NoColorSpace;
-  texture.anisotropy = 8;
-  texture.needsUpdate = true;
-  return texture;
-}
-
-function SceneFloor({ lowDetail }: { lowDetail: boolean }) {
-  const [floorTextureRaw, floorNormalTextureRaw] = useLoader(THREE.TextureLoader, [FLOOR_COLOR_TEXTURE_PATH, FLOOR_NORMAL_TEXTURE_PATH]);
-  const floorTexture = useMemo(
-    () => configureTexture(floorTextureRaw, [8, 8], true),
-    [floorTextureRaw]
-  );
-  const floorNormalTexture = useMemo(
-    () => configureTexture(floorNormalTextureRaw, [4, 4], false),
-    [floorNormalTextureRaw]
-  );
-  const floorReflectionTexture = useMemo(
-    () =>
-      createCanvasTexture((ctx, size) => {
-        const gradient = ctx.createLinearGradient(0, 0, size, size);
-        gradient.addColorStop(0, 'rgba(56,189,248,0.04)');
-        gradient.addColorStop(0.5, 'rgba(59,130,246,0.08)');
-        gradient.addColorStop(1, 'rgba(14,165,233,0.03)');
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, size, size);
-      }, [2, 2]),
-    []
-  );
-  // Keep procedural reflection layer for subtle dynamic sheen above base texture.
+function Studio2DScene({ agents, activeHandoffs }: { agents: Agent[]; activeHandoffs: Handoff[] }) {
+  const handoffFlows = activeHandoffs.slice(0, 6);
   return (
-    <group>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow={!lowDetail}>
-        <planeGeometry args={[24, 24]} />
-        <meshStandardMaterial
-          color="#0B1227"
-          metalness={0.28}
-          roughness={0.64}
-          map={floorTexture}
-          normalMap={floorNormalTexture}
-          normalScale={new THREE.Vector2(0.42, 0.42)}
-        />
-      </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.002, 0]} receiveShadow={!lowDetail}>
-        <planeGeometry args={[24, 24]} />
-        <meshStandardMaterial
-          color="#1E3A8A"
-          transparent
-          opacity={0.18}
-          metalness={0.35}
-          roughness={0.2}
-          map={floorReflectionTexture}
-        />
-      </mesh>
-      <gridHelper args={[24, 24, '#1E40AF', '#0EA5E9']} position={[0, 0.03, 0]} />
-    </group>
-  );
-}
+    <div className="studio2d-scene">
+      <div className="studio2d-grid-bg">
+        {SCENE_TILE_CLASSES.map((tileClass, idx) => (
+          <div key={`${tileClass}-${idx}`} className={`studio2d-tile ${tileClass}`} />
+        ))}
+      </div>
+      <div className="studio2d-room-overlay" />
 
-function SceneProps({ lowDetail }: { lowDetail: boolean }) {
-  const [wallTextureRaw, wallNormalTextureRaw, deskTextureRaw, deskNormalTextureRaw] = useLoader(THREE.TextureLoader, [
-    WALL_COLOR_TEXTURE_PATH,
-    WALL_NORMAL_TEXTURE_PATH,
-    DESK_COLOR_TEXTURE_PATH,
-    DESK_NORMAL_TEXTURE_PATH,
-  ]);
-  const wallTexture = useMemo(
-    () => configureTexture(wallTextureRaw, [2, 1], true),
-    [wallTextureRaw]
-  );
-  const wallNormalTexture = useMemo(
-    () => configureTexture(wallNormalTextureRaw, [2, 1], false),
-    [wallNormalTextureRaw]
-  );
-  const deskTexture = useMemo(
-    () => configureTexture(deskTextureRaw, [3, 2], true),
-    [deskTextureRaw]
-  );
-  const deskNormalTexture = useMemo(
-    () => configureTexture(deskNormalTextureRaw, [3, 2], false),
-    [deskNormalTextureRaw]
-  );
-  return (
-    <group>
-      <mesh position={[0, 2.1, -5.4]} castShadow={!lowDetail} receiveShadow={!lowDetail}>
-        <boxGeometry args={[8.4, 2.2, 0.3]} />
-        <meshStandardMaterial
-          color="#0F172A"
-          emissive="#1D4ED8"
-          emissiveIntensity={0.24}
-          map={wallTexture}
-          normalMap={wallNormalTexture}
-          normalScale={new THREE.Vector2(0.32, 0.32)}
-          metalness={0.16}
-          roughness={0.62}
-        />
-      </mesh>
-      <mesh position={[-6.4, 1.2, -3.2]} castShadow={!lowDetail} receiveShadow={!lowDetail}>
-        <boxGeometry args={[2.1, 2.4, 1.6]} />
-        <meshStandardMaterial
-          color="#1E293B"
-          emissive="#7C3AED"
-          emissiveIntensity={0.16}
-          map={wallTexture}
-          normalMap={wallNormalTexture}
-          normalScale={new THREE.Vector2(0.26, 0.26)}
-          metalness={0.12}
-          roughness={0.68}
-        />
-      </mesh>
-      <mesh position={[6.4, 1.2, -3.2]} castShadow={!lowDetail} receiveShadow={!lowDetail}>
-        <boxGeometry args={[2.1, 2.4, 1.6]} />
-        <meshStandardMaterial
-          color="#1E293B"
-          emissive="#22C55E"
-          emissiveIntensity={0.16}
-          map={wallTexture}
-          normalMap={wallNormalTexture}
-          normalScale={new THREE.Vector2(0.26, 0.26)}
-          metalness={0.12}
-          roughness={0.68}
-        />
-      </mesh>
-      <mesh position={[0, 0.55, 0]} castShadow={!lowDetail} receiveShadow={!lowDetail}>
-        <boxGeometry args={[10.6, 0.3, 5.4]} />
-        <meshStandardMaterial
-          color="#111827"
-          metalness={0.52}
-          roughness={0.34}
-          map={deskTexture}
-          normalMap={deskNormalTexture}
-          normalScale={new THREE.Vector2(0.22, 0.22)}
-        />
-      </mesh>
-      <mesh position={[-4.8, 0.28, -2.3]} castShadow={!lowDetail} receiveShadow={!lowDetail}>
-        <boxGeometry args={[0.24, 0.56, 0.24]} />
-        <meshStandardMaterial color="#0B1120" metalness={0.5} roughness={0.45} />
-      </mesh>
-      <mesh position={[4.8, 0.28, -2.3]} castShadow={!lowDetail} receiveShadow={!lowDetail}>
-        <boxGeometry args={[0.24, 0.56, 0.24]} />
-        <meshStandardMaterial color="#0B1120" metalness={0.5} roughness={0.45} />
-      </mesh>
-      <mesh position={[-4.8, 0.28, 2.3]} castShadow={!lowDetail} receiveShadow={!lowDetail}>
-        <boxGeometry args={[0.24, 0.56, 0.24]} />
-        <meshStandardMaterial color="#0B1120" metalness={0.5} roughness={0.45} />
-      </mesh>
-      <mesh position={[4.8, 0.28, 2.3]} castShadow={!lowDetail} receiveShadow={!lowDetail}>
-        <boxGeometry args={[0.24, 0.56, 0.24]} />
-        <meshStandardMaterial color="#0B1120" metalness={0.5} roughness={0.45} />
-      </mesh>
-      <mesh position={[0, 1.45, -0.2]} castShadow={!lowDetail}>
-        <boxGeometry args={[3.4, 1.4, 0.15]} />
-        <meshStandardMaterial color="#082F49" emissive="#38BDF8" emissiveIntensity={0.24} map={wallTexture} />
-      </mesh>
-      <mesh position={[-2.6, 1.08, -0.52]} castShadow={!lowDetail}>
-        <boxGeometry args={[1.3, 0.74, 0.08]} />
-        <meshStandardMaterial color="#0F172A" emissive="#22D3EE" emissiveIntensity={0.28} roughness={0.3} metalness={0.12} />
-      </mesh>
-      <mesh position={[-2.6, 0.8, -0.46]} castShadow={!lowDetail}>
-        <boxGeometry args={[0.18, 0.4, 0.08]} />
-        <meshStandardMaterial color="#475569" metalness={0.4} roughness={0.5} />
-      </mesh>
-      <mesh position={[-2.6, 0.67, -0.24]} castShadow={!lowDetail}>
-        <boxGeometry args={[0.7, 0.05, 0.22]} />
-        <meshStandardMaterial color="#1E293B" metalness={0.25} roughness={0.65} />
-      </mesh>
-      <mesh position={[2.6, 1.08, -0.52]} castShadow={!lowDetail}>
-        <boxGeometry args={[1.3, 0.74, 0.08]} />
-        <meshStandardMaterial color="#0F172A" emissive="#38BDF8" emissiveIntensity={0.3} roughness={0.3} metalness={0.12} />
-      </mesh>
-      <mesh position={[2.6, 0.8, -0.46]} castShadow={!lowDetail}>
-        <boxGeometry args={[0.18, 0.4, 0.08]} />
-        <meshStandardMaterial color="#475569" metalness={0.4} roughness={0.5} />
-      </mesh>
-      <mesh position={[2.6, 0.67, -0.24]} castShadow={!lowDetail}>
-        <boxGeometry args={[0.7, 0.05, 0.22]} />
-        <meshStandardMaterial color="#1E293B" metalness={0.25} roughness={0.65} />
-      </mesh>
-    </group>
-  );
-}
+      <div className="studio2d-handoff-layer">
+        {handoffFlows.map(h => (
+          <div key={h.id} className={`studio2d-handoff-line studio2d-priority-${h.priority}`}>
+            <span className="studio2d-handoff-dot">📦</span>
+            <span className="studio2d-handoff-label">{h.from_agent_id} → {h.to_agent_id}</span>
+          </div>
+        ))}
+      </div>
 
-function AgentUnit({
-  agent,
-  index,
-  total,
-  lowDetail,
-  shadowsEnabled,
-}: {
-  agent: Agent;
-  index: number;
-  total: number;
-  lowDetail: boolean;
-  shadowsEnabled: boolean;
-}) {
-  const groupRef = React.useRef<THREE.Group>(null);
-  const status = agent.state?.status || 'idle';
-  const role = getRoleId(agent.id);
-  const statusColor = getStatusColor(status);
-  const radius = total <= 3 ? 3.6 : 4.4;
-  const angle = total === 1 ? Math.PI : Math.PI * (0.75 + (index / Math.max(1, total - 1)) * 0.5);
-  const position = useMemo<[number, number, number]>(() => [Math.cos(angle) * radius, 0, Math.sin(angle) * radius], [angle, radius]);
-  const emissive = status === 'error' ? '#DC2626' : status === 'working' ? '#22C55E' : status === 'paused' ? '#F59E0B' : '#1E293B';
-  const pulse = status === 'working' ? 0.12 : status === 'error' ? 0.08 : 0.03;
-  const bodyTexture = useMemo(
-    () =>
-      createCanvasTexture((ctx, size) => {
-        ctx.fillStyle = ROLE_COLOR[role];
-        ctx.fillRect(0, 0, size, size);
-        ctx.fillStyle = 'rgba(255,255,255,0.18)';
-        for (let i = -size; i < size * 2; i += BODY_STRIPE_SPACING) {
-          ctx.fillRect(i, 0, BODY_STRIPE_WIDTH, size);
-        }
-      }, [2, 2]),
-    [role]
-  );
-  const headTexture = useMemo(
-    () =>
-      createCanvasTexture((ctx, size) => {
-        ctx.fillStyle = '#E5E7EB';
-        ctx.fillRect(0, 0, size, size);
-        ctx.fillStyle = '#111827';
-        ctx.beginPath();
-        ctx.arc(size * 0.35, size * 0.42, size * 0.06, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(size * 0.65, size * 0.42, size * 0.06, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.lineWidth = 6;
-        ctx.strokeStyle = '#1F2937';
-        ctx.beginPath();
-        ctx.arc(size * 0.5, size * 0.58, size * 0.12, 0.2, Math.PI - 0.2);
-        ctx.stroke();
-      }, [1, 1]),
-    []
-  );
-
-  useFrame(({ clock }) => {
-    if (!groupRef.current) return;
-    const t = clock.getElapsedTime();
-    groupRef.current.position.y = 0.06 + Math.sin(t * (status === 'working' ? 4 : 2)) * pulse;
-    groupRef.current.rotation.y = -angle + Math.sin(t * 0.8) * 0.06;
-    if (status === 'working') {
-      groupRef.current.rotation.x = Math.sin(t * 3.2) * 0.02;
-    } else {
-      groupRef.current.rotation.x = 0;
-    }
-  });
-
-  return (
-    <group ref={groupRef} position={position}>
-      <mesh position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow={shadowsEnabled && !lowDetail}>
-        <ringGeometry args={[0.42, 0.55, 24]} />
-        <meshBasicMaterial color={statusColor} />
-      </mesh>
-      <group position={[0, 0.12, 0.16]}>
-        <mesh position={[0, 0.26, -0.22]} castShadow={shadowsEnabled && !lowDetail} receiveShadow={shadowsEnabled && !lowDetail}>
-          <boxGeometry args={[0.42, 0.5, 0.38]} />
-          <meshStandardMaterial color="#1F2937" metalness={0.15} roughness={0.65} />
-        </mesh>
-        <mesh position={[0, 0.53, -0.34]} castShadow={shadowsEnabled && !lowDetail}>
-          <boxGeometry args={[0.46, 0.2, 0.1]} />
-          <meshStandardMaterial color="#334155" metalness={0.2} roughness={0.55} />
-        </mesh>
-        <mesh position={[0, 0.08, -0.22]} castShadow={shadowsEnabled && !lowDetail}>
-          <cylinderGeometry args={[0.04, 0.05, 0.28, lowDetail ? 6 : 10]} />
-          <meshStandardMaterial color="#64748B" metalness={0.5} roughness={0.35} />
-        </mesh>
-        <mesh position={[0, -0.08, -0.22]} rotation={[0, 0, 0]} receiveShadow={shadowsEnabled && !lowDetail}>
-          <cylinderGeometry args={[0.22, 0.26, 0.06, lowDetail ? 8 : 14]} />
-          <meshStandardMaterial color="#0F172A" metalness={0.35} roughness={0.5} />
-        </mesh>
-      </group>
-      <group position={[0, 0.16, 0]}>
-        <mesh position={[0, 0.85, 0.05]} castShadow={shadowsEnabled && !lowDetail}>
-          <boxGeometry args={[0.42, 0.56, 0.24]} />
-          <meshStandardMaterial color={ROLE_COLOR[role]} emissive={emissive} emissiveIntensity={0.26} roughness={0.45} map={bodyTexture} />
-        </mesh>
-        <mesh position={[0, 1.25, 0.08]} castShadow={shadowsEnabled && !lowDetail}>
-          <boxGeometry args={[0.34, 0.3, 0.28]} />
-          <meshStandardMaterial color={ROLE_COLOR[role]} emissive={emissive} emissiveIntensity={0.18} roughness={0.48} map={bodyTexture} />
-        </mesh>
-        <mesh position={[0, 1.52, 0.1]} castShadow={shadowsEnabled && !lowDetail}>
-          <sphereGeometry args={[0.2, lowDetail ? 8 : 14, lowDetail ? 8 : 14]} />
-          <meshStandardMaterial color="#E5E7EB" roughness={0.65} metalness={0.08} map={headTexture} />
-        </mesh>
-        <mesh position={[-0.3, 1.18, 0.04]} rotation={[0, 0, Math.PI / 8]} castShadow={shadowsEnabled && !lowDetail}>
-          <boxGeometry args={[0.12, 0.38, 0.12]} />
-          <meshStandardMaterial color={ROLE_COLOR[role]} emissive={emissive} emissiveIntensity={0.18} roughness={0.5} />
-        </mesh>
-        <mesh position={[0.3, 1.13, 0.08]} rotation={[0, 0, -Math.PI / 4.8]} castShadow={shadowsEnabled && !lowDetail}>
-          <boxGeometry args={[0.12, 0.42, 0.12]} />
-          <meshStandardMaterial color={ROLE_COLOR[role]} emissive={emissive} emissiveIntensity={0.22} roughness={0.5} />
-        </mesh>
-        <mesh position={[0.36, 0.95, 0.15]} rotation={[-Math.PI / 2.5, 0, 0]} castShadow={shadowsEnabled && !lowDetail}>
-          <boxGeometry args={[0.2, 0.02, 0.14]} />
-          <meshStandardMaterial color="#0EA5E9" emissive="#38BDF8" emissiveIntensity={0.4} />
-        </mesh>
-        <mesh position={[-0.12, 0.5, 0.06]} castShadow={shadowsEnabled && !lowDetail}>
-          <boxGeometry args={[0.13, 0.42, 0.13]} />
-          <meshStandardMaterial color="#0F172A" roughness={0.65} />
-        </mesh>
-        <mesh position={[0.12, 0.5, 0.06]} castShadow={shadowsEnabled && !lowDetail}>
-          <boxGeometry args={[0.13, 0.42, 0.13]} />
-          <meshStandardMaterial color="#0F172A" roughness={0.65} />
-        </mesh>
-        <mesh position={[-0.12, 0.25, 0.13]} castShadow={shadowsEnabled && !lowDetail} receiveShadow={shadowsEnabled && !lowDetail}>
-          <boxGeometry args={[0.16, 0.08, 0.28]} />
-          <meshStandardMaterial color="#1E293B" roughness={0.7} />
-        </mesh>
-        <mesh position={[0.12, 0.25, 0.13]} castShadow={shadowsEnabled && !lowDetail} receiveShadow={shadowsEnabled && !lowDetail}>
-          <boxGeometry args={[0.16, 0.08, 0.28]} />
-          <meshStandardMaterial color="#1E293B" roughness={0.7} />
-        </mesh>
-      </group>
-    </group>
-  );
-}
-
-function StudioScene({
-  agents,
-  lowDetail,
-  shadowsEnabled,
-  controlsEnabled,
-}: {
-  agents: Agent[];
-  lowDetail: boolean;
-  shadowsEnabled: boolean;
-  controlsEnabled: boolean;
-}) {
-  return (
-    <Canvas
-      className="studio3d-canvas"
-      style={{ width: '100%', height: '100%' }}
-      shadows={shadowsEnabled && !lowDetail}
-      gl={{ antialias: !lowDetail, powerPreference: 'high-performance' }}
-      dpr={lowDetail ? [1, 1] : [1, 1.8]}
-      camera={{ position: [0, 4.8, 8], fov: lowDetail ? 54 : 46 }}
-      onCreated={({ gl }) => {
-        gl.toneMapping = THREE.ACESFilmicToneMapping;
-        gl.toneMappingExposure = lowDetail ? 1.0 : 1.15;
-        gl.outputColorSpace = THREE.SRGBColorSpace;
-        gl.shadowMap.enabled = shadowsEnabled && !lowDetail;
-        gl.shadowMap.type = THREE.PCFSoftShadowMap;
-      }}
-    >
-      <color attach="background" args={['#020617']} />
-      <fog attach="fog" args={['#020617', 8, 18]} />
-      <ambientLight intensity={0.38} />
-      <hemisphereLight intensity={0.56} color="#BFDBFE" groundColor="#020617" />
-      <directionalLight
-        position={[7, 9, 5]}
-        intensity={1.3}
-        castShadow={shadowsEnabled && !lowDetail}
-        shadow-mapSize-width={lowDetail ? SHADOW_MAP_SIZE_LOW : SHADOW_MAP_SIZE_HIGH}
-        shadow-mapSize-height={lowDetail ? SHADOW_MAP_SIZE_LOW : SHADOW_MAP_SIZE_HIGH}
-        shadow-bias={SHADOW_BIAS_TUNING}
-        shadow-normalBias={0.02}
-        shadow-camera-near={1}
-        shadow-camera-far={24}
-        shadow-camera-left={-12}
-        shadow-camera-right={12}
-        shadow-camera-top={12}
-        shadow-camera-bottom={-12}
-      />
-      <directionalLight position={[-8, 5, -4]} intensity={0.32} color="#7DD3FC" />
-      <pointLight position={[0, 3.2, -2]} color="#38BDF8" intensity={1.75} />
-      <spotLight
-        position={[-5.2, 4.6, 2.2]}
-        angle={0.45}
-        penumbra={0.6}
-        intensity={0.72}
-        distance={14}
-        color="#BFDBFE"
-        castShadow={shadowsEnabled && !lowDetail}
-      />
-      <pointLight position={[5.8, 2.2, 2.8]} color="#C4B5FD" intensity={0.56} distance={12} />
-      <pointLight position={[-6, 2.6, 1.8]} color="#22D3EE" intensity={0.28} distance={10} />
-      <Suspense fallback={null}>
-        <SceneFloor lowDetail={lowDetail} />
-        <SceneProps lowDetail={lowDetail} />
-      </Suspense>
-      {agents.map((agent, index) => (
-        <AgentUnit
-          key={agent.id}
-          agent={agent}
-          index={index}
-          total={Math.max(agents.length, 1)}
-          lowDetail={lowDetail}
-          shadowsEnabled={shadowsEnabled}
-        />
-      ))}
-      {controlsEnabled && (
-        <OrbitControls
-          enablePan={false}
-          enableZoom={!lowDetail}
-          minDistance={5.8}
-          maxDistance={11.8}
-          maxPolarAngle={Math.PI / 2.1}
-          minPolarAngle={Math.PI / 4}
-          target={[0, 1.05, 0]}
-        />
-      )}
-    </Canvas>
+      {agents.map((agent, index) => {
+        const status = agent.state?.status || 'idle';
+        const brief = truncateTask(agent.state?.currentTask, MAX_TASK_DISPLAY_LENGTH);
+        const isWorking = status === 'working';
+        const role = getRoleId(agent.id);
+        const seat = getSeatPosition(index);
+        return (
+          <div
+            key={agent.id}
+            className={`studio2d-seat-node studio2d-role-${role} ${isWorking ? 'studio2d-working' : ''}`}
+            style={seat}
+          >
+            <div className={`studio2d-avatar status-${status}`} style={{ ['--role-color' as any]: ROLE_COLOR[role] }}>
+              <span className="studio2d-avatar-shadow" />
+              <span className="studio2d-avatar-body" />
+              <span className="studio2d-avatar-head" />
+              <span className="studio2d-avatar-badge">{getRoleBadgeFromAgentId(agent.id)}</span>
+            </div>
+            <div className="studio2d-bubble">
+              <div className="studio2d-name">{agent.name}</div>
+              <div className="studio2d-task">{brief}</div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
 export default function PixelAgentWorkspace({ agents, handoffs }: Props) {
   const activeHandoffs = handoffs.filter(h => ['pending', 'accepted', 'working'].includes(h.status));
-  const [shadowsEnabled, setShadowsEnabled] = useState(true);
-  const [controlsEnabled, setControlsEnabled] = useState(true);
-  const [lowDetail, setLowDetail] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const mediaQuery = window.matchMedia('(max-width: 1023px)');
-    const applyMode = () => {
-      setLowDetail(mediaQuery.matches);
-      if (mediaQuery.matches) {
-        setControlsEnabled(false);
-        setShadowsEnabled(false);
-      }
-    };
-    applyMode();
-    mediaQuery.addEventListener('change', applyMode);
-    return () => mediaQuery.removeEventListener('change', applyMode);
-  }, []);
 
   return (
     <section className="bg-gray-900 rounded-xl border border-gray-800 p-4 overflow-hidden">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-xs md:text-sm text-gray-300 tracking-wider">3D Studio</h3>
+        <h3 className="text-xs md:text-sm text-gray-300 tracking-wider">2D RPG Studio</h3>
         <span className="text-[10px] md:text-xs text-gray-500">
           AGENTS: {agents.length} · HANDOFFS: {activeHandoffs.length}
         </span>
       </div>
 
-      <div className="studio3d-room rounded-lg border border-gray-800/80 p-3 md:p-4">
-        <div className="studio3d-toolbar">
-          <button
-            type="button"
-            className={`studio3d-toggle ${controlsEnabled ? 'studio3d-toggle-on' : ''}`}
-            onClick={() => setControlsEnabled(v => !v)}
-            disabled={lowDetail}
-          >
-            自由视角
-          </button>
-          <button
-            type="button"
-            className={`studio3d-toggle ${shadowsEnabled ? 'studio3d-toggle-on' : ''}`}
-            onClick={() => setShadowsEnabled(v => !v)}
-            disabled={lowDetail}
-          >
-            阴影
-          </button>
-          <span className="studio3d-lod-tag">{lowDetail ? 'LOD: 简模' : 'LOD: 标准'}</span>
+      <div className="studio2d-room rounded-lg border border-gray-800/80 p-3 md:p-4">
+        <div className="studio2d-toolbar">
+          <span className="studio2d-chip">WORLD: Pixel Office</span>
+          <span className="studio2d-chip">MODE: Live RPG</span>
+          <span className="studio2d-chip">{activeHandoffs.length > 0 ? 'QUEST FLOW ACTIVE' : 'QUEST FLOW CALM'}</span>
         </div>
-        <div className="studio3d-scene">
-          <StudioScene
-            agents={agents}
-            lowDetail={lowDetail}
-            shadowsEnabled={shadowsEnabled}
-            controlsEnabled={controlsEnabled}
-          />
-        </div>
+
+        <Studio2DScene agents={agents} activeHandoffs={activeHandoffs} />
+
         <div className="studio3d-agents-grid">
           {agents.map(agent => {
             const status = agent.state?.status || 'idle';
@@ -588,7 +176,7 @@ export default function PixelAgentWorkspace({ agents, handoffs }: Props) {
                   <div className="flex items-center justify-between gap-2 mb-1">
                     <div className="text-[10px] text-gray-200 truncate">{agent.name}</div>
                     <div className="text-[9px] text-gray-500">
-                      {WORK_LABEL[agent.state?.status || 'idle']}
+                      {WORK_LABEL[status]}
                     </div>
                   </div>
                   <div className="text-[9px] text-blue-200/90 uppercase tracking-wide mb-1">{ROLE_LABEL} {getRoleBadgeFromAgentId(agent.id)}</div>
