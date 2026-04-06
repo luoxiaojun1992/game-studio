@@ -5,6 +5,7 @@ const STAR_OFFICE_UI_URL = import.meta.env.VITE_STAR_OFFICE_UI_URL || 'http://12
 const LOAD_TIMEOUT_MS = 10000;
 const STAR_OFFICE_SET_STATE_URL = import.meta.env.VITE_STAR_OFFICE_SET_STATE_URL || '';
 const STAR_OFFICE_AGENT_PUSH_URL = import.meta.env.VITE_STAR_OFFICE_AGENT_PUSH_URL || '';
+const BRIDGE_DEBOUNCE_MS = 300;
 
 function isTrustedSameOriginUrl(rawUrl: string): boolean {
   try {
@@ -29,6 +30,15 @@ function safeTargetOrigin(rawUrl: string): string {
     return new URL(rawUrl, window.location.origin).origin;
   } catch {
     return window.location.origin;
+  }
+}
+
+function resolveBridgeUrl(explicitUrl: string, baseUiUrl: string, fallbackPath: string): string | null {
+  try {
+    if (explicitUrl) return new URL(explicitUrl, window.location.origin).toString();
+    return new URL(fallbackPath, baseUiUrl).toString();
+  } catch {
+    return null;
   }
 }
 
@@ -76,6 +86,7 @@ export default function StarOfficeStudio({ projectId, agents, handoffs = [], tas
   const timeoutRef = useRef<number | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const latestStateRef = useRef<ReturnType<typeof buildBridgeState> | null>(null);
+  const debounceRef = useRef<number | null>(null);
   const allowSameOrigin = isTrustedSameOriginUrl(STAR_OFFICE_UI_URL);
   const sandboxValue = allowSameOrigin
     ? 'allow-scripts allow-same-origin allow-forms allow-popups'
@@ -122,18 +133,25 @@ export default function StarOfficeStudio({ projectId, agents, handoffs = [], tas
           },
           safeTargetOrigin(STAR_OFFICE_UI_URL),
         );
-      } catch {}
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          console.warn('[StarOfficeStudio] postMessage failed', error);
+        }
+      }
     }
 
-    const setStateUrl = STAR_OFFICE_SET_STATE_URL || new URL('/set_state', STAR_OFFICE_UI_URL).toString();
-    const agentPushUrl = STAR_OFFICE_AGENT_PUSH_URL || new URL('/agent-push', STAR_OFFICE_UI_URL).toString();
-    await Promise.allSettled([
-      fetch(setStateUrl, {
+    const setStateUrl = resolveBridgeUrl(STAR_OFFICE_SET_STATE_URL, STAR_OFFICE_UI_URL, '/set_state');
+    const agentPushUrl = resolveBridgeUrl(STAR_OFFICE_AGENT_PUSH_URL, STAR_OFFICE_UI_URL, '/agent-push');
+    const requests: Promise<Response>[] = [];
+    if (setStateUrl) {
+      requests.push(fetch(setStateUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(state),
-      }),
-      fetch(agentPushUrl, {
+      }));
+    }
+    if (agentPushUrl) {
+      requests.push(fetch(agentPushUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -142,15 +160,31 @@ export default function StarOfficeStudio({ projectId, agents, handoffs = [], tas
           timestamp: state.timestamp,
           agents: state.agents,
         }),
-      }),
-    ]);
+      }));
+    }
+    if (requests.length > 0) {
+      const results = await Promise.allSettled(requests);
+      if (import.meta.env.DEV) {
+        const failed = results.filter((r) => r.status === 'rejected').length;
+        if (failed > 0) {
+          console.warn(`[StarOfficeStudio] state sync requests failed: ${failed}/${results.length}`);
+        }
+      }
+    }
   }, []);
 
   useEffect(() => {
     const state = buildBridgeState(projectId, agents, handoffs, tasks, logs);
     latestStateRef.current = state;
     if (!loaded) return;
-    void pushStateToBridge(state);
+    if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    debounceRef.current = window.setTimeout(() => {
+      void pushStateToBridge(state);
+    }, BRIDGE_DEBOUNCE_MS);
+    return () => {
+      if (debounceRef.current) window.clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    };
   }, [projectId, agents, handoffs, tasks, logs, loaded, pushStateToBridge]);
 
   return (
