@@ -41,6 +41,12 @@ const ROLE_SHORT_NAME: Record<string, string> = {
 
 const KNOWN_ROLE_IDS = new Set(['engineer', 'architect', 'game_designer', 'biz_designer', 'ceo']);
 const AGENT_COLUMNS = 3;
+const SCENE_DECORATIONS = [
+  { id: 'forge', label: 'Forge', left: '8%', top: '14%', icon: '⚙️' },
+  { id: 'vault', label: 'Vault', left: '84%', top: '14%', icon: '🧰' },
+  { id: 'quest', label: 'Quest Hub', left: '8%', top: '76%', icon: '📜' },
+  { id: 'camp', label: 'Camp', left: '84%', top: '76%', icon: '🔥' },
+];
 
 const SCENE_TILE_CLASSES = [
   'studio2d-tile-floor',
@@ -99,14 +105,33 @@ function getSeatPosition(index: number) {
 
 function Studio2DScene({ agents, activeHandoffs }: { agents: Agent[]; activeHandoffs: Handoff[] }) {
   const handoffFlows = activeHandoffs.slice(0, 6);
+  const workingCount = agents.filter(a => (a.state?.status || 'idle') === 'working').length;
+  const eventLevel = activeHandoffs.length + workingCount;
   return (
     <div className="studio2d-scene">
+      <div className="studio2d-stars" aria-hidden="true" />
+      <div className="studio2d-hud">
+        <span>EVENT LV.{Math.max(1, eventLevel)}</span>
+        <span>QUESTS {activeHandoffs.length}</span>
+        <span>PARTY {agents.length}</span>
+      </div>
       <div className="studio2d-grid-bg">
         {SCENE_TILE_CLASSES.map((tileClass, idx) => (
           <div key={idx} className={`studio2d-tile ${tileClass}`} />
         ))}
       </div>
       <div className="studio2d-room-overlay" />
+      <div className="studio2d-patrol-path" />
+      {SCENE_DECORATIONS.map(d => (
+        <div
+          key={d.id}
+          className="studio2d-decoration"
+          style={{ left: d.left, top: d.top }}
+          aria-label={d.label}
+        >
+          <span>{d.icon}</span>
+        </div>
+      ))}
 
       <div className="studio2d-handoff-layer">
         {handoffFlows.map(h => (
@@ -119,6 +144,7 @@ function Studio2DScene({ agents, activeHandoffs }: { agents: Agent[]; activeHand
             <span className="studio2d-handoff-label">
               {h.from_agent_id} to {h.to_agent_id}
             </span>
+            <span className="studio2d-handoff-trail" aria-hidden="true">···►</span>
           </div>
         ))}
       </div>
@@ -141,6 +167,7 @@ function Studio2DScene({ agents, activeHandoffs }: { agents: Agent[]; activeHand
               <span className="studio2d-avatar-body" />
               <span className="studio2d-avatar-head" />
               <span className="studio2d-avatar-badge">{getRoleBadgeFromAgentId(agent.id)}</span>
+              {status === 'working' && <span className="studio2d-cast-ring" aria-hidden="true" />}
             </div>
             <div className="studio2d-bubble">
               <div className="studio2d-name">{agent.name}</div>

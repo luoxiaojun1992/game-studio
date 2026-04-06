@@ -693,6 +693,38 @@ t-chat-sender::part(send-btn):disabled,
   background: linear-gradient(180deg, rgba(3, 7, 18, 0.9), rgba(2, 6, 23, 0.98));
 }
 
+.studio2d-stars {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 12% 20%, rgba(191, 219, 254, 0.6) 0 1px, transparent 2px),
+    radial-gradient(circle at 26% 10%, rgba(196, 181, 253, 0.45) 0 1px, transparent 2px),
+    radial-gradient(circle at 72% 16%, rgba(34, 211, 238, 0.44) 0 1px, transparent 2px),
+    radial-gradient(circle at 88% 30%, rgba(191, 219, 254, 0.52) 0 1px, transparent 2px);
+  pointer-events: none;
+  opacity: 0.55;
+  animation: studio2d-stars-flicker 2.2s steps(2, end) infinite;
+}
+
+.studio2d-hud {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 3;
+  display: flex;
+  gap: 6px;
+}
+
+.studio2d-hud span {
+  font-size: 10px;
+  color: rgba(250, 250, 255, 0.95);
+  border: 1px solid rgba(59, 130, 246, 0.68);
+  border-radius: 6px;
+  padding: 2px 6px;
+  background: rgba(15, 23, 42, 0.7);
+  box-shadow: inset 0 0 0 1px rgba(147, 197, 253, 0.22);
+}
+
 .studio2d-grid-bg {
   position: absolute;
   inset: 0;
@@ -751,6 +783,31 @@ t-chat-sender::part(send-btn):disabled,
   pointer-events: none;
 }
 
+.studio2d-patrol-path {
+  position: absolute;
+  inset: 14% 14% 18% 14%;
+  border: 2px dashed rgba(56, 189, 248, 0.35);
+  border-radius: 14px;
+  pointer-events: none;
+  animation: studio2d-path-shift 1.2s linear infinite;
+}
+
+.studio2d-decoration {
+  position: absolute;
+  z-index: 2;
+  width: 28px;
+  height: 28px;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(148, 163, 184, 0.7);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.72);
+  box-shadow: 0 6px 12px rgba(2, 6, 23, 0.35);
+  animation: studio2d-float 1.6s ease-in-out infinite;
+}
+
 .studio2d-handoff-layer {
   position: absolute;
   left: 12px;
@@ -776,6 +833,13 @@ t-chat-sender::part(send-btn):disabled,
   display: inline-flex;
   align-items: center;
   letter-spacing: 0.02em;
+}
+
+.studio2d-handoff-trail {
+  margin-left: auto;
+  color: rgba(186, 230, 253, 0.78);
+  font-size: 9px;
+  animation: studio2d-trail 0.7s steps(2, end) infinite;
 }
 
 .studio2d-handoff-dot {
@@ -844,6 +908,18 @@ t-chat-sender::part(send-btn):disabled,
   pointer-events: none;
 }
 
+.studio2d-cast-ring {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 1px;
+  height: 10px;
+  border: 1px solid rgba(34, 197, 94, 0.7);
+  border-radius: 999px;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.45);
+  animation: studio2d-cast-pulse 0.8s ease-in-out infinite;
+}
+
 .studio2d-bubble {
   min-width: 120px;
   margin-top: 4px;
@@ -892,6 +968,27 @@ t-chat-sender::part(send-btn):disabled,
 @keyframes studio2d-float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-1px); }
+}
+
+@keyframes studio2d-path-shift {
+  0% { border-color: rgba(56, 189, 248, 0.2); }
+  50% { border-color: rgba(56, 189, 248, 0.55); }
+  100% { border-color: rgba(56, 189, 248, 0.2); }
+}
+
+@keyframes studio2d-stars-flicker {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes studio2d-trail {
+  0%, 100% { opacity: 0.4; transform: translateX(0); }
+  50% { opacity: 1; transform: translateX(2px); }
+}
+
+@keyframes studio2d-cast-pulse {
+  0%, 100% { transform: scaleX(1); opacity: 0.8; }
+  50% { transform: scaleX(1.08); opacity: 0.45; }
 }
 
 .studio3d-toolbar {
@@ -976,6 +1073,11 @@ t-chat-sender::part(send-btn):disabled,
 
   .studio2d-task {
     font-size: 8px;
+  }
+
+  .studio2d-hud span {
+    font-size: 9px;
+    padding: 1px 5px;
   }
 
   .studio3d-scene {
