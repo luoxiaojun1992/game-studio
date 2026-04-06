@@ -124,17 +124,25 @@ function SceneFloor({ lowDetail }: { lowDetail: boolean }) {
 }
 
 function SceneProps({ lowDetail }: { lowDetail: boolean }) {
+  const WALL_PATTERN_COUNT = 20;
+  const WALL_X_MULTIPLIER = 37;
+  const WALL_Y_MULTIPLIER = 19;
+  const WALL_Y_OFFSET = 7;
+  const WALL_MOD = 21;
+  const WALL_WIDTH_MULTIPLIER = 13;
+  const WALL_HEIGHT_MULTIPLIER = 7;
+  const WALL_ALPHA_MULTIPLIER = 11;
   const wallTexture = useMemo(
     () =>
       createCanvasTexture((ctx, size) => {
         ctx.fillStyle = '#101b33';
         ctx.fillRect(0, 0, size, size);
-        for (let i = 0; i < 20; i++) {
-          const x = ((i * 37) % 21) / 20 * size;
-          const y = ((i * 19 + 7) % 21) / 20 * size;
-          const w = 30 + ((i * 13) % 9) * 10;
-          const h = 6 + ((i * 7) % 5) * 4;
-          const alpha = 0.05 + (((i * 11) % 9) / 8) * 0.15;
+        for (let i = 0; i < WALL_PATTERN_COUNT; i++) {
+          const x = ((i * WALL_X_MULTIPLIER) % WALL_MOD) / (WALL_MOD - 1) * size;
+          const y = ((i * WALL_Y_MULTIPLIER + WALL_Y_OFFSET) % WALL_MOD) / (WALL_MOD - 1) * size;
+          const w = 30 + ((i * WALL_WIDTH_MULTIPLIER) % 9) * 10;
+          const h = 6 + ((i * WALL_HEIGHT_MULTIPLIER) % 5) * 4;
+          const alpha = 0.05 + (((i * WALL_ALPHA_MULTIPLIER) % 9) / 8) * 0.15;
           ctx.fillStyle = `rgba(56,189,248,${alpha.toFixed(3)})`;
           ctx.fillRect(x, y, w, h);
         }
