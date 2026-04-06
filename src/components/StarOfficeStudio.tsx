@@ -1,9 +1,30 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 const STAR_OFFICE_UI_URL = import.meta.env.VITE_STAR_OFFICE_UI_URL || 'http://127.0.0.1:19000';
 
 export default function StarOfficeStudio() {
   const [loadFailed, setLoadFailed] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const timeoutRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    setLoadFailed(false);
+    setLoaded(false);
+    timeoutRef.current = window.setTimeout(() => {
+      setLoadFailed(true);
+    }, 10000);
+    return () => {
+      if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (loaded && timeoutRef.current) {
+      window.clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+      setLoadFailed(false);
+    }
+  }, [loaded]);
 
   return (
     <section className="space-y-3">
@@ -33,9 +54,10 @@ export default function StarOfficeStudio() {
             title="Star-Office-UI"
             src={STAR_OFFICE_UI_URL}
             className="w-full h-[76vh] min-h-[560px] bg-black"
-            referrerPolicy="strict-origin-when-cross-origin"
+            style={{ visibility: loaded ? 'visible' : 'hidden' }}
+            referrerPolicy="no-referrer"
             sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-            onError={() => setLoadFailed(true)}
+            onLoad={() => setLoaded(true)}
           />
         )}
       </div>
