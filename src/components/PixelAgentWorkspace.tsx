@@ -27,6 +27,15 @@ const FLOOR_GRID_SPACING = 16;
 const FLOOR_GRID_MAJOR_SPACING = 64;
 const BODY_STRIPE_SPACING = 24;
 const BODY_STRIPE_WIDTH = 10;
+const CANVAS_TEXTURE_SIZE = 256;
+const WALL_PATTERN_COUNT = 20;
+const WALL_PATTERN_POSITION_X_FACTOR = 37;
+const WALL_PATTERN_POSITION_Y_FACTOR = 19;
+const WALL_PATTERN_POSITION_Y_OFFSET = 7;
+const WALL_PATTERN_POSITION_MODULUS = 21;
+const WALL_PATTERN_WIDTH_FACTOR = 13;
+const WALL_PATTERN_HEIGHT_FACTOR = 7;
+const WALL_PATTERN_ALPHA_FACTOR = 11;
 const ROLE_LABEL = 'ROLE';
 const MAX_ROLE_BADGE_LENGTH = 4;
 const ROLE_COLOR: Record<AgentRole, string> = {
@@ -79,7 +88,7 @@ function createCanvasTexture(
   repeat: [number, number] = [1, 1]
 ) {
   if (typeof document === 'undefined') return undefined;
-  const size = 256;
+  const size = CANVAS_TEXTURE_SIZE;
   const canvas = document.createElement('canvas');
   canvas.width = size;
   canvas.height = size;
@@ -151,14 +160,6 @@ function SceneFloor({ lowDetail }: { lowDetail: boolean }) {
 }
 
 function SceneProps({ lowDetail }: { lowDetail: boolean }) {
-  const WALL_PATTERN_COUNT = 20;
-  const WALL_PATTERN_POSITION_X_FACTOR = 37;
-  const WALL_PATTERN_POSITION_Y_FACTOR = 19;
-  const WALL_PATTERN_POSITION_Y_OFFSET = 7;
-  const WALL_PATTERN_POSITION_MODULUS = 21;
-  const WALL_PATTERN_WIDTH_FACTOR = 13;
-  const WALL_PATTERN_HEIGHT_FACTOR = 7;
-  const WALL_PATTERN_ALPHA_FACTOR = 11;
   const wallTexture = useMemo(
     () =>
       createCanvasTexture((ctx, size) => {
