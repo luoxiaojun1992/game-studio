@@ -1,7 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { Agent, Handoff, LogEntry, TaskBoardTask } from '../types';
 
 const STAR_OFFICE_UI_URL = import.meta.env.VITE_STAR_OFFICE_UI_URL || 'http://127.0.0.1:19000';
 const LOAD_TIMEOUT_MS = 10000;
+const STAR_OFFICE_SET_STATE_URL = import.meta.env.VITE_STAR_OFFICE_SET_STATE_URL || '';
+const STAR_OFFICE_AGENT_PUSH_URL = import.meta.env.VITE_STAR_OFFICE_AGENT_PUSH_URL || '';
 
 function isTrustedSameOriginUrl(rawUrl: string): boolean {
   try {
@@ -13,10 +16,66 @@ function isTrustedSameOriginUrl(rawUrl: string): boolean {
   }
 }
 
-export default function StarOfficeStudio() {
+interface StarOfficeStudioProps {
+  projectId: string;
+  agents: Agent[];
+  handoffs?: Handoff[];
+  tasks?: TaskBoardTask[];
+  logs?: LogEntry[];
+}
+
+function safeTargetOrigin(rawUrl: string): string {
+  try {
+    return new URL(rawUrl, window.location.origin).origin;
+  } catch {
+    return window.location.origin;
+  }
+}
+
+function buildBridgeState(
+  projectId: string,
+  agents: Agent[],
+  handoffs: Handoff[],
+  tasks: TaskBoardTask[],
+  logs: LogEntry[],
+) {
+  const now = new Date().toISOString();
+  const latestAgentLogMap = new Map<string, LogEntry>();
+  logs.forEach((log) => {
+    const prev = latestAgentLogMap.get(log.agent_id);
+    if (!prev || new Date(prev.created_at).getTime() < new Date(log.created_at).getTime()) {
+      latestAgentLogMap.set(log.agent_id, log);
+    }
+  });
+
+  return {
+    source: 'game-studio',
+    projectId,
+    timestamp: now,
+    agents: agents.map((agent) => ({
+      id: agent.id,
+      name: agent.name,
+      title: agent.title,
+      status: agent.state?.status || 'idle',
+      isPaused: !!agent.state?.isPaused,
+      currentTask: agent.state?.currentTask || null,
+      lastMessage: agent.state?.lastMessage || latestAgentLogMap.get(agent.id)?.content || null,
+      lastActiveAt: agent.state?.lastActiveAt || latestAgentLogMap.get(agent.id)?.created_at || null,
+    })),
+    counters: {
+      workingAgents: agents.filter((a) => a.state?.status === 'working').length,
+      pendingHandoffs: handoffs.filter((h) => h.status === 'pending').length,
+      activeTasks: tasks.filter((t) => ['todo', 'developing', 'testing', 'blocked'].includes(t.status)).length,
+    },
+  };
+}
+
+export default function StarOfficeStudio({ projectId, agents, handoffs = [], tasks = [], logs = [] }: StarOfficeStudioProps) {
   const [loadFailed, setLoadFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const timeoutRef = useRef<number | null>(null);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const latestStateRef = useRef<ReturnType<typeof buildBridgeState> | null>(null);
   const allowSameOrigin = isTrustedSameOriginUrl(STAR_OFFICE_UI_URL);
   const sandboxValue = allowSameOrigin
     ? 'allow-scripts allow-same-origin allow-forms allow-popups'
@@ -50,6 +109,49 @@ export default function StarOfficeStudio() {
       setLoadFailed(false);
     }
   }, [loaded]);
+
+  const pushStateToBridge = React.useCallback(async (state: ReturnType<typeof buildBridgeState>) => {
+    const iframeWindow = iframeRef.current?.contentWindow;
+    if (iframeWindow) {
+      try {
+        iframeWindow.postMessage(
+          {
+            type: 'game_studio_state_sync',
+            event: 'set_state',
+            payload: state,
+          },
+          safeTargetOrigin(STAR_OFFICE_UI_URL),
+        );
+      } catch {}
+    }
+
+    const setStateUrl = STAR_OFFICE_SET_STATE_URL || new URL('/set_state', STAR_OFFICE_UI_URL).toString();
+    const agentPushUrl = STAR_OFFICE_AGENT_PUSH_URL || new URL('/agent-push', STAR_OFFICE_UI_URL).toString();
+    await Promise.allSettled([
+      fetch(setStateUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(state),
+      }),
+      fetch(agentPushUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          source: 'game-studio',
+          projectId: state.projectId,
+          timestamp: state.timestamp,
+          agents: state.agents,
+        }),
+      }),
+    ]);
+  }, []);
+
+  useEffect(() => {
+    const state = buildBridgeState(projectId, agents, handoffs, tasks, logs);
+    latestStateRef.current = state;
+    if (!loaded) return;
+    void pushStateToBridge(state);
+  }, [projectId, agents, handoffs, tasks, logs, loaded, pushStateToBridge]);
 
   return (
     <section className="space-y-3">
@@ -91,9 +193,13 @@ export default function StarOfficeStudio() {
             className="w-full h-[76vh] min-h-[560px] bg-black"
             referrerPolicy="no-referrer"
             sandbox={sandboxValue}
+            ref={iframeRef}
             onLoad={() => {
               setLoaded(true);
               setLoadFailed(false);
+              if (latestStateRef.current) {
+                void pushStateToBridge(latestStateRef.current);
+              }
             }}
           />
         )}
