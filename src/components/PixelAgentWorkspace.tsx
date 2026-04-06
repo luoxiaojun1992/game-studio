@@ -75,7 +75,9 @@ function truncateTask(task: string | null | undefined, maxLength: number): strin
 
 function getRoleId(agentId: string): AgentRole {
   const normalized = agentId.toLowerCase() as AgentRole;
-  if (KNOWN_ROLE_IDS.has(normalized)) return normalized;
+  if (KNOWN_ROLE_IDS.has(normalized)) {
+    return normalized;
+  }
   return 'engineer';
 }
 
@@ -110,7 +112,7 @@ function Studio2DScene({ agents, activeHandoffs }: { agents: Agent[]; activeHand
         {handoffFlows.map(h => (
           <div key={h.id} className={`studio2d-handoff-line studio2d-priority-${h.priority}`}>
             <span className="studio2d-handoff-dot" role="img" aria-label="handoff package">📦</span>
-            <span className="studio2d-handoff-label" aria-label={`handoff from ${h.from_agent_id} to ${h.to_agent_id}`}>
+            <span className="studio2d-handoff-label">
               {h.from_agent_id} → {h.to_agent_id}
             </span>
           </div>
@@ -123,13 +125,14 @@ function Studio2DScene({ agents, activeHandoffs }: { agents: Agent[]; activeHand
         const isWorking = status === 'working';
         const role = getRoleId(agent.id);
         const seat = getSeatPosition(index);
+        const avatarStyle: React.CSSProperties = { '--role-color': ROLE_COLOR[role] } as React.CSSProperties;
         return (
           <div
             key={agent.id}
             className={`studio2d-seat-node studio2d-role-${role} ${isWorking ? 'studio2d-working' : ''}`}
             style={seat}
           >
-            <div className={`studio2d-avatar status-${status}`} style={{ ['--role-color' as any]: ROLE_COLOR[role] }}>
+            <div className={`studio2d-avatar status-${status}`} style={avatarStyle}>
               <span className="studio2d-avatar-shadow" />
               <span className="studio2d-avatar-body" />
               <span className="studio2d-avatar-head" />
