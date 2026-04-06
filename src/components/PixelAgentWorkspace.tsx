@@ -243,26 +243,79 @@ function AgentUnit({
     const t = clock.getElapsedTime();
     groupRef.current.position.y = 0.06 + Math.sin(t * (status === 'working' ? 4 : 2)) * pulse;
     groupRef.current.rotation.y = -angle + Math.sin(t * 0.8) * 0.06;
+    if (status === 'working') {
+      groupRef.current.rotation.x = Math.sin(t * 3.2) * 0.02;
+    } else {
+      groupRef.current.rotation.x = 0;
+    }
   });
 
   return (
     <group ref={groupRef} position={position}>
-      <mesh position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow={shadowsEnabled && !lowDetail}>
+      <mesh position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow={shadowsEnabled && !lowDetail}>
         <ringGeometry args={[0.42, 0.55, 24]} />
         <meshBasicMaterial color={statusColor} />
       </mesh>
-      <mesh position={[0, 0.78, 0]} castShadow={shadowsEnabled && !lowDetail}>
-        <boxGeometry args={[0.52, 0.72, 0.42]} />
-        <meshStandardMaterial color={ROLE_COLOR[role]} emissive={emissive} emissiveIntensity={0.26} roughness={0.45} map={bodyTexture} />
-      </mesh>
-      <mesh position={[0, 1.28, 0]} castShadow={shadowsEnabled && !lowDetail}>
-        <sphereGeometry args={[0.24, lowDetail ? 8 : 16, lowDetail ? 8 : 16]} />
-        <meshStandardMaterial color="#E5E7EB" roughness={0.65} metalness={0.08} map={headTexture} />
-      </mesh>
-      <mesh position={[0, 0.24, 0]} castShadow={shadowsEnabled && !lowDetail}>
-        <boxGeometry args={[0.22, 0.24, 0.22]} />
-        <meshStandardMaterial color="#0EA5E9" emissive={emissive} emissiveIntensity={0.3} />
-      </mesh>
+      <group position={[0, 0.12, 0.16]}>
+        <mesh position={[0, 0.26, -0.22]} castShadow={shadowsEnabled && !lowDetail} receiveShadow={shadowsEnabled && !lowDetail}>
+          <boxGeometry args={[0.42, 0.5, 0.38]} />
+          <meshStandardMaterial color="#1F2937" metalness={0.15} roughness={0.65} />
+        </mesh>
+        <mesh position={[0, 0.53, -0.34]} castShadow={shadowsEnabled && !lowDetail}>
+          <boxGeometry args={[0.46, 0.2, 0.1]} />
+          <meshStandardMaterial color="#334155" metalness={0.2} roughness={0.55} />
+        </mesh>
+        <mesh position={[0, 0.08, -0.22]} castShadow={shadowsEnabled && !lowDetail}>
+          <cylinderGeometry args={[0.04, 0.05, 0.28, lowDetail ? 6 : 10]} />
+          <meshStandardMaterial color="#64748B" metalness={0.5} roughness={0.35} />
+        </mesh>
+        <mesh position={[0, -0.08, -0.22]} rotation={[0, 0, 0]} receiveShadow={shadowsEnabled && !lowDetail}>
+          <cylinderGeometry args={[0.22, 0.26, 0.06, lowDetail ? 8 : 14]} />
+          <meshStandardMaterial color="#0F172A" metalness={0.35} roughness={0.5} />
+        </mesh>
+      </group>
+      <group position={[0, 0.16, 0]}>
+        <mesh position={[0, 0.85, 0.05]} castShadow={shadowsEnabled && !lowDetail}>
+          <boxGeometry args={[0.42, 0.56, 0.24]} />
+          <meshStandardMaterial color={ROLE_COLOR[role]} emissive={emissive} emissiveIntensity={0.26} roughness={0.45} map={bodyTexture} />
+        </mesh>
+        <mesh position={[0, 1.25, 0.08]} castShadow={shadowsEnabled && !lowDetail}>
+          <boxGeometry args={[0.34, 0.3, 0.28]} />
+          <meshStandardMaterial color={ROLE_COLOR[role]} emissive={emissive} emissiveIntensity={0.18} roughness={0.48} map={bodyTexture} />
+        </mesh>
+        <mesh position={[0, 1.52, 0.1]} castShadow={shadowsEnabled && !lowDetail}>
+          <sphereGeometry args={[0.2, lowDetail ? 8 : 14, lowDetail ? 8 : 14]} />
+          <meshStandardMaterial color="#E5E7EB" roughness={0.65} metalness={0.08} map={headTexture} />
+        </mesh>
+        <mesh position={[-0.3, 1.18, 0.04]} rotation={[0, 0, Math.PI / 8]} castShadow={shadowsEnabled && !lowDetail}>
+          <boxGeometry args={[0.12, 0.38, 0.12]} />
+          <meshStandardMaterial color={ROLE_COLOR[role]} emissive={emissive} emissiveIntensity={0.18} roughness={0.5} />
+        </mesh>
+        <mesh position={[0.3, 1.13, 0.08]} rotation={[0, 0, -Math.PI / 4.8]} castShadow={shadowsEnabled && !lowDetail}>
+          <boxGeometry args={[0.12, 0.42, 0.12]} />
+          <meshStandardMaterial color={ROLE_COLOR[role]} emissive={emissive} emissiveIntensity={0.22} roughness={0.5} />
+        </mesh>
+        <mesh position={[0.36, 0.95, 0.15]} rotation={[-Math.PI / 2.5, 0, 0]} castShadow={shadowsEnabled && !lowDetail}>
+          <boxGeometry args={[0.2, 0.02, 0.14]} />
+          <meshStandardMaterial color="#0EA5E9" emissive="#38BDF8" emissiveIntensity={0.4} />
+        </mesh>
+        <mesh position={[-0.12, 0.5, 0.06]} castShadow={shadowsEnabled && !lowDetail}>
+          <boxGeometry args={[0.13, 0.42, 0.13]} />
+          <meshStandardMaterial color="#0F172A" roughness={0.65} />
+        </mesh>
+        <mesh position={[0.12, 0.5, 0.06]} castShadow={shadowsEnabled && !lowDetail}>
+          <boxGeometry args={[0.13, 0.42, 0.13]} />
+          <meshStandardMaterial color="#0F172A" roughness={0.65} />
+        </mesh>
+        <mesh position={[-0.12, 0.25, 0.13]} castShadow={shadowsEnabled && !lowDetail} receiveShadow={shadowsEnabled && !lowDetail}>
+          <boxGeometry args={[0.16, 0.08, 0.28]} />
+          <meshStandardMaterial color="#1E293B" roughness={0.7} />
+        </mesh>
+        <mesh position={[0.12, 0.25, 0.13]} castShadow={shadowsEnabled && !lowDetail} receiveShadow={shadowsEnabled && !lowDetail}>
+          <boxGeometry args={[0.16, 0.08, 0.28]} />
+          <meshStandardMaterial color="#1E293B" roughness={0.7} />
+        </mesh>
+      </group>
     </group>
   );
 }
