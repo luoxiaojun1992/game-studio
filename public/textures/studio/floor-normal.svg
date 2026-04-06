@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <rect width="256" height="256" fill="rgb(128,128,255)"/>
+  <g>
+    <rect x="0" y="0" width="4" height="256" fill="rgb(136,128,255)"/>
+    <rect x="12" y="0" width="4" height="256" fill="rgb(120,128,255)"/>
+    <rect x="24" y="0" width="4" height="256" fill="rgb(134,128,255)"/>
+    <rect x="36" y="0" width="4" height="256" fill="rgb(122,128,255)"/>
+    <rect x="48" y="0" width="4" height="256" fill="rgb(136,128,255)"/>
+    <rect x="60" y="0" width="4" height="256" fill="rgb(120,128,255)"/>
+    <rect x="72" y="0" width="4" height="256" fill="rgb(134,128,255)"/>
+    <rect x="84" y="0" width="4" height="256" fill="rgb(122,128,255)"/>
+    <rect x="96" y="0" width="4" height="256" fill="rgb(136,128,255)"/>
+    <rect x="108" y="0" width="4" height="256" fill="rgb(120,128,255)"/>
+    <rect x="120" y="0" width="4" height="256" fill="rgb(134,128,255)"/>
+    <rect x="132" y="0" width="4" height="256" fill="rgb(122,128,255)"/>
+    <rect x="144" y="0" width="4" height="256" fill="rgb(136,128,255)"/>
+    <rect x="156" y="0" width="4" height="256" fill="rgb(120,128,255)"/>
+    <rect x="168" y="0" width="4" height="256" fill="rgb(134,128,255)"/>
+    <rect x="180" y="0" width="4" height="256" fill="rgb(122,128,255)"/>
+    <rect x="192" y="0" width="4" height="256" fill="rgb(136,128,255)"/>
+    <rect x="204" y="0" width="4" height="256" fill="rgb(120,128,255)"/>
+    <rect x="216" y="0" width="4" height="256" fill="rgb(134,128,255)"/>
+    <rect x="228" y="0" width="4" height="256" fill="rgb(122,128,255)"/>
+    <rect x="240" y="0" width="4" height="256" fill="rgb(136,128,255)"/>
+  </g>
+</svg>

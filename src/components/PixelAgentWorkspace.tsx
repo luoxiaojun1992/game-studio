@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Canvas, useFrame, useLoader } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { Agent, AgentRole, AgentStatus, Handoff } from '../types';
@@ -23,38 +23,18 @@ const WORK_LABEL: Record<AgentStatus, string> = {
   paused: 'PAUSE',
   error: 'ERROR',
 };
-const FLOOR_GRID_SPACING = 16;
-const FLOOR_GRID_MAJOR_SPACING = 64;
-const FLOOR_NORMAL_STRIPE_STEP = 12;
-const FLOOR_NORMAL_STRIPE_BAND = 4;
-const FLOOR_NORMAL_VARIATION_OFFSET = 1.5;
-const FLOOR_NORMAL_VARIATION_AMOUNT = 8;
-const FLOOR_NORMAL_RED_MIN = 112;
-const FLOOR_NORMAL_RED_MAX = 142;
-const FLOOR_NORMAL_LINE_WIDTH = 2;
 const BODY_STRIPE_SPACING = 24;
 const BODY_STRIPE_WIDTH = 10;
 const CANVAS_TEXTURE_SIZE = 256;
-const WALL_PATTERN_COUNT = 20;
-const WALL_PATTERN_POSITION_X_FACTOR = 37;
-const WALL_PATTERN_POSITION_Y_FACTOR = 19;
-const WALL_PATTERN_POSITION_Y_OFFSET = 7;
-const WALL_PATTERN_POSITION_MODULUS = 21;
-const WALL_PATTERN_WIDTH_FACTOR = 13;
-const WALL_PATTERN_HEIGHT_FACTOR = 7;
-const WALL_PATTERN_ALPHA_FACTOR = 11;
-const WALL_NORMAL_BASE_RED = 124;
-const WALL_NORMAL_RED_VARIATION = 24;
-const WALL_NORMAL_BASE_GREEN = 120;
-const WALL_NORMAL_GREEN_VARIATION = 14;
-const WALL_NORMAL_Y_MULTIPLIER = 7;
-const WALL_NORMAL_X_MULTIPLIER = 13;
-const WALL_NORMAL_STEP = 16;
-const WALL_NORMAL_RECT_WIDTH = 22;
-const WALL_NORMAL_RECT_HEIGHT = 4;
 const SHADOW_BIAS_TUNING = -0.00012;
 const SHADOW_MAP_SIZE_LOW = 512;
 const SHADOW_MAP_SIZE_HIGH = 2048;
+const FLOOR_COLOR_TEXTURE_PATH = '/textures/studio/floor-color.svg';
+const FLOOR_NORMAL_TEXTURE_PATH = '/textures/studio/floor-normal.svg';
+const WALL_COLOR_TEXTURE_PATH = '/textures/studio/wall-color.svg';
+const WALL_NORMAL_TEXTURE_PATH = '/textures/studio/wall-normal.svg';
+const DESK_COLOR_TEXTURE_PATH = '/textures/studio/desk-color.svg';
+const DESK_NORMAL_TEXTURE_PATH = '/textures/studio/desk-normal.svg';
 const ROLE_LABEL = 'ROLE';
 const MAX_ROLE_BADGE_LENGTH = 4;
 const ROLE_COLOR: Record<AgentRole, string> = {
@@ -105,7 +85,7 @@ function getStatusColor(status: AgentStatus): string {
 function createCanvasTexture(
   painter: (ctx: CanvasRenderingContext2D, size: number) => void,
   repeat: [number, number] = [1, 1],
-  colorTexture = true
+  applySRGBColorSpace = true
 ) {
   if (typeof document === 'undefined') return undefined;
   const size = CANVAS_TEXTURE_SIZE;
@@ -120,31 +100,30 @@ function createCanvasTexture(
   texture.wrapT = THREE.RepeatWrapping;
   texture.repeat.set(repeat[0], repeat[1]);
   texture.anisotropy = 8;
-  texture.colorSpace = colorTexture ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+  texture.colorSpace = applySRGBColorSpace ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+function configureTexture(texture: THREE.Texture, repeat: [number, number], applySRGBColorSpace = true): THREE.Texture {
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(repeat[0], repeat[1]);
+  texture.colorSpace = applySRGBColorSpace ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+  texture.anisotropy = 8;
   texture.needsUpdate = true;
   return texture;
 }
 
 function SceneFloor({ lowDetail }: { lowDetail: boolean }) {
+  const [floorTextureRaw, floorNormalTextureRaw] = useLoader(THREE.TextureLoader, [FLOOR_COLOR_TEXTURE_PATH, FLOOR_NORMAL_TEXTURE_PATH]);
   const floorTexture = useMemo(
-    () =>
-      createCanvasTexture((ctx, size) => {
-        ctx.fillStyle = '#0A1022';
-        ctx.fillRect(0, 0, size, size);
-        for (let i = 0; i <= size; i += FLOOR_GRID_SPACING) {
-          ctx.strokeStyle = i % FLOOR_GRID_MAJOR_SPACING === 0 ? 'rgba(56,189,248,0.28)' : 'rgba(56,189,248,0.12)';
-          ctx.lineWidth = i % FLOOR_GRID_MAJOR_SPACING === 0 ? 2 : 1;
-          ctx.beginPath();
-          ctx.moveTo(i, 0);
-          ctx.lineTo(i, size);
-          ctx.stroke();
-          ctx.beginPath();
-          ctx.moveTo(0, i);
-          ctx.lineTo(size, i);
-          ctx.stroke();
-        }
-      }, [8, 8]),
-    []
+    () => configureTexture(floorTextureRaw, [8, 8], true),
+    [floorTextureRaw]
+  );
+  const floorNormalTexture = useMemo(
+    () => configureTexture(floorNormalTextureRaw, [4, 4], false),
+    [floorNormalTextureRaw]
   );
   const floorReflectionTexture = useMemo(
     () =>
@@ -158,26 +137,7 @@ function SceneFloor({ lowDetail }: { lowDetail: boolean }) {
       }, [2, 2]),
     []
   );
-  const floorNormalTexture = useMemo(
-    () =>
-      createCanvasTexture((ctx, size) => {
-        ctx.fillStyle = 'rgb(128,128,255)';
-        ctx.fillRect(0, 0, size, size);
-        for (let i = 0; i < size; i += FLOOR_NORMAL_STRIPE_STEP) {
-          const normalRedValue =
-            128 +
-            ((i / FLOOR_NORMAL_STRIPE_STEP) % FLOOR_NORMAL_STRIPE_BAND - FLOOR_NORMAL_VARIATION_OFFSET) *
-              FLOOR_NORMAL_VARIATION_AMOUNT;
-          ctx.strokeStyle = `rgb(${Math.max(FLOOR_NORMAL_RED_MIN, Math.min(FLOOR_NORMAL_RED_MAX, Math.round(normalRedValue)))},128,255)`;
-          ctx.lineWidth = FLOOR_NORMAL_LINE_WIDTH;
-          ctx.beginPath();
-          ctx.moveTo(i, 0);
-          ctx.lineTo(i, size);
-          ctx.stroke();
-        }
-      }, [4, 4], false),
-    []
-  );
+  // Keep procedural reflection layer for subtle dynamic sheen above base texture.
   return (
     <group>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow={!lowDetail}>
@@ -208,52 +168,27 @@ function SceneFloor({ lowDetail }: { lowDetail: boolean }) {
 }
 
 function SceneProps({ lowDetail }: { lowDetail: boolean }) {
+  const [wallTextureRaw, wallNormalTextureRaw, deskTextureRaw, deskNormalTextureRaw] = useLoader(THREE.TextureLoader, [
+    WALL_COLOR_TEXTURE_PATH,
+    WALL_NORMAL_TEXTURE_PATH,
+    DESK_COLOR_TEXTURE_PATH,
+    DESK_NORMAL_TEXTURE_PATH,
+  ]);
   const wallTexture = useMemo(
-    () =>
-      createCanvasTexture((ctx, size) => {
-        ctx.fillStyle = '#101b33';
-        ctx.fillRect(0, 0, size, size);
-        for (let i = 0; i < WALL_PATTERN_COUNT; i++) {
-          const x = ((i * WALL_PATTERN_POSITION_X_FACTOR) % WALL_PATTERN_POSITION_MODULUS) / (WALL_PATTERN_POSITION_MODULUS - 1) * size;
-          const y = ((i * WALL_PATTERN_POSITION_Y_FACTOR + WALL_PATTERN_POSITION_Y_OFFSET) % WALL_PATTERN_POSITION_MODULUS) / (WALL_PATTERN_POSITION_MODULUS - 1) * size;
-          const w = 30 + ((i * WALL_PATTERN_WIDTH_FACTOR) % 9) * 10;
-          const h = 6 + ((i * WALL_PATTERN_HEIGHT_FACTOR) % 5) * 4;
-          const alpha = 0.05 + (((i * WALL_PATTERN_ALPHA_FACTOR) % 9) / 8) * 0.15;
-          ctx.fillStyle = `rgba(56,189,248,${alpha.toFixed(3)})`;
-          ctx.fillRect(x, y, w, h);
-        }
-      }, [2, 1]),
-    []
-  );
-  const deskTexture = useMemo(
-    () =>
-      createCanvasTexture((ctx, size) => {
-        ctx.fillStyle = '#0F172A';
-        ctx.fillRect(0, 0, size, size);
-        for (let i = 0; i <= size; i += 8) {
-          ctx.strokeStyle = 'rgba(148,163,184,0.08)';
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.moveTo(0, i);
-          ctx.lineTo(size, i);
-          ctx.stroke();
-        }
-      }, [3, 2]),
-    []
+    () => configureTexture(wallTextureRaw, [2, 1], true),
+    [wallTextureRaw]
   );
   const wallNormalTexture = useMemo(
-    () =>
-      createCanvasTexture((ctx, size) => {
-        ctx.fillStyle = 'rgb(128,128,255)';
-        ctx.fillRect(0, 0, size, size);
-        for (let i = 0; i < size; i += WALL_NORMAL_STEP) {
-          const y = (i * WALL_NORMAL_Y_MULTIPLIER) % size;
-          const x = (i * WALL_NORMAL_X_MULTIPLIER) % size;
-          ctx.fillStyle = `rgb(${WALL_NORMAL_BASE_RED + (i % WALL_NORMAL_RED_VARIATION)},${WALL_NORMAL_BASE_GREEN + (i % WALL_NORMAL_GREEN_VARIATION)},255)`;
-          ctx.fillRect(x, y, WALL_NORMAL_RECT_WIDTH, WALL_NORMAL_RECT_HEIGHT);
-        }
-      }, [2, 1], false),
-    []
+    () => configureTexture(wallNormalTextureRaw, [2, 1], false),
+    [wallNormalTextureRaw]
+  );
+  const deskTexture = useMemo(
+    () => configureTexture(deskTextureRaw, [3, 2], true),
+    [deskTextureRaw]
+  );
+  const deskNormalTexture = useMemo(
+    () => configureTexture(deskNormalTextureRaw, [3, 2], false),
+    [deskNormalTextureRaw]
   );
   return (
     <group>
@@ -303,7 +238,7 @@ function SceneProps({ lowDetail }: { lowDetail: boolean }) {
           metalness={0.52}
           roughness={0.34}
           map={deskTexture}
-          normalMap={wallNormalTexture}
+          normalMap={deskNormalTexture}
           normalScale={new THREE.Vector2(0.22, 0.22)}
         />
       </mesh>
