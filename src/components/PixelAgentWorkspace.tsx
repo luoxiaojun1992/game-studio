@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import { Canvas, useFrame, useLoader } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
@@ -486,8 +486,10 @@ function StudioScene({
       />
       <pointLight position={[5.8, 2.2, 2.8]} color="#C4B5FD" intensity={0.56} distance={12} />
       <pointLight position={[-6, 2.6, 1.8]} color="#22D3EE" intensity={0.28} distance={10} />
-      <SceneFloor lowDetail={lowDetail} />
-      <SceneProps lowDetail={lowDetail} />
+      <Suspense fallback={null}>
+        <SceneFloor lowDetail={lowDetail} />
+        <SceneProps lowDetail={lowDetail} />
+      </Suspense>
       {agents.map((agent, index) => (
         <AgentUnit
           key={agent.id}
