@@ -2,7 +2,7 @@ import * as db from './db.js';
 import { agentManager, AgentState } from './agent-manager.js';
 import { AgentRole } from './agents.js';
 
-const STAR_OFFICE_UI_URL = process.env.STAR_OFFICE_UI_URL || process.env.VITE_STAR_OFFICE_UI_URL || '';
+const STAR_OFFICE_UI_URL = process.env.STAR_OFFICE_UI_URL || process.env.VITE_STAR_OFFICE_UI_URL || 'http://127.0.0.1:19000';
 const STAR_OFFICE_SET_STATE_URL = process.env.STAR_OFFICE_SET_STATE_URL || '';
 const STAR_OFFICE_AGENT_PUSH_URL = process.env.STAR_OFFICE_AGENT_PUSH_URL || '';
 const STAR_OFFICE_SYNC_DEBOUNCE_MS = Number(process.env.STAR_OFFICE_SYNC_DEBOUNCE_MS || 300);
