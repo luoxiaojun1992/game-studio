@@ -3,11 +3,15 @@ import React, { useEffect, useRef, useState } from 'react';
 const STAR_OFFICE_UI_URL = import.meta.env.VITE_STAR_OFFICE_UI_URL || 'http://127.0.0.1:19000';
 const LOAD_TIMEOUT_MS = 10000;
 
+function isLocalHostname(hostname: string): boolean {
+  return ['localhost', '127.0.0.1', '::1'].includes(hostname) || hostname.endsWith('.localhost');
+}
+
 function isTrustedSameOriginUrl(rawUrl: string): boolean {
   try {
     const url = new URL(rawUrl, window.location.origin);
     if (url.origin === window.location.origin) return true;
-    return ['localhost', '127.0.0.1', '::1'].includes(url.hostname) || url.hostname.endsWith('.localhost');
+    return isLocalHostname(url.hostname);
   } catch {
     return false;
   }
@@ -24,7 +28,7 @@ export default function StarOfficeStudio() {
   const isInsecureRemoteHttp = (() => {
     try {
       const parsed = new URL(STAR_OFFICE_UI_URL, window.location.origin);
-      const isLocal = ['localhost', '127.0.0.1', '::1'].includes(parsed.hostname) || parsed.hostname.endsWith('.localhost');
+      const isLocal = isLocalHostname(parsed.hostname);
       return parsed.protocol === 'http:' && !isLocal;
     } catch {
       return false;

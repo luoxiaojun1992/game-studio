@@ -106,7 +106,11 @@ class StarOfficeSyncService {
           lastActiveAt: state.lastActiveAt,
         },
       }).catch((error) => {
-        console.warn(`[star-office-sync] agent-push failed project=${projectId} agent=${agentId}:`, (error as Error).message);
+        console.warn('[star-office-sync] agent-push failed', {
+          projectId,
+          agentId,
+          error: (error as Error).message,
+        });
       });
     }
     this.scheduleProjectStateSync(projectId, 'agent_status_changed');
@@ -115,6 +119,7 @@ class StarOfficeSyncService {
   syncAllProjectsOnBoot(): void {
     if (!this.isEnabled()) return;
     const projectIds = db.getAllProjectIds();
+    // 历史数据可能只存在默认项目，始终补一次 default 可确保首次启动即可同步基础状态。
     const all = new Set(['default', ...projectIds]);
     for (const projectId of all) {
       void this.syncProjectState(projectId, 'boot');
@@ -123,4 +128,3 @@ class StarOfficeSyncService {
 }
 
 export const starOfficeSyncService = new StarOfficeSyncService();
-

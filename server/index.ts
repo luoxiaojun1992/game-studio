@@ -8,6 +8,7 @@ import { agentManager } from './agent-manager.js';
 import { AGENT_DEFINITIONS, getAllAgents, AgentRole } from './agents.js';
 import { sseBroadcaster } from './sse-broadcaster.js';
 import { starOfficeSyncService } from './star-office-sync.js';
+import { StreamEvent } from './agent-manager.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -38,9 +39,10 @@ agentManager.on('agent_status_changed', (data) => {
   starOfficeSyncService.notifyAgentStatusChanged(data.projectId, data.agentId, data.state);
 });
 agentManager.on('stream_event', (data) => {
-  sseBroadcaster.broadcast({ type: 'stream_event', event: data }, (data as any).projectId);
-  const streamType = String((data as any)?.type || '');
-  const projectId = String((data as any)?.projectId || DEFAULT_PROJECT_ID);
+  const streamData = data as StreamEvent & { projectId?: string };
+  sseBroadcaster.broadcast({ type: 'stream_event', event: streamData }, streamData.projectId);
+  const streamType = String(streamData.type || '');
+  const projectId = String(streamData.projectId || DEFAULT_PROJECT_ID);
   if (['agent_start', 'agent_done', 'agent_error', 'agent_paused_mid_task'].includes(streamType)) {
     starOfficeSyncService.scheduleProjectStateSync(projectId, `stream_event:${streamType}`);
   }
