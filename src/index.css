@@ -805,7 +805,7 @@ t-chat-sender::part(send-btn):disabled,
   justify-content: center;
   background: rgba(15, 23, 42, 0.72);
   box-shadow: 0 6px 12px rgba(2, 6, 23, 0.35);
-  animation: studio2d-float 1.6s ease-in-out infinite;
+  animation: studio2d-float-decoration 1.6s ease-in-out infinite;
 }
 
 .studio2d-handoff-layer {
@@ -844,7 +844,7 @@ t-chat-sender::part(send-btn):disabled,
 
 .studio2d-handoff-dot {
   display: inline-block;
-  animation: studio2d-float 0.9s ease-in-out infinite;
+  animation: studio2d-float-dot 0.9s ease-in-out infinite;
 }
 
 .studio2d-priority-urgent { border-color: rgba(248, 113, 113, 0.8); }
@@ -965,9 +965,14 @@ t-chat-sender::part(send-btn):disabled,
   50% { transform: translateY(-2px); }
 }
 
-@keyframes studio2d-float {
+@keyframes studio2d-float-dot {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-1px); }
+}
+
+@keyframes studio2d-float-decoration {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
 }
 
 @keyframes studio2d-path-shift {
