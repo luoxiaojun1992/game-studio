@@ -25,6 +25,10 @@ const WORK_LABEL: Record<AgentStatus, string> = {
 };
 const FLOOR_GRID_SPACING = 16;
 const FLOOR_GRID_MAJOR_SPACING = 64;
+const FLOOR_NORMAL_STRIPE_STEP = 12;
+const FLOOR_NORMAL_STRIPE_BAND = 4;
+const FLOOR_NORMAL_VARIATION_OFFSET = 1.5;
+const FLOOR_NORMAL_VARIATION_AMOUNT = 8;
 const BODY_STRIPE_SPACING = 24;
 const BODY_STRIPE_WIDTH = 10;
 const CANVAS_TEXTURE_SIZE = 256;
@@ -36,6 +40,11 @@ const WALL_PATTERN_POSITION_MODULUS = 21;
 const WALL_PATTERN_WIDTH_FACTOR = 13;
 const WALL_PATTERN_HEIGHT_FACTOR = 7;
 const WALL_PATTERN_ALPHA_FACTOR = 11;
+const WALL_NORMAL_BASE_RED = 124;
+const WALL_NORMAL_RED_VARIATION = 24;
+const WALL_NORMAL_BASE_GREEN = 120;
+const WALL_NORMAL_GREEN_VARIATION = 14;
+const SHADOW_BIAS_TUNING = -0.00012;
 const ROLE_LABEL = 'ROLE';
 const MAX_ROLE_BADGE_LENGTH = 4;
 const ROLE_COLOR: Record<AgentRole, string> = {
@@ -144,8 +153,11 @@ function SceneFloor({ lowDetail }: { lowDetail: boolean }) {
       createCanvasTexture((ctx, size) => {
         ctx.fillStyle = 'rgb(128,128,255)';
         ctx.fillRect(0, 0, size, size);
-        for (let i = 0; i < size; i += 12) {
-          const v = 128 + ((i / 12) % 4 - 1.5) * 8;
+        for (let i = 0; i < size; i += FLOOR_NORMAL_STRIPE_STEP) {
+          const v =
+            128 +
+            ((i / FLOOR_NORMAL_STRIPE_STEP) % FLOOR_NORMAL_STRIPE_BAND - FLOOR_NORMAL_VARIATION_OFFSET) *
+              FLOOR_NORMAL_VARIATION_AMOUNT;
           ctx.strokeStyle = `rgb(${Math.max(112, Math.min(142, Math.round(v)))},128,255)`;
           ctx.lineWidth = 2;
           ctx.beginPath();
@@ -227,7 +239,7 @@ function SceneProps({ lowDetail }: { lowDetail: boolean }) {
         for (let i = 0; i < size; i += 16) {
           const y = (i * 7) % size;
           const x = (i * 13) % size;
-          ctx.fillStyle = `rgb(${124 + (i % 24)},${120 + (i % 14)},255)`;
+          ctx.fillStyle = `rgb(${WALL_NORMAL_BASE_RED + (i % WALL_NORMAL_RED_VARIATION)},${WALL_NORMAL_BASE_GREEN + (i % WALL_NORMAL_GREEN_VARIATION)},255)`;
           ctx.fillRect(x, y, 22, 4);
         }
       }, [2, 1], false),
@@ -507,7 +519,7 @@ function StudioScene({
         castShadow={shadowsEnabled && !lowDetail}
         shadow-mapSize-width={lowDetail ? 512 : 2048}
         shadow-mapSize-height={lowDetail ? 512 : 2048}
-        shadow-bias={-0.00012}
+        shadow-bias={SHADOW_BIAS_TUNING}
         shadow-normalBias={0.02}
         shadow-camera-near={1}
         shadow-camera-far={24}
