@@ -560,7 +560,7 @@ export default function StudioPage() {
 
         {activeTab === 'pixel_studio' && (
           <div className="space-y-4">
-            <StarOfficeStudio agents={agents} handoffs={handoffs} />
+            <StarOfficeStudio />
           </div>
         )}
 
