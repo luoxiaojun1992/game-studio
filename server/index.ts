@@ -7,6 +7,7 @@ import * as db from './db.js';
 import { agentManager } from './agent-manager.js';
 import { AGENT_DEFINITIONS, getAllAgents, AgentRole } from './agents.js';
 import { sseBroadcaster } from './sse-broadcaster.js';
+import { starOfficeSyncService } from './star-office-sync.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -32,10 +33,26 @@ app.use((req, res, next) => {
 });
 
 // 将 AgentManager 的事件转发到 SSE
-agentManager.on('agent_status_changed', (data) => sseBroadcaster.broadcast({ type: 'agent_status_changed', ...data }, data.projectId));
-agentManager.on('stream_event', (data) => sseBroadcaster.broadcast({ type: 'stream_event', event: data }, (data as any).projectId));
-agentManager.on('agent_paused', (data) => sseBroadcaster.broadcast({ type: 'agent_paused', ...data }, data.projectId));
-agentManager.on('agent_resumed', (data) => sseBroadcaster.broadcast({ type: 'agent_resumed', ...data }, data.projectId));
+agentManager.on('agent_status_changed', (data) => {
+  sseBroadcaster.broadcast({ type: 'agent_status_changed', ...data }, data.projectId);
+  starOfficeSyncService.notifyAgentStatusChanged(data.projectId, data.agentId, data.state);
+});
+agentManager.on('stream_event', (data) => {
+  sseBroadcaster.broadcast({ type: 'stream_event', event: data }, (data as any).projectId);
+  const streamType = String((data as any)?.type || '');
+  const projectId = String((data as any)?.projectId || DEFAULT_PROJECT_ID);
+  if (['agent_start', 'agent_done', 'agent_error', 'agent_paused_mid_task'].includes(streamType)) {
+    starOfficeSyncService.scheduleProjectStateSync(projectId, `stream_event:${streamType}`);
+  }
+});
+agentManager.on('agent_paused', (data) => {
+  sseBroadcaster.broadcast({ type: 'agent_paused', ...data }, data.projectId);
+  starOfficeSyncService.scheduleProjectStateSync(data.projectId, 'agent_paused');
+});
+agentManager.on('agent_resumed', (data) => {
+  sseBroadcaster.broadcast({ type: 'agent_resumed', ...data }, data.projectId);
+  starOfficeSyncService.scheduleProjectStateSync(data.projectId, 'agent_resumed');
+});
 
 // ============= 健康检查 =============
 
@@ -896,6 +913,7 @@ app.post('/api/games', (req, res) => {
 // ============= 启动服务器 =============
 
 app.listen(PORT, () => {
+  starOfficeSyncService.syncAllProjectsOnBoot();
   console.log(`
 ╔══════════════════════════════════════════════════════╗
 ║                                                      ║

@@ -1,11 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Agent, Handoff, LogEntry, TaskBoardTask } from '../types';
 
 const STAR_OFFICE_UI_URL = import.meta.env.VITE_STAR_OFFICE_UI_URL || 'http://127.0.0.1:19000';
 const LOAD_TIMEOUT_MS = 10000;
-const STAR_OFFICE_SET_STATE_URL = import.meta.env.VITE_STAR_OFFICE_SET_STATE_URL || '';
-const STAR_OFFICE_AGENT_PUSH_URL = import.meta.env.VITE_STAR_OFFICE_AGENT_PUSH_URL || '';
-const BRIDGE_DEBOUNCE_MS = 300;
 
 function isTrustedSameOriginUrl(rawUrl: string): boolean {
   try {
@@ -17,76 +13,10 @@ function isTrustedSameOriginUrl(rawUrl: string): boolean {
   }
 }
 
-interface StarOfficeStudioProps {
-  projectId: string;
-  agents: Agent[];
-  handoffs?: Handoff[];
-  tasks?: TaskBoardTask[];
-  logs?: LogEntry[];
-}
-
-function safeTargetOrigin(rawUrl: string): string {
-  try {
-    return new URL(rawUrl, window.location.origin).origin;
-  } catch {
-    return window.location.origin;
-  }
-}
-
-function resolveBridgeUrl(explicitUrl: string, baseUiUrl: string, fallbackPath: string): string | null {
-  try {
-    if (explicitUrl) return new URL(explicitUrl, window.location.origin).toString();
-    return new URL(fallbackPath, baseUiUrl).toString();
-  } catch {
-    return null;
-  }
-}
-
-function buildBridgeState(
-  projectId: string,
-  agents: Agent[],
-  handoffs: Handoff[],
-  tasks: TaskBoardTask[],
-  logs: LogEntry[],
-) {
-  const now = new Date().toISOString();
-  const latestAgentLogMap = new Map<string, LogEntry>();
-  logs.forEach((log) => {
-    const prev = latestAgentLogMap.get(log.agent_id);
-    if (!prev || new Date(prev.created_at).getTime() < new Date(log.created_at).getTime()) {
-      latestAgentLogMap.set(log.agent_id, log);
-    }
-  });
-
-  return {
-    source: 'game-studio',
-    projectId,
-    timestamp: now,
-    agents: agents.map((agent) => ({
-      id: agent.id,
-      name: agent.name,
-      title: agent.title,
-      status: agent.state?.status || 'idle',
-      isPaused: !!agent.state?.isPaused,
-      currentTask: agent.state?.currentTask || null,
-      lastMessage: agent.state?.lastMessage || latestAgentLogMap.get(agent.id)?.content || null,
-      lastActiveAt: agent.state?.lastActiveAt || latestAgentLogMap.get(agent.id)?.created_at || null,
-    })),
-    counters: {
-      workingAgents: agents.filter((a) => a.state?.status === 'working').length,
-      pendingHandoffs: handoffs.filter((h) => h.status === 'pending').length,
-      activeTasks: tasks.filter((t) => ['todo', 'developing', 'testing', 'blocked'].includes(t.status)).length,
-    },
-  };
-}
-
-export default function StarOfficeStudio({ projectId, agents, handoffs = [], tasks = [], logs = [] }: StarOfficeStudioProps) {
+export default function StarOfficeStudio() {
   const [loadFailed, setLoadFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const timeoutRef = useRef<number | null>(null);
-  const iframeRef = useRef<HTMLIFrameElement | null>(null);
-  const latestStateRef = useRef<ReturnType<typeof buildBridgeState> | null>(null);
-  const debounceRef = useRef<number | null>(null);
   const allowSameOrigin = isTrustedSameOriginUrl(STAR_OFFICE_UI_URL);
   const sandboxValue = allowSameOrigin
     ? 'allow-scripts allow-same-origin allow-forms allow-popups'
@@ -120,72 +50,6 @@ export default function StarOfficeStudio({ projectId, agents, handoffs = [], tas
       setLoadFailed(false);
     }
   }, [loaded]);
-
-  const pushStateToBridge = React.useCallback(async (state: ReturnType<typeof buildBridgeState>) => {
-    const iframeWindow = iframeRef.current?.contentWindow;
-    if (iframeWindow) {
-      try {
-        iframeWindow.postMessage(
-          {
-            type: 'game_studio_state_sync',
-            event: 'set_state',
-            payload: state,
-          },
-          safeTargetOrigin(STAR_OFFICE_UI_URL),
-        );
-      } catch (error) {
-        if (import.meta.env.DEV) {
-          console.warn('[StarOfficeStudio] postMessage failed', error);
-        }
-      }
-    }
-
-    const setStateUrl = resolveBridgeUrl(STAR_OFFICE_SET_STATE_URL, STAR_OFFICE_UI_URL, '/set_state');
-    const agentPushUrl = resolveBridgeUrl(STAR_OFFICE_AGENT_PUSH_URL, STAR_OFFICE_UI_URL, '/agent-push');
-    const requests: Promise<Response>[] = [];
-    if (setStateUrl) {
-      requests.push(fetch(setStateUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(state),
-      }));
-    }
-    if (agentPushUrl) {
-      requests.push(fetch(agentPushUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          source: 'game-studio',
-          projectId: state.projectId,
-          timestamp: state.timestamp,
-          agents: state.agents,
-        }),
-      }));
-    }
-    if (requests.length > 0) {
-      const results = await Promise.allSettled(requests);
-      if (import.meta.env.DEV) {
-        const failed = results.filter((r) => r.status === 'rejected').length;
-        if (failed > 0) {
-          console.warn(`[StarOfficeStudio] state sync requests failed: ${failed}/${results.length}`);
-        }
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    const state = buildBridgeState(projectId, agents, handoffs, tasks, logs);
-    latestStateRef.current = state;
-    if (!loaded) return;
-    if (debounceRef.current) window.clearTimeout(debounceRef.current);
-    debounceRef.current = window.setTimeout(() => {
-      void pushStateToBridge(state);
-    }, BRIDGE_DEBOUNCE_MS);
-    return () => {
-      if (debounceRef.current) window.clearTimeout(debounceRef.current);
-      debounceRef.current = null;
-    };
-  }, [projectId, agents, handoffs, tasks, logs, loaded, pushStateToBridge]);
 
   return (
     <section className="space-y-3">
@@ -227,13 +91,9 @@ export default function StarOfficeStudio({ projectId, agents, handoffs = [], tas
             className="w-full h-[76vh] min-h-[560px] bg-black"
             referrerPolicy="no-referrer"
             sandbox={sandboxValue}
-            ref={iframeRef}
             onLoad={() => {
               setLoaded(true);
               setLoadFailed(false);
-              if (latestStateRef.current) {
-                void pushStateToBridge(latestStateRef.current);
-              }
             }}
           />
         )}
