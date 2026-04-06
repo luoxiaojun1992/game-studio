@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Agent, Handoff } from '../types';
 import PixelAgentWorkspace from './PixelAgentWorkspace';
 
@@ -8,6 +8,11 @@ interface Props {
 }
 
 export default function StarOfficeStudio({ agents, handoffs }: Props) {
+  const activeHandoffCount = useMemo(
+    () => handoffs.filter(h => ['pending', 'accepted', 'working'].includes(h.status)).length,
+    [handoffs]
+  );
+
   return (
     <section className="space-y-3">
       <div className="bg-gray-900 rounded-xl border border-gray-800 px-4 py-3">
@@ -17,7 +22,7 @@ export default function StarOfficeStudio({ agents, handoffs }: Props) {
             <h3 className="text-sm md:text-base text-white font-semibold">Studio</h3>
           </div>
           <span className="text-[10px] md:text-xs text-gray-500">
-            AGENTS: {agents.length} · HANDOFFS: {handoffs.filter(h => ['pending', 'accepted', 'working'].includes(h.status)).length}
+            AGENTS: {agents.length} · HANDOFFS: {activeHandoffCount}
           </span>
         </div>
       </div>
