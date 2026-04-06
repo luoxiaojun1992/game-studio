@@ -23,6 +23,10 @@ const WORK_LABEL: Record<AgentStatus, string> = {
   paused: 'PAUSE',
   error: 'ERROR',
 };
+const FLOOR_GRID_SPACING = 16;
+const FLOOR_GRID_MAJOR_SPACING = 64;
+const BODY_STRIPE_SPACING = 24;
+const BODY_STRIPE_WIDTH = 10;
 const ROLE_LABEL = 'ROLE';
 const MAX_ROLE_BADGE_LENGTH = 4;
 const ROLE_COLOR: Record<AgentRole, string> = {
@@ -97,9 +101,9 @@ function SceneFloor({ lowDetail }: { lowDetail: boolean }) {
       createCanvasTexture((ctx, size) => {
         ctx.fillStyle = '#0A1022';
         ctx.fillRect(0, 0, size, size);
-        for (let i = 0; i <= size; i += 16) {
-          ctx.strokeStyle = i % 64 === 0 ? 'rgba(56,189,248,0.28)' : 'rgba(56,189,248,0.12)';
-          ctx.lineWidth = i % 64 === 0 ? 2 : 1;
+        for (let i = 0; i <= size; i += FLOOR_GRID_SPACING) {
+          ctx.strokeStyle = i % FLOOR_GRID_MAJOR_SPACING === 0 ? 'rgba(56,189,248,0.28)' : 'rgba(56,189,248,0.12)';
+          ctx.lineWidth = i % FLOOR_GRID_MAJOR_SPACING === 0 ? 2 : 1;
           ctx.beginPath();
           ctx.moveTo(i, 0);
           ctx.lineTo(i, size);
@@ -148,24 +152,24 @@ function SceneFloor({ lowDetail }: { lowDetail: boolean }) {
 
 function SceneProps({ lowDetail }: { lowDetail: boolean }) {
   const WALL_PATTERN_COUNT = 20;
-  const WALL_X_MULTIPLIER = 37;
-  const WALL_Y_MULTIPLIER = 19;
-  const WALL_Y_OFFSET = 7;
-  const WALL_MOD = 21;
-  const WALL_WIDTH_MULTIPLIER = 13;
-  const WALL_HEIGHT_MULTIPLIER = 7;
-  const WALL_ALPHA_MULTIPLIER = 11;
+  const WALL_PATTERN_POSITION_X_FACTOR = 37;
+  const WALL_PATTERN_POSITION_Y_FACTOR = 19;
+  const WALL_PATTERN_POSITION_Y_OFFSET = 7;
+  const WALL_PATTERN_POSITION_MODULUS = 21;
+  const WALL_PATTERN_WIDTH_FACTOR = 13;
+  const WALL_PATTERN_HEIGHT_FACTOR = 7;
+  const WALL_PATTERN_ALPHA_FACTOR = 11;
   const wallTexture = useMemo(
     () =>
       createCanvasTexture((ctx, size) => {
         ctx.fillStyle = '#101b33';
         ctx.fillRect(0, 0, size, size);
         for (let i = 0; i < WALL_PATTERN_COUNT; i++) {
-          const x = ((i * WALL_X_MULTIPLIER) % WALL_MOD) / (WALL_MOD - 1) * size;
-          const y = ((i * WALL_Y_MULTIPLIER + WALL_Y_OFFSET) % WALL_MOD) / (WALL_MOD - 1) * size;
-          const w = 30 + ((i * WALL_WIDTH_MULTIPLIER) % 9) * 10;
-          const h = 6 + ((i * WALL_HEIGHT_MULTIPLIER) % 5) * 4;
-          const alpha = 0.05 + (((i * WALL_ALPHA_MULTIPLIER) % 9) / 8) * 0.15;
+          const x = ((i * WALL_PATTERN_POSITION_X_FACTOR) % WALL_PATTERN_POSITION_MODULUS) / (WALL_PATTERN_POSITION_MODULUS - 1) * size;
+          const y = ((i * WALL_PATTERN_POSITION_Y_FACTOR + WALL_PATTERN_POSITION_Y_OFFSET) % WALL_PATTERN_POSITION_MODULUS) / (WALL_PATTERN_POSITION_MODULUS - 1) * size;
+          const w = 30 + ((i * WALL_PATTERN_WIDTH_FACTOR) % 9) * 10;
+          const h = 6 + ((i * WALL_PATTERN_HEIGHT_FACTOR) % 5) * 4;
+          const alpha = 0.05 + (((i * WALL_PATTERN_ALPHA_FACTOR) % 9) / 8) * 0.15;
           ctx.fillStyle = `rgba(56,189,248,${alpha.toFixed(3)})`;
           ctx.fillRect(x, y, w, h);
         }
@@ -282,8 +286,8 @@ function AgentUnit({
         ctx.fillStyle = ROLE_COLOR[role];
         ctx.fillRect(0, 0, size, size);
         ctx.fillStyle = 'rgba(255,255,255,0.18)';
-        for (let i = -size; i < size * 2; i += 24) {
-          ctx.fillRect(i, 0, 10, size);
+        for (let i = -size; i < size * 2; i += BODY_STRIPE_SPACING) {
+          ctx.fillRect(i, 0, BODY_STRIPE_WIDTH, size);
         }
       }, [2, 2]),
     [role]
