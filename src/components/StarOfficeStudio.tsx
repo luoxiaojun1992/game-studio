@@ -41,7 +41,7 @@ export default function StarOfficeStudio() {
     return () => {
       if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
     };
-  }, [STAR_OFFICE_UI_URL]);
+  }, []);
 
   useEffect(() => {
     if (loaded && timeoutRef.current) {
@@ -69,14 +69,14 @@ export default function StarOfficeStudio() {
           </a>
         </div>
       </div>
-      <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
+      <div className="relative bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
         {isInsecureRemoteHttp && (
           <div className="px-4 py-2 text-xs text-yellow-300 bg-yellow-950/30 border-b border-yellow-900/60">
             检测到非本地 HTTP 地址，生产环境建议使用 HTTPS：{STAR_OFFICE_UI_URL}
           </div>
         )}
         {!loaded && !loadFailed && (
-          <div className="absolute pointer-events-none text-xs text-gray-400 px-4 py-2">
+          <div className="absolute top-2 left-2 pointer-events-none text-xs text-gray-400 px-2 py-1 bg-black/40 rounded">
             正在加载 Star-Office-UI...
           </div>
         )}
