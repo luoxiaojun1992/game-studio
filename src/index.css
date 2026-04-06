@@ -658,6 +658,344 @@ t-chat-sender::part(send-btn):disabled,
     linear-gradient(180deg, rgba(7, 13, 28, 0.98), rgba(2, 6, 23, 0.98));
 }
 
+.studio2d-room {
+  position: relative;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(56, 189, 248, 0.18), transparent 46%),
+    linear-gradient(180deg, rgba(8, 12, 27, 0.98), rgba(2, 6, 23, 0.99));
+}
+
+.studio2d-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.studio2d-chip {
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  background: rgba(8, 47, 73, 0.38);
+  color: rgba(186, 230, 253, 0.95);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 10px;
+  letter-spacing: 0.03em;
+}
+
+.studio2d-scene {
+  position: relative;
+  min-height: clamp(360px, 52vh, 560px);
+  height: clamp(360px, 52vh, 560px);
+  overflow: hidden;
+  border-radius: 12px;
+  border: 1px solid rgba(30, 41, 59, 0.8);
+  background: linear-gradient(180deg, rgba(3, 7, 18, 0.9), rgba(2, 6, 23, 0.98));
+}
+
+.studio2d-stars {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 12% 20%, rgba(191, 219, 254, 0.6) 0 1px, transparent 2px),
+    radial-gradient(circle at 26% 10%, rgba(196, 181, 253, 0.45) 0 1px, transparent 2px),
+    radial-gradient(circle at 72% 16%, rgba(34, 211, 238, 0.44) 0 1px, transparent 2px),
+    radial-gradient(circle at 88% 30%, rgba(191, 219, 254, 0.52) 0 1px, transparent 2px);
+  pointer-events: none;
+  opacity: 0.55;
+  animation: studio2d-stars-flicker 2.2s steps(2, end) infinite;
+}
+
+.studio2d-hud {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 3;
+  display: flex;
+  gap: 6px;
+}
+
+.studio2d-hud span {
+  font-size: 10px;
+  color: rgba(250, 250, 255, 0.95);
+  border: 1px solid rgba(59, 130, 246, 0.68);
+  border-radius: 6px;
+  padding: 2px 6px;
+  background: rgba(15, 23, 42, 0.7);
+  box-shadow: inset 0 0 0 1px rgba(147, 197, 253, 0.22);
+}
+
+.studio2d-grid-bg {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 10px;
+}
+
+.studio2d-tile {
+  border: 1px solid rgba(30, 41, 59, 0.95);
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.8);
+}
+
+.studio2d-tile-floor {
+  background:
+    repeating-linear-gradient(
+      45deg,
+      rgba(15, 23, 42, 0.95) 0 8px,
+      rgba(30, 41, 59, 0.95) 8px 16px
+    );
+}
+
+.studio2d-tile-path {
+  background:
+    linear-gradient(180deg, rgba(12, 74, 110, 0.72), rgba(8, 47, 73, 0.86));
+}
+
+.studio2d-tile-console {
+  background:
+    radial-gradient(circle at 50% 48%, rgba(34, 211, 238, 0.38), transparent 42%),
+    linear-gradient(180deg, rgba(30, 64, 175, 0.66), rgba(30, 41, 59, 0.94));
+}
+
+.studio2d-tile-plant {
+  background:
+    radial-gradient(circle at 48% 44%, rgba(34, 197, 94, 0.42), transparent 40%),
+    linear-gradient(180deg, rgba(20, 83, 45, 0.5), rgba(30, 41, 59, 0.95));
+}
+
+.studio2d-tile-portal {
+  background:
+    radial-gradient(circle at 50% 52%, rgba(192, 132, 252, 0.42), transparent 45%),
+    linear-gradient(180deg, rgba(88, 28, 135, 0.52), rgba(30, 41, 59, 0.96));
+}
+
+.studio2d-room-overlay {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(14, 116, 144, 0.08), transparent 30%),
+    radial-gradient(circle at 20% 16%, rgba(59, 130, 246, 0.16), transparent 44%),
+    radial-gradient(circle at 80% 20%, rgba(168, 85, 247, 0.14), transparent 42%);
+  pointer-events: none;
+}
+
+.studio2d-patrol-path {
+  position: absolute;
+  inset: 14% 14% 18% 14%;
+  border: 2px dashed rgba(56, 189, 248, 0.35);
+  border-radius: 14px;
+  pointer-events: none;
+  animation: studio2d-path-shift 1.2s linear infinite;
+}
+
+.studio2d-decoration {
+  position: absolute;
+  z-index: 2;
+  width: 28px;
+  height: 28px;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(148, 163, 184, 0.7);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.72);
+  box-shadow: 0 6px 12px rgba(2, 6, 23, 0.35);
+  animation: studio2d-float-decoration 1.6s ease-in-out infinite;
+}
+
+.studio2d-handoff-layer {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 10px;
+  display: grid;
+  gap: 6px;
+}
+
+.studio2d-handoff-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: rgba(226, 232, 240, 0.88);
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(71, 85, 105, 0.7);
+  border-radius: 8px;
+  padding: 3px 8px;
+}
+
+.studio2d-handoff-label {
+  display: inline-flex;
+  align-items: center;
+  letter-spacing: 0.02em;
+}
+
+.studio2d-handoff-trail {
+  margin-left: auto;
+  color: rgba(186, 230, 253, 0.78);
+  font-size: 9px;
+  animation: studio2d-trail 0.7s steps(2, end) infinite;
+}
+
+.studio2d-handoff-dot {
+  display: inline-block;
+  animation: studio2d-float-dot 0.9s ease-in-out infinite;
+}
+
+.studio2d-priority-urgent { border-color: rgba(248, 113, 113, 0.8); }
+.studio2d-priority-high { border-color: rgba(251, 191, 36, 0.8); }
+.studio2d-priority-normal { border-color: rgba(56, 189, 248, 0.7); }
+.studio2d-priority-low { border-color: rgba(148, 163, 184, 0.7); }
+
+.studio2d-seat-node {
+  position: absolute;
+  z-index: 2;
+  transform: translate(-50%, -50%);
+}
+
+.studio2d-avatar {
+  position: relative;
+  width: 52px;
+  height: 62px;
+  image-rendering: pixelated;
+}
+
+.studio2d-avatar-shadow {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 2px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(2, 6, 23, 0.6);
+}
+
+.studio2d-avatar-body {
+  position: absolute;
+  left: 14px;
+  top: 24px;
+  width: 24px;
+  height: 24px;
+  border: 2px solid rgba(15, 23, 42, 0.85);
+  background: var(--role-color, #3b82f6);
+  box-shadow: inset 0 -4px 0 rgba(2, 6, 23, 0.32);
+}
+
+.studio2d-avatar-head {
+  position: absolute;
+  left: 16px;
+  top: 6px;
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(15, 23, 42, 0.85);
+  background: #e5e7eb;
+}
+
+.studio2d-avatar-badge {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -2px);
+  font-size: 8px;
+  letter-spacing: 0.04em;
+  color: rgba(241, 245, 249, 0.98);
+  text-shadow: 0 1px 0 rgba(2, 6, 23, 0.7);
+  pointer-events: none;
+}
+
+.studio2d-cast-ring {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 1px;
+  height: 10px;
+  border: 1px solid rgba(34, 197, 94, 0.7);
+  border-radius: 999px;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.45);
+  animation: studio2d-cast-pulse 0.8s ease-in-out infinite;
+}
+
+.studio2d-bubble {
+  min-width: 120px;
+  margin-top: 4px;
+  margin-left: -36px;
+  padding: 5px 7px;
+  border-radius: 8px;
+  border: 1px solid rgba(71, 85, 105, 0.8);
+  background: rgba(2, 6, 23, 0.86);
+  box-shadow: 0 8px 16px rgba(2, 6, 23, 0.4);
+}
+
+.studio2d-name {
+  font-size: 10px;
+  line-height: 1.2;
+  color: rgba(226, 232, 240, 0.96);
+  margin-bottom: 2px;
+}
+
+.studio2d-task {
+  font-size: 9px;
+  line-height: 1.2;
+  color: rgba(148, 163, 184, 0.96);
+}
+
+.studio2d-working .studio2d-avatar {
+  animation: studio2d-bounce 0.75s steps(2, end) infinite;
+}
+
+.studio2d-avatar.status-error .studio2d-avatar-body {
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.4), inset 0 -4px 0 rgba(2, 6, 23, 0.32);
+}
+
+.studio2d-avatar.status-paused .studio2d-avatar-body {
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.38), inset 0 -4px 0 rgba(2, 6, 23, 0.32);
+}
+
+.studio2d-avatar.status-working .studio2d-avatar-body {
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.35), inset 0 -4px 0 rgba(2, 6, 23, 0.32);
+}
+
+@keyframes studio2d-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+
+@keyframes studio2d-float-dot {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-1px); }
+}
+
+@keyframes studio2d-float-decoration {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+
+@keyframes studio2d-path-shift {
+  0% { border-color: rgba(56, 189, 248, 0.2); }
+  50% { border-color: rgba(56, 189, 248, 0.55); }
+  100% { border-color: rgba(56, 189, 248, 0.2); }
+}
+
+@keyframes studio2d-stars-flicker {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes studio2d-trail {
+  0%, 100% { opacity: 0.4; transform: translateX(0); }
+  50% { opacity: 1; transform: translateX(2px); }
+}
+
+@keyframes studio2d-cast-pulse {
+  0%, 100% { transform: scaleX(1); opacity: 0.8; }
+  50% { transform: scaleX(1.08); opacity: 0.45; }
+}
+
 .studio3d-toolbar {
   display: flex;
   align-items: center;
@@ -727,6 +1065,26 @@ t-chat-sender::part(send-btn):disabled,
 }
 
 @media (max-width: 1023px) {
+  .studio2d-scene {
+    min-height: clamp(320px, 48vh, 460px);
+    height: clamp(320px, 48vh, 460px);
+  }
+
+  .studio2d-bubble {
+    min-width: 92px;
+    margin-left: -20px;
+    padding: 4px 6px;
+  }
+
+  .studio2d-task {
+    font-size: 8px;
+  }
+
+  .studio2d-hud span {
+    font-size: 9px;
+    padding: 1px 5px;
+  }
+
   .studio3d-scene {
     min-height: clamp(380px, 56vh, 640px);
     height: clamp(380px, 56vh, 640px);
