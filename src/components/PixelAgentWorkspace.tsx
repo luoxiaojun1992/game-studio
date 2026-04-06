@@ -29,6 +29,14 @@ const ROLE_SHORT_NAME: Record<string, string> = {
   ceo: 'CEO',
 };
 
+function getRoleShortName(agentId: string): string {
+  const normalizedId = agentId.toLowerCase();
+  if (ROLE_SHORT_NAME[normalizedId]) return ROLE_SHORT_NAME[normalizedId];
+  const compact = normalizedId.split('_').filter(Boolean).map(part => part[0]).join('');
+  if (compact) return compact.slice(0, 4).toUpperCase();
+  return normalizedId.slice(0, 4).toUpperCase();
+}
+
 function truncateTask(task: string | null | undefined, maxLength: number): string {
   if (!task) return 'WAITING';
   return `${task.slice(0, maxLength)}${task.length > maxLength ? '...' : ''}`;
@@ -66,7 +74,7 @@ export default function PixelAgentWorkspace({ agents, handoffs }: Props) {
                 <div className="studio3d-chair" />
                 <div className="studio3d-agent-body">
                   <div className="studio3d-agent-head">
-                    <span className="studio3d-role-badge">{ROLE_SHORT_NAME[agent.id] ?? agent.id.slice(0, 4).toUpperCase()}</span>
+                    <span className="studio3d-role-badge">{getRoleShortName(agent.id)}</span>
                   </div>
                   <div className="studio3d-agent-screen">
                     <span className={isWorking ? 'studio3d-typing' : ''}>{isWorking ? 'typing...' : 'standby'}</span>

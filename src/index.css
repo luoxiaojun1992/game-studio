@@ -829,7 +829,7 @@ t-chat-sender::part(send-btn):disabled,
 
 @keyframes studio3d-typing {
   0%, 100% { opacity: 0.95; transform: translateY(0); }
-  50% { opacity: 0.65; transform: translateY(-1px); }
+  50% { opacity: 0.88; transform: translateY(-1px); }
 }
 
 .studio3d-typing {
