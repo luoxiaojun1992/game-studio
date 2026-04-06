@@ -1,18 +1,33 @@
 import React, { useEffect, useRef, useState } from 'react';
 
 const STAR_OFFICE_UI_URL = import.meta.env.VITE_STAR_OFFICE_UI_URL || 'http://127.0.0.1:19000';
+const LOAD_TIMEOUT_MS = 10000;
+
+function isTrustedSameOriginUrl(rawUrl: string): boolean {
+  try {
+    const url = new URL(rawUrl, window.location.origin);
+    if (url.origin === window.location.origin) return true;
+    return ['localhost', '127.0.0.1'].includes(url.hostname);
+  } catch {
+    return false;
+  }
+}
 
 export default function StarOfficeStudio() {
   const [loadFailed, setLoadFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const timeoutRef = useRef<number | null>(null);
+  const allowSameOrigin = isTrustedSameOriginUrl(STAR_OFFICE_UI_URL);
+  const sandboxValue = allowSameOrigin
+    ? 'allow-scripts allow-same-origin allow-forms allow-popups'
+    : 'allow-scripts allow-forms allow-popups';
 
   useEffect(() => {
     setLoadFailed(false);
     setLoaded(false);
     timeoutRef.current = window.setTimeout(() => {
       setLoadFailed(true);
-    }, 10000);
+    }, LOAD_TIMEOUT_MS);
     return () => {
       if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
     };
@@ -56,7 +71,7 @@ export default function StarOfficeStudio() {
             className="w-full h-[76vh] min-h-[560px] bg-black"
             style={{ visibility: loaded ? 'visible' : 'hidden' }}
             referrerPolicy="no-referrer"
-            sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+            sandbox={sandboxValue}
             onLoad={() => setLoaded(true)}
           />
         )}
