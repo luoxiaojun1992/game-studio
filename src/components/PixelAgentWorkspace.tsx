@@ -21,6 +21,7 @@ const WORK_LABEL: Record<AgentStatus, string> = {
   paused: 'PAUSE',
   error: 'ERROR',
 };
+const ROLE_LABEL = '角色';
 const MAX_ROLE_BADGE_LENGTH = 4;
 
 const ROLE_SHORT_NAME: Record<string, string> = {
@@ -139,7 +140,7 @@ export default function PixelAgentWorkspace({ agents, handoffs }: Props) {
                       {WORK_LABEL[agent.state?.status || 'idle']}
                     </div>
                   </div>
-                  <div className="text-[9px] text-blue-200/90 uppercase tracking-wide mb-1">角色 {getRoleBadgeFromAgentId(agent.id)}</div>
+                  <div className="text-[9px] text-blue-200/90 uppercase tracking-wide mb-1">{ROLE_LABEL} {getRoleBadgeFromAgentId(agent.id)}</div>
                   <div className="text-[9px] text-gray-400 truncate">{brief}</div>
                   <div className="mt-2 h-1.5 bg-gray-800 border border-gray-700">
                     <div
