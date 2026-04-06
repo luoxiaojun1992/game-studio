@@ -649,3 +649,474 @@ t-chat-sender::part(send-btn):disabled,
 .pixel-work-pulse {
   animation: pixel-work-pulse 0.9s steps(2, end) infinite;
 }
+
+.studio3d-room {
+  --studio-gradient-stop: 58%;
+  position: relative;
+  background: radial-gradient(circle at 50% 20%, rgba(59, 130, 246, 0.12), rgba(2, 6, 23, 0.95) var(--studio-gradient-stop));
+}
+
+.studio3d-scene {
+  --studio-perspective: 1100px;
+  position: relative;
+  min-height: 420px;
+  perspective: var(--studio-perspective);
+  transform-style: preserve-3d;
+  overflow: hidden;
+}
+
+.studio3d-wall {
+  position: absolute;
+  inset: 0 0 46% 0;
+  background:
+    linear-gradient(135deg, rgba(148, 163, 184, 0.08), rgba(30, 41, 59, 0.34)),
+    repeating-linear-gradient(
+      90deg,
+      rgba(148, 163, 184, 0.06) 0,
+      rgba(148, 163, 184, 0.06) 1px,
+      transparent 1px,
+      transparent 32px
+    );
+  border-bottom: 1px solid rgba(100, 116, 139, 0.2);
+}
+
+.studio3d-floor {
+  position: absolute;
+  inset: 44% 0 0;
+  transform-origin: top;
+  transform: rotateX(72deg) translateY(-8%);
+  background:
+    radial-gradient(circle at 50% 50%, rgba(15, 23, 42, 0.9), rgba(2, 6, 23, 0.98)),
+    repeating-linear-gradient(
+      90deg,
+      rgba(148, 163, 184, 0.07) 0,
+      rgba(148, 163, 184, 0.07) 1px,
+      transparent 1px,
+      transparent 26px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      rgba(148, 163, 184, 0.07) 0,
+      rgba(148, 163, 184, 0.07) 1px,
+      transparent 1px,
+      transparent 26px
+    );
+}
+
+.studio3d-table {
+  position: absolute;
+  left: 50%;
+  top: 56%;
+  width: min(84%, 860px);
+  height: 26%;
+  transform: translateX(-50%) rotateX(70deg);
+  border-radius: 24px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: linear-gradient(180deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98));
+  box-shadow: 0 30px 65px rgba(2, 6, 23, 0.7);
+}
+
+.studio3d-monitor {
+  position: absolute;
+  left: 50%;
+  top: 24%;
+  width: min(56%, 560px);
+  height: 18%;
+  transform: translateX(-50%);
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  border-radius: 12px;
+  background:
+    linear-gradient(135deg, rgba(30, 64, 175, 0.2), rgba(2, 132, 199, 0.05)),
+    radial-gradient(circle at 20% 25%, rgba(34, 197, 94, 0.2), transparent 54%);
+  box-shadow: 0 0 40px rgba(59, 130, 246, 0.18);
+}
+
+.studio3d-fixture-title {
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(203, 213, 225, 0.9);
+  margin-bottom: 6px;
+}
+
+.studio3d-task-board {
+  position: absolute;
+  left: 50%;
+  top: 4%;
+  width: min(34%, 340px);
+  min-width: 210px;
+  transform: translateX(-50%);
+  z-index: 4;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background:
+    linear-gradient(180deg, rgba(15, 23, 42, 0.82), rgba(2, 6, 23, 0.88)),
+    repeating-linear-gradient(
+      90deg,
+      rgba(148, 163, 184, 0.06) 0,
+      rgba(148, 163, 184, 0.06) 1px,
+      transparent 1px,
+      transparent 22px
+    );
+  padding: 8px 10px;
+}
+
+.studio3d-board-columns {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.studio3d-board-columns span {
+  font-size: 8px;
+  text-align: center;
+  color: rgba(148, 163, 184, 0.95);
+  border: 1px solid rgba(71, 85, 105, 0.7);
+  border-radius: 6px;
+  background: rgba(15, 23, 42, 0.74);
+  padding: 2px 0;
+}
+
+.studio3d-board-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.studio3d-board-cards span {
+  height: 16px;
+  border-radius: 4px;
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  background: linear-gradient(90deg, rgba(30, 64, 175, 0.35), rgba(2, 132, 199, 0.18));
+}
+
+.studio3d-storage {
+  position: absolute;
+  width: min(22%, 220px);
+  min-width: 150px;
+  height: 128px;
+  z-index: 2;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: linear-gradient(180deg, rgba(30, 41, 59, 0.88), rgba(15, 23, 42, 0.92));
+  box-shadow: 0 10px 22px rgba(2, 6, 23, 0.45);
+  padding: 8px;
+}
+
+.studio3d-storage-proposals {
+  left: 3.5%;
+  top: 26%;
+}
+
+.studio3d-storage-games {
+  right: 3.5%;
+  top: 26%;
+}
+
+.studio3d-storage-shelves {
+  display: grid;
+  gap: 6px;
+}
+
+.studio3d-storage-shelves span {
+  display: block;
+  height: 24px;
+  border-radius: 6px;
+  border: 1px solid rgba(100, 116, 139, 0.72);
+  background: linear-gradient(90deg, rgba(51, 65, 85, 0.88), rgba(71, 85, 105, 0.78));
+}
+
+.studio3d-storage-proposals .studio3d-storage-shelves span {
+  background:
+    linear-gradient(90deg, rgba(124, 58, 237, 0.35), rgba(147, 51, 234, 0.18)),
+    linear-gradient(90deg, rgba(51, 65, 85, 0.88), rgba(71, 85, 105, 0.78));
+}
+
+.studio3d-storage-games .studio3d-storage-shelves span {
+  background:
+    linear-gradient(90deg, rgba(34, 197, 94, 0.35), rgba(16, 185, 129, 0.18)),
+    linear-gradient(90deg, rgba(51, 65, 85, 0.88), rgba(71, 85, 105, 0.78));
+}
+
+.studio3d-agents-grid {
+  position: relative;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding-top: 138px;
+}
+
+@media (min-width: 1024px) {
+  .studio3d-agents-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 14px;
+    padding-top: 168px;
+  }
+}
+
+@media (max-width: 1023px) {
+  .studio3d-task-board {
+    width: min(52%, 320px);
+    top: 6%;
+  }
+
+  .studio3d-storage {
+    width: 38%;
+    min-width: 120px;
+    height: 110px;
+    top: 24%;
+    padding: 6px;
+  }
+
+  .studio3d-storage-proposals {
+    left: 2%;
+  }
+
+  .studio3d-storage-games {
+    right: 2%;
+  }
+
+  .studio3d-agents-grid {
+    padding-top: 158px;
+  }
+}
+
+.studio3d-seat {
+  position: relative;
+  min-height: 166px;
+  border: 1px solid rgba(71, 85, 105, 0.55);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(2, 6, 23, 0.72), rgba(2, 6, 23, 0.92));
+  box-shadow: 0 10px 22px rgba(2, 6, 23, 0.45);
+  padding: 10px;
+  transform: translateY(0);
+  transition: transform 0.2s ease;
+}
+
+.studio3d-seat:hover {
+  transform: translateY(-2px);
+}
+
+.studio3d-chair {
+  position: absolute;
+  left: 50%;
+  top: 34px;
+  width: 32px;
+  height: 20px;
+  transform: translateX(-50%);
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(71, 85, 105, 0.9), rgba(51, 65, 85, 0.92));
+}
+
+.studio3d-agent-body {
+  position: relative;
+  margin: 0 auto 44px;
+  width: 72px;
+  height: 82px;
+}
+
+.studio3d-agent-head {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 30px;
+  height: 30px;
+  transform: translateX(-50%);
+  border-radius: 9999px;
+  background: radial-gradient(circle at 35% 30%, rgba(250, 250, 250, 0.85), rgba(148, 163, 184, 0.75) 62%, rgba(71, 85, 105, 0.8));
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  z-index: 4;
+}
+
+.studio3d-role-badge {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 8px;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.studio3d-agent-limb {
+  position: absolute;
+  background: linear-gradient(180deg, rgba(251, 191, 153, 0.96), rgba(245, 158, 11, 0.82));
+  border: 1px solid rgba(180, 83, 9, 0.35);
+  border-radius: 9999px;
+}
+
+.studio3d-agent-arm {
+  top: 34px;
+  width: 10px;
+  height: 34px;
+  z-index: 2;
+}
+
+.studio3d-agent-arm-left {
+  left: 8px;
+  transform: rotate(14deg);
+}
+
+.studio3d-agent-arm-right {
+  right: 8px;
+  transform: rotate(-14deg);
+}
+
+.studio3d-agent-leg {
+  top: 68px;
+  width: 11px;
+  height: 20px;
+  z-index: 1;
+}
+
+.studio3d-agent-leg-left {
+  left: 24px;
+}
+
+.studio3d-agent-leg-right {
+  right: 24px;
+}
+
+.studio3d-agent-torso {
+  position: absolute;
+  left: 50%;
+  top: 26px;
+  width: 42px;
+  height: 48px;
+  transform: translateX(-50%);
+  border-radius: 10px 10px 8px 8px;
+  border: 1px solid rgba(148, 163, 184, 0.42);
+  background: linear-gradient(180deg, rgba(30, 41, 59, 0.92), rgba(15, 23, 42, 0.95));
+  z-index: 3;
+}
+
+.studio3d-agent-neckline {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 24px;
+  height: 12px;
+  transform: translateX(-50%);
+  border-radius: 0 0 10px 10px;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.studio3d-agent-tie {
+  position: absolute;
+  left: 50%;
+  top: 12px;
+  width: 8px;
+  height: 26px;
+  transform: translateX(-50%);
+  border-radius: 3px;
+  background: linear-gradient(180deg, rgba(220, 38, 38, 0.95), rgba(153, 27, 27, 0.95));
+}
+
+.studio3d-agent-badge {
+  position: absolute;
+  right: 6px;
+  top: 16px;
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: rgba(148, 163, 184, 0.85);
+}
+
+.studio3d-agent-screen {
+  position: absolute;
+  left: 50%;
+  bottom: -4px;
+  width: 72px;
+  height: 26px;
+  transform: translateX(-50%);
+  border-radius: 6px;
+  border: 1px solid rgba(59, 130, 246, 0.38);
+  background: linear-gradient(180deg, rgba(30, 64, 175, 0.22), rgba(15, 23, 42, 0.88));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(191, 219, 254, 0.9);
+  font-size: 9px;
+  text-transform: uppercase;
+}
+
+.studio3d-seat-panel {
+  position: relative;
+  z-index: 2;
+}
+
+@keyframes studio3d-typing {
+  0%, 100% { opacity: 0.95; transform: translateY(0); }
+  50% { opacity: 0.88; transform: translateY(-1px); }
+}
+
+.studio3d-typing {
+  display: inline-block;
+  animation: studio3d-typing 0.75s ease-in-out infinite;
+}
+
+@keyframes studio3d-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+
+.studio3d-working .studio3d-agent-head {
+  animation: studio3d-bob 0.75s ease-in-out infinite;
+}
+
+.studio3d-working .studio3d-agent-arm-left {
+  animation: studio3d-bob 0.65s ease-in-out infinite;
+}
+
+.studio3d-working .studio3d-agent-arm-right {
+  animation: studio3d-bob 0.65s ease-in-out infinite reverse;
+}
+
+.studio3d-role-engineer .studio3d-agent-torso {
+  background: linear-gradient(180deg, rgba(37, 99, 235, 0.96), rgba(29, 78, 216, 0.95));
+}
+
+.studio3d-role-engineer .studio3d-agent-badge {
+  background: rgba(191, 219, 254, 0.95);
+}
+
+.studio3d-role-architect .studio3d-agent-torso {
+  background: linear-gradient(180deg, rgba(15, 118, 110, 0.96), rgba(6, 95, 70, 0.94));
+}
+
+.studio3d-role-architect .studio3d-agent-tie {
+  background: linear-gradient(180deg, rgba(16, 185, 129, 0.95), rgba(5, 150, 105, 0.95));
+}
+
+.studio3d-role-game_designer .studio3d-agent-torso {
+  background: linear-gradient(180deg, rgba(124, 58, 237, 0.96), rgba(91, 33, 182, 0.94));
+}
+
+.studio3d-role-game_designer .studio3d-agent-neckline {
+  background: rgba(233, 213, 255, 0.94);
+}
+
+.studio3d-role-biz_designer .studio3d-agent-torso {
+  background: linear-gradient(180deg, rgba(234, 88, 12, 0.96), rgba(194, 65, 12, 0.95));
+}
+
+.studio3d-role-biz_designer .studio3d-agent-tie {
+  background: linear-gradient(180deg, rgba(251, 146, 60, 0.95), rgba(234, 88, 12, 0.95));
+}
+
+.studio3d-role-ceo .studio3d-agent-torso {
+  background: linear-gradient(180deg, rgba(31, 41, 55, 0.98), rgba(17, 24, 39, 0.98));
+  border-color: rgba(250, 204, 21, 0.35);
+}
+
+.studio3d-role-ceo .studio3d-agent-tie {
+  background: linear-gradient(180deg, rgba(250, 204, 21, 0.95), rgba(202, 138, 4, 0.95));
+}
+
+.studio3d-role-ceo .studio3d-agent-badge {
+  background: rgba(253, 224, 71, 0.95);
+}
