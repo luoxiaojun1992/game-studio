@@ -101,7 +101,7 @@ function Studio2DScene({ agents, activeHandoffs }: { agents: Agent[]; activeHand
     <div className="studio2d-scene">
       <div className="studio2d-grid-bg">
         {SCENE_TILE_CLASSES.map((tileClass, idx) => (
-          <div key={`${tileClass}-${idx}`} className={`studio2d-tile ${tileClass}`} />
+          <div key={idx} className={`studio2d-tile ${tileClass}`} />
         ))}
       </div>
       <div className="studio2d-room-overlay" />
@@ -109,8 +109,10 @@ function Studio2DScene({ agents, activeHandoffs }: { agents: Agent[]; activeHand
       <div className="studio2d-handoff-layer">
         {handoffFlows.map(h => (
           <div key={h.id} className={`studio2d-handoff-line studio2d-priority-${h.priority}`}>
-            <span className="studio2d-handoff-dot">📦</span>
-            <span className="studio2d-handoff-label">{h.from_agent_id} → {h.to_agent_id}</span>
+            <span className="studio2d-handoff-dot" role="img" aria-label="handoff package">📦</span>
+            <span className="studio2d-handoff-label" aria-label={`handoff from ${h.from_agent_id} to ${h.to_agent_id}`}>
+              {h.from_agent_id} → {h.to_agent_id}
+            </span>
           </div>
         ))}
       </div>
