@@ -112,11 +112,34 @@ function SceneFloor({ lowDetail }: { lowDetail: boolean }) {
       }, [8, 8]),
     []
   );
+  const floorReflectionTexture = useMemo(
+    () =>
+      createCanvasTexture((ctx, size) => {
+        const gradient = ctx.createLinearGradient(0, 0, size, size);
+        gradient.addColorStop(0, 'rgba(56,189,248,0.04)');
+        gradient.addColorStop(0.5, 'rgba(59,130,246,0.08)');
+        gradient.addColorStop(1, 'rgba(14,165,233,0.03)');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, size, size);
+      }, [2, 2]),
+    []
+  );
   return (
     <group>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow={!lowDetail}>
         <planeGeometry args={[24, 24]} />
         <meshStandardMaterial color="#0B1227" metalness={0.22} roughness={0.78} map={floorTexture} />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.002, 0]} receiveShadow={!lowDetail}>
+        <planeGeometry args={[24, 24]} />
+        <meshStandardMaterial
+          color="#1E3A8A"
+          transparent
+          opacity={0.18}
+          metalness={0.35}
+          roughness={0.2}
+          map={floorReflectionTexture}
+        />
       </mesh>
       <gridHelper args={[24, 24, '#1E40AF', '#0EA5E9']} position={[0, 0.03, 0]} />
     </group>
@@ -183,9 +206,49 @@ function SceneProps({ lowDetail }: { lowDetail: boolean }) {
         <boxGeometry args={[10.6, 0.3, 5.4]} />
         <meshStandardMaterial color="#111827" metalness={0.45} roughness={0.42} map={deskTexture} />
       </mesh>
+      <mesh position={[-4.8, 0.28, -2.3]} castShadow={!lowDetail} receiveShadow={!lowDetail}>
+        <boxGeometry args={[0.24, 0.56, 0.24]} />
+        <meshStandardMaterial color="#0B1120" metalness={0.5} roughness={0.45} />
+      </mesh>
+      <mesh position={[4.8, 0.28, -2.3]} castShadow={!lowDetail} receiveShadow={!lowDetail}>
+        <boxGeometry args={[0.24, 0.56, 0.24]} />
+        <meshStandardMaterial color="#0B1120" metalness={0.5} roughness={0.45} />
+      </mesh>
+      <mesh position={[-4.8, 0.28, 2.3]} castShadow={!lowDetail} receiveShadow={!lowDetail}>
+        <boxGeometry args={[0.24, 0.56, 0.24]} />
+        <meshStandardMaterial color="#0B1120" metalness={0.5} roughness={0.45} />
+      </mesh>
+      <mesh position={[4.8, 0.28, 2.3]} castShadow={!lowDetail} receiveShadow={!lowDetail}>
+        <boxGeometry args={[0.24, 0.56, 0.24]} />
+        <meshStandardMaterial color="#0B1120" metalness={0.5} roughness={0.45} />
+      </mesh>
       <mesh position={[0, 1.45, -0.2]} castShadow={!lowDetail}>
         <boxGeometry args={[3.4, 1.4, 0.15]} />
         <meshStandardMaterial color="#082F49" emissive="#38BDF8" emissiveIntensity={0.24} map={wallTexture} />
+      </mesh>
+      <mesh position={[-2.6, 1.08, -0.52]} castShadow={!lowDetail}>
+        <boxGeometry args={[1.3, 0.74, 0.08]} />
+        <meshStandardMaterial color="#0F172A" emissive="#22D3EE" emissiveIntensity={0.28} roughness={0.3} metalness={0.12} />
+      </mesh>
+      <mesh position={[-2.6, 0.8, -0.46]} castShadow={!lowDetail}>
+        <boxGeometry args={[0.18, 0.4, 0.08]} />
+        <meshStandardMaterial color="#475569" metalness={0.4} roughness={0.5} />
+      </mesh>
+      <mesh position={[-2.6, 0.67, -0.24]} castShadow={!lowDetail}>
+        <boxGeometry args={[0.7, 0.05, 0.22]} />
+        <meshStandardMaterial color="#1E293B" metalness={0.25} roughness={0.65} />
+      </mesh>
+      <mesh position={[2.6, 1.08, -0.52]} castShadow={!lowDetail}>
+        <boxGeometry args={[1.3, 0.74, 0.08]} />
+        <meshStandardMaterial color="#0F172A" emissive="#38BDF8" emissiveIntensity={0.3} roughness={0.3} metalness={0.12} />
+      </mesh>
+      <mesh position={[2.6, 0.8, -0.46]} castShadow={!lowDetail}>
+        <boxGeometry args={[0.18, 0.4, 0.08]} />
+        <meshStandardMaterial color="#475569" metalness={0.4} roughness={0.5} />
+      </mesh>
+      <mesh position={[2.6, 0.67, -0.24]} castShadow={!lowDetail}>
+        <boxGeometry args={[0.7, 0.05, 0.22]} />
+        <meshStandardMaterial color="#1E293B" metalness={0.25} roughness={0.65} />
       </mesh>
     </group>
   );
@@ -359,6 +422,16 @@ function StudioScene({
         shadow-mapSize-height={1024}
       />
       <pointLight position={[0, 3.2, -2]} color="#38BDF8" intensity={1.45} />
+      <spotLight
+        position={[-5.2, 4.6, 2.2]}
+        angle={0.45}
+        penumbra={0.6}
+        intensity={0.6}
+        distance={14}
+        color="#BFDBFE"
+        castShadow={shadowsEnabled && !lowDetail}
+      />
+      <pointLight position={[5.8, 2.2, 2.8]} color="#C4B5FD" intensity={0.45} distance={12} />
       <SceneFloor lowDetail={lowDetail} />
       <SceneProps lowDetail={lowDetail} />
       {agents.map((agent, index) => (
