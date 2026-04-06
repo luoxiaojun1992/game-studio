@@ -10,11 +10,11 @@ import ProposalDetail from '../components/ProposalDetail';
 import GamePreview from '../components/GamePreview';
 import HandoffPanel from '../components/HandoffPanel';
 import TaskBoardPanel from '../components/TaskBoardPanel';
-import PixelAgentWorkspace from '../components/PixelAgentWorkspace';
+import StarOfficeStudio from '../components/StarOfficeStudio';
 
 const TABS: { key: TabKey; label: string; icon: string }[] = [
   { key: 'overview', label: '团队总览', icon: '🏠' },
-  { key: 'pixel_studio', label: '3D Studio', icon: '🏢' },
+  { key: 'pixel_studio', label: 'Studio', icon: '🏢' },
   { key: 'proposals', label: '策划案', icon: '📋' },
   { key: 'tasks', label: '任务看板', icon: '🗂️' },
   { key: 'handoffs', label: '任务交接', icon: '🔄' },
@@ -560,7 +560,7 @@ export default function StudioPage() {
 
         {activeTab === 'pixel_studio' && (
           <div className="space-y-4">
-            <PixelAgentWorkspace agents={agents} handoffs={handoffs} />
+            <StarOfficeStudio agents={agents} handoffs={handoffs} />
           </div>
         )}
 
