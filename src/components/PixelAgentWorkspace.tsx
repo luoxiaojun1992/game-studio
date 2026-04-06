@@ -66,7 +66,7 @@ export default function PixelAgentWorkspace({ agents, handoffs }: Props) {
                 <div className="studio3d-chair" />
                 <div className="studio3d-agent-body">
                   <div className="studio3d-agent-head">
-                    <span className="studio3d-role-badge">{ROLE_SHORT_NAME[agent.id]}</span>
+                    <span className="studio3d-role-badge">{ROLE_SHORT_NAME[agent.id] ?? agent.id.slice(0, 4).toUpperCase()}</span>
                   </div>
                   <div className="studio3d-agent-screen">
                     <span className={isWorking ? 'studio3d-typing' : ''}>{isWorking ? 'typing...' : 'standby'}</span>
