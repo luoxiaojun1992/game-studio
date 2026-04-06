@@ -31,8 +31,16 @@ const ROLE_COLOR: Record<AgentRole, string> = {
   ceo: '#FACC15',
 };
 
+const ROLE_SHORT_NAME: Record<string, string> = {
+  engineer: 'ENG',
+  architect: 'ARCH',
+  game_designer: 'GAME',
+  biz_designer: 'BIZ',
+  ceo: 'CEO',
+};
+
 const KNOWN_ROLE_IDS = new Set(['engineer', 'architect', 'game_designer', 'biz_designer', 'ceo']);
-const MAP_COLUMNS = 3;
+const AGENT_COLUMNS = 3;
 
 const SCENE_TILE_CLASSES = [
   'studio2d-tile-floor',
@@ -54,11 +62,7 @@ const SCENE_TILE_CLASSES = [
 
 function getRoleBadgeFromAgentId(agentId: string): string {
   const normalizedId = agentId.toLowerCase();
-  if (normalizedId === 'engineer') return 'ENG';
-  if (normalizedId === 'architect') return 'ARCH';
-  if (normalizedId === 'game_designer') return 'GAME';
-  if (normalizedId === 'biz_designer') return 'BIZ';
-  if (normalizedId === 'ceo') return 'CEO';
+  if (ROLE_SHORT_NAME[normalizedId]) return ROLE_SHORT_NAME[normalizedId];
   const compact = normalizedId.split('_').filter(Boolean).map(part => part[0]).join('');
   if (compact) return compact.slice(0, MAX_ROLE_BADGE_LENGTH).toUpperCase();
   return normalizedId.slice(0, MAX_ROLE_BADGE_LENGTH).toUpperCase();
@@ -83,8 +87,8 @@ function getStatusColor(status: AgentStatus): string {
 }
 
 function getSeatPosition(index: number) {
-  const row = Math.floor(index / MAP_COLUMNS);
-  const column = index % MAP_COLUMNS;
+  const row = Math.floor(index / AGENT_COLUMNS);
+  const column = index % AGENT_COLUMNS;
   return {
     left: `${16 + column * 31}%`,
     top: `${18 + row * 26}%`,
