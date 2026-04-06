@@ -29,8 +29,9 @@ const ROLE_SHORT_NAME: Record<string, string> = {
   biz_designer: 'BIZ',
   ceo: 'CEO',
 };
+const KNOWN_ROLE_IDS = new Set(Object.keys(ROLE_SHORT_NAME));
 
-function getRoleShortName(agentId: string): string {
+function getRoleBadgeFromAgentId(agentId: string): string {
   const normalizedId = agentId.toLowerCase();
   if (ROLE_SHORT_NAME[normalizedId]) return ROLE_SHORT_NAME[normalizedId];
   const compact = normalizedId.split('_').filter(Boolean).map(part => part[0]).join('');
@@ -45,7 +46,7 @@ function truncateTask(task: string | null | undefined, maxLength: number): strin
 
 function getRoleClass(agentId: string): string {
   const normalized = agentId.toLowerCase() as AgentRole;
-  if (['engineer', 'architect', 'game_designer', 'biz_designer', 'ceo'].includes(normalized)) {
+  if (KNOWN_ROLE_IDS.has(normalized)) {
     return `studio3d-role-${normalized}`;
   }
   return 'studio3d-role-engineer';
@@ -83,7 +84,7 @@ export default function PixelAgentWorkspace({ agents, handoffs }: Props) {
                 <div className="studio3d-chair" />
                 <div className="studio3d-agent-body">
                   <div className="studio3d-agent-head">
-                    <span className="studio3d-role-badge">{getRoleShortName(agent.id)}</span>
+                    <span className="studio3d-role-badge">{getRoleBadgeFromAgentId(agent.id)}</span>
                   </div>
                   <div className="studio3d-agent-limb studio3d-agent-arm studio3d-agent-arm-left" />
                   <div className="studio3d-agent-limb studio3d-agent-arm studio3d-agent-arm-right" />
