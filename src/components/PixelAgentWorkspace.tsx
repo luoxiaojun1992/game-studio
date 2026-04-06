@@ -85,7 +85,8 @@ function getStatusColor(status: AgentStatus): string {
 
 function createCanvasTexture(
   painter: (ctx: CanvasRenderingContext2D, size: number) => void,
-  repeat: [number, number] = [1, 1]
+  repeat: [number, number] = [1, 1],
+  colorTexture = true
 ) {
   if (typeof document === 'undefined') return undefined;
   const size = CANVAS_TEXTURE_SIZE;
@@ -100,6 +101,7 @@ function createCanvasTexture(
   texture.wrapT = THREE.RepeatWrapping;
   texture.repeat.set(repeat[0], repeat[1]);
   texture.anisotropy = 8;
+  texture.colorSpace = colorTexture ? THREE.SRGBColorSpace : THREE.NoColorSpace;
   texture.needsUpdate = true;
   return texture;
 }
@@ -137,11 +139,35 @@ function SceneFloor({ lowDetail }: { lowDetail: boolean }) {
       }, [2, 2]),
     []
   );
+  const floorNormalTexture = useMemo(
+    () =>
+      createCanvasTexture((ctx, size) => {
+        ctx.fillStyle = 'rgb(128,128,255)';
+        ctx.fillRect(0, 0, size, size);
+        for (let i = 0; i < size; i += 12) {
+          const v = 128 + ((i / 12) % 4 - 1.5) * 8;
+          ctx.strokeStyle = `rgb(${Math.max(112, Math.min(142, Math.round(v)))},128,255)`;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(i, 0);
+          ctx.lineTo(i, size);
+          ctx.stroke();
+        }
+      }, [4, 4], false),
+    []
+  );
   return (
     <group>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow={!lowDetail}>
         <planeGeometry args={[24, 24]} />
-        <meshStandardMaterial color="#0B1227" metalness={0.22} roughness={0.78} map={floorTexture} />
+        <meshStandardMaterial
+          color="#0B1227"
+          metalness={0.28}
+          roughness={0.64}
+          map={floorTexture}
+          normalMap={floorNormalTexture}
+          normalScale={new THREE.Vector2(0.42, 0.42)}
+        />
       </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.002, 0]} receiveShadow={!lowDetail}>
         <planeGeometry args={[24, 24]} />
@@ -193,23 +219,71 @@ function SceneProps({ lowDetail }: { lowDetail: boolean }) {
       }, [3, 2]),
     []
   );
+  const wallNormalTexture = useMemo(
+    () =>
+      createCanvasTexture((ctx, size) => {
+        ctx.fillStyle = 'rgb(128,128,255)';
+        ctx.fillRect(0, 0, size, size);
+        for (let i = 0; i < size; i += 16) {
+          const y = (i * 7) % size;
+          const x = (i * 13) % size;
+          ctx.fillStyle = `rgb(${124 + (i % 24)},${120 + (i % 14)},255)`;
+          ctx.fillRect(x, y, 22, 4);
+        }
+      }, [2, 1], false),
+    []
+  );
   return (
     <group>
       <mesh position={[0, 2.1, -5.4]} castShadow={!lowDetail} receiveShadow={!lowDetail}>
         <boxGeometry args={[8.4, 2.2, 0.3]} />
-        <meshStandardMaterial color="#0F172A" emissive="#1D4ED8" emissiveIntensity={0.24} map={wallTexture} />
+        <meshStandardMaterial
+          color="#0F172A"
+          emissive="#1D4ED8"
+          emissiveIntensity={0.24}
+          map={wallTexture}
+          normalMap={wallNormalTexture}
+          normalScale={new THREE.Vector2(0.32, 0.32)}
+          metalness={0.16}
+          roughness={0.62}
+        />
       </mesh>
       <mesh position={[-6.4, 1.2, -3.2]} castShadow={!lowDetail} receiveShadow={!lowDetail}>
         <boxGeometry args={[2.1, 2.4, 1.6]} />
-        <meshStandardMaterial color="#1E293B" emissive="#7C3AED" emissiveIntensity={0.16} map={wallTexture} />
+        <meshStandardMaterial
+          color="#1E293B"
+          emissive="#7C3AED"
+          emissiveIntensity={0.16}
+          map={wallTexture}
+          normalMap={wallNormalTexture}
+          normalScale={new THREE.Vector2(0.26, 0.26)}
+          metalness={0.12}
+          roughness={0.68}
+        />
       </mesh>
       <mesh position={[6.4, 1.2, -3.2]} castShadow={!lowDetail} receiveShadow={!lowDetail}>
         <boxGeometry args={[2.1, 2.4, 1.6]} />
-        <meshStandardMaterial color="#1E293B" emissive="#22C55E" emissiveIntensity={0.16} map={wallTexture} />
+        <meshStandardMaterial
+          color="#1E293B"
+          emissive="#22C55E"
+          emissiveIntensity={0.16}
+          map={wallTexture}
+          normalMap={wallNormalTexture}
+          normalScale={new THREE.Vector2(0.26, 0.26)}
+          metalness={0.12}
+          roughness={0.68}
+        />
       </mesh>
       <mesh position={[0, 0.55, 0]} castShadow={!lowDetail} receiveShadow={!lowDetail}>
         <boxGeometry args={[10.6, 0.3, 5.4]} />
-        <meshStandardMaterial color="#111827" metalness={0.45} roughness={0.42} map={deskTexture} />
+        <meshStandardMaterial
+          color="#111827"
+          metalness={0.52}
+          roughness={0.34}
+          map={deskTexture}
+          normalMap={wallNormalTexture}
+          normalScale={new THREE.Vector2(0.22, 0.22)}
+        />
       </mesh>
       <mesh position={[-4.8, 0.28, -2.3]} castShadow={!lowDetail} receiveShadow={!lowDetail}>
         <boxGeometry args={[0.24, 0.56, 0.24]} />
@@ -412,31 +486,49 @@ function StudioScene({
       className="studio3d-canvas"
       style={{ width: '100%', height: '100%' }}
       shadows={shadowsEnabled && !lowDetail}
+      gl={{ antialias: !lowDetail, powerPreference: 'high-performance' }}
       dpr={lowDetail ? [1, 1] : [1, 1.8]}
       camera={{ position: [0, 4.8, 8], fov: lowDetail ? 54 : 46 }}
+      onCreated={({ gl }) => {
+        gl.toneMapping = THREE.ACESFilmicToneMapping;
+        gl.toneMappingExposure = lowDetail ? 1.0 : 1.15;
+        gl.outputColorSpace = THREE.SRGBColorSpace;
+        gl.shadowMap.enabled = shadowsEnabled && !lowDetail;
+        gl.shadowMap.type = THREE.PCFSoftShadowMap;
+      }}
     >
       <color attach="background" args={['#020617']} />
       <fog attach="fog" args={['#020617', 8, 18]} />
-      <ambientLight intensity={0.6} />
-      <hemisphereLight intensity={0.42} color="#93C5FD" groundColor="#020617" />
+      <ambientLight intensity={0.38} />
+      <hemisphereLight intensity={0.56} color="#BFDBFE" groundColor="#020617" />
       <directionalLight
         position={[7, 9, 5]}
-        intensity={1.12}
+        intensity={1.3}
         castShadow={shadowsEnabled && !lowDetail}
-        shadow-mapSize-width={1024}
-        shadow-mapSize-height={1024}
+        shadow-mapSize-width={lowDetail ? 512 : 2048}
+        shadow-mapSize-height={lowDetail ? 512 : 2048}
+        shadow-bias={-0.00012}
+        shadow-normalBias={0.02}
+        shadow-camera-near={1}
+        shadow-camera-far={24}
+        shadow-camera-left={-12}
+        shadow-camera-right={12}
+        shadow-camera-top={12}
+        shadow-camera-bottom={-12}
       />
-      <pointLight position={[0, 3.2, -2]} color="#38BDF8" intensity={1.45} />
+      <directionalLight position={[-8, 5, -4]} intensity={0.32} color="#7DD3FC" />
+      <pointLight position={[0, 3.2, -2]} color="#38BDF8" intensity={1.75} />
       <spotLight
         position={[-5.2, 4.6, 2.2]}
         angle={0.45}
         penumbra={0.6}
-        intensity={0.6}
+        intensity={0.72}
         distance={14}
         color="#BFDBFE"
         castShadow={shadowsEnabled && !lowDetail}
       />
-      <pointLight position={[5.8, 2.2, 2.8]} color="#C4B5FD" intensity={0.45} distance={12} />
+      <pointLight position={[5.8, 2.2, 2.8]} color="#C4B5FD" intensity={0.56} distance={12} />
+      <pointLight position={[-6, 2.6, 1.8]} color="#22D3EE" intensity={0.28} distance={10} />
       <SceneFloor lowDetail={lowDetail} />
       <SceneProps lowDetail={lowDetail} />
       {agents.map((agent, index) => (
