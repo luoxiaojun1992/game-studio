@@ -70,6 +70,36 @@ export default function PixelAgentWorkspace({ agents, handoffs }: Props) {
           <div className="studio3d-floor" />
           <div className="studio3d-table" />
           <div className="studio3d-monitor" />
+          <div className="studio3d-task-board">
+            <div className="studio3d-fixture-title">任务看板</div>
+            <div className="studio3d-board-columns">
+              <span>TODO</span>
+              <span>DOING</span>
+              <span>DONE</span>
+            </div>
+            <div className="studio3d-board-cards">
+              <span />
+              <span />
+              <span />
+              <span />
+            </div>
+          </div>
+          <div className="studio3d-storage studio3d-storage-proposals">
+            <div className="studio3d-fixture-title">策划案存储柜</div>
+            <div className="studio3d-storage-shelves">
+              <span />
+              <span />
+              <span />
+            </div>
+          </div>
+          <div className="studio3d-storage studio3d-storage-games">
+            <div className="studio3d-fixture-title">游戏成品存储柜</div>
+            <div className="studio3d-storage-shelves">
+              <span />
+              <span />
+              <span />
+            </div>
+          </div>
 
           <div className="studio3d-agents-grid">
           {agents.map(agent => {
