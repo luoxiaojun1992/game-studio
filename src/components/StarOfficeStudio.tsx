@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 const STAR_OFFICE_UI_URL = import.meta.env.VITE_STAR_OFFICE_UI_URL || 'http://127.0.0.1:19000';
 
 export default function StarOfficeStudio() {
+  const [loadFailed, setLoadFailed] = useState(false);
+
   return (
     <section className="space-y-3">
       <div className="bg-gray-900 rounded-xl border border-gray-800 px-4 py-3">
@@ -22,12 +24,20 @@ export default function StarOfficeStudio() {
         </div>
       </div>
       <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
-        <iframe
-          title="Star-Office-UI"
-          src={STAR_OFFICE_UI_URL}
-          className="w-full h-[76vh] min-h-[560px] bg-black"
-          referrerPolicy="no-referrer"
-        />
+        {loadFailed ? (
+          <div className="h-[76vh] min-h-[560px] flex items-center justify-center text-gray-300 text-sm px-6 text-center">
+            Star-Office-UI 加载失败，请确认服务已启动并检查地址：{STAR_OFFICE_UI_URL}
+          </div>
+        ) : (
+          <iframe
+            title="Star-Office-UI"
+            src={STAR_OFFICE_UI_URL}
+            className="w-full h-[76vh] min-h-[560px] bg-black"
+            referrerPolicy="strict-origin-when-cross-origin"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+            onError={() => setLoadFailed(true)}
+          />
+        )}
       </div>
     </section>
   );
