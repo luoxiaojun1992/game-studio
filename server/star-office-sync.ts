@@ -60,6 +60,7 @@ class StarOfficeSyncService {
   private registeredAgents = new Map<string, RegisteredAgent>(); // key: `${projectId}:${agentRole}`
   private supervisorTimer: NodeJS.Timeout | null = null;
   private wasOnline = true; // Track if Star-Office-UI was online last check
+  private currentProjectId: string = 'default'; // 当前活跃的项目
 
   // 全局注册锁，防止并发注册
   private globalRegisterLock = false;
@@ -279,20 +280,28 @@ class StarOfficeSyncService {
         // Star-Office-UI just went offline
         console.log('[star-office-sync] Star-Office-UI went offline');
       } else if (!this.wasOnline && isOnline) {
-        // Star-Office-UI just came back online - re-register all agents
-        console.log('[star-office-sync] Star-Office-UI came back online, re-registering all agents...');
+        // Star-Office-UI just came back online - re-register agents for current project only
+        console.log('[star-office-UI] Star-Office-UI came back online, re-registering agents for current project...');
+
+        // JavaScript 单线程，字符串读取是原子的，不需要锁
         this.registeredAgents.clear(); // Clear cached registrations
+        const projectIdToSync = this.currentProjectId;
 
         // Retry registration multiple times with delay to handle slow startup
         const maxRetries = 5;
         for (let retry = 0; retry < maxRetries; retry++) {
-          await this.syncAllProjectsOnBoot();
+          // 只注册当前项目的 agents
+          const agents = agentManager.getAllAgentStates(projectIdToSync);
+          for (const state of agents) {
+            const key = `${projectIdToSync}:${state.id}`;
+            await this.registerAgent(projectIdToSync, state.id, key, state.status, state.currentTask || state.lastMessage || '');
+          }
 
           // Verify by querying remote agents
           const remoteAgentIds = await this.getRemoteAgentIds();
-          const currentAgents = agentManager.getAllAgentStates('default');
+          const currentAgents = agentManager.getAllAgentStates(projectIdToSync);
           const allRegistered = currentAgents.every(agent => {
-            const key = `default:${agent.id}`;
+            const key = `${projectIdToSync}:${agent.id}`;
             const reg = this.registeredAgents.get(key);
             return reg && remoteAgentIds.has(reg.agentId);
           });
@@ -306,11 +315,9 @@ class StarOfficeSyncService {
           await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2s before retry
         }
 
-        // Sync current states for all projects
-        const projectIds = db.getAllProjectIds();
-        for (const projectId of new Set(['default', ...projectIds])) {
-          void this.syncProjectState(projectId, 'supervisor_recovery');
-        }
+        // Sync current state for current project only
+        void this.syncProjectState(projectIdToSync, 'supervisor_recovery');
+        console.log(`[star-office-sync] Supervisor recovered agents for project: ${projectIdToSync}`);
       }
 
       this.wasOnline = isOnline;
@@ -331,11 +338,19 @@ class StarOfficeSyncService {
 
   /**
    * Register a single agent when its status changes (fire and forget for non-critical calls)
+   * 只同步当前活跃项目的 Agent 状态
    */
   notifyAgentStatusChanged(projectId: string, agentId: AgentRole, state: AgentState): void {
     if (!this.isEnabled()) return;
 
-    // Schedule a debounced sync
+    // 检查是否为当前活跃项目，如果不是则跳过
+    // JavaScript 单线程，字符串读取是原子的，不需要锁
+    if (this.currentProjectId !== projectId) {
+      console.log(`[star-office-sync] Skipping sync for non-current project: ${projectId}`);
+      return;
+    }
+
+    // Schedule a debounced sync for current project only
     this.scheduleProjectStateSync(projectId, 'agent_status_changed');
   }
 
@@ -432,19 +447,54 @@ class StarOfficeSyncService {
 
   scheduleProjectStateSync(projectId: string, reason: string): void {
     if (!this.isEnabled()) return;
+
+    // 注意：这里直接读取 currentProjectId，不持锁
+    // 因为在单线程 JS 中，读取单个字符串引用是原子的
+    // 即使读到旧值，setTimeout 后还会再次检查
+    const currentProject = this.currentProjectId;
+
+    // 只同步当前活跃项目的状态
+    if (currentProject !== projectId) {
+      console.log(`[star-office-sync] Skipping schedule sync for non-current project: ${projectId}`);
+      return;
+    }
+
     const prev = this.timerByProject.get(projectId);
     if (prev) clearTimeout(prev);
     const timer = setTimeout(() => {
       this.timerByProject.delete(projectId);
-      void this.syncProjectState(projectId, reason);
+      // 在 setTimeout 回调中再次检查当前项目
+      void this.syncProjectStateIfCurrent(projectId, reason);
     }, STAR_OFFICE_SYNC_DEBOUNCE_MS);
     this.timerByProject.set(projectId, timer);
   }
 
   /**
+   * 仅在项目仍为当前活跃项目时同步状态
+   */
+  private async syncProjectStateIfCurrent(projectId: string, reason: string): Promise<void> {
+    // JavaScript 单线程，字符串读取是原子的，不需要锁
+    if (this.currentProjectId !== projectId) {
+      console.log(`[star-office-sync] Skipping sync - project ${projectId} is no longer current`);
+      return;
+    }
+
+    await this.syncProjectState(projectId, reason);
+  }
+
+  /**
+   * 获取当前活跃的项目ID
+   * JavaScript 单线程，字符串读取是原子的，不需要锁
+   */
+  getCurrentProjectId(): string {
+    return this.currentProjectId;
+  }
+
+  /**
    * 切换项目时重置 Star-Office-UI 中的 Agent 状态
-   * 1. 将旧项目的 Agent 标记为离线/隐藏
-   * 2. 同步新项目的 Agent 状态
+   * 1. 更新 currentProjectId
+   * 2. 将旧项目的 Agent 标记为离线/隐藏
+   * 3. 同步新项目的 Agent 状态
    */
   async switchProject(fromProjectId: string | null, toProjectId: string): Promise<void> {
     if (!this.isEnabled()) return;
@@ -453,6 +503,9 @@ class StarOfficeSyncService {
 
     await this.acquireRegisterLock();
     try {
+      // 更新当前项目（原子操作，不需要额外锁）
+      this.currentProjectId = toProjectId;
+
       // 1. 将旧项目的 Agent 标记为离线（如果提供了旧项目）
       if (fromProjectId) {
         const oldAgents = agentManager.getAllAgentStates(fromProjectId);
