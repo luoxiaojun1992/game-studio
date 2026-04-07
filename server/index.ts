@@ -390,6 +390,8 @@ app.delete('/api/projects/:projectId/logs', (req, res) => {
   const projectId = normalizeProjectId(req.params.projectId);
   const agentId = typeof req.query.agentId === 'string' ? req.query.agentId.trim() : '';
   db.deleteLogs(projectId, agentId || undefined);
+  // 广播日志清除事件，让前端更新显示
+  sseBroadcaster.broadcast({ type: 'logs_cleared', projectId, agentId: agentId || null }, projectId);
   res.json({ success: true });
 });
 
@@ -914,8 +916,11 @@ app.post('/api/games', (req, res) => {
 
 // ============= 启动服务器 =============
 
-app.listen(PORT, () => {
-  starOfficeSyncService.syncAllProjectsOnBoot();
+app.listen(PORT, async () => {
+  // 等待 Star-Office-UI Agent 注册完成后再继续
+  await starOfficeSyncService.syncAllProjectsOnBoot();
+  // 启动 Supervisor 监控 Star-Office-UI 健康状态
+  starOfficeSyncService.startSupervisor();
   console.log(`
 ╔══════════════════════════════════════════════════════╗
 ║                                                      ║

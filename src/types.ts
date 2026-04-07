@@ -203,7 +203,8 @@ export type SSEEvent =
   | { type: 'handoff_created'; handoff: Handoff }
   | { type: 'handoff_updated'; handoff: Handoff }
   | { type: 'task_created'; task: TaskBoardTask }
-  | { type: 'task_updated'; task: TaskBoardTask };
+  | { type: 'task_updated'; task: TaskBoardTask }
+  | { type: 'logs_cleared'; projectId: string; agentId: string | null };
 
 // 页面标签
 export type TabKey = 'overview' | 'pixel_studio' | 'proposals' | 'tasks' | 'games' | 'logs' | 'commands' | 'handoffs' | 'settings';

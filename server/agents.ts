@@ -186,7 +186,16 @@ export const AGENT_DEFINITIONS: Record<AgentRole, AgentDefinition> = {
 2. 具体的修改建议（如果不通过）
 3. 技术架构图（ASCII 图表）
 
-重要：所有架构决策和评审结果必须提交给用户审批。${HANDOFF_INSTRUCTION}${MEMORY_INSTRUCTION}${TOOLS_OVERVIEW}`,
+## 重要：提交后必须等待审批才能交接
+
+1. 完成架构方案后，**立即调用 \`submit_proposal\` 提交给 CEO 审批**
+2. 提交后**不要立即创建交接任务**，必须**等待 CEO 审批结论**
+3. 如果 CEO 给出：
+   - ✅ **批准**：可以创建交接任务（\`create_handoff\`）移交给 engineer
+   - ❌ **否决** 或 🔄 **修改后重审**：根据意见修改架构方案后**重新提交审批**，直到获得批准
+4. 只有在架构方案获得批准后，才能进行后续交接
+
+${HANDOFF_INSTRUCTION}${MEMORY_INSTRUCTION}${TOOLS_OVERVIEW}`,
     handoffTargets: ['engineer']
   },
 
@@ -228,7 +237,16 @@ export const AGENT_DEFINITIONS: Record<AgentRole, AgentDefinition> = {
 6. **技术需求清单**
 7. **预期用时**
 
-重要：策划案必须提交给CEO审批，并最终由用户确认。${HANDOFF_INSTRUCTION}${MEMORY_INSTRUCTION}${TOOLS_OVERVIEW}`,
+## 重要：提交后必须等待审批才能交接
+
+1. 完成策划案后，**立即调用 \`submit_proposal\` 提交给 CEO 审批**
+2. 提交后**不要立即创建交接任务**，必须**等待 CEO 审批结论**
+3. 如果 CEO 给出：
+   - ✅ **批准**：可以创建交接任务（\`create_handoff\`）移交给 CEO
+   - ❌ **否决** 或 🔄 **修改后重审**：根据意见修改策划案后**重新提交审批**，直到获得批准
+4. 只有在策划案获得批准后，才能进行后续交接
+
+${HANDOFF_INSTRUCTION}${MEMORY_INSTRUCTION}${TOOLS_OVERVIEW}`,
     handoffTargets: ['ceo']
   },
 
@@ -271,7 +289,16 @@ export const AGENT_DEFINITIONS: Record<AgentRole, AgentDefinition> = {
 7. **成功指标 (KPI)**
 8. **风险与对策**
 
-重要：商业策划案必须提交给CEO审批，并最终由用户确认。${HANDOFF_INSTRUCTION}${MEMORY_INSTRUCTION}${TOOLS_OVERVIEW}`,
+## 重要：提交后必须等待审批才能交接
+
+1. 完成商业策划案后，**立即调用 \`submit_proposal\` 提交给 CEO 审批**
+2. 提交后**不要立即创建交接任务**，必须**等待 CEO 审批结论**
+3. 如果 CEO 给出：
+   - ✅ **批准**：可以创建交接任务（\`create_handoff\`）移交给 CEO（如需进一步决策）
+   - ❌ **否决** 或 🔄 **修改后重审**：根据意见修改商业策划案后**重新提交审批**，直到获得批准
+4. 只有在商业策划案获得批准后，才能进行后续工作
+
+${HANDOFF_INSTRUCTION}${MEMORY_INSTRUCTION}${TOOLS_OVERVIEW}`,
     handoffTargets: ['ceo']
   },
 
@@ -308,6 +335,15 @@ export const AGENT_DEFINITIONS: Record<AgentRole, AgentDefinition> = {
 - ✅ **批准**：方案可以推进，附上批准意见
 - ❌ **否决**：方案需要修改，附上具体修改要求
 - 🔄 **修改后重审**：附上具体修改建议
+
+## 重要：审批后必须等待用户确认才能交接
+
+1. 你给出评审结论后，**必须调用 \`submit_proposal\` 提交你的评审结论**
+2. 提交评审结论后**不要立即创建交接任务**，必须**等待用户（人类管理者）最终确认**
+3. 如果用户：
+   - ✅ **确认批准**：可以创建交接任务（\`create_handoff\`）移交给 architect 或 biz_designer 执行
+   - ❌ **否决**：方案需要重新评审，等待修改后的策划案
+4. 只有在用户确认后，才能进行后续交接给执行团队
 
 重要：你的评审结论是建议性的，最终决策权在用户（人类管理者）手中。所有方案在实施前必须经过用户的人工确认。${HANDOFF_INSTRUCTION}${MEMORY_INSTRUCTION}${TOOLS_OVERVIEW}`,
     handoffTargets: ['architect', 'biz_designer']

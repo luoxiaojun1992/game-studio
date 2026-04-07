@@ -84,6 +84,15 @@ export default function StudioPage() {
         ));
         break;
 
+      case 'logs_cleared':
+        // 清除指定 Agent 或全部日志
+        if ((event as any).agentId) {
+          setLogs(prev => prev.filter(l => l.agent_id !== (event as any).agentId));
+        } else {
+          setLogs([]);
+        }
+        break;
+
       case 'stream_event': {
         const streamEvent = (event as any).event;
         if (streamEvent.type === 'permission_request') {
