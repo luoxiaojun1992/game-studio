@@ -10,10 +10,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # 下载并解压 Star Office UI release zip
-ARG STAR_OFFICE_UI_RELEASE_URL=https://github.com/Tencent/Star-Office-UI/releases/latest/download/star-office-ui.zip
+ARG STAR_OFFICE_UI_RELEASE_URL=https://codeload.github.com/ringhyacinth/Star-Office-UI/zip/refs/tags/v1.0.0
 RUN curl -fsSL "${STAR_OFFICE_UI_RELEASE_URL}" -o /tmp/star-office-ui.zip && \
     unzip -q /tmp/star-office-ui.zip -d /tmp/star-office-ui-src && \
-    RELEASE_DIR="$(find /tmp/star-office-ui-src -mindepth 1 -maxdepth 4 -type f -name pyproject.toml -printf '%h\n' | head -n 1)" && \
+    RELEASE_DIR="$(find /tmp/star-office-ui-src -mindepth 1 -maxdepth 4 -type f -path '*/backend/requirements.txt' -printf '%h\n' | xargs -I{} dirname {} | head -n 1)" && \
     test -n "${RELEASE_DIR}" && \
     mkdir -p /app && \
     cp -a "${RELEASE_DIR}"/. /app/ && \
@@ -21,9 +21,8 @@ RUN curl -fsSL "${STAR_OFFICE_UI_RELEASE_URL}" -o /tmp/star-office-ui.zip && \
 
 WORKDIR /app
 
-# 安装 uv 和依赖
-RUN pip install --no-cache-dir uv && \
-    uv pip install --system -e .
+# 安装 Python 依赖
+RUN pip install --no-cache-dir -r backend/requirements.txt
 
 # 创建数据目录
 RUN mkdir -p data memory
