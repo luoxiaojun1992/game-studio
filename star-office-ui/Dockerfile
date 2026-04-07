@@ -13,8 +13,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ARG STAR_OFFICE_UI_RELEASE_URL=https://codeload.github.com/ringhyacinth/Star-Office-UI/zip/refs/tags/v1.0.0
 RUN curl -fsSL "${STAR_OFFICE_UI_RELEASE_URL}" -o /tmp/star-office-ui.zip && \
     unzip -q /tmp/star-office-ui.zip -d /tmp/star-office-ui-src && \
-    RELEASE_DIR="$(find /tmp/star-office-ui-src -mindepth 1 -maxdepth 4 -type f -path '*/backend/requirements.txt' -printf '%h\n' | xargs -I{} dirname {} | head -n 1)" && \
-    test -n "${RELEASE_DIR}" && \
+    RELEASE_DIR="$(find /tmp/star-office-ui-src -mindepth 1 -maxdepth 1 -type d | head -n 1)" && \
+    test -n "${RELEASE_DIR}" || (echo "Error: release zip 解压后未找到根目录" && exit 1) && \
+    test -f "${RELEASE_DIR}/backend/requirements.txt" || (echo "Error: release zip 中缺少 backend/requirements.txt" && exit 1) && \
     mkdir -p /app && \
     cp -a "${RELEASE_DIR}"/. /app/ && \
     rm -rf /tmp/star-office-ui.zip /tmp/star-office-ui-src
