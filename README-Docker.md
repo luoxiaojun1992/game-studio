@@ -91,6 +91,37 @@ docker volume inspect game-dev-studio_studio-data
 | `STUDIO_FRONTEND_PORT` | 5173 | Studio 前端服务端口 |
 | `STAR_OFFICE_PORT` | 19000 | Star Office UI 服务端口 |
 | `STAR_OFFICE_JOIN_KEY` | ocj_example_team_01 | Agent 注册密钥 |
+| `STAR_OFFICE_MAX_CONCURRENT` | 5 | 每个密钥最大并发 Agent 数 |
+
+## Star Office 并发配置
+
+Star Office UI 使用 `join-keys.json` 管理 Agent 注册密钥和并发限制。
+
+Docker 部署时会自动生成配置，支持通过环境变量自定义：
+
+```bash
+# 自定义密钥和并发数
+STAR_OFFICE_JOIN_KEY=my_custom_key
+STAR_OFFICE_MAX_CONCURRENT=10
+```
+
+生成的 `join-keys.json` 示例：
+```json
+{
+  "keys": [
+    {"key": "my_custom_key", "maxConcurrent": 10},
+    {"key": "ocj_example_team_02", "maxConcurrent": 10},
+    ...
+  ]
+}
+```
+
+如果需要更复杂的配置，可以挂载自定义的 `join-keys.json`：
+
+```yaml
+volumes:
+  - ./custom-join-keys.json:/app/join-keys.json:ro
+```
 
 ## 故障排查
 

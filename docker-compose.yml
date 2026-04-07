@@ -62,8 +62,11 @@ services:
     environment:
       - STAR_BACKEND_PORT=19000
       - FLASK_ENV=production
+      - STAR_OFFICE_JOIN_KEY=${STAR_OFFICE_JOIN_KEY:-ocj_example_team_01}
+      - STAR_OFFICE_MAX_CONCURRENT=${STAR_OFFICE_MAX_CONCURRENT:-5}
     volumes:
       - star-office-data:/app/data
+      - ./star-office-ui/join-keys.json:/app/join-keys.json:ro
     networks:
       - game-studio-network
     healthcheck:
