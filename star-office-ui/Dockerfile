@@ -13,9 +13,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ARG STAR_OFFICE_UI_RELEASE_VERSION=v1.0.0
 ARG STAR_OFFICE_UI_RELEASE_URL
 RUN RELEASE_URL="${STAR_OFFICE_UI_RELEASE_URL:-https://codeload.github.com/ringhyacinth/Star-Office-UI/zip/refs/tags/${STAR_OFFICE_UI_RELEASE_VERSION}}" && \
+    case "${RELEASE_URL}" in \
+      https://codeload.github.com/ringhyacinth/Star-Office-UI/zip/refs/tags/*|https://api.github.com/repos/ringhyacinth/Star-Office-UI/zipball/*) ;; \
+      *) echo "Error: unsupported release URL. Please use official ringhyacinth/Star-Office-UI release zip URL."; exit 1 ;; \
+    esac && \
     curl -fsSL "${RELEASE_URL}" -o /tmp/star-office-ui.zip && \
-    unzip -q /tmp/star-office-ui.zip -d /tmp/star-office-ui-src
-RUN \
+    unzip -q /tmp/star-office-ui.zip -d /tmp/star-office-ui-src && \
     ROOT_DIR_COUNT="$(find /tmp/star-office-ui-src -mindepth 1 -maxdepth 1 -type d | wc -l)" && \
     test "${ROOT_DIR_COUNT}" -eq 1 || (printf 'Error: expected exactly one root directory in release zip, got %s\n' "${ROOT_DIR_COUNT}" && exit 1) && \
     RELEASE_DIR="$(find /tmp/star-office-ui-src -mindepth 1 -maxdepth 1 -type d | head -n 1)" && \
