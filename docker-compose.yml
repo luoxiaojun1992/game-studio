@@ -12,6 +12,7 @@ services:
     environment:
       - PORT=3000
       - NODE_ENV=production
+      - CODEBUDDY_API_KEY=${CODEBUDDY_API_KEY:-}
       - STAR_OFFICE_UI_URL=http://star-office-ui:19000
       - STAR_OFFICE_SET_STATE_URL=http://star-office-ui:19000/set_state
       - STAR_OFFICE_AGENT_PUSH_URL=http://star-office-ui:19000/agent-push
