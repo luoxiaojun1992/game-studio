@@ -2,25 +2,28 @@
 FROM python:3.11-slim
 
 # 安装系统依赖
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
     curl \
     jq \
+    unzip \
     && rm -rf /var/lib/apt/lists/*
+
+# 下载并解压 Star Office UI release zip
+ARG STAR_OFFICE_UI_RELEASE_URL=https://github.com/Tencent/Star-Office-UI/releases/latest/download/star-office-ui.zip
+RUN curl -fsSL "${STAR_OFFICE_UI_RELEASE_URL}" -o /tmp/star-office-ui.zip && \
+    unzip -q /tmp/star-office-ui.zip -d /tmp/star-office-ui-src && \
+    RELEASE_DIR="$(find /tmp/star-office-ui-src -mindepth 1 -maxdepth 4 -type f -name pyproject.toml -printf '%h\n' | head -n 1)" && \
+    test -n "${RELEASE_DIR}" && \
+    mkdir -p /app && \
+    cp -a "${RELEASE_DIR}"/. /app/ && \
+    rm -rf /tmp/star-office-ui.zip /tmp/star-office-ui-src
 
 WORKDIR /app
 
-# 复制依赖文件
-COPY pyproject.toml uv.lock ./
-
 # 安装 uv 和依赖
-RUN pip install uv && \
+RUN pip install --no-cache-dir uv && \
     uv pip install --system -e .
-
-# 复制应用代码
-COPY backend/ ./backend/
-COPY frontend/ ./frontend/
-COPY *.py ./
-COPY healthcheck.sh ./
 
 # 创建数据目录
 RUN mkdir -p data memory
