@@ -3,22 +3,6 @@
     {
       "key": "ocj_example_team_01",
       "maxConcurrent": 5
-    },
-    {
-      "key": "ocj_example_team_02",
-      "maxConcurrent": 5
-    },
-    {
-      "key": "ocj_example_team_03",
-      "maxConcurrent": 5
-    },
-    {
-      "key": "ocj_example_team_04",
-      "maxConcurrent": 5
-    },
-    {
-      "key": "ocj_example_team_05",
-      "maxConcurrent": 5
     }
   ]
 }

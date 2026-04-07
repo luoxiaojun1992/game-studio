@@ -30,15 +30,11 @@ RUN echo '#!/bin/bash\n\
 JOIN_KEY="${STAR_OFFICE_JOIN_KEY:-ocj_example_team_01}"\n\
 MAX_CONCURRENT="${STAR_OFFICE_MAX_CONCURRENT:-5}"\n\
 \n\
-# 生成 join-keys.json\n\
+# 生成 join-keys.json（单个 key 支持多个并发）\n\
 cat > /app/join-keys.json << EOF\n\
 {\n\
   "keys": [\n\
-    {"key": "${JOIN_KEY}", "maxConcurrent": ${MAX_CONCURRENT}},\n\
-    {"key": "ocj_example_team_02", "maxConcurrent": ${MAX_CONCURRENT}},\n\
-    {"key": "ocj_example_team_03", "maxConcurrent": ${MAX_CONCURRENT}},\n\
-    {"key": "ocj_example_team_04", "maxConcurrent": ${MAX_CONCURRENT}},\n\
-    {"key": "ocj_example_team_05", "maxConcurrent": ${MAX_CONCURRENT}}\n\
+    {"key": "${JOIN_KEY}", "maxConcurrent": ${MAX_CONCURRENT}}\n\
   ]\n\
 }\n\
 EOF\n\

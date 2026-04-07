@@ -109,12 +109,12 @@ STAR_OFFICE_MAX_CONCURRENT=10
 ```json
 {
   "keys": [
-    {"key": "my_custom_key", "maxConcurrent": 10},
-    {"key": "ocj_example_team_02", "maxConcurrent": 10},
-    ...
+    {"key": "my_custom_key", "maxConcurrent": 10}
   ]
 }
 ```
+
+一个 key 的 `maxConcurrent` 设置决定了可以同时注册多少个 Agent。例如 `maxConcurrent=5` 可以支持 5 个 Agent（engineer, architect, game_designer, biz_designer, ceo）。
 
 如果需要更复杂的配置，可以挂载自定义的 `join-keys.json`：
 
