@@ -1,0 +1,87 @@
+version: '3.8'
+
+services:
+  # Game Dev Studio 后端服务
+  studio-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: game-studio-backend
+    ports:
+      - "${STUDIO_BACKEND_PORT:-3000}:3000"
+    environment:
+      - PORT=3000
+      - NODE_ENV=production
+      - STAR_OFFICE_UI_URL=http://star-office-ui:19000
+      - STAR_OFFICE_SET_STATE_URL=http://star-office-ui:19000/set_state
+      - STAR_OFFICE_AGENT_PUSH_URL=http://star-office-ui:19000/agent-push
+      - STAR_OFFICE_SYNC_DEBOUNCE_MS=300
+      - STAR_OFFICE_HEALTH_CHECK_INTERVAL_MS=10000
+      - STAR_OFFICE_JOIN_KEY=${STAR_OFFICE_JOIN_KEY:-ocj_example_team_01}
+    volumes:
+      - studio-data:/app/data
+      - studio-output:/app/output
+    networks:
+      - game-studio-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/agents"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  # Game Dev Studio 前端服务
+  studio-frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: game-studio-frontend
+    ports:
+      - "${STUDIO_FRONTEND_PORT:-5173}:80"
+    environment:
+      - VITE_API_BASE=http://studio-backend:3000
+      - VITE_STAR_OFFICE_UI_URL=http://star-office-ui:19000
+    depends_on:
+      studio-backend:
+        condition: service_healthy
+      star-office-ui:
+        condition: service_started
+    networks:
+      - game-studio-network
+    restart: unless-stopped
+
+  # Star Office UI 服务
+  star-office-ui:
+    build:
+      context: ./star-office-ui
+      dockerfile: Dockerfile
+    container_name: star-office-ui
+    ports:
+      - "${STAR_OFFICE_PORT:-19000}:19000"
+    environment:
+      - STAR_BACKEND_PORT=19000
+      - FLASK_ENV=production
+    volumes:
+      - star-office-data:/app/data
+    networks:
+      - game-studio-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:19000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+volumes:
+  studio-data:
+    driver: local
+  studio-output:
+    driver: local
+  star-office-data:
+    driver: local
+
+networks:
+  game-studio-network:
+    driver: bridge

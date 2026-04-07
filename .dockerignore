@@ -1,0 +1,57 @@
+# 依赖
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 构建输出
+dist
+dist-ssr
+*.local
+
+# 数据文件（通过 volume 挂载）
+data/*.db
+output/
+
+# 编辑器
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# 操作系统
+.DS_Store
+Thumbs.db
+
+# 日志
+logs
+*.log
+
+# 测试
+coverage
+*.test.ts
+*.spec.ts
+
+# Git
+.git
+.gitignore
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# 文档
+README*.md
+docs/
+
+# Star Office UI（单独构建）
+star-office-ui/
+
+# 其他
+*.zip
+*.tar.gz

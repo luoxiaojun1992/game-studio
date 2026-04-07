@@ -1,4 +1,5 @@
-export const API_BASE = 'http://localhost:3000';
+// API 基础 URL，支持 Docker 环境和环境变量
+export const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3000';
 
 export const api = {
   // 健康检查
