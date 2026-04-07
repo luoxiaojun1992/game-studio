@@ -37,8 +37,27 @@ export default function StudioPage() {
   const [tasks, setTasks] = useState<TaskBoardTask[]>([]);
   const [projectSettings, setProjectSettings] = useState<ProjectSettings>({ project_id: DEFAULT_PROJECT_ID, autopilot_enabled: false });
   const [projects, setProjects] = useState<ProjectInfo[]>([{ id: DEFAULT_PROJECT_ID, name: DEFAULT_PROJECT_ID }]);
-  const [selectedProjectId, setSelectedProjectId] = useState<string>(DEFAULT_PROJECT_ID);
+  const [selectedProjectId, setSelectedProjectIdState] = useState<string>(DEFAULT_PROJECT_ID);
+  const prevProjectIdRef = useRef<string>(DEFAULT_PROJECT_ID);
   const [newProjectName, setNewProjectName] = useState('');
+
+  // 处理项目切换，同步 Agent 状态到 Star-Office-UI
+  const setSelectedProjectId = useCallback(async (newProjectId: string) => {
+    const oldProjectId = prevProjectIdRef.current;
+    if (oldProjectId === newProjectId) return;
+
+    // 先更新状态
+    setSelectedProjectIdState(newProjectId);
+    prevProjectIdRef.current = newProjectId;
+
+    // 调用 API 同步 Star-Office-UI
+    try {
+      await api.switchProject(oldProjectId, newProjectId);
+      console.log(`[Project Switch] Synced from ${oldProjectId} to ${newProjectId}`);
+    } catch (error) {
+      console.error('[Project Switch] Failed to sync:', error);
+    }
+  }, []);
   const [projectError, setProjectError] = useState<string | null>(null);
   const [creatingProject, setCreatingProject] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>('overview');

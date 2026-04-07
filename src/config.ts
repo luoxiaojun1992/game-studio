@@ -67,6 +67,12 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     }).then(r => r.json()),
+  switchProject: (fromProjectId: string | null, toProjectId: string) =>
+    fetch(`${API_BASE}/api/projects/switch`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fromProjectId, toProjectId })
+    }).then(r => r.json()),
   getProjectSettings: (projectId: string) =>
     fetch(`${API_BASE}/api/projects/${projectId}/settings`).then(r => r.json()),
   updateProjectSettings: (projectId: string, data: { autopilot_enabled: boolean }) =>

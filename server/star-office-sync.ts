@@ -440,6 +440,52 @@ class StarOfficeSyncService {
     }, STAR_OFFICE_SYNC_DEBOUNCE_MS);
     this.timerByProject.set(projectId, timer);
   }
+
+  /**
+   * 切换项目时重置 Star-Office-UI 中的 Agent 状态
+   * 1. 将旧项目的 Agent 标记为离线/隐藏
+   * 2. 同步新项目的 Agent 状态
+   */
+  async switchProject(fromProjectId: string | null, toProjectId: string): Promise<void> {
+    if (!this.isEnabled()) return;
+
+    console.log(`[star-office-sync] Switching project from ${fromProjectId} to ${toProjectId}`);
+
+    await this.acquireRegisterLock();
+    try {
+      // 1. 将旧项目的 Agent 标记为离线（如果提供了旧项目）
+      if (fromProjectId) {
+        const oldAgents = agentManager.getAllAgentStates(fromProjectId);
+        for (const state of oldAgents) {
+          const key = `${fromProjectId}:${state.id}`;
+          const reg = this.registeredAgents.get(key);
+          if (reg && agentPushUrl) {
+            try {
+              // 将旧项目的 Agent 标记为离线
+              await this.postJson(agentPushUrl, {
+                type: 'agent_state_sync',
+                reason: 'project_switched',
+                agentId: reg.agentId,
+                joinKey: JOIN_KEY,
+                state: 'offline',
+                detail: `Switched to project ${toProjectId}`,
+                name: key,
+              });
+              console.log(`[star-office-sync] Marked ${key} as offline`);
+            } catch (error) {
+              console.warn(`[star-office-sync] Failed to mark ${key} as offline:`, error);
+            }
+          }
+        }
+      }
+
+      // 2. 同步新项目的 Agent 状态
+      await this.syncProjectState(toProjectId, 'project_switch');
+      console.log(`[star-office-sync] Synced new project ${toProjectId} agents to Star-Office-UI`);
+    } finally {
+      this.releaseRegisterLock();
+    }
+  }
 }
 
 export const starOfficeSyncService = new StarOfficeSyncService();
