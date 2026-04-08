@@ -1,5 +1,8 @@
 # Game Dev Studio Development Guide
 
+[中文文档 (Chinese)](./DEVELOPMENT.zh-CN.md)
+
+
 This guide is based on the current repository implementation and focuses on real code structure and extension points.
 
 ## 1. Architecture Overview

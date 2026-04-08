@@ -1,5 +1,8 @@
 # Game Dev Studio
 
+[中文文档 (Chinese)](./README.zh-CN.md)
+
+
 A multi-agent game development workspace built on the CodeBuddy Agent SDK, providing team collaboration, proposal review, task boards, handoff workflows, game artifact management, runtime observability, and Star-Office-UI integration.
 
 ## Feature Overview
