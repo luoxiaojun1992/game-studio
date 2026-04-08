@@ -2,28 +2,25 @@ import * as db from './db.js';
 import { agentManager, AgentState } from './agent-manager.js';
 import { AgentRole } from './agents.js';
 
-const STAR_OFFICE_UI_URL = process.env.STAR_OFFICE_UI_URL || process.env.VITE_STAR_OFFICE_UI_URL || 'http://127.0.0.1:19000';
-const STAR_OFFICE_SET_STATE_URL = process.env.STAR_OFFICE_SET_STATE_URL || '';
-const STAR_OFFICE_AGENT_PUSH_URL = process.env.STAR_OFFICE_AGENT_PUSH_URL || '';
+const STAR_OFFICE_UI_URL = process.env.STAR_OFFICE_UI_URL || 'http://127.0.0.1:19000';
 const STAR_OFFICE_SYNC_DEBOUNCE_MS = Number(process.env.STAR_OFFICE_SYNC_DEBOUNCE_MS || 300);
 const STAR_OFFICE_HEALTH_CHECK_INTERVAL_MS = Number(process.env.STAR_OFFICE_HEALTH_CHECK_INTERVAL_MS || 10000);
 const JOIN_KEY = process.env.STAR_OFFICE_JOIN_KEY || 'ocj_example_team_01';
 
-function resolveUrl(explicitUrl: string, fallbackPath: string): string | null {
+function buildUrl(path: string): string | null {
   try {
-    if (explicitUrl) return new URL(explicitUrl).toString();
     if (!STAR_OFFICE_UI_URL) return null;
-    return new URL(fallbackPath, STAR_OFFICE_UI_URL).toString();
+    return new URL(path, STAR_OFFICE_UI_URL).toString();
   } catch {
     return null;
   }
 }
 
-const setStateUrl = resolveUrl(STAR_OFFICE_SET_STATE_URL, '/set_state');
-const agentPushUrl = resolveUrl(STAR_OFFICE_AGENT_PUSH_URL, '/agent-push');
-const joinAgentUrl = resolveUrl(null, '/join-agent');
-const agentsUrl = resolveUrl(null, '/agents');
-const healthCheckUrl = resolveUrl(null, '/health');
+const setStateUrl = buildUrl('/set_state');
+const agentPushUrl = buildUrl('/agent-push');
+const joinAgentUrl = buildUrl('/join-agent');
+const agentsUrl = buildUrl('/agents');
+const healthCheckUrl = buildUrl('/health');
 
 interface RegisteredAgent {
   projectId: string;

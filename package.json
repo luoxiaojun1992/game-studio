@@ -7,8 +7,10 @@
     "dev:server": "tsx watch server/index.ts",
     "dev:client": "vite",
     "build": "tsc -b && vite build",
+    "build:server": "tsc -p tsconfig.server.json",
     "preview": "vite preview",
-    "server": "tsx server/index.ts"
+    "server": "tsx server/index.ts",
+    "start": "node dist-server/server/index.js"
   },
   "dependencies": {
     "@tdesign-react/aigc": "^0.1.0-alpha.1",

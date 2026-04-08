@@ -14,8 +14,6 @@ services:
       - NODE_ENV=production
       - CODEBUDDY_API_KEY=${CODEBUDDY_API_KEY:-}
       - STAR_OFFICE_UI_URL=http://star-office-ui:19000
-      - STAR_OFFICE_SET_STATE_URL=http://star-office-ui:19000/set_state
-      - STAR_OFFICE_AGENT_PUSH_URL=http://star-office-ui:19000/agent-push
       - STAR_OFFICE_SYNC_DEBOUNCE_MS=300
       - STAR_OFFICE_HEALTH_CHECK_INTERVAL_MS=10000
       - STAR_OFFICE_JOIN_KEY=${STAR_OFFICE_JOIN_KEY:-ocj_example_team_01}
@@ -65,9 +63,10 @@ services:
       - FLASK_ENV=production
       - STAR_OFFICE_JOIN_KEY=${STAR_OFFICE_JOIN_KEY:-ocj_example_team_01}
       - STAR_OFFICE_MAX_CONCURRENT=${STAR_OFFICE_MAX_CONCURRENT:-5}
+      - STAR_OFFICE_SECRET=${STAR_OFFICE_SECRET:-your-secret-key-here-min-24-chars}
+      - ASSET_DRAWER_PASS=${ASSET_DRAWER_PASS:-secure-pass-1234}
     volumes:
       - star-office-data:/app/data
-      - ./star-office-ui/join-keys.json:/app/join-keys.json:ro
     networks:
       - game-studio-network
     healthcheck:
