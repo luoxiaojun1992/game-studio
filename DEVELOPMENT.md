@@ -9,6 +9,7 @@
 - 前端：React + Vite（`src/`）
 - 后端：Express（`server/index.ts`）
 - AI 编排：`agent-manager.ts` + `tools.ts` + Agent SDK
+- Studio 联动：`star-office-sync.ts`（Agent 注册、状态同步、健康巡检）
 - 数据层：SQLite（`server/db.ts`）
 - 实时观测：SSE（`/api/observe` + `sse-broadcaster.ts`）
 
@@ -27,12 +28,13 @@ server/
   agent-manager.ts       # Agent 状态、消息发送、权限请求
   tools.ts               # MCP 自定义工具定义与权限规则
   agents.ts              # 角色定义、系统提示词、工具使用约束
+  star-office-sync.ts    # Star-Office-UI 注册与状态同步
   db.ts                  # 建表、迁移、查询与写入
   sse-broadcaster.ts     # SSE 客户端管理与广播
 
 src/
   pages/StudioPage.tsx   # 主页面与 SSE 事件分发
-  components/            # 团队总览/提案/任务/交接/游戏/日志/指令
+  components/            # 团队总览/Studio/提案/任务/交接/游戏/日志/指令
   config.ts              # API 调用封装
   types.ts               # 业务模型与 SSE 事件类型
 ```
@@ -68,7 +70,7 @@ src/
 - 任务：创建、查询、状态更新
 - 交接：创建、接受、确认执行、完成、拒绝、取消
 - 记忆：按 Agent 或项目查询/新增/删除
-- 项目：创建、查询、项目设置读取/更新（`autopilot_enabled`）
+- 项目：创建、查询、项目切换（`POST /api/projects/switch`）、项目设置读取/更新（`autopilot_enabled`）
 - 日志：`GET/DELETE /api/projects/:projectId/logs`
 - 指令：`GET /api/commands`
 - 权限：`POST /api/permission-response`
@@ -124,6 +126,16 @@ src/
 - 任务状态流转受限（todo → developing → testing → done，含 blocked 分支）
 - 交接目标存在角色白名单
 
+### 5.3 Star Office 同步机制（`server/star-office-sync.ts`）
+
+- 服务启动时尝试注册 5 个默认角色 Agent（按 `project_id` 维度管理）
+- 状态同步支持防抖（`STAR_OFFICE_SYNC_DEBOUNCE_MS`）
+- 包含健康检查与在线状态巡检（`STAR_OFFICE_HEALTH_CHECK_INTERVAL_MS`）
+- 支持显式覆盖端点：
+  - `STAR_OFFICE_SET_STATE_URL`
+  - `STAR_OFFICE_AGENT_PUSH_URL`
+- 若未显式覆盖，默认基于 `STAR_OFFICE_UI_URL` 推导 `/set_state`、`/agent-push`、`/join-agent`、`/health`
+
 ## 6. 前端扩展点
 
 ### 6.1 新增面板
@@ -167,6 +179,14 @@ npm run dev
 npm run build
 ```
 
+### 8.1 推荐环境变量
+
+- 模型鉴权：`CODEBUDDY_API_KEY`（或运行环境注入 `CODEBUDDY_AUTH_TOKEN`）
+- 前端 API：`VITE_API_BASE`（默认 `http://localhost:3000`）
+- Studio 页面地址：`VITE_STAR_OFFICE_UI_URL`
+- 后端同步地址：`STAR_OFFICE_UI_URL`（默认 `http://127.0.0.1:19000`）
+- Agent 注册密钥：`STAR_OFFICE_JOIN_KEY`
+
 ## 9. 调试建议
 
 - API 调试：直接查看 `server/index.ts` 对应端点与参数来源（query/body）
@@ -180,3 +200,4 @@ npm run build
 - 新增事件时，记得更新 `src/types.ts` 的 `SSEEvent` 联合类型
 - 游戏预览接口直接返回 HTML，注意内容安全与来源可控
 - 产物写盘逻辑在 `db.ts`，改路径规则时需兼容历史数据
+- 项目切换时会触发 Star Office 同步，若联调异常优先检查 `/api/projects/switch` 与 `star-office-sync.ts` 日志
