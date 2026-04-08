@@ -18,6 +18,7 @@
 ## 界面预览
 
 ![团队总览](./docs/images/team.png)
+![Studio 工作台](./docs/images/studio.png)
 ![策划案](./docs/images/proposal.png)
 ![任务看板](./docs/images/task.png)
 ![任务交接](./docs/images/handoff.png)

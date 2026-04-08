@@ -145,6 +145,8 @@ src/
 3. 新建 `src/components/*.tsx`
 4. 在 `StudioPage.tsx` 中接入渲染与事件处理
 
+当前内置标签中已包含 `pixel_studio`（对应 `StarOfficeStudio.tsx`），新增标签时建议沿用该模式接入。
+
 ### 6.2 新增 API 调用
 
 1. 后端在 `server/index.ts` 增加路由
@@ -193,6 +195,7 @@ npm run build
 - SSE 调试：浏览器 Network 中观察 `/api/observe` EventStream
 - 数据调试：查看 `data/studio.db` 中对应表数据
 - 工具链路调试：检查 `server/tools.ts` 的校验分支与日志输出
+- Studio 联调：查看 `src/components/StarOfficeStudio.tsx` 的 iframe 加载状态与地址校验提示
 
 ## 10. 常见注意事项
 
