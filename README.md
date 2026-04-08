@@ -132,6 +132,7 @@ game-studio/
 ├── docker-compose.yml
 ├── README.md
 ├── README-Docker.md
+├── README-Docker.zh-CN.md
 ├── README.zh-CN.md
 ├── DEVELOPMENT.md
 └── DEVELOPMENT.zh-CN.md

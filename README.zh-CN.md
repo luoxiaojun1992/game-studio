@@ -106,7 +106,7 @@ npm run server
 
 ## Docker 部署
 
-如需容器化部署，请参考 [README-Docker.md](./README-Docker.md)。
+如需容器化部署，请参考 [README-Docker.zh-CN.md](./README-Docker.zh-CN.md)。
 
 ## 目录结构
 
@@ -131,6 +131,7 @@ game-studio/
 ├── docker-compose.yml
 ├── README.md
 ├── README-Docker.md
+├── README-Docker.zh-CN.md
 ├── README.zh-CN.md
 ├── DEVELOPMENT.md
 └── DEVELOPMENT.zh-CN.md
