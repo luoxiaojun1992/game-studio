@@ -132,7 +132,8 @@ game-studio/
 ├── README.md
 ├── README-Docker.md
 ├── README.zh-CN.md
-└── DEVELOPMENT.md
+├── DEVELOPMENT.md
+└── DEVELOPMENT.zh-CN.md
 ```
 
 ## API 概览
