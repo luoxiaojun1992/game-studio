@@ -4,6 +4,7 @@
 /.env
 /output
 /dist
+/dist-server
 *.tsbuildinfo
 server/*.js
 server/*.d.ts

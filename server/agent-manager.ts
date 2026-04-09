@@ -423,6 +423,7 @@ class AgentManager extends EventEmitter {
         'get_memories',
         'get_proposal',
         'get_proposals',
+        'get_agent_logs',
         'get_handoff',
         'get_handoffs',
         'get_pending_handoffs',

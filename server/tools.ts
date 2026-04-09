@@ -401,6 +401,30 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         }
       ),
       tool(
+        'get_agent_logs',
+        '读取当前项目下你自己的历史日志，用于回顾上下文和最近执行记录。',
+        {
+          limit: z.number().min(1).max(200).optional().default(20).describe('返回条数上限')
+        },
+        async ({ limit }) => {
+          const logs = db.getLogs(scopedProjectId, agentId, limit);
+          if (logs.length === 0) {
+            return {
+              content: [{ type: 'text' as const, text: '暂无历史日志。' }]
+            };
+          }
+          const text = logs.map(logItem => {
+            const actionPart = logItem.action ? `[${logItem.action}] ` : '';
+            const toolPart = logItem.tool_name ? ` (tool: ${logItem.tool_name})` : '';
+            return `[${logItem.created_at}][${logItem.level}/${logItem.log_type}] ${actionPart}${logItem.content}${toolPart}`;
+          }).join('\n');
+          return {
+            content: [{ type: 'text' as const, text }]
+          };
+        }
+      ),
+
+      tool(
         'get_proposals',
         '查询已有的提案列表，用于了解当前项目的策划案进度。',
         {
