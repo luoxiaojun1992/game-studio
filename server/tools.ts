@@ -94,10 +94,15 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         '获取你之前保存的长期记忆，帮助你回忆之前的决策、经验和成果。',
         {
           category: z.enum(['general', 'preference', 'decision', 'lesson', 'achievement']).optional().describe('按类别筛选，不填则返回全部'),
+          keyword: z.string().optional().describe('按关键词模糊搜索记忆内容，可选'),
           limit: z.number().min(1).max(50).optional().default(20).describe('返回条数上限')
         },
-        async ({ category, limit }) => {
-          const memories = db.getAgentMemories(scopedProjectId, agentId, category, limit || 20);
+        async ({ category, keyword, limit }) => {
+          const memories = db.getAgentMemories(scopedProjectId, agentId, {
+            category,
+            keyword,
+            limit: limit || 20
+          });
           if (memories.length === 0) {
             return {
               content: [{ type: 'text' as const, text: '暂无保存的记忆。' }]
@@ -244,10 +249,13 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         },
         async ({ project_id, status, task_type, limit }) => {
           const targetProjectId = enforceProject(project_id);
-          let tasks = db.getTaskBoardTasks(targetProjectId);
-          if (status) tasks = tasks.filter(t => t.status === status);
-          if (task_type) tasks = tasks.filter(t => t.task_type === task_type);
-          tasks = tasks.slice(0, limit || 20);
+          const tasks = db.getTaskBoardTasks({
+            projectId: targetProjectId,
+            status,
+            taskType: task_type,
+            agentId,
+            limit: limit || 20
+          });
           if (tasks.length === 0) {
             return { content: [{ type: 'text' as const, text: '没有匹配的看板任务。' }] };
           }
@@ -432,11 +440,12 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           limit: z.number().min(1).max(50).optional().default(10).describe('返回条数上限')
         },
         async ({ status, limit }) => {
-          let proposals = db.getAllProposals().filter(p => p.project_id === scopedProjectId);
-          if (status) {
-            proposals = proposals.filter(p => p.status === status);
-          }
-          proposals = proposals.slice(0, limit || 10);
+          const proposals = db.getScopedProposals(scopedProjectId, {
+            status,
+            agentId,
+            includeAllForCeo: true,
+            limit: limit || 10
+          });
           if (proposals.length === 0) {
             return {
               content: [{ type: 'text' as const, text: '没有找到匹配的提案。' }]
@@ -458,14 +467,13 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           limit: z.number().min(1).max(20).optional().default(5).describe('返回条数上限')
         },
         async ({ limit }) => {
-          const handoffs = db.getPendingHandoffs(scopedProjectId, agentId);
-          const relevant = handoffs.slice(0, limit || 5);
-          if (relevant.length === 0) {
+          const handoffs = db.getPendingHandoffs(scopedProjectId, agentId, limit || 5);
+          if (handoffs.length === 0) {
             return {
               content: [{ type: 'text' as const, text: '没有待处理的交接任务。' }]
             };
           }
-          const text = relevant.map(h =>
+          const text = handoffs.map(h =>
             `[${h.status}] ${h.title} (来自: ${h.from_agent_id}, 优先级: ${h.priority}, ${h.created_at.slice(0, 10)})\n  描述: ${h.description.slice(0, 100)}`
           ).join('\n\n');
           return {
@@ -482,7 +490,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 /**
  */
 export function getMemorySummaryForPrompt(projectId: string, agentId: AgentRole): string {
-  const memories = db.getAgentMemories(projectId, agentId, undefined, 20);
+  const memories = db.getAgentMemories(projectId, agentId, { limit: 20 });
   if (memories.length === 0) return '';
 
   const summary = memories.map(m =>
