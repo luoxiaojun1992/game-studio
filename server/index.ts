@@ -32,8 +32,6 @@ app.use((req, res, next) => {
   if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();
 });
-
-// comment
 agentManager.on('agent_status_changed', (data) => {
   sseBroadcaster.broadcast({ type: 'agent_status_changed', ...data }, data.projectId);
   starOfficeSyncService.notifyAgentStatusChanged(data.projectId, data.agentId, data.state);
@@ -55,35 +53,23 @@ agentManager.on('agent_resumed', (data) => {
   sseBroadcaster.broadcast({ type: 'agent_resumed', ...data }, data.projectId);
   starOfficeSyncService.scheduleProjectStateSync(data.projectId, 'agent_resumed');
 });
-
-// comment
-
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
-
-// comment
-
 app.get('/api/models', async (req, res) => {
   try {
     const q = new Query('', {});
     const models = await q.supportedModels();
     res.json({ models: models || [] });
   } catch (error: any) {
-    // comment
     res.status(500).json({ error: error?.message || '获取模型列表失败', models: [] });
   }
 });
-
-// comment
-
 app.get('/api/observe', (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('Access-Control-Allow-Origin', '*');
-
-  // comment
   const project = normalizeProjectId(req.query.projectId);
 
   const initialState = {
@@ -91,7 +77,7 @@ app.get('/api/observe', (req, res) => {
     projectId: project,
     agents: agentManager.getAllAgentStates(project),
     proposals: db.getAllProposals().filter(p => p.project_id === project),
-    games: db.getAllGames().filter(g => g.project_id === project).map(g => ({ ...g, html_content: undefined })), // comment
+    games: db.getAllGames().filter(g => g.project_id === project).map(g => ({ ...g, html_content: undefined })),
     logs: db.getLogs(project, undefined, 1000),
     tasks: db.getTaskBoardTasks(project),
     pendingPermissions: agentManager.getPendingPermissions(project)
@@ -99,8 +85,6 @@ app.get('/api/observe', (req, res) => {
   res.write(`data: ${JSON.stringify(initialState)}\n\n`);
 
   sseBroadcaster.addClient(res, project);
-
-  // comment
   const heartbeat = setInterval(() => {
     try { res.write(': heartbeat\n\n'); } catch (e) { clearInterval(heartbeat); sseBroadcaster.removeClient(res); }
   }, 30000);
@@ -110,9 +94,6 @@ app.get('/api/observe', (req, res) => {
     clearInterval(heartbeat);
   });
 });
-
-// comment
-
 app.get('/api/check-login', async (req, res) => {
   const response: any = { isLoggedIn: false };
   try {
@@ -137,9 +118,6 @@ app.get('/api/check-login', async (req, res) => {
   }
   res.json(response);
 });
-
-// comment
-
 app.get('/api/agents', (req, res) => {
   const projectId = normalizeProjectId(req.query.projectId);
   const definitions = getAllAgents();
@@ -162,34 +140,24 @@ app.get('/api/agents/:agentId/messages', (req, res) => {
   const messages = db.getAgentMessages(projectId, agentId as AgentRole, 100);
   res.json({ messages: messages.map(m => ({ ...m, tool_calls: m.tool_calls ? JSON.parse(m.tool_calls) : null })) });
 });
-
-// comment
-
-// comment
 app.post('/api/agents/:agentId/pause', (req, res) => {
   const { agentId } = req.params;
   const projectId = normalizeProjectId(req.query.projectId ?? req.body?.projectId);
   agentManager.pauseAgent(projectId, agentId as AgentRole);
   res.json({ success: true, message: `Agent ${agentId} 已暂停` });
 });
-
-// comment
 app.post('/api/agents/:agentId/resume', (req, res) => {
   const { agentId } = req.params;
   const projectId = normalizeProjectId(req.query.projectId ?? req.body?.projectId);
   agentManager.resumeAgent(projectId, agentId as AgentRole);
   res.json({ success: true, message: `Agent ${agentId} 已恢复` });
 });
-
-// comment
 app.post('/api/agents/:agentId/command', async (req, res) => {
   const { agentId } = req.params;
   const { message, model = 'glm-5.0', projectId: bodyProjectId } = req.body;
   const projectId = normalizeProjectId(req.query.projectId ?? bodyProjectId);
 
   if (!message) return res.status(400).json({ error: '指令内容不能为空' });
-
-  // comment
   const commandId = uuidv4();
   const command = db.createCommand({
     id: commandId,
@@ -201,8 +169,6 @@ app.post('/api/agents/:agentId/command', async (req, res) => {
     created_at: new Date().toISOString(),
     executed_at: new Date().toISOString()
   });
-
-  // comment
   db.addLog({
     id: uuidv4(),
     project_id: projectId,
@@ -215,8 +181,6 @@ app.post('/api/agents/:agentId/command', async (req, res) => {
     is_error: false,
     created_at: new Date().toISOString()
   });
-
-  // comment
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
@@ -243,24 +207,16 @@ app.post('/api/agents/:agentId/command', async (req, res) => {
     res.end();
   }
 });
-
-// comment
-
-// comment
 app.get('/api/proposals', (req, res) => {
   const project = normalizeProjectId(req.query.projectId);
   const proposals = db.getAllProposals().filter(p => p.project_id === project);
   res.json({ proposals });
 });
-
-// comment
 app.get('/api/proposals/:id', (req, res) => {
   const proposal = db.getProposal(req.params.id);
   if (!proposal) return res.status(404).json({ error: '提案不存在' });
   res.json({ proposal });
 });
-
-// comment
 app.post('/api/proposals/:id/review', (req, res) => {
   const { id } = req.params;
   const { reviewer_agent_id, status, review_comment } = req.body;
@@ -283,9 +239,6 @@ app.post('/api/proposals/:id/review', (req, res) => {
 
   res.json({ success: true, proposal: updated });
 });
-
-// comment
-
 app.get('/api/projects', (req, res) => {
   const projects = db.getAllProjectIds().map(id => ({ id, name: db.getProject(id)?.name || id }));
   res.json({ projects });
@@ -337,8 +290,6 @@ app.post('/api/projects', (req, res) => {
   const project = db.createProject({ id: projectId, name, created_at: now, updated_at: now });
   res.json({ project });
 });
-
-// comment
 app.post('/api/projects/switch', async (req, res) => {
   const fromProjectId = typeof req.body?.fromProjectId === 'string' ? req.body.fromProjectId.trim() : null;
   const toProjectId = typeof req.body?.toProjectId === 'string' ? normalizeProjectId(req.body.toProjectId) : null;
@@ -355,8 +306,6 @@ app.post('/api/projects/switch', async (req, res) => {
     res.status(500).json({ error: '切换项目失败', details: String(error) });
   }
 });
-
-// comment
 app.get('/api/games', (req, res) => {
   const project = normalizeProjectId(req.query.projectId);
   const games = db.getAllGames().filter(g => g.project_id === project).map(g => ({
@@ -366,23 +315,17 @@ app.get('/api/games', (req, res) => {
   }));
   res.json({ games });
 });
-
-// comment
 app.get('/api/games/:id', (req, res) => {
   const game = db.getGame(req.params.id);
   if (!game) return res.status(404).json({ error: '游戏不存在' });
   res.json({ game });
 });
-
-// comment
 app.get('/api/games/:id/preview', (req, res) => {
   const game = db.getGame(req.params.id);
   if (!game) return res.status(404).send('<html><body><h1>游戏不存在</h1></body></html>');
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.send(game.html_content);
 });
-
-// comment
 app.patch('/api/games/:id', (req, res) => {
   const { id } = req.params;
   const updates = req.body;
@@ -394,9 +337,6 @@ app.patch('/api/games/:id', (req, res) => {
   sseBroadcaster.broadcast({ type: 'game_updated', game: { ...game, html_content: undefined } }, game.project_id);
   res.json({ success: true, game: { ...game, html_content: undefined } });
 });
-
-// comment
-
 app.get('/api/projects/:projectId/logs', (req, res) => {
   const projectId = normalizeProjectId(req.params.projectId);
   const agentId = req.query.agentId as string | undefined;
@@ -408,21 +348,14 @@ app.delete('/api/projects/:projectId/logs', (req, res) => {
   const projectId = normalizeProjectId(req.params.projectId);
   const agentId = typeof req.query.agentId === 'string' ? req.query.agentId.trim() : '';
   db.deleteLogs(projectId, agentId || undefined);
-  // comment
   sseBroadcaster.broadcast({ type: 'logs_cleared', projectId, agentId: agentId || null }, projectId);
   res.json({ success: true });
 });
-
-// comment
-
 app.get('/api/commands', (req, res) => {
   const projectId = normalizeProjectId(req.query.projectId);
   const commands = db.getAllCommands(projectId);
   res.json({ commands });
 });
-
-// comment
-
 app.post('/api/permission-response', (req, res) => {
   const { requestId, behavior, message, projectId: bodyProjectId, updatedInput } = req.body;
   const projectId = normalizeProjectId(bodyProjectId ?? req.query.projectId);
@@ -430,10 +363,6 @@ app.post('/api/permission-response', (req, res) => {
   if (!success) return res.status(404).json({ error: '权限请求不存在或已超时' });
   res.json({ success: true });
 });
-
-// comment
-
-// comment
 app.get('/api/handoffs', (req, res) => {
   const projectId = normalizeProjectId(req.query.projectId);
   const { agentId, status, limit } = req.query;
@@ -443,7 +372,6 @@ app.get('/api/handoffs', (req, res) => {
     const result = db.getHandoffsForAgent(projectId, agentId as string, limit ? parseInt(limit as string) : 20);
     return res.json(result);
   } else if (status) {
-    // comment
     const all = db.getAllHandoffs(projectId, limit ? parseInt(limit as string) : 50);
     handoffs = all.filter(h => h.status === status);
   } else {
@@ -452,16 +380,12 @@ app.get('/api/handoffs', (req, res) => {
 
   res.json({ handoffs });
 });
-
-// comment
 app.get('/api/handoffs/pending', (req, res) => {
   const projectId = normalizeProjectId(req.query.projectId);
   const { toAgentId } = req.query;
   const handoffs = db.getPendingHandoffs(projectId, toAgentId as string | undefined);
   res.json({ handoffs });
 });
-
-// comment
 app.post('/api/handoffs', (req, res) => {
   const { from_agent_id, to_agent_id, title, description, context, priority, source_command_id, project_id } = req.body;
   const projectId = normalizeProjectId(project_id ?? req.query.projectId);
@@ -490,11 +414,7 @@ app.post('/api/handoffs', (req, res) => {
     created_at: now,
     updated_at: now,
   });
-
-  // comment
   sseBroadcaster.broadcast({ type: 'handoff_created', handoff }, handoff.project_id);
-
-  // comment
   agentManager.addLog(handoff.project_id, from_agent_id as AgentRole, '创建交接', `${from_agent_id} → ${to_agent_id}: ${title}`, 'info');
   if (autoHandoffEnabled) {
     agentManager.addLog(handoff.project_id, to_agent_id as AgentRole, '自动接收交接', `从 ${from_agent_id} 接手: ${title}`, 'success');
@@ -510,8 +430,6 @@ app.post('/api/handoffs', (req, res) => {
 
   res.json({ handoff });
 });
-
-// comment
 app.post('/api/handoffs/:id/accept', (req, res) => {
   const { id } = req.params;
   const handoff = db.getHandoff(id);
@@ -552,8 +470,6 @@ app.post('/api/handoffs/:id/accept', (req, res) => {
 
   res.json({ handoff: updated });
 });
-
-// comment
 app.post('/api/handoffs/:id/confirm', (req, res) => {
   const { id } = req.params;
   const handoff = db.getHandoff(id);
@@ -573,8 +489,6 @@ app.post('/api/handoffs/:id/confirm', (req, res) => {
 
   sseBroadcaster.broadcast({ type: 'handoff_updated', handoff: updated }, handoff.project_id);
   agentManager.addLog(handoff.project_id, handoff.to_agent_id as AgentRole, '开始执行交接任务', `${handoff.title}`, 'success');
-
-  // comment
   agentManager.sendMessage(
     handoff.project_id,
     handoff.to_agent_id as AgentRole,
@@ -585,8 +499,6 @@ app.post('/api/handoffs/:id/confirm', (req, res) => {
 
   res.json({ handoff: updated });
 });
-
-// comment
 app.post('/api/handoffs/:id/complete', (req, res) => {
   const { id } = req.params;
   const { result } = req.body;
@@ -603,8 +515,6 @@ app.post('/api/handoffs/:id/complete', (req, res) => {
 
   res.json({ handoff: updated });
 });
-
-// comment
 app.post('/api/handoffs/:id/reject', (req, res) => {
   const { id } = req.params;
   const { reason } = req.body;
@@ -623,8 +533,6 @@ app.post('/api/handoffs/:id/reject', (req, res) => {
 
   res.json({ handoff: updated });
 });
-
-// comment
 app.post('/api/handoffs/:id/cancel', (req, res) => {
   const { id } = req.params;
   const handoff = db.getHandoff(id);
@@ -638,9 +546,6 @@ app.post('/api/handoffs/:id/cancel', (req, res) => {
 
   res.json({ handoff: updated });
 });
-
-// comment
-
 const TASK_STATUS_FLOW: Record<string, string[]> = {
   todo: ['developing', 'blocked'],
   developing: ['testing', 'blocked'],
@@ -747,10 +652,6 @@ app.patch('/api/tasks/:id/status', (req, res) => {
   agentManager.addLog(task.project_id, (updated_by || task.created_by) as AgentRole, '更新任务状态', `${task.title}: ${task.status} → ${status}`, 'success');
   res.json({ task: updated });
 });
-
-// comment
-
-// comment
 app.delete('/api/agents/:agentId/messages', (req, res) => {
   const { agentId } = req.params;
   const projectId = normalizeProjectId(req.query.projectId ?? req.body?.projectId);
@@ -758,10 +659,6 @@ app.delete('/api/agents/:agentId/messages', (req, res) => {
   agentManager.addLog(projectId, agentId as AgentRole, '清除聊天记录', '用户清除了该 Agent 的所有聊天记录和会话', 'warn');
   res.json({ success: true });
 });
-
-// comment
-
-// comment
 app.get('/api/agents/:agentId/memories', (req, res) => {
   const { agentId } = req.params;
   const { category } = req.query;
@@ -769,15 +666,11 @@ app.get('/api/agents/:agentId/memories', (req, res) => {
   const memories = db.getAgentMemories(projectId, agentId, category as string | undefined);
   res.json({ memories });
 });
-
-// comment
 app.get('/api/memories', (req, res) => {
   const projectId = normalizeProjectId(req.query.projectId);
   const memories = db.getAllAgentMemories(projectId);
   res.json({ memories });
 });
-
-// comment
 app.post('/api/agents/:agentId/memories', (req, res) => {
   const { agentId } = req.params;
   const { category = 'general', content, importance = 'normal', source_task, projectId: bodyProjectId } = req.body;
@@ -791,7 +684,7 @@ app.post('/api/agents/:agentId/memories', (req, res) => {
     project_id: projectId,
     agent_id: agentId,
     category,
-    content: content.slice(0, 5000), // comment
+    content: content.slice(0, 5000),
     importance,
     source_task: source_task || null,
     created_at: now,
@@ -802,27 +695,17 @@ app.post('/api/agents/:agentId/memories', (req, res) => {
 
   res.json({ memory });
 });
-
-// comment
 app.delete('/api/memories/:id', (req, res) => {
   const success = db.deleteAgentMemory(req.params.id);
   if (!success) return res.status(404).json({ error: '记忆不存在' });
   res.json({ success: true });
 });
-
-// comment
 app.delete('/api/agents/:agentId/memories', (req, res) => {
   const projectId = normalizeProjectId(req.query.projectId ?? req.body?.projectId);
   db.clearAgentMemories(projectId, req.params.agentId);
   res.json({ success: true });
 });
-
-// comment
-
-// comment
 db.ensureOutputDir();
-
-// comment
 app.use('/output', express.static(path.join(__dirname, '..', 'output'), {
   setHeaders: (res, filePath) => {
     if (filePath.endsWith('.html')) {
@@ -830,10 +713,6 @@ app.use('/output', express.static(path.join(__dirname, '..', 'output'), {
     }
   }
 }));
-
-// comment
-
-// comment
 app.post('/api/proposals', (req, res) => {
   const { project_id, type, title, content, author_agent_id } = req.body;
   if (!type || !title || !content || !author_agent_id) {
@@ -859,20 +738,12 @@ app.post('/api/proposals', (req, res) => {
     updated_at: now
   });
   db.ensureProject(proposal.project_id);
-
-  // comment
   const filePath = db.saveProposalToFile(proposal);
-
-  // comment
   sseBroadcaster.broadcast({ type: 'proposal_created', proposal, filePath }, proposal.project_id);
-
-  // comment
   agentManager.addLog(proposal.project_id, author_agent_id as AgentRole, '提交提案', `提案: ${title}${filePath ? ` → 已保存到 ${path.basename(filePath)}` : ''}`, 'success');
 
   res.json({ proposal, filePath });
 });
-
-// comment
 app.post('/api/proposals/:id/decide', (req, res) => {
   const { id } = req.params;
   const { decision, comment } = req.body;
@@ -891,16 +762,12 @@ app.post('/api/proposals/:id/decide', (req, res) => {
 
   const updated = db.getProposal(id);
   if (!updated) return res.status(500).json({ error: '提案更新后读取失败' });
-
-  // comment
   const filePath = db.saveProposalToFile(updated);
 
   sseBroadcaster.broadcast({ type: 'proposal_decided', proposal: updated, decision, comment, filePath }, updated.project_id);
 
   res.json({ success: true, proposal: updated, filePath });
 });
-
-// comment
 app.post('/api/games', (req, res) => {
   const { project_id, name, description, html_content, proposal_id, author_agent_id, version } = req.body;
   if (!name || !html_content || !author_agent_id) {
@@ -922,8 +789,6 @@ app.post('/api/games', (req, res) => {
     updated_at: now
   });
   db.ensureProject(game.project_id);
-
-  // comment
   const filePath = db.saveGameToFile(game);
 
   sseBroadcaster.broadcast({ type: 'game_submitted', game: { ...game, html_content: undefined, hasContent: true }, filePath }, game.project_id);
@@ -931,13 +796,8 @@ app.post('/api/games', (req, res) => {
 
   res.json({ game: { ...game, html_content: undefined }, filePath });
 });
-
-// comment
-
 app.listen(PORT, async () => {
-  // comment
   await starOfficeSyncService.syncAllProjectsOnBoot();
-  // comment
   starOfficeSyncService.startSupervisor();
   console.log(`
 ╔══════════════════════════════════════════════════════╗

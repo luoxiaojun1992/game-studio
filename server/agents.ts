@@ -1,6 +1,4 @@
 /**
- * comment
- * comment
  */
 
 export type AgentRole = 'engineer' | 'architect' | 'game_designer' | 'biz_designer' | 'ceo';
@@ -14,13 +12,11 @@ export interface AgentDefinition {
   systemPrompt: string;
   description: string;
   responsibilities: string[];
-  /* comment */
+
   handoffTargets?: AgentRole[];
 }
 
 /**
- * comment
- * comment
  */
 const HANDOFF_INSTRUCTION = `
 
@@ -51,8 +47,6 @@ const HANDOFF_INSTRUCTION = `
 `;
 
 /**
- * comment
- * comment
  */
 const MEMORY_INSTRUCTION = `
 
@@ -74,8 +68,6 @@ const MEMORY_INSTRUCTION = `
 `;
 
 /**
- * comment
- * comment
  */
 const TOOLS_OVERVIEW = `
 
@@ -100,7 +92,6 @@ const TOOLS_OVERVIEW = `
 `;
 
 /**
- * comment
  */
 const LANGUAGE_ADAPTATION = `
 ## 语言适配规则（必须遵守）
@@ -111,8 +102,6 @@ const LANGUAGE_ADAPTATION = `
    - 如果用户用英文下达指令 → 你用英文思考、回复、输出所有内容
 3. **输出内容语言**：所有输出（包括代码注释、文档、策划案、报告等）必须使用与用户指令相同的语言
 4. **工具调用**：工具参数中的描述性文本（如交接上下文、记忆内容等）也必须使用与用户指令相同的语言
-
-* comment
 `;
 
 export const AGENT_DEFINITIONS: Record<AgentRole, AgentDefinition> = {

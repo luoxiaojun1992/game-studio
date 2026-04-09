@@ -21,8 +21,6 @@ interface ModelInfo {
   name?: string;
   description?: string;
 }
-
-// comment
 const getStorageKey = (projectId: string) => `commandPanel_lastAgent_${projectId}`;
 
 export default function CommandPanel({ agents, logs, projectId, selectedAgentId, onCommandSent, model, onModelChange, onAgentChange }: Props) {
@@ -34,7 +32,6 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
     biz_designer: { name: isZh ? '商业策划' : 'Business Designer', emoji: '💼', color: '#E37318' },
     ceo: { name: 'CEO', emoji: '👔', color: '#C9353F' },
   };
-  // comment
   const getSavedAgent = (): AgentRole | null => {
     const saved = localStorage.getItem(getStorageKey(projectId));
     if (saved && agents.find(a => a.id === saved)) {
@@ -42,15 +39,10 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
     }
     return null;
   };
-
-  // comment
   const getDefaultAgent = (): AgentRole => {
     const workingAgent = agents.find(a => a.state?.status === 'working');
     return workingAgent?.id || agents[0]?.id || 'game_designer';
   };
-
-  // comment
-  // comment
   const [selectedAgent, setSelectedAgent] = useState<AgentRole>(() => {
     return getSavedAgent() || getDefaultAgent();
   });
@@ -62,15 +54,11 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
   const [autoScroll, setAutoScroll] = useState(true);
   const [expandedLog, setExpandedLog] = useState<string | null>(null);
   const outputRef = useRef<HTMLDivElement>(null);
-
-  // comment
   const agentLogs = useMemo((): LogEntry[] => {
     return logs
       .filter(l => l.agent_id === selectedAgent)
       .slice(-1000);
   }, [logs, selectedAgent]);
-
-  // comment
   useEffect(() => {
     api.getModels().then((res: any) => {
       if (res.models && res.models.length > 0) {
@@ -94,35 +82,25 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
       }
     });
   }, [model, onModelChange]);
-
-  // comment
   useEffect(() => {
     if (selectedAgentId && selectedAgentId !== selectedAgent) {
       setSelectedAgent(selectedAgentId);
       localStorage.setItem(getStorageKey(projectId), selectedAgentId);
     }
   }, [selectedAgentId, projectId]);
-
-  // comment
   const handleAgentChange = (agentId: AgentRole) => {
     setSelectedAgent(agentId);
     localStorage.setItem(getStorageKey(projectId), agentId);
     onAgentChange?.(agentId);
   };
-
-  // comment
   useEffect(() => {
     setCurrentStreamText('');
   }, [selectedAgent]);
-
-  // comment
   useEffect(() => {
     if (autoScroll && outputRef.current) {
       outputRef.current.scrollTop = outputRef.current.scrollHeight;
     }
   }, [agentLogs, currentStreamText, autoScroll]);
-
-  // comment
   const clearHistory = async () => {
     if (clearing) return;
     setClearing(true);
@@ -180,15 +158,11 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
 
   const currentAgent = AGENT_NAMES[selectedAgent];
   const hasContent = agentLogs.length > 0 || currentStreamText;
-
-  // comment
   const renderLog = (log: LogEntry) => {
     const agentInfo = AGENT_NAMES[log.agent_id];
     const agentLabel = `${agentInfo?.emoji} ${agentInfo?.name || log.agent_id}`;
     const timeStr = new Date(log.created_at).toLocaleTimeString(locale);
     const isExpanded = expandedLog === log.id;
-
-    // comment
     if (log.log_type === 'user_command') {
       const isLong = log.content && log.content.length > 300;
       return (
@@ -296,8 +270,6 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
         </div>
       );
     }
-
-    // comment
     return (
       <div key={log.id} className="flex gap-2 px-2 py-0.5">
         <span className="text-gray-600 shrink-0 tabular-nums">{timeStr}</span>
@@ -311,7 +283,7 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
 
   return (
     <div className="flex gap-4 h-[calc(100vh-160px)]">
-      {/* comment */}
+      
       <div className="w-56 shrink-0 bg-gray-900 rounded-xl border border-gray-800 p-3">
         <div className="text-xs text-gray-500 font-medium mb-2 px-1">{l('选择 Agent', 'Select Agent')}</div>
         <div className="space-y-1">
@@ -356,9 +328,9 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
         </div>
       </div>
 
-      {/* comment */}
+      
       <div className="flex-1 flex flex-col gap-3">
-        {/* comment */}
+        
         <div className="bg-gray-900 rounded-xl border border-gray-800 px-4 py-3 flex items-center gap-3 shrink-0">
           <span className="text-2xl">{currentAgent?.emoji}</span>
           <div>
@@ -395,7 +367,7 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
           </div>
         </div>
 
-        {/* comment */}
+        
         <div 
           ref={outputRef} 
           className="flex-1 bg-gray-950 rounded-xl border border-gray-800 font-mono text-xs p-2 overflow-y-auto space-y-0.5"
@@ -431,7 +403,7 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
           )}
         </div>
 
-        {/* comment */}
+        
         <div className="bg-gray-900 rounded-xl border border-gray-800 p-3 shrink-0">
           <div className="flex gap-3">
             <textarea
@@ -459,7 +431,7 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
             </button>
           </div>
 
-          {/* comment */}
+          
           <div className="mt-2 flex flex-wrap gap-1.5">
             {getQuickCommands(selectedAgent, isZh).map((cmd, i) => (
               <button

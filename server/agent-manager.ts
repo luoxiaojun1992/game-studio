@@ -26,7 +26,6 @@ export interface StreamEvent {
 }
 
 /**
- * comment
  */
 class AgentManager extends EventEmitter {
   private agentStatesByProject: Map<string, Map<AgentRole, AgentState>> = new Map();
@@ -75,8 +74,6 @@ class AgentManager extends EventEmitter {
         lastActiveAt: null,
         isPaused: false
       });
-
-      // comment
       const dbSession = db.getAgentSession(scopedProjectId, agentId);
       if (dbSession) {
         const state = projectStates.get(agentId)!;
@@ -121,8 +118,6 @@ class AgentManager extends EventEmitter {
     const current = projectStates.get(agentId) || { id: agentId } as AgentState;
     const updated = { ...current, ...updates };
     projectStates.set(agentId, updated);
-
-    // comment
     const now = new Date().toISOString();
     const existingSession = db.getAgentSession(scopedProjectId, agentId);
     db.upsertAgentSession({
@@ -135,13 +130,10 @@ class AgentManager extends EventEmitter {
       created_at: existingSession?.created_at || now,
       updated_at: now
     });
-
-    // comment
     this.emit('agent_status_changed', { projectId: scopedProjectId, agentId, state: updated });
   }
 
   /**
-   * comment
    */
   pauseAgent(projectId: string, agentId: AgentRole): void {
     const scopedProjectId = this.normalizeProjectId(projectId);
@@ -153,7 +145,6 @@ class AgentManager extends EventEmitter {
   }
 
   /**
-   * comment
    */
   resumeAgent(projectId: string, agentId: AgentRole): void {
     const scopedProjectId = this.normalizeProjectId(projectId);
@@ -165,7 +156,6 @@ class AgentManager extends EventEmitter {
   }
 
   /**
-   * comment
    */
   isAgentPaused(projectId: string, agentId: AgentRole): boolean {
     const scopedProjectId = this.normalizeProjectId(projectId);
@@ -174,7 +164,6 @@ class AgentManager extends EventEmitter {
   }
 
   /**
-   * comment
    */
   addLog(projectId: string, agentId: AgentRole, action: string, detail: string | null, level: db.LogLevel = 'info'): void {
     const scopedProjectId = this.normalizeProjectId(projectId);
@@ -194,7 +183,6 @@ class AgentManager extends EventEmitter {
   }
 
   /**
-   * comment
    */
   addAgentLogEntry(
     projectId: string,
@@ -221,7 +209,6 @@ class AgentManager extends EventEmitter {
   }
 
   /**
-   * comment
    */
   private summarizeToolInput(toolName: string, input: Record<string, unknown>): string {
     try {
@@ -265,7 +252,6 @@ class AgentManager extends EventEmitter {
   }
 
   /**
-   * comment
    */
   private summarizeToolResult(toolName: string, result: string, isError: boolean): string {
     if (isError) {
@@ -294,7 +280,6 @@ class AgentManager extends EventEmitter {
   }
 
   /**
-   * comment
    */
   private validateEngineerTaskBoardBeforeFinish(projectId: string): string | null {
     const tasks = db.getTaskBoardTasks(projectId)
@@ -326,7 +311,6 @@ class AgentManager extends EventEmitter {
   }
 
   /**
-   * comment
    */
   private buildSystemPrompt(projectId: string, agentId: AgentRole): string {
     const agentDef = AGENT_DEFINITIONS[agentId];
@@ -335,7 +319,6 @@ class AgentManager extends EventEmitter {
   }
 
   /**
-   * comment
    */
   async sendMessage(
     projectId: string,
@@ -381,8 +364,6 @@ class AgentManager extends EventEmitter {
       }
       streamReleased = true;
     };
-
-    // comment
     let agentDbSession = db.getAgentSession(scopedProjectId, agentId);
     if (!agentDbSession) {
       const now = new Date().toISOString();
@@ -397,8 +378,6 @@ class AgentManager extends EventEmitter {
         updated_at: now
       });
     }
-
-    // comment
     const userMsgId = uuidv4();
     db.createAgentMessage({
       id: userMsgId,
@@ -415,7 +394,6 @@ class AgentManager extends EventEmitter {
     let toolCalls: any[] = [];
 
     try {
-      // comment
       const studioToolsServer = createStudioToolsServer(
         scopedProjectId,
         agentId,
@@ -426,13 +404,6 @@ class AgentManager extends EventEmitter {
           this.dispatchAutoHandoffTask(handoff);
         }
       );
-
-      // comment
-      // comment
-      // comment
-      // comment
-      // comment
-      // comment
       const settings = db.getProjectSettings(scopedProjectId);
       const autopilotEnabled = settings.autopilot_enabled === 1;
 
@@ -446,7 +417,6 @@ class AgentManager extends EventEmitter {
         'get_pending_handoffs',
         'get_task',
         'get_tasks',
-        // comment
         ...(autopilotEnabled ? ['create_handoff', 'submit_proposal', 'submit_game'] : []),
         ...(agentId === 'engineer' ? ['split_dev_test_tasks', 'update_task_status'] : [])
       ];
@@ -458,33 +428,22 @@ class AgentManager extends EventEmitter {
         'submit_proposal',
         'submit_game'
       ]);
-
-      // comment
       const READ_ONLY_SDK_TOOLS = ['Read', 'Grep', 'WebSearch', 'WebFetch', 'Glob'];
 
       const canUseTool: CanUseTool = async (toolName, input, options) => {
         const hasStudioPrefix = toolName.startsWith(STUDIO_TOOL_PREFIX);
         const actualTool = hasStudioPrefix ? toolName.replace(STUDIO_TOOL_PREFIX, '') : toolName;
         const isStudioTool = hasStudioPrefix || STUDIO_TOOL_NAMES.has(actualTool);
-
-        // comment
         if (isStudioTool) {
           if (CAN_AUTO_ALLOW.includes(actualTool)) {
             return { behavior: 'allow', updatedInput: input };
           }
-          // comment
         }
-
-        // comment
         if (READ_ONLY_SDK_TOOLS.includes(actualTool)) {
           return { behavior: 'allow', updatedInput: input };
         }
-
-        // comment
         console.log(`[permission] Agent ${agentId} 请求权限: toolName=${toolName}, actualTool=${actualTool}, input=${JSON.stringify(input).slice(0, 200)}`);
         const requestId = uuidv4();
-        
-        // comment
         db.createPermissionRequest({
           id: requestId,
           project_id: scopedProjectId,
@@ -507,8 +466,6 @@ class AgentManager extends EventEmitter {
         };
         this.emit('stream_event', permEvent);
         if (onEvent) onEvent(permEvent);
-
-        // comment
         return new Promise<PermissionResult>((resolve, reject) => {
           this.pendingPermissions.set(requestId, {
             resolve, reject, toolName, input, projectId: scopedProjectId, agentId, timestamp: Date.now()
@@ -522,7 +479,6 @@ class AgentManager extends EventEmitter {
             if (!pending) return;
             this.pendingPermissions.delete(requestId);
             this.pendingPermissionExpirations.delete(requestId);
-            // comment
             db.expirePermissionRequest(requestId);
             pending.resolve({ behavior: 'deny', message: '权限请求已过期（24小时），请重新发起' });
           }, 24 * 60 * 60 * 1000);
@@ -558,7 +514,6 @@ class AgentManager extends EventEmitter {
       if (onEvent) onEvent(startEvent);
 
       for await (const msg of stream) {
-        // comment
          if (this.isAgentPaused(scopedProjectId, agentId)) {
            const pauseEvent: StreamEvent = { type: 'agent_paused_mid_task', projectId: scopedProjectId, agentId, streamId };
           this.emit('stream_event', pauseEvent);
@@ -600,7 +555,6 @@ class AgentManager extends EventEmitter {
                 const toolEvent: StreamEvent = { type: 'tool', projectId: scopedProjectId, agentId, id: toolId, name: block.name, input: toolInput, status: 'running', streamId };
                 this.emit('stream_event', toolEvent);
                 if (onEvent) onEvent(toolEvent);
-                // comment
                 this.addAgentLogEntry(scopedProjectId, agentId, 'tool', inputSummary, { toolName: block.name });
               }
             }
@@ -624,12 +578,10 @@ class AgentManager extends EventEmitter {
             };
             this.emit('stream_event', toolResultEvent);
             if (onEvent) onEvent(toolResultEvent);
-            // comment
             const resultContent = (tool.result || '').slice(0, 500);
             this.addAgentLogEntry(scopedProjectId, agentId, 'tool_result', resultContent, { toolName: tool.name, isError });
           }
         } else if (msg.type === 'result') {
-          // comment
           if (fullResponse.length > 0) {
             this.addAgentLogEntry(scopedProjectId, agentId, 'text', fullResponse);
           }
@@ -647,13 +599,10 @@ class AgentManager extends EventEmitter {
           };
           this.emit('stream_event', doneEvent);
           if (onEvent) onEvent(doneEvent);
-          // comment
           const doneContent = `完成${msg.duration_ms ? ` (耗时 ${(msg.duration_ms / 1000).toFixed(1)}s)` : ''}`;
           this.addAgentLogEntry(scopedProjectId, agentId, 'done', doneContent);
         }
       }
-
-      // comment
       const assistantMsgId = uuidv4();
       db.createAgentMessage({
         id: assistantMsgId,
@@ -669,7 +618,6 @@ class AgentManager extends EventEmitter {
       if (agentId === 'engineer') {
         const guardWarning = this.validateEngineerTaskBoardBeforeFinish(scopedProjectId);
         if (guardWarning) {
-          // comment
           this.addLog(scopedProjectId, agentId, '任务板提醒', guardWarning, 'warn');
         }
       }
@@ -695,7 +643,6 @@ class AgentManager extends EventEmitter {
       const errorEvent: StreamEvent = { type: 'agent_error', projectId: scopedProjectId, agentId, streamId, error: error?.message || String(error) };
       this.emit('stream_event', errorEvent);
       if (onEvent) onEvent(errorEvent);
-      // comment
       this.addAgentLogEntry(scopedProjectId, agentId, 'error', error?.message || String(error), { isError: true });
       throw error;
     } finally {
@@ -706,18 +653,15 @@ class AgentManager extends EventEmitter {
   }
 
   /**
-   * comment
    */
   respondToPermission(requestId: string, behavior: 'allow' | 'deny', message?: string, projectId?: string, updatedInput?: Record<string, unknown>): boolean {
     const pending = this.pendingPermissions.get(requestId);
     if (!pending) {
-      // comment
       const dbRequest = db.getPermissionRequest(requestId);
       if (!dbRequest || dbRequest.status !== 'pending') return false;
       if (projectId && this.normalizeProjectId(projectId) !== this.normalizeProjectId(dbRequest.project_id)) {
         return false;
       }
-      // comment
       db.respondToPermissionRequest(requestId, behavior, message, updatedInput);
       return true;
     }
@@ -730,7 +674,6 @@ class AgentManager extends EventEmitter {
       clearTimeout(timer);
       this.pendingPermissionExpirations.delete(requestId);
     }
-    // comment
     db.respondToPermissionRequest(requestId, behavior, message, updatedInput);
     if (behavior === 'allow') {
       pending.resolve({ behavior: 'allow', updatedInput: updatedInput || pending.input });
@@ -741,17 +684,12 @@ class AgentManager extends EventEmitter {
   }
 
   /**
-   * comment
    */
   getPendingPermissions(projectId?: string): Array<{ requestId: string; toolName: string; input: any; projectId: string; agentId: AgentRole; timestamp: number }> {
     const scopedProjectId = projectId ? this.normalizeProjectId(projectId) : undefined;
-    
-    // comment
     const dbRequests = scopedProjectId 
       ? db.getPendingPermissionRequests(scopedProjectId)
       : [];
-    
-    // comment
     const memoryRequests = Array.from(this.pendingPermissions.entries())
       .filter(([, perm]) => !scopedProjectId || perm.projectId === scopedProjectId)
       .map(([requestId, perm]) => ({
@@ -762,8 +700,6 @@ class AgentManager extends EventEmitter {
         agentId: perm.agentId,
         timestamp: perm.timestamp
       }));
-    
-    // comment
     const dbFormattedRequests = dbRequests.map(req => ({
       requestId: req.id,
       toolName: req.tool_name,
@@ -772,14 +708,10 @@ class AgentManager extends EventEmitter {
       agentId: req.agent_id as AgentRole,
       timestamp: new Date(req.created_at).getTime()
     }));
-    
-    // comment
     const memoryIds = new Set(memoryRequests.map(r => r.requestId));
     const uniqueDbRequests = dbFormattedRequests.filter(r => !memoryIds.has(r.requestId));
     
     return [...memoryRequests, ...uniqueDbRequests];
   }
 }
-
-// comment
 export const agentManager = new AgentManager();

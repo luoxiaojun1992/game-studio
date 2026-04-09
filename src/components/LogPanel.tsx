@@ -24,13 +24,9 @@ export default function LogPanel({ logs: externalLogs, agents, projectId }: Prop
   const [expandedLog, setExpandedLog] = useState<string | null>(null);
   const [autoScroll, setAutoScroll] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
-
-  // comment
   useEffect(() => {
     setLogs(externalLogs);
   }, [externalLogs]);
-
-  // comment
   useEffect(() => {
     const es = new EventSource(api.observeUrl(projectId));
 
@@ -40,7 +36,6 @@ export default function LogPanel({ logs: externalLogs, agents, projectId }: Prop
         if (event.type === 'stream_event') {
           const se = event.event;
           if (se.type === 'text' && se.agentId) {
-            // comment
             setLogs(prev => {
               const last = prev[prev.length - 1];
               if (last && last.log_type === 'text' && last.agent_id === se.agentId) {
@@ -121,15 +116,11 @@ export default function LogPanel({ logs: externalLogs, agents, projectId }: Prop
 
     return () => es.close();
   }, [projectId, isZh]);
-
-  // comment
   useEffect(() => {
     if (autoScroll && containerRef.current) {
       containerRef.current.scrollTop = containerRef.current.scrollHeight;
     }
   }, [logs, autoScroll]);
-
-  // comment
   const filteredLogs = logs.filter(log => {
     if (filterAgent !== 'all' && log.agent_id !== filterAgent) return false;
     if (filterLevel !== 'all' && log.level !== filterLevel) return false;
@@ -153,8 +144,6 @@ export default function LogPanel({ logs: externalLogs, agents, projectId }: Prop
     const agentLabel = `${agentInfo?.emoji} ${agentInfo?.name || log.agent_id}`;
     const timeStr = new Date(log.created_at).toLocaleTimeString(locale);
     const isExpanded = expandedLog === log.id;
-
-    // comment
     if (log.log_type === 'system') {
       const levelCfg = LEVEL_CONFIG[log.level] || LEVEL_CONFIG.info;
       const longDetail = log.content && log.content.length > 200;
@@ -179,8 +168,6 @@ export default function LogPanel({ logs: externalLogs, agents, projectId }: Prop
         </div>
       );
     }
-
-    // comment
     if (log.log_type === 'user_command') {
       const isLong = log.content && log.content.length > 300;
       return (
@@ -294,7 +281,7 @@ export default function LogPanel({ logs: externalLogs, agents, projectId }: Prop
 
   return (
     <div className="bg-gray-900 rounded-xl border border-gray-800 flex flex-col h-[calc(100vh-160px)]">
-      {/* comment */}
+      
       <div className="px-4 py-3 border-b border-gray-800 flex items-center gap-3 shrink-0">
         <span className="font-semibold text-gray-200 text-sm">{l('运行日志', 'Logs')}</span>
 
@@ -347,7 +334,7 @@ export default function LogPanel({ logs: externalLogs, agents, projectId }: Prop
         <span className="text-xs text-gray-600">{filteredLogs.length} {l('条', 'items')}</span>
       </div>
 
-      {/* comment */}
+      
       <div
         ref={containerRef}
         className="flex-1 overflow-y-auto font-mono text-xs p-2 space-y-0.5"

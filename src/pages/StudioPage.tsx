@@ -41,8 +41,6 @@ const TABS: { key: TabKey; label: { zh: string; en: string }; icon: string }[] =
   { key: 'commands', label: { zh: '指令中心', en: 'Commands' }, icon: '⌨️' },
 ];
 const DEFAULT_PROJECT_ID = 'default';
-
-// comment
 const getCommandAgentKey = (projectId: string) => `commandPanel_lastAgent_${projectId}`;
 
 export default function StudioPage() {
@@ -58,17 +56,11 @@ export default function StudioPage() {
   const [selectedProjectId, setSelectedProjectIdState] = useState<string>(DEFAULT_PROJECT_ID);
   const prevProjectIdRef = useRef<string>(DEFAULT_PROJECT_ID);
   const [newProjectName, setNewProjectName] = useState('');
-
-  // comment
   const setSelectedProjectId = useCallback(async (newProjectId: string) => {
     const oldProjectId = prevProjectIdRef.current;
     if (oldProjectId === newProjectId) return;
-
-    // comment
     setSelectedProjectIdState(newProjectId);
     prevProjectIdRef.current = newProjectId;
-
-    // comment
     try {
       await api.switchProject(oldProjectId, newProjectId);
       console.log(`[Project Switch] Synced from ${oldProjectId} to ${newProjectId}`);
@@ -89,18 +81,13 @@ export default function StudioPage() {
   const [pendingPermissions, setPendingPermissions] = useState<PermissionRequest[]>([]);
   const [connected, setConnected] = useState(false);
   const eventSourceRef = useRef<EventSource | null>(null);
-
-  // comment
-  // comment
-  // comment
   const connectedRef = useRef(false);
 
   const handleSSEEvent = useCallback((event: SSEEvent) => {
     switch (event.type) {
       case 'init':
-        // comment
         setAgents(prev => {
-          if (prev.length === 0) return prev; // comment
+          if (prev.length === 0) return prev;
           return prev.map(agent => {
             const state = (event as any).agents?.find((s: AgentState) => s.id === agent.id);
             return state ? { ...agent, state } : agent;
@@ -122,7 +109,6 @@ export default function StudioPage() {
         break;
 
       case 'logs_cleared':
-        // comment
         if ((event as any).agentId) {
           setLogs(prev => prev.filter(l => l.agent_id !== (event as any).agentId));
         } else {
@@ -141,7 +127,6 @@ export default function StudioPage() {
             timestamp: Date.now()
           }]);
         }
-        // comment
         if (streamEvent.agentId && ['text', 'tool', 'tool_result', 'agent_done', 'agent_error'].includes(streamEvent.type)) {
           setLogs(prev => {
             const newLog: LogEntry = {
@@ -228,7 +213,6 @@ export default function StudioPage() {
   }, [selectedProjectId]);
 
   const connectSSE = useCallback(() => {
-    // comment
     if (connectedRef.current) return;
     connectedRef.current = true;
 
@@ -242,7 +226,7 @@ export default function StudioPage() {
     es.onopen = () => setConnected(true);
     es.onerror = () => {
       setConnected(false);
-      connectedRef.current = false; // comment
+      connectedRef.current = false;
       setTimeout(connectSSE, 3000);
     };
 
@@ -253,8 +237,6 @@ export default function StudioPage() {
       } catch {}
     };
   }, [handleSSEEvent, selectedProjectId]);
-
-  // comment
   useEffect(() => {
     api.getAgents(selectedProjectId).then(data => setAgents(data.agents || []));
   }, [selectedProjectId]);
@@ -283,8 +265,6 @@ export default function StudioPage() {
     setSelectedProposal(null);
     setSelectedGame(null);
   }, [selectedProjectId]);
-
-  // comment
   useEffect(() => {
     if (agents.length === 0) return;
     const saved = localStorage.getItem(getCommandAgentKey(selectedProjectId));
@@ -294,23 +274,17 @@ export default function StudioPage() {
       setCommandTargetAgent(undefined);
     }
   }, [agents, selectedProjectId]);
-
-  // comment
   useEffect(() => {
     connectSSE();
     return () => {
       eventSourceRef.current?.close();
-      connectedRef.current = false; // comment
+      connectedRef.current = false;
     };
   }, [connectSSE, selectedProjectId]);
-
-  // comment
   const handlePermissionResponse = async (requestId: string, behavior: 'allow' | 'deny', message?: string, updatedInput?: Record<string, unknown>) => {
     await api.respondPermission(requestId, behavior, message, selectedProjectId, updatedInput);
     setPendingPermissions(prev => prev.filter(p => p.requestId !== requestId));
   };
-
-  // comment
   const handleTogglePause = async (agentId: AgentRole) => {
     const agent = agents.find(a => a.id === agentId);
     if (!agent) return;
@@ -319,7 +293,6 @@ export default function StudioPage() {
     } else {
       await api.pauseAgent(agentId, selectedProjectId);
     }
-    // comment
   };
 
   const handleCreateProject = async () => {
@@ -362,14 +335,10 @@ export default function StudioPage() {
       setProjectSettings(data.settings);
     }
   };
-
-  // comment
   const handleDecideProposal = async (proposalId: string, decision: 'approved' | 'rejected', comment: string) => {
     await api.decideProposal(proposalId, decision, comment);
     setSelectedProposal(null);
   };
-
-  // comment
   const handlePreviewGame = (game: Game) => {
     setSelectedGame(game);
   };
@@ -381,7 +350,7 @@ export default function StudioPage() {
 
   return (
     <div className="flex flex-col h-screen bg-gray-950 text-gray-100">
-      {/* comment */}
+      
       <header className="flex items-center justify-between px-6 py-3 bg-gray-900 border-b border-gray-800 shrink-0">
         <div className="flex items-center gap-3">
           <span className="text-2xl">🎮</span>
@@ -391,7 +360,7 @@ export default function StudioPage() {
           </div>
         </div>
 
-        {/* comment */}
+        
         <div className="flex items-center gap-4">
           {pendingPermissions.length > 0 && (
             <div className="flex items-center gap-1.5 bg-orange-500/20 border border-orange-500/40 rounded-full px-3 py-1 text-xs text-orange-300 animate-pulse">
@@ -472,7 +441,7 @@ export default function StudioPage() {
         </div>
       </header>
 
-      {/* comment */}
+      
       {pendingPermissions.length > 0 && (
         <div className="shrink-0 bg-orange-950/50 border-b border-orange-900/50 px-6 py-2">
           <div className="text-xs text-orange-300 font-medium mb-1">⚠️ {l('有 Agent 正在请求操作权限，需要您确认：', 'An agent is requesting tool permission, please review:')}</div>
@@ -539,7 +508,7 @@ export default function StudioPage() {
         </div>
       )}
 
-      {/* comment */}
+      
       <nav className="shrink-0 flex items-center gap-1 px-6 py-2 bg-gray-900/50 border-b border-gray-800">
         {TABS.map(tab => (
           <button
@@ -567,11 +536,11 @@ export default function StudioPage() {
         ))}
       </nav>
 
-      {/* comment */}
+      
       <main className="flex-1 overflow-auto p-4">
         {activeTab === 'overview' && (
           <div className="space-y-4">
-            {/* comment */}
+            
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
               {agents.map(agent => (
                 <AgentCard
@@ -589,7 +558,7 @@ export default function StudioPage() {
               ))}
             </div>
 
-            {/* comment */}
+            
             {proposals.length > 0 && (
               <div className="bg-gray-900 rounded-xl border border-gray-800 p-4">
                 <div className="flex items-center justify-between mb-3">
@@ -746,12 +715,10 @@ export default function StudioPage() {
         )}
       </main>
 
-      {/* comment */}
+      
     </div>
   );
 }
-
-// comment
 function ProposalStatusBadge({ status, isZh }: { status: string; isZh: boolean }) {
   const config: Record<string, { label: string; className: string }> = {
     pending_review: { label: isZh ? '待评审' : 'Pending Review', className: 'bg-yellow-500/20 text-yellow-300 border-yellow-600/40' },
@@ -769,8 +736,6 @@ function ProposalStatusBadge({ status, isZh }: { status: string; isZh: boolean }
     </span>
   );
 }
-
-// comment
 function getAgentEmoji(agentId: string): string {
   const map: Record<string, string> = {
     engineer: '👨‍💻', architect: '🏗️', game_designer: '🎮',
@@ -778,12 +743,9 @@ function getAgentEmoji(agentId: string): string {
   };
   return map[agentId] || '🤖';
 }
-
-// comment
 function formatToolValue(value: any, isZh: boolean): string {
   if (value === null || value === undefined) return 'null';
   if (typeof value === 'string') {
-    // comment
     if (value.length > 2000) return value.slice(0, 2000) + (isZh ? '\n... (内容过长已截断)' : '\n... (content truncated)');
     return value;
   }
@@ -791,8 +753,6 @@ function formatToolValue(value: any, isZh: boolean): string {
   if (typeof value === 'object') return JSON.stringify(value, null, 2);
   return String(value);
 }
-
-// comment
 function AskUserQuestionForm({ options, singleSelect, onReply, onDeny }: {
   options?: string[];
   singleSelect: boolean;
@@ -804,7 +764,6 @@ function AskUserQuestionForm({ options, singleSelect, onReply, onDeny }: {
   const [customText, setCustomText] = useState('');
 
   if (options && options.length > 0) {
-    // comment
     return (
       <div className="space-y-2">
         <div className="flex flex-wrap gap-1.5">
@@ -849,8 +808,6 @@ function AskUserQuestionForm({ options, singleSelect, onReply, onDeny }: {
       </div>
     );
   }
-
-  // comment
   return (
     <div className="space-y-2">
       <input

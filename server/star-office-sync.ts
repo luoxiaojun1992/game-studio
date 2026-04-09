@@ -57,11 +57,8 @@ class StarOfficeSyncService {
   private registeredAgents = new Map<string, RegisteredAgent>(); // key: `${projectId}:${agentRole}`
   private supervisorTimer: NodeJS.Timeout | null = null;
   private wasOnline = true; // Track if Star-Office-UI was online last check
-  private currentProjectId: string = 'default'; // comment
-
-  // comment
+  private currentProjectId: string = 'default';
   private globalRegisterLock = false;
-  // comment
   private pendingRegisterResolve: Array<() => void> = [];
 
   isEnabled(): boolean {
@@ -103,7 +100,6 @@ class StarOfficeSyncService {
   }
 
   /**
-   * comment
    */
   private async getRemoteAgentIds(): Promise<Set<string>> {
     if (!agentsUrl) return new Set();
@@ -117,22 +113,16 @@ class StarOfficeSyncService {
   }
 
   /**
-   * comment
    */
   private async acquireRegisterLock(): Promise<void> {
     if (!this.globalRegisterLock) {
       this.globalRegisterLock = true;
       return;
     }
-
-    // comment
     await new Promise<void>((resolve) => {
       this.pendingRegisterResolve.push(resolve);
     });
-
-    // comment
     if (this.globalRegisterLock) {
-      // comment
       await new Promise<void>((resolve) => {
         this.pendingRegisterResolve.push(resolve);
       });
@@ -140,7 +130,6 @@ class StarOfficeSyncService {
   }
 
   /**
-   * comment
    */
   private releaseRegisterLock(): void {
     const nextResolve = this.pendingRegisterResolve.shift();
@@ -156,8 +145,6 @@ class StarOfficeSyncService {
    */
   private async registerAgent(projectId: string, agentRole: AgentRole, agentName: string, state: string, detail: string): Promise<string | null> {
     const key = `${projectId}:${agentRole}`;
-
-    // comment
     if (this.registeredAgents.has(key)) {
       return this.registeredAgents.get(key)!.agentId;
     }
@@ -176,7 +163,6 @@ class StarOfficeSyncService {
       }) as { ok: boolean; agentId?: string; msg?: string };
 
       if (result.ok && result.agentId) {
-        // comment
         if (this.registeredAgents.has(key)) {
           return this.registeredAgents.get(key)!.agentId;
         }
@@ -201,29 +187,17 @@ class StarOfficeSyncService {
   }
 
   /**
-   * comment
-   * comment
-   * comment
-   * comment
-   * comment
    */
   private async ensureAgentRegisteredAndGetId(projectId: string, agentRole: AgentRole, state: AgentState): Promise<string | null> {
     await this.acquireRegisterLock();
     try {
       const key = `${projectId}:${agentRole}`;
       const localReg = this.registeredAgents.get(key);
-
-      // comment
       const remoteAgentIds = await this.getRemoteAgentIds();
-
-      // comment
       if (localReg && !remoteAgentIds.has(localReg.agentId)) {
         console.log(`[star-office-sync] Agent ${key} exists locally (${localReg.agentId}) but not in remote, re-registering...`);
         this.registeredAgents.delete(key);
-        // comment
       }
-
-      // comment
       if (!this.registeredAgents.has(key)) {
         const agentName = `${projectId}:${agentRole}`;
         const result = await this.registerAgent(projectId, agentRole, agentName, state.status, state.currentTask || state.lastMessage || '');
@@ -237,7 +211,6 @@ class StarOfficeSyncService {
   }
 
   /**
-   * comment
    */
   async syncAllProjectsOnBoot(): Promise<void> {
     if (!this.isEnabled()) return;
@@ -279,15 +252,12 @@ class StarOfficeSyncService {
       } else if (!this.wasOnline && isOnline) {
         // Star-Office-UI just came back online - re-register agents for current project only
         console.log('[star-office-UI] Star-Office-UI came back online, re-registering agents for current project...');
-
-        // comment
         this.registeredAgents.clear(); // Clear cached registrations
         const projectIdToSync = this.currentProjectId;
 
         // Retry registration multiple times with delay to handle slow startup
         const maxRetries = 5;
         for (let retry = 0; retry < maxRetries; retry++) {
-          // comment
           const agents = agentManager.getAllAgentStates(projectIdToSync);
           for (const state of agents) {
             const key = `${projectIdToSync}:${state.id}`;
@@ -335,13 +305,9 @@ class StarOfficeSyncService {
 
   /**
    * Register a single agent when its status changes (fire and forget for non-critical calls)
-   * comment
    */
   notifyAgentStatusChanged(projectId: string, agentId: AgentRole, state: AgentState): void {
     if (!this.isEnabled()) return;
-
-    // comment
-    // comment
     if (this.currentProjectId !== projectId) {
       console.log(`[star-office-sync] Skipping sync for non-current project: ${projectId}`);
       return;
@@ -352,12 +318,6 @@ class StarOfficeSyncService {
   }
 
   /**
-   * comment
-   * comment
-   * comment
-   * comment
-   * comment
-   * comment
    */
   private async syncProjectState(projectId: string, reason: string): Promise<void> {
     if (!this.isEnabled()) return;
@@ -365,34 +325,24 @@ class StarOfficeSyncService {
     await this.acquireRegisterLock();
     try {
       const agents = agentManager.getAllAgentStates(projectId);
-
-      // comment
       const remoteAgentIds = await this.getRemoteAgentIds();
 
       for (const state of agents) {
         const key = `${projectId}:${state.id}`;
         const localReg = this.registeredAgents.get(key);
-
-        // comment
         if (localReg && !remoteAgentIds.has(localReg.agentId)) {
           console.log(`[star-office-sync] Agent ${key} (${localReg.agentId}) not in remote, re-registering...`);
           this.registeredAgents.delete(key);
         }
-
-        // comment
         if (!this.registeredAgents.has(key)) {
           const agentName = `${projectId}:${state.id}`;
           await this.registerAgent(projectId, state.id, agentName, state.status, state.currentTask || state.lastMessage || '');
         }
-
-        // comment
         const reg = this.registeredAgents.get(key);
         if (!reg) {
           console.warn(`[star-office-sync] Failed to register ${key}, skipping state sync`);
           continue;
         }
-
-        // comment
         if (agentPushUrl) {
           try {
             await this.postJson(agentPushUrl, {
@@ -405,7 +355,6 @@ class StarOfficeSyncService {
               name: key,
             });
           } catch (error) {
-            // comment
             if (error instanceof Error && error.message.includes('404')) {
               console.warn(`[star-office-sync] Agent ${key} push failed (not registered), re-registering...`);
               this.registeredAgents.delete(key);
@@ -444,13 +393,7 @@ class StarOfficeSyncService {
 
   scheduleProjectStateSync(projectId: string, reason: string): void {
     if (!this.isEnabled()) return;
-
-    // comment
-    // comment
-    // comment
     const currentProject = this.currentProjectId;
-
-    // comment
     if (currentProject !== projectId) {
       console.log(`[star-office-sync] Skipping schedule sync for non-current project: ${projectId}`);
       return;
@@ -460,17 +403,14 @@ class StarOfficeSyncService {
     if (prev) clearTimeout(prev);
     const timer = setTimeout(() => {
       this.timerByProject.delete(projectId);
-      // comment
       void this.syncProjectStateIfCurrent(projectId, reason);
     }, STAR_OFFICE_SYNC_DEBOUNCE_MS);
     this.timerByProject.set(projectId, timer);
   }
 
   /**
-   * comment
    */
   private async syncProjectStateIfCurrent(projectId: string, reason: string): Promise<void> {
-    // comment
     if (this.currentProjectId !== projectId) {
       console.log(`[star-office-sync] Skipping sync - project ${projectId} is no longer current`);
       return;
@@ -480,18 +420,12 @@ class StarOfficeSyncService {
   }
 
   /**
-   * comment
-   * comment
    */
   getCurrentProjectId(): string {
     return this.currentProjectId;
   }
 
   /**
-   * comment
-   * comment
-   * comment
-   * comment
    */
   async switchProject(fromProjectId: string | null, toProjectId: string): Promise<void> {
     if (!this.isEnabled()) return;
@@ -500,10 +434,7 @@ class StarOfficeSyncService {
 
     await this.acquireRegisterLock();
     try {
-      // comment
       this.currentProjectId = toProjectId;
-
-      // comment
       if (fromProjectId) {
         const oldAgents = agentManager.getAllAgentStates(fromProjectId);
         for (const state of oldAgents) {
@@ -511,7 +442,6 @@ class StarOfficeSyncService {
           const reg = this.registeredAgents.get(key);
           if (reg && agentPushUrl) {
             try {
-              // comment
               await this.postJson(agentPushUrl, {
                 type: 'agent_state_sync',
                 reason: 'project_switched',
@@ -528,8 +458,6 @@ class StarOfficeSyncService {
           }
         }
       }
-
-      // comment
       await this.syncProjectState(toProjectId, 'project_switch');
       console.log(`[star-office-sync] Synced new project ${toProjectId} agents to Star-Office-UI`);
     } finally {

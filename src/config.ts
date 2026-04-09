@@ -1,11 +1,8 @@
-// comment
+
 export const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3000';
 
 export const api = {
-  // comment
   health: () => fetch(`${API_BASE}/api/health`).then(r => r.json()),
-
-  // comment
   checkLogin: () => fetch(`${API_BASE}/api/check-login`).then(r => r.json()),
 
   // Agent
@@ -31,8 +28,6 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ projectId })
     }).then(r => r.json()),
-
-  // comment
   getProposals: (projectId?: string) => {
     const params = new URLSearchParams();
     if (projectId) params.set('projectId', projectId);
@@ -51,8 +46,6 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ decision, comment })
     }).then(r => r.json()),
-
-  // comment
   getGames: (projectId?: string) => {
     const params = new URLSearchParams();
     if (projectId) params.set('projectId', projectId);
@@ -81,8 +74,6 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     }).then(r => r.json()),
-
-  // comment
   getLogs: (projectId?: string, agentId?: string) => {
     const params = new URLSearchParams();
     if (agentId) params.set('agentId', agentId);
@@ -94,26 +85,18 @@ export const api = {
     const query = params.toString();
     return fetch(`${API_BASE}/api/projects/${projectId || 'default'}/logs${query ? `?${query}` : ''}`, { method: 'DELETE' }).then(r => r.json());
   },
-
-  // comment
   getCommands: (projectId?: string) => {
     const params = new URLSearchParams();
     if (projectId) params.set('projectId', projectId);
     return fetch(`${API_BASE}/api/commands?${params}`).then(r => r.json());
   },
-
-  // comment
   getModels: () => fetch(`${API_BASE}/api/models`).then(r => r.json()),
-
-  // comment
   respondPermission: (requestId: string, behavior: 'allow' | 'deny', message?: string, projectId?: string, updatedInput?: Record<string, unknown>) =>
     fetch(`${API_BASE}/api/permission-response`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ requestId, behavior, message, projectId, updatedInput })
     }).then(r => r.json()),
-
-  // comment
   getHandoffs: (projectId?: string, agentId?: string, status?: string) => {
     const params = new URLSearchParams();
     if (projectId) params.set('projectId', projectId);
@@ -149,8 +132,6 @@ export const api = {
     }).then(r => r.json()),
   cancelHandoff: (id: string) =>
     fetch(`${API_BASE}/api/handoffs/${id}/cancel`, { method: 'POST' }).then(r => r.json()),
-
-  // comment
   getTasks: (projectId?: string) => {
     const params = new URLSearchParams();
     if (projectId) params.set('projectId', projectId);
@@ -175,8 +156,6 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status, updated_by })
     }).then(r => r.json()),
-
-  // comment
   getAgentMemories: (agentId: string, projectId?: string, category?: string) => {
     const params = new URLSearchParams();
     if (projectId) params.set('projectId', projectId);
@@ -191,15 +170,11 @@ export const api = {
     }).then(r => r.json()),
   deleteMemory: (id: string) =>
     fetch(`${API_BASE}/api/memories/${id}`, { method: 'DELETE' }).then(r => r.json()),
-
-  // comment
   observeUrl: (projectId?: string) => {
     const params = new URLSearchParams();
     if (projectId) params.set('projectId', projectId);
     return `${API_BASE}/api/observe?${params}`;
   },
-
-  // comment
   commandAgentUrl: (agentId: string) => `${API_BASE}/api/agents/${agentId}/command`,
   commandAgent: (agentId: string, message: string, model?: string, projectId?: string) =>
     fetch(`${API_BASE}/api/agents/${agentId}/command`, {

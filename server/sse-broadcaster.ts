@@ -1,5 +1,4 @@
 /**
- * comment
  */
 import express from 'express';
 
