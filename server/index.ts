@@ -40,9 +40,8 @@ const validateProjectIdInput = (value: unknown, fieldName: string): { ok: true; 
   if (typeof value !== 'string') return { ok: false, error: `${fieldName} 必须是字符串` };
   const raw = value.trim();
   if (!raw) return { ok: true, projectId: DEFAULT_PROJECT_ID };
-  if (raw.length > MAX_PROJECT_ID_LENGTH || !PROJECT_ID_PATTERN.test(raw)) {
-    return { ok: false, error: `${fieldName} 不合法，请使用字母数字下划线或短横线，且长度不超过 ${MAX_PROJECT_ID_LENGTH}` };
-  }
+  if (raw.length > MAX_PROJECT_ID_LENGTH) return { ok: false, error: `${fieldName} 长度不能超过 ${MAX_PROJECT_ID_LENGTH}` };
+  if (!PROJECT_ID_PATTERN.test(raw)) return { ok: false, error: `${fieldName} 不合法，请使用字母数字下划线或短横线` };
   return { ok: true, projectId: raw };
 };
 
@@ -899,18 +898,21 @@ app.post('/api/games', (req, res) => {
   if (proposal_id !== undefined && proposal_id !== null && typeof proposal_id !== 'string') {
     return res.status(400).json({ error: 'proposal_id 必须是字符串' });
   }
+  const normalizedVersion = typeof version === 'string' ? version.trim() : undefined;
+  const normalizedName = typeof name === 'string' ? name.trim() : '';
+  const normalizedHtml = typeof html_content === 'string' ? html_content.trim() : '';
   if (version !== undefined && version !== null) {
     if (typeof version !== 'string') {
       return res.status(400).json({ error: 'version 必须是字符串' });
     }
-    if (version.trim().length === 0 || version.trim().length > MAX_VERSION_LENGTH) {
+    if (!normalizedVersion || normalizedVersion.length > MAX_VERSION_LENGTH) {
       return res.status(400).json({ error: `version 长度必须在 1-${MAX_VERSION_LENGTH} 之间` });
     }
   }
-  if (typeof name !== 'string' || name.trim().length === 0 || name.trim().length > MAX_FILENAME_LENGTH) {
+  if (!normalizedName || normalizedName.length > MAX_FILENAME_LENGTH) {
     return res.status(400).json({ error: `name 长度必须在 1-${MAX_FILENAME_LENGTH} 之间` });
   }
-  if (typeof html_content !== 'string' || html_content.trim().length === 0) {
+  if (!normalizedHtml) {
     return res.status(400).json({ error: 'html_content 必须是非空字符串' });
   }
 
@@ -918,11 +920,11 @@ app.post('/api/games', (req, res) => {
   const game = db.createGame({
     id: uuidv4(),
     project_id: projectValidation.projectId,
-    name,
+    name: normalizedName,
     description: description || null,
-    html_content,
+    html_content: normalizedHtml,
     proposal_id: proposal_id || null,
-    version: version || '1.0.0',
+    version: normalizedVersion || '1.0.0',
     status: 'draft',
     author_agent_id: gameAuthorValidation.agentId,
     created_at: now,
