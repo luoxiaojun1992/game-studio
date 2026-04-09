@@ -25,6 +25,7 @@ const TASK_TYPES = new Set<db.DbTaskBoardTask['task_type']>(['development', 'tes
 const HANDOFF_PRIORITIES = new Set<db.DbHandoff['priority']>(['low', 'normal', 'high', 'urgent']);
 const USER_DECISIONS = new Set(['approved', 'rejected']);
 const AGENT_IDS = new Set<AgentRole>(Object.keys(AGENT_DEFINITIONS) as AgentRole[]);
+const AGENT_ID_OPTIONS_TEXT = Array.from(AGENT_IDS).join(' / ');
 
 // Normalizes any project selector to a safe runtime project id.
 const normalizeProjectId = (value: unknown): string => {
@@ -41,6 +42,15 @@ const validateProjectIdInput = (value: unknown, fieldName: string): { ok: true; 
     return { ok: false, error: `${fieldName} 不合法，请使用字母数字下划线或短横线，且长度不超过 ${MAX_PROJECT_ID_LENGTH}` };
   }
   return { ok: true, projectId: raw };
+};
+
+const validateAgentIdInput = (value: unknown, fieldName: string): { ok: true; agentId: AgentRole } | { ok: false; error: string } => {
+  if (typeof value !== 'string') return { ok: false, error: `${fieldName} 必须是字符串` };
+  const agentId = value.trim();
+  if (!AGENT_IDS.has(agentId as AgentRole)) {
+    return { ok: false, error: `${fieldName} 不合法，可选值：${AGENT_ID_OPTIONS_TEXT}` };
+  }
+  return { ok: true, agentId: agentId as AgentRole };
 };
 
 app.use(express.json({ limit: '10mb' }));
@@ -454,10 +464,11 @@ app.post('/api/handoffs', (req, res) => {
   if (!from_agent_id || !to_agent_id || !title || !description) {
     return res.status(400).json({ error: '缺少必要字段：from_agent_id, to_agent_id, title, description' });
   }
-  if (typeof from_agent_id !== 'string' || typeof to_agent_id !== 'string' || !AGENT_IDS.has(from_agent_id as AgentRole) || !AGENT_IDS.has(to_agent_id as AgentRole)) {
-    return res.status(400).json({ error: 'from_agent_id / to_agent_id 不合法' });
-  }
-  if (from_agent_id === to_agent_id) {
+  const fromAgentValidation = validateAgentIdInput(from_agent_id, 'from_agent_id');
+  if (!fromAgentValidation.ok) return res.status(400).json({ error: fromAgentValidation.error });
+  const toAgentValidation = validateAgentIdInput(to_agent_id, 'to_agent_id');
+  if (!toAgentValidation.ok) return res.status(400).json({ error: toAgentValidation.error });
+  if (fromAgentValidation.agentId === toAgentValidation.agentId) {
     return res.status(400).json({ error: 'from_agent_id 与 to_agent_id 不能相同' });
   }
   if (priority !== undefined && !HANDOFF_PRIORITIES.has(priority)) {
@@ -473,8 +484,8 @@ app.post('/api/handoffs', (req, res) => {
   const handoff = db.createHandoff({
     id: uuidv4(),
     project_id: projectId,
-    from_agent_id,
-    to_agent_id,
+      from_agent_id: fromAgentValidation.agentId,
+      to_agent_id: toAgentValidation.agentId,
     title,
     description,
     context: context || null,
@@ -656,9 +667,8 @@ app.post('/api/tasks', (req, res) => {
   if (!TASK_TYPES.has(task_type)) {
     return res.status(400).json({ error: 'task_type 仅支持 development 或 testing' });
   }
-  if (typeof created_by !== 'string' || !AGENT_IDS.has(created_by as AgentRole)) {
-    return res.status(400).json({ error: 'created_by 不合法' });
-  }
+  const createdByValidation = validateAgentIdInput(created_by, 'created_by');
+  if (!createdByValidation.ok) return res.status(400).json({ error: createdByValidation.error });
   if (split_testing_task !== undefined && typeof split_testing_task !== 'boolean') {
     return res.status(400).json({ error: 'split_testing_task 必须是布尔值' });
   }
@@ -672,8 +682,8 @@ app.post('/api/tasks', (req, res) => {
     task_type,
     status: 'todo',
     source_task_id: null,
-    created_by,
-    updated_by: created_by,
+    created_by: createdByValidation.agentId,
+    updated_by: createdByValidation.agentId,
     started_at: null,
     completed_at: null,
     created_at: now,
@@ -681,7 +691,7 @@ app.post('/api/tasks', (req, res) => {
   });
 
   sseBroadcaster.broadcast({ type: 'task_created', task }, task.project_id);
-  agentManager.addLog(task.project_id, created_by as AgentRole, '创建看板任务', `${task_type === 'development' ? '开发' : '测试'}任务: ${task.title}`, 'info');
+  agentManager.addLog(task.project_id, createdByValidation.agentId, '创建看板任务', `${task_type === 'development' ? '开发' : '测试'}任务: ${task.title}`, 'info');
 
   let testingTask: db.DbTaskBoardTask | null = null;
   if (split_testing_task && task_type === 'development') {
@@ -693,15 +703,15 @@ app.post('/api/tasks', (req, res) => {
       task_type: 'testing',
       status: 'todo',
       source_task_id: task.id,
-      created_by,
-      updated_by: created_by,
+      created_by: createdByValidation.agentId,
+      updated_by: createdByValidation.agentId,
       started_at: null,
       completed_at: null,
       created_at: now,
       updated_at: now
     });
     sseBroadcaster.broadcast({ type: 'task_created', task: testingTask }, testingTask.project_id);
-    agentManager.addLog(testingTask.project_id, created_by as AgentRole, '拆分测试任务', `从开发任务拆分测试任务: ${testingTask.title}`, 'info');
+    agentManager.addLog(testingTask.project_id, createdByValidation.agentId, '拆分测试任务', `从开发任务拆分测试任务: ${testingTask.title}`, 'info');
   }
 
   res.json({ task, testingTask });
@@ -816,9 +826,8 @@ app.post('/api/proposals', (req, res) => {
   if (typeof type !== 'string' || !PROPOSAL_TYPES.has(type as db.DbProposal['type'])) {
     return res.status(400).json({ error: 'type 不合法，仅支持 game_design / biz_design / tech_arch / tech_impl / ceo_review' });
   }
-  if (typeof author_agent_id !== 'string' || !AGENT_IDS.has(author_agent_id as AgentRole)) {
-    return res.status(400).json({ error: 'author_agent_id 不合法' });
-  }
+  const proposalAuthorValidation = validateAgentIdInput(author_agent_id, 'author_agent_id');
+  if (!proposalAuthorValidation.ok) return res.status(400).json({ error: proposalAuthorValidation.error });
 
   const now = new Date().toISOString();
   const proposal = db.createProposal({
@@ -827,7 +836,7 @@ app.post('/api/proposals', (req, res) => {
     type,
     title,
     content,
-    author_agent_id,
+    author_agent_id: proposalAuthorValidation.agentId,
     status: 'pending_review',
     reviewer_agent_id: null,
     review_comment: null,
@@ -841,7 +850,7 @@ app.post('/api/proposals', (req, res) => {
   db.ensureProject(proposal.project_id);
   const filePath = db.saveProposalToFile(proposal);
   sseBroadcaster.broadcast({ type: 'proposal_created', proposal, filePath }, proposal.project_id);
-  agentManager.addLog(proposal.project_id, author_agent_id as AgentRole, '提交提案', `提案: ${title}${filePath ? ` → 已保存到 ${path.basename(filePath)}` : ''}`, 'success');
+  agentManager.addLog(proposal.project_id, proposalAuthorValidation.agentId, '提交提案', `提案: ${title}${filePath ? ` → 已保存到 ${path.basename(filePath)}` : ''}`, 'success');
 
   res.json({ proposal, filePath });
 });
@@ -881,9 +890,8 @@ app.post('/api/games', (req, res) => {
   if (!name || !html_content || !author_agent_id) {
     return res.status(400).json({ error: '缺少必要字段' });
   }
-  if (typeof author_agent_id !== 'string' || !AGENT_IDS.has(author_agent_id as AgentRole)) {
-    return res.status(400).json({ error: 'author_agent_id 不合法' });
-  }
+  const gameAuthorValidation = validateAgentIdInput(author_agent_id, 'author_agent_id');
+  if (!gameAuthorValidation.ok) return res.status(400).json({ error: gameAuthorValidation.error });
   if (proposal_id !== undefined && proposal_id !== null && typeof proposal_id !== 'string') {
     return res.status(400).json({ error: 'proposal_id 必须是字符串' });
   }
@@ -912,7 +920,7 @@ app.post('/api/games', (req, res) => {
     proposal_id: proposal_id || null,
     version: version || '1.0.0',
     status: 'draft',
-    author_agent_id,
+    author_agent_id: gameAuthorValidation.agentId,
     created_at: now,
     updated_at: now
   });
@@ -920,7 +928,7 @@ app.post('/api/games', (req, res) => {
   const filePath = db.saveGameToFile(game);
 
   sseBroadcaster.broadcast({ type: 'game_submitted', game: { ...game, html_content: undefined, hasContent: true }, filePath }, game.project_id);
-  agentManager.addLog(game.project_id, author_agent_id as AgentRole, '提交游戏', `游戏: ${name} v${version || '1.0.0'}${filePath ? ` → 已保存到 ${path.basename(filePath)}` : ''}`, 'success');
+  agentManager.addLog(game.project_id, gameAuthorValidation.agentId, '提交游戏', `游戏: ${name} v${version || '1.0.0'}${filePath ? ` → 已保存到 ${path.basename(filePath)}` : ''}`, 'success');
 
   res.json({ game: { ...game, html_content: undefined }, filePath });
 });
