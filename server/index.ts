@@ -399,7 +399,7 @@ app.get('/api/handoffs', (req, res) => {
   let handoffs;
 
   if (agentId) {
-    // Agent-specific view returns DB-provided shape directly for compatibility.
+    // Agent-specific view returns the database result format directly for compatibility.
     const result = db.getHandoffsForAgent(projectId, agentId as string, limit ? parseInt(limit as string) : 20);
     return res.json(result);
   } else if (status) {
@@ -448,7 +448,7 @@ app.post('/api/handoffs', (req, res) => {
   sseBroadcaster.broadcast({ type: 'handoff_created', handoff }, handoff.project_id);
   agentManager.addLog(handoff.project_id, from_agent_id as AgentRole, '创建交接', `${from_agent_id} → ${to_agent_id}: ${title}`, 'info');
   if (autoHandoffEnabled) {
-    // In autopilot mode, dispatch immediately instead of waiting for manual accept/confirm.
+    // When auto-handoff is enabled, dispatch immediately instead of waiting for manual accept/confirm.
     agentManager.addLog(handoff.project_id, to_agent_id as AgentRole, '自动接收交接', `从 ${from_agent_id} 接手: ${title}`, 'success');
     agentManager.addLog(handoff.project_id, to_agent_id as AgentRole, '开始执行交接任务', `${handoff.title}`, 'success');
     agentManager.sendMessage(
