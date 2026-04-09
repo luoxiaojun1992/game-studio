@@ -26,7 +26,6 @@ export interface StreamEvent {
 }
 
 /**
- * Agent 管理器 - 管理所有游戏开发团队 Agent 的运行状态
  */
 class AgentManager extends EventEmitter {
   private agentStatesByProject: Map<string, Map<AgentRole, AgentState>> = new Map();
@@ -75,8 +74,6 @@ class AgentManager extends EventEmitter {
         lastActiveAt: null,
         isPaused: false
       });
-
-      // 从数据库恢复状态
       const dbSession = db.getAgentSession(scopedProjectId, agentId);
       if (dbSession) {
         const state = projectStates.get(agentId)!;
@@ -121,8 +118,6 @@ class AgentManager extends EventEmitter {
     const current = projectStates.get(agentId) || { id: agentId } as AgentState;
     const updated = { ...current, ...updates };
     projectStates.set(agentId, updated);
-
-    // 持久化到数据库
     const now = new Date().toISOString();
     const existingSession = db.getAgentSession(scopedProjectId, agentId);
     db.upsertAgentSession({
@@ -135,13 +130,10 @@ class AgentManager extends EventEmitter {
       created_at: existingSession?.created_at || now,
       updated_at: now
     });
-
-    // 广播状态变更
     this.emit('agent_status_changed', { projectId: scopedProjectId, agentId, state: updated });
   }
 
   /**
-   * 暂停 Agent
    */
   pauseAgent(projectId: string, agentId: AgentRole): void {
     const scopedProjectId = this.normalizeProjectId(projectId);
@@ -153,7 +145,6 @@ class AgentManager extends EventEmitter {
   }
 
   /**
-   * 恢复 Agent
    */
   resumeAgent(projectId: string, agentId: AgentRole): void {
     const scopedProjectId = this.normalizeProjectId(projectId);
@@ -165,7 +156,6 @@ class AgentManager extends EventEmitter {
   }
 
   /**
-   * 检查 Agent 是否暂停
    */
   isAgentPaused(projectId: string, agentId: AgentRole): boolean {
     const scopedProjectId = this.normalizeProjectId(projectId);
@@ -174,7 +164,6 @@ class AgentManager extends EventEmitter {
   }
 
   /**
-   * 添加系统日志（action/detail 风格）
    */
   addLog(projectId: string, agentId: AgentRole, action: string, detail: string | null, level: db.LogLevel = 'info'): void {
     const scopedProjectId = this.normalizeProjectId(projectId);
@@ -194,7 +183,6 @@ class AgentManager extends EventEmitter {
   }
 
   /**
-   * 添加 Agent 输出日志（text/tool/tool_result/done/error）
    */
   addAgentLogEntry(
     projectId: string,
@@ -221,7 +209,6 @@ class AgentManager extends EventEmitter {
   }
 
   /**
-   * 汇总工具输入参数，便于日志展示
    */
   private summarizeToolInput(toolName: string, input: Record<string, unknown>): string {
     try {
@@ -265,7 +252,6 @@ class AgentManager extends EventEmitter {
   }
 
   /**
-   * 汇总工具返回结果，便于日志展示
    */
   private summarizeToolResult(toolName: string, result: string, isError: boolean): string {
     if (isError) {
@@ -294,7 +280,6 @@ class AgentManager extends EventEmitter {
   }
 
   /**
-   * 工程师任务收尾校验：若存在未完成看板任务，不允许直接结束
    */
   private validateEngineerTaskBoardBeforeFinish(projectId: string): string | null {
     const tasks = db.getTaskBoardTasks(projectId)
@@ -326,7 +311,6 @@ class AgentManager extends EventEmitter {
   }
 
   /**
-   * 构建完整的 systemPrompt，注入长期记忆
    */
   private buildSystemPrompt(projectId: string, agentId: AgentRole): string {
     const agentDef = AGENT_DEFINITIONS[agentId];
@@ -335,7 +319,6 @@ class AgentManager extends EventEmitter {
   }
 
   /**
-   * 向 Agent 发送消息并获取流式响应
    */
   async sendMessage(
     projectId: string,
@@ -381,8 +364,6 @@ class AgentManager extends EventEmitter {
       }
       streamReleased = true;
     };
-
-    // 获取或创建 Agent 的数据库会话
     let agentDbSession = db.getAgentSession(scopedProjectId, agentId);
     if (!agentDbSession) {
       const now = new Date().toISOString();
@@ -397,8 +378,6 @@ class AgentManager extends EventEmitter {
         updated_at: now
       });
     }
-
-    // 保存用户消息
     const userMsgId = uuidv4();
     db.createAgentMessage({
       id: userMsgId,
@@ -415,7 +394,6 @@ class AgentManager extends EventEmitter {
     let toolCalls: any[] = [];
 
     try {
-      // ---- 创建 MCP 自定义工具服务器 ----
       const studioToolsServer = createStudioToolsServer(
         scopedProjectId,
         agentId,
@@ -426,13 +404,6 @@ class AgentManager extends EventEmitter {
           this.dispatchAutoHandoffTask(handoff);
         }
       );
-
-      // ---- canUseTool 回调 ----
-      // 现在逻辑大幅简化：
-      // 1. 自定义 MCP 工具：
-      //    - 读操作（save_memory, get_*, 无副作用）→ 自动放行
-      //    - 写操作 + 有副作用的（create_handoff, submit_proposal, submit_game）→ 需要用户确认
-      // 2. CodeBuddy 内置工具走正常权限流程
       const settings = db.getProjectSettings(scopedProjectId);
       const autopilotEnabled = settings.autopilot_enabled === 1;
 
@@ -446,7 +417,6 @@ class AgentManager extends EventEmitter {
         'get_pending_handoffs',
         'get_task',
         'get_tasks',
-        // autopilot 模式下自动放行所有写操作工具
         ...(autopilotEnabled ? ['create_handoff', 'submit_proposal', 'submit_game'] : []),
         ...(agentId === 'engineer' ? ['split_dev_test_tasks', 'update_task_status'] : [])
       ];
@@ -458,33 +428,22 @@ class AgentManager extends EventEmitter {
         'submit_proposal',
         'submit_game'
       ]);
-
-      // SDK 内置的纯读操作工具，自动放行（不弹窗）
       const READ_ONLY_SDK_TOOLS = ['Read', 'Grep', 'WebSearch', 'WebFetch', 'Glob'];
 
       const canUseTool: CanUseTool = async (toolName, input, options) => {
         const hasStudioPrefix = toolName.startsWith(STUDIO_TOOL_PREFIX);
         const actualTool = hasStudioPrefix ? toolName.replace(STUDIO_TOOL_PREFIX, '') : toolName;
         const isStudioTool = hasStudioPrefix || STUDIO_TOOL_NAMES.has(actualTool);
-
-        // 1. 自定义工具白名单自动放行
         if (isStudioTool) {
           if (CAN_AUTO_ALLOW.includes(actualTool)) {
             return { behavior: 'allow', updatedInput: input };
           }
-          // 写操作 / 副作用操作 → 走用户确认
         }
-
-        // 2. SDK 内置读操作工具自动放行（Read/Grep/WebSearch 等）
         if (READ_ONLY_SDK_TOOLS.includes(actualTool)) {
           return { behavior: 'allow', updatedInput: input };
         }
-
-        // 3. 其余工具（Write/Bash 等写操作）→ 走用户确认
         console.log(`[permission] Agent ${agentId} 请求权限: toolName=${toolName}, actualTool=${actualTool}, input=${JSON.stringify(input).slice(0, 200)}`);
         const requestId = uuidv4();
-        
-        // 持久化到数据库
         db.createPermissionRequest({
           id: requestId,
           project_id: scopedProjectId,
@@ -507,8 +466,6 @@ class AgentManager extends EventEmitter {
         };
         this.emit('stream_event', permEvent);
         if (onEvent) onEvent(permEvent);
-
-        // 等待用户响应
         return new Promise<PermissionResult>((resolve, reject) => {
           this.pendingPermissions.set(requestId, {
             resolve, reject, toolName, input, projectId: scopedProjectId, agentId, timestamp: Date.now()
@@ -522,7 +479,6 @@ class AgentManager extends EventEmitter {
             if (!pending) return;
             this.pendingPermissions.delete(requestId);
             this.pendingPermissionExpirations.delete(requestId);
-            // 更新数据库状态为过期
             db.expirePermissionRequest(requestId);
             pending.resolve({ behavior: 'deny', message: '权限请求已过期（24小时），请重新发起' });
           }, 24 * 60 * 60 * 1000);
@@ -558,7 +514,6 @@ class AgentManager extends EventEmitter {
       if (onEvent) onEvent(startEvent);
 
       for await (const msg of stream) {
-        // 检查是否被暂停中断
          if (this.isAgentPaused(scopedProjectId, agentId)) {
            const pauseEvent: StreamEvent = { type: 'agent_paused_mid_task', projectId: scopedProjectId, agentId, streamId };
           this.emit('stream_event', pauseEvent);
@@ -600,7 +555,6 @@ class AgentManager extends EventEmitter {
                 const toolEvent: StreamEvent = { type: 'tool', projectId: scopedProjectId, agentId, id: toolId, name: block.name, input: toolInput, status: 'running', streamId };
                 this.emit('stream_event', toolEvent);
                 if (onEvent) onEvent(toolEvent);
-                // 持久化工具调用
                 this.addAgentLogEntry(scopedProjectId, agentId, 'tool', inputSummary, { toolName: block.name });
               }
             }
@@ -624,12 +578,10 @@ class AgentManager extends EventEmitter {
             };
             this.emit('stream_event', toolResultEvent);
             if (onEvent) onEvent(toolResultEvent);
-            // 持久化工具结果
             const resultContent = (tool.result || '').slice(0, 500);
             this.addAgentLogEntry(scopedProjectId, agentId, 'tool_result', resultContent, { toolName: tool.name, isError });
           }
         } else if (msg.type === 'result') {
-          // 持久化最终文本回复
           if (fullResponse.length > 0) {
             this.addAgentLogEntry(scopedProjectId, agentId, 'text', fullResponse);
           }
@@ -647,13 +599,10 @@ class AgentManager extends EventEmitter {
           };
           this.emit('stream_event', doneEvent);
           if (onEvent) onEvent(doneEvent);
-          // 持久化完成标记
           const doneContent = `完成${msg.duration_ms ? ` (耗时 ${(msg.duration_ms / 1000).toFixed(1)}s)` : ''}`;
           this.addAgentLogEntry(scopedProjectId, agentId, 'done', doneContent);
         }
       }
-
-      // 保存助手消息
       const assistantMsgId = uuidv4();
       db.createAgentMessage({
         id: assistantMsgId,
@@ -669,7 +618,6 @@ class AgentManager extends EventEmitter {
       if (agentId === 'engineer') {
         const guardWarning = this.validateEngineerTaskBoardBeforeFinish(scopedProjectId);
         if (guardWarning) {
-          // 不中断 Agent，仅记录警告日志，下次启动时 Agent 会在 systemPrompt 中看到看板状态
           this.addLog(scopedProjectId, agentId, '任务板提醒', guardWarning, 'warn');
         }
       }
@@ -695,7 +643,6 @@ class AgentManager extends EventEmitter {
       const errorEvent: StreamEvent = { type: 'agent_error', projectId: scopedProjectId, agentId, streamId, error: error?.message || String(error) };
       this.emit('stream_event', errorEvent);
       if (onEvent) onEvent(errorEvent);
-      // 持久化错误
       this.addAgentLogEntry(scopedProjectId, agentId, 'error', error?.message || String(error), { isError: true });
       throw error;
     } finally {
@@ -706,18 +653,15 @@ class AgentManager extends EventEmitter {
   }
 
   /**
-   * 响应权限请求
    */
   respondToPermission(requestId: string, behavior: 'allow' | 'deny', message?: string, projectId?: string, updatedInput?: Record<string, unknown>): boolean {
     const pending = this.pendingPermissions.get(requestId);
     if (!pending) {
-      // 如果内存中没有，尝试从数据库恢复（服务重启后的情况）
       const dbRequest = db.getPermissionRequest(requestId);
       if (!dbRequest || dbRequest.status !== 'pending') return false;
       if (projectId && this.normalizeProjectId(projectId) !== this.normalizeProjectId(dbRequest.project_id)) {
         return false;
       }
-      // 更新数据库状态
       db.respondToPermissionRequest(requestId, behavior, message, updatedInput);
       return true;
     }
@@ -730,7 +674,6 @@ class AgentManager extends EventEmitter {
       clearTimeout(timer);
       this.pendingPermissionExpirations.delete(requestId);
     }
-    // 更新数据库状态
     db.respondToPermissionRequest(requestId, behavior, message, updatedInput);
     if (behavior === 'allow') {
       pending.resolve({ behavior: 'allow', updatedInput: updatedInput || pending.input });
@@ -741,17 +684,12 @@ class AgentManager extends EventEmitter {
   }
 
   /**
-   * 获取待处理的权限请求列表
    */
   getPendingPermissions(projectId?: string): Array<{ requestId: string; toolName: string; input: any; projectId: string; agentId: AgentRole; timestamp: number }> {
     const scopedProjectId = projectId ? this.normalizeProjectId(projectId) : undefined;
-    
-    // 从数据库读取待处理的权限请求
     const dbRequests = scopedProjectId 
       ? db.getPendingPermissionRequests(scopedProjectId)
       : [];
-    
-    // 合并内存中的请求（优先内存中的，因为可能有未持久化的实时请求）
     const memoryRequests = Array.from(this.pendingPermissions.entries())
       .filter(([, perm]) => !scopedProjectId || perm.projectId === scopedProjectId)
       .map(([requestId, perm]) => ({
@@ -762,8 +700,6 @@ class AgentManager extends EventEmitter {
         agentId: perm.agentId,
         timestamp: perm.timestamp
       }));
-    
-    // 将数据库请求转换为相同格式
     const dbFormattedRequests = dbRequests.map(req => ({
       requestId: req.id,
       toolName: req.tool_name,
@@ -772,14 +708,10 @@ class AgentManager extends EventEmitter {
       agentId: req.agent_id as AgentRole,
       timestamp: new Date(req.created_at).getTime()
     }));
-    
-    // 合并并去重（内存中的优先）
     const memoryIds = new Set(memoryRequests.map(r => r.requestId));
     const uniqueDbRequests = dbFormattedRequests.filter(r => !memoryIds.has(r.requestId));
     
     return [...memoryRequests, ...uniqueDbRequests];
   }
 }
-
-// 单例
 export const agentManager = new AgentManager();

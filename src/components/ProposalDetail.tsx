@@ -57,7 +57,6 @@ export default function ProposalDetail({ proposal, onDecide, onClose }: Props) {
 
   return (
     <div className="bg-gray-900 rounded-xl border border-gray-800 flex flex-col h-full">
-      {/* 头部 */}
       <div className="px-5 py-4 border-b border-gray-800 flex items-start justify-between">
         <div>
           <div className="text-xs text-gray-500 mb-1">{TYPE_LABELS[proposal.type] || proposal.type}</div>
@@ -71,7 +70,7 @@ export default function ProposalDetail({ proposal, onDecide, onClose }: Props) {
         <button onClick={onClose} className="text-gray-600 hover:text-gray-400 text-xl ml-4">✕</button>
       </div>
 
-      {/* 内容 */}
+      
       <div className="flex-1 overflow-y-auto p-5">
         <div className="prose prose-invert max-w-none">
           <pre className="whitespace-pre-wrap text-gray-300 text-sm leading-relaxed font-sans bg-gray-800/50 rounded-lg p-4 border border-gray-700">
@@ -79,7 +78,7 @@ export default function ProposalDetail({ proposal, onDecide, onClose }: Props) {
           </pre>
         </div>
 
-        {/* CEO 评审意见 */}
+        
         {proposal.reviewer_agent_id && proposal.review_comment && (
           <div className="mt-4 bg-blue-900/20 border border-blue-700/40 rounded-lg p-4">
             <div className="text-xs text-blue-400 font-medium mb-2">
@@ -91,7 +90,7 @@ export default function ProposalDetail({ proposal, onDecide, onClose }: Props) {
           </div>
         )}
 
-        {/* 用户决策记录 */}
+        
         {proposal.user_decision && (
           <div className={`mt-4 rounded-lg p-4 border ${
             proposal.user_decision === 'approved'
@@ -110,7 +109,7 @@ export default function ProposalDetail({ proposal, onDecide, onClose }: Props) {
         )}
       </div>
 
-      {/* 审批操作区 */}
+      
       {canDecide && (
         <div className="px-5 py-4 border-t border-gray-800 bg-gray-900/50">
           <div className="text-sm font-semibold text-gray-200 mb-3">🧑‍⚖️ {l('人工审批', 'Manual Review')}</div>

@@ -1,4 +1,4 @@
-// Agent 角色类型
+
 export type AgentRole = 'engineer' | 'architect' | 'game_designer' | 'biz_designer' | 'ceo';
 export type AgentStatus = 'idle' | 'working' | 'paused' | 'error';
 
@@ -24,8 +24,6 @@ export interface AgentState {
 export interface Agent extends AgentDefinition {
   state: AgentState;
 }
-
-// 提案类型
 export type ProposalType = 'game_design' | 'biz_design' | 'tech_arch' | 'tech_impl' | 'ceo_review';
 export type ProposalStatus =
   | 'pending_review'
@@ -53,8 +51,6 @@ export interface Proposal {
   created_at: string;
   updated_at: string;
 }
-
-// 游戏成品
 export interface Game {
   id: string;
   project_id: string;
@@ -69,8 +65,6 @@ export interface Game {
   updated_at: string;
   hasContent?: boolean;
 }
-
-// 日志
 export type LogLevel = 'info' | 'warn' | 'error' | 'success';
 export type LogType = 'system' | 'text' | 'tool' | 'tool_result' | 'done' | 'error' | 'user_command';
 export interface LogEntry {
@@ -85,8 +79,6 @@ export interface LogEntry {
   is_error: boolean;
   created_at: string;
 }
-
-// 指令
 export interface Command {
   id: string;
   target_agent_id: string;
@@ -96,8 +88,6 @@ export interface Command {
   created_at: string;
   executed_at: string | null;
 }
-
-// 消息
 export interface AgentMessage {
   id: string;
   agent_session_id: string;
@@ -108,8 +98,6 @@ export interface AgentMessage {
   tool_calls: any[] | null;
   created_at: string;
 }
-
-// 权限请求
 export interface PermissionRequest {
   requestId: string;
   toolName: string;
@@ -117,8 +105,6 @@ export interface PermissionRequest {
   agentId: AgentRole;
   timestamp: number;
 }
-
-// 任务交接
 export type HandoffStatus = 'pending' | 'accepted' | 'working' | 'completed' | 'rejected' | 'cancelled';
 export type HandoffPriority = 'low' | 'normal' | 'high' | 'urgent';
 
@@ -138,8 +124,6 @@ export interface Handoff {
   created_at: string;
   updated_at: string;
 }
-
-// 任务看板
 export type TaskType = 'development' | 'testing';
 export type TaskStatus = 'todo' | 'developing' | 'testing' | 'blocked' | 'done';
 
@@ -168,8 +152,6 @@ export interface ProjectSettings {
   project_id: string;
   autopilot_enabled: boolean;
 }
-
-// SSE 事件
 export interface SSEInitEvent {
   type: 'init';
   agents: AgentState[];
@@ -205,6 +187,4 @@ export type SSEEvent =
   | { type: 'task_created'; task: TaskBoardTask }
   | { type: 'task_updated'; task: TaskBoardTask }
   | { type: 'logs_cleared'; projectId: string; agentId: string | null };
-
-// 页面标签
 export type TabKey = 'overview' | 'pixel_studio' | 'proposals' | 'tasks' | 'games' | 'logs' | 'commands' | 'handoffs' | 'settings';

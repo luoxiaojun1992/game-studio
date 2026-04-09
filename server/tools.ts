@@ -1,9 +1,5 @@
 /**
- * 游戏开发工作室自定义工具
- * 使用 CodeBuddy Agent SDK 的 Custom Tools 机制注册
  *
- * 这些工具通过 MCP Server 直接注册到 SDK，Agent 可以像使用内置工具一样调用它们，
- * 不再需要通过 curl 调用 localhost API。
  */
 import { z } from 'zod';
 import { tool, createSdkMcpServer, type SdkMcpServerResult } from '@tencent-ai/agent-sdk';
@@ -13,16 +9,12 @@ import { AgentRole } from './agents.js';
 import { sseBroadcaster } from './sse-broadcaster.js';
 
 /**
- * 工具回调函数类型 — 用于记录日志
  */
 type ToolLogFn = (agentId: AgentRole, action: string, detail: string, level: 'info' | 'warn' | 'error' | 'success') => void;
 type AutoHandoffHook = (handoff: db.DbHandoff) => Promise<void> | void;
 
 /**
- * 创建工作室 MCP Server，包含所有自定义工具
  *
- * @param agentId - 当前 Agent 的角色 ID，用于标识操作来源
- * @param logFn - 日志记录函数
  */
 export function createStudioToolsServer(projectId: string, agentId: AgentRole, logFn?: ToolLogFn, onAutoHandoff?: AutoHandoffHook): SdkMcpServerResult {
   const log = logFn || (() => {});
@@ -66,8 +58,6 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
     name: 'studio-tools',
     version: '1.0.0',
     tools: [
-      // ==================== 记忆工具 ====================
-
       tool(
         'save_memory',
         '保存一条长期记忆。在做出重要决策、获得经验教训、产出成果等关键时刻，你应该主动调用此工具保存信息。',
@@ -121,9 +111,6 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           };
         }
       ),
-
-      // ==================== 交接工具 ====================
-
       tool(
         'create_handoff',
         '将任务移交给其他团队成员。当你完成自己的工作部分，需要其他 Agent 接手时调用此工具。交接需要管理者确认后目标 Agent 才会开始工作。',
@@ -187,9 +174,6 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           };
         }
       ),
-
-      // ==================== 任务看板工具 ====================
-
       tool(
         'split_dev_test_tasks',
         '将一个功能目标拆分为开发任务和测试任务，并写入任务看板。',
@@ -330,9 +314,6 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           };
         }
       ),
-
-      // ==================== 提案工具 ====================
-
       tool(
         'submit_proposal',
         '提交一份策划案或方案文档（如游戏策划案、商业策划案、技术方案等）。提案提交后将通知管理者进行审批。',
@@ -383,9 +364,6 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           };
         }
       ),
-
-      // ==================== 游戏工具 ====================
-
       tool(
         'submit_game',
         '提交一个完成的游戏成品（单文件 HTML）。游戏将被保存到数据库和产出目录中。',
@@ -422,9 +400,6 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           };
         }
       ),
-
-      // ==================== 查询工具 ====================
-
       tool(
         'get_proposals',
         '查询已有的提案列表，用于了解当前项目的策划案进度。',
@@ -481,7 +456,6 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 }
 
 /**
- * 获取 Agent 的记忆摘要，用于注入到 systemPrompt
  */
 export function getMemorySummaryForPrompt(projectId: string, agentId: AgentRole): string {
   const memories = db.getAgentMemories(projectId, agentId, undefined, 20);

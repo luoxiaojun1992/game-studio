@@ -5,30 +5,18 @@ import fs from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-// 产出目录相关常量（必须在 ensureProject 调用之前初始化）
 const PROJECT_ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
 const MAX_PROJECT_ID_LENGTH = 64;
 const MAX_FILENAME_LENGTH = 50;
 const MAX_VERSION_LENGTH = 30;
-
-// 数据库文件路径
 const dbPath = path.join(__dirname, '..', 'data', 'studio.db');
-
-// 确保 data 目录存在
 const dataDir = path.dirname(dbPath);
 if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
-
-// 创建数据库连接
 const db = new Database(dbPath);
-
-// 启用 WAL 模式以提高性能
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
-
-// 初始化数据库表
 db.exec(`
   -- 项目表
   CREATE TABLE IF NOT EXISTS projects (
@@ -270,9 +258,6 @@ function ensureProjectIsolationColumns(): void {
 
 ensureProjectIsolationColumns();
 ensureProject('default');
-
-// ============= 类型定义 =============
-
 export interface DbAgentSession {
   id: string;
   project_id: string;
@@ -326,9 +311,6 @@ export interface DbGame {
   created_at: string;
   updated_at: string;
 }
-
-// ============= 统一日志 =============
-
 export type LogLevel = 'info' | 'warn' | 'error' | 'success';
 export type LogType = 'system' | 'text' | 'tool' | 'tool_result' | 'done' | 'error' | 'user_command';
 
@@ -408,9 +390,6 @@ export interface DbProjectSettings {
   created_at: string;
   updated_at: string;
 }
-
-// ============= Agent 会话操作 =============
-
 export function getAgentSession(projectId: string, agentId: string): DbAgentSession | undefined {
   const stmt = db.prepare('SELECT * FROM agent_sessions WHERE project_id = ? AND agent_id = ? ORDER BY updated_at DESC LIMIT 1');
   return stmt.get(projectId, agentId) as DbAgentSession | undefined;
@@ -448,9 +427,6 @@ export function updateAgentStatus(projectId: string, agentId: string, status: Db
     stmt.run(status, currentTask !== undefined ? currentTask : existing.current_task, new Date().toISOString(), existing.id);
   }
 }
-
-// ============= Agent 消息操作 =============
-
 export function getAgentMessages(projectId: string, agentId: string, limit = 50): DbAgentMessage[] {
   const session = getAgentSession(projectId, agentId);
   if (!session) return [];
@@ -466,9 +442,6 @@ export function createAgentMessage(message: DbAgentMessage): DbAgentMessage {
   stmt.run(message.id, message.agent_session_id, message.agent_id, message.role, message.content, message.model, message.tool_calls, message.created_at);
   return message;
 }
-
-// ============= 提案操作 =============
-
 export function getAllProposals(): DbProposal[] {
   const stmt = db.prepare('SELECT * FROM proposals ORDER BY created_at DESC');
   return stmt.all() as DbProposal[];
@@ -522,9 +495,6 @@ export function updateProposal(id: string, updates: Partial<DbProposal>): boolea
   const result = stmt.run(...values);
   return result.changes > 0;
 }
-
-// ============= 游戏操作 =============
-
 export function getAllGames(): DbGame[] {
   const stmt = db.prepare('SELECT * FROM games ORDER BY created_at DESC');
   return stmt.all() as DbGame[];
@@ -574,9 +544,6 @@ export function updateGame(id: string, updates: Partial<DbGame>): boolean {
   const result = stmt.run(...values);
   return result.changes > 0;
 }
-
-// ============= 统一日志操作 =============
-
 export function addLog(log: DbLog): void {
   const stmt = db.prepare(`
     INSERT INTO logs (id, project_id, agent_id, log_type, level, content, tool_name, action, is_error, created_at)
@@ -604,9 +571,6 @@ export function deleteLogs(projectId: string, agentId?: string): void {
   const stmt = db.prepare('DELETE FROM logs WHERE project_id = ?');
   stmt.run(projectId);
 }
-
-// ============= 指令操作 =============
-
 export function createCommand(command: DbCommand): DbCommand {
   const stmt = db.prepare(`
     INSERT INTO commands (id, project_id, target_agent_id, content, status, result, created_at, executed_at)
@@ -638,9 +602,6 @@ export function getAllCommands(projectId: string, limit = 50): DbCommand[] {
   const stmt = db.prepare('SELECT * FROM commands WHERE project_id = ? ORDER BY created_at DESC LIMIT ?');
   return stmt.all(projectId, limit) as DbCommand[];
 }
-
-// ============= 权限请求操作 =============
-
 export interface DbPermissionRequest {
   id: string;
   project_id: string;
@@ -702,9 +663,6 @@ export function getPermissionRequest(id: string): DbPermissionRequest | null {
   const result = stmt.get(id) as DbPermissionRequest | undefined;
   return result || null;
 }
-
-// ============= 任务交接操作 =============
-
 export function createHandoff(handoff: DbHandoff): DbHandoff {
   const stmt = db.prepare(`
     INSERT INTO handoffs (id, project_id, from_agent_id, to_agent_id, title, description, context, status, priority, result, accepted_at, completed_at, source_command_id, created_at, updated_at)
@@ -757,29 +715,18 @@ export function updateHandoff(id: string, updates: Partial<DbHandoff>): boolean 
   const result = stmt.run(...values);
   return result.changes > 0;
 }
-
-// ============= 清除消息操作 =============
-
 /**
- * 清除指定 Agent 的所有消息和会话，重置 SDK session
  */
 export function clearAgentMessages(projectId: string, agentId: string): boolean {
   const session = getAgentSession(projectId, agentId);
   if (!session) return true;
-
-  // 删除该会话的所有消息
   const deleteMsgs = db.prepare('DELETE FROM agent_messages WHERE agent_session_id = ?');
   deleteMsgs.run(session.id);
-
-  // 重置会话，清除 sdk_session_id（使下次对话从新会话开始）
   const updateSession = db.prepare('UPDATE agent_sessions SET sdk_session_id = NULL, current_task = NULL, updated_at = ? WHERE id = ?');
   updateSession.run(new Date().toISOString(), session.id);
 
   return true;
 }
-
-// ============= Agent 长期记忆操作 =============
-
 export function createAgentMemory(memory: DbAgentMemory): DbAgentMemory {
   const stmt = db.prepare(`
     INSERT INTO agent_memories (id, project_id, agent_id, category, content, importance, source_task, created_at, updated_at)
@@ -814,9 +761,6 @@ export function clearAgentMemories(projectId: string, agentId: string): boolean 
   stmt.run(projectId, agentId);
   return true;
 }
-
-// ============= 任务看板操作 =============
-
 export function createTaskBoardTask(task: DbTaskBoardTask): DbTaskBoardTask {
   const stmt = db.prepare(`
     INSERT INTO task_board_tasks (
@@ -943,7 +887,6 @@ export function ensureProject(projectId: string): void {
     const now = new Date().toISOString();
     createProject({ id: safeProjectId, name: safeProjectId, created_at: now, updated_at: now });
   }
-  // 确保项目配置存在（首次访问项目时自动初始化默认配置）
   getProjectSettings(safeProjectId);
 }
 
@@ -965,10 +908,6 @@ export function updateTaskBoardTask(id: string, updates: Partial<DbTaskBoardTask
   const result = stmt.run(...values);
   return result.changes > 0;
 }
-
-// ============= 产出目录操作 =============
-
-// 产出根目录
 const OUTPUT_DIR = path.join(__dirname, '..', 'output');
 
 function sanitizeFilename(value: string, maxLength: number): string {
@@ -997,7 +936,6 @@ function resolveSafePath(baseDir: string, fileName: string): string {
 }
 
 /**
- * 确保产出目录存在
  */
 export function ensureOutputDir(): string {
   if (!fs.existsSync(OUTPUT_DIR)) {
@@ -1010,7 +948,6 @@ function ensureProjectOutputDirs(projectId: string): { projectDir: string; propo
   const root = ensureOutputDir();
   const safeProjectId = normalizeProjectId(projectId);
   const projectDir = path.join(root, safeProjectId);
-  // 统一采用 output/{projectId}/proposals 与 output/{projectId}/games 两类产出目录，避免混放。
   const proposalsDir = path.join(projectDir, 'proposals');
   const gamesDir = path.join(projectDir, 'games');
   [projectDir, proposalsDir, gamesDir].forEach((dir) => {
@@ -1020,7 +957,6 @@ function ensureProjectOutputDirs(projectId: string): { projectDir: string; propo
 }
 
 /**
- * 保存策划案到产出目录
  */
 export function saveProposalToFile(proposal: DbProposal): string | null {
   const { proposalsDir } = ensureProjectOutputDirs(proposal.project_id);
@@ -1044,7 +980,6 @@ export function saveProposalToFile(proposal: DbProposal): string | null {
 }
 
 /**
- * 保存游戏到产出目录
  */
 export function saveGameToFile(game: DbGame): string | null {
   const { gamesDir } = ensureProjectOutputDirs(game.project_id);
