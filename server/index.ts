@@ -16,17 +16,20 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 const DEFAULT_PROJECT_ID = 'default';
-const PROJECT_ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
-const MAX_PROJECT_ID_LENGTH = 64;
-const MAX_FILENAME_LENGTH = 50;
-const MAX_VERSION_LENGTH = 30;
+const PROJECT_ID_PATTERN = db.PROJECT_ID_PATTERN;
+const MAX_PROJECT_ID_LENGTH = db.MAX_PROJECT_ID_LENGTH;
+const MAX_FILENAME_LENGTH = db.MAX_FILENAME_LENGTH;
+const MAX_VERSION_LENGTH = db.MAX_VERSION_LENGTH;
 const PROPOSAL_TYPES = new Set<db.DbProposal['type']>(['game_design', 'biz_design', 'tech_arch', 'tech_impl', 'ceo_review']);
 const TASK_TYPES = new Set<db.DbTaskBoardTask['task_type']>(['development', 'testing']);
 const HANDOFF_PRIORITIES = new Set<db.DbHandoff['priority']>(['low', 'normal', 'high', 'urgent']);
 const USER_DECISIONS = new Set(['approved', 'rejected']);
-const AGENT_ID_VALUES: AgentRole[] = ['engineer', 'architect', 'game_designer', 'biz_designer', 'ceo'];
-const AGENT_IDS = new Set<AgentRole>(AGENT_ID_VALUES);
-const AGENT_ID_OPTIONS_TEXT = AGENT_ID_VALUES.join(' / ');
+let cachedAgentIdOptions: AgentRole[] | null = null;
+const getAgentIdOptions = (): AgentRole[] => {
+  if (cachedAgentIdOptions) return cachedAgentIdOptions;
+  cachedAgentIdOptions = getAllAgents().map(agent => agent.id);
+  return cachedAgentIdOptions;
+};
 
 // Normalizes any project selector to a safe runtime project id.
 const normalizeProjectId = (value: unknown): string => {
@@ -47,10 +50,12 @@ const validateProjectIdInput = (value: unknown, fieldName: string): { ok: true; 
 const isProposalType = (value: string): value is db.DbProposal['type'] => PROPOSAL_TYPES.has(value as db.DbProposal['type']);
 
 const validateAgentIdInput = (value: unknown, fieldName: string): { ok: true; agentId: AgentRole } | { ok: false; error: string } => {
+  const options = getAgentIdOptions();
+  const allowed = new Set<AgentRole>(options);
   if (typeof value !== 'string') return { ok: false, error: `${fieldName} 必须是字符串` };
   const agentId = value.trim();
-  if (!AGENT_IDS.has(agentId as AgentRole)) {
-    return { ok: false, error: `${fieldName} 不合法，可选值：${AGENT_ID_OPTIONS_TEXT}` };
+  if (!allowed.has(agentId as AgentRole)) {
+    return { ok: false, error: `${fieldName} 不合法，可选值：${options.join(' / ')}` };
   }
   return { ok: true, agentId: agentId as AgentRole };
 };
@@ -501,11 +506,11 @@ app.post('/api/handoffs', (req, res) => {
     updated_at: now,
   });
   sseBroadcaster.broadcast({ type: 'handoff_created', handoff }, handoff.project_id);
-  agentManager.addLog(handoff.project_id, from_agent_id as AgentRole, '创建交接', `${from_agent_id} → ${to_agent_id}: ${title}`, 'info');
+  agentManager.addLog(handoff.project_id, handoff.from_agent_id as AgentRole, '创建交接', `${handoff.from_agent_id} → ${handoff.to_agent_id}: ${title}`, 'info');
   if (autoHandoffEnabled) {
     // When auto-handoff is enabled, dispatch immediately instead of waiting for manual accept/confirm.
-    agentManager.addLog(handoff.project_id, to_agent_id as AgentRole, '自动接收交接', `从 ${from_agent_id} 接手: ${title}`, 'success');
-    agentManager.addLog(handoff.project_id, to_agent_id as AgentRole, '开始执行交接任务', `${handoff.title}`, 'success');
+    agentManager.addLog(handoff.project_id, handoff.to_agent_id as AgentRole, '自动接收交接', `从 ${handoff.from_agent_id} 接手: ${title}`, 'success');
+    agentManager.addLog(handoff.project_id, handoff.to_agent_id as AgentRole, '开始执行交接任务', `${handoff.title}`, 'success');
     agentManager.sendMessage(
       handoff.project_id,
       handoff.to_agent_id as AgentRole,
@@ -645,9 +650,14 @@ const TASK_STATUS_FLOW: Record<string, string[]> = {
 };
 
 app.get('/api/tasks', (req, res) => {
-  const projectValidation = validateProjectIdInput(req.query.projectId, 'projectId');
-  if (!projectValidation.ok) return res.status(400).json({ error: projectValidation.error });
-  const tasks = db.getTaskBoardTasks(projectValidation.projectId);
+  let tasks: db.DbTaskBoardTask[];
+  if (req.query.projectId === undefined) {
+    tasks = db.getTaskBoardTasks(undefined);
+  } else {
+    const projectValidation = validateProjectIdInput(req.query.projectId, 'projectId');
+    if (!projectValidation.ok) return res.status(400).json({ error: projectValidation.error });
+    tasks = db.getTaskBoardTasks(projectValidation.projectId);
+  }
   res.json({ tasks });
 });
 
@@ -887,11 +897,17 @@ app.post('/api/proposals/:id/decide', (req, res) => {
 // Game submission API.
 app.post('/api/games', (req, res) => {
   const { project_id, name, description, html_content, proposal_id, author_agent_id, version } = req.body;
+  const missing: string[] = [];
+  if (!name) missing.push('name');
+  if (!html_content) missing.push('html_content');
+  if (!author_agent_id) missing.push('author_agent_id');
+  if (missing.length > 0) {
+    return res.status(400).json({ error: `缺少必要字段：${missing.join(', ')}` });
+  }
+  if (typeof name !== 'string') return res.status(400).json({ error: 'name 必须是字符串' });
+  if (typeof html_content !== 'string') return res.status(400).json({ error: 'html_content 必须是字符串' });
   const projectValidation = validateProjectIdInput(project_id, 'project_id');
   if (!projectValidation.ok) return res.status(400).json({ error: projectValidation.error });
-  if (!name || !html_content || !author_agent_id) {
-    return res.status(400).json({ error: '缺少必要字段' });
-  }
   const gameAuthorValidation = validateAgentIdInput(author_agent_id, 'author_agent_id');
   if (!gameAuthorValidation.ok) return res.status(400).json({ error: gameAuthorValidation.error });
   if (proposal_id !== undefined && proposal_id !== null && typeof proposal_id !== 'string') {
@@ -933,7 +949,7 @@ app.post('/api/games', (req, res) => {
   const filePath = db.saveGameToFile(game);
 
   sseBroadcaster.broadcast({ type: 'game_submitted', game: { ...game, html_content: undefined, hasContent: true }, filePath }, game.project_id);
-  agentManager.addLog(game.project_id, gameAuthorValidation.agentId, '提交游戏', `游戏: ${name} v${version || '1.0.0'}${filePath ? ` → 已保存到 ${path.basename(filePath)}` : ''}`, 'success');
+  agentManager.addLog(game.project_id, gameAuthorValidation.agentId, '提交游戏', `游戏: ${game.name} v${game.version}${filePath ? ` → 已保存到 ${path.basename(filePath)}` : ''}`, 'success');
 
   res.json({ game: { ...game, html_content: undefined }, filePath });
 });

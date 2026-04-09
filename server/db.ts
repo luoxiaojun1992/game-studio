@@ -5,10 +5,10 @@ import fs from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const PROJECT_ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
-const MAX_PROJECT_ID_LENGTH = 64;
-const MAX_FILENAME_LENGTH = 50;
-const MAX_VERSION_LENGTH = 30;
+export const PROJECT_ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
+export const MAX_PROJECT_ID_LENGTH = 64;
+export const MAX_FILENAME_LENGTH = 50;
+export const MAX_VERSION_LENGTH = 30;
 const dbPath = path.join(__dirname, '..', 'data', 'studio.db');
 const dataDir = path.dirname(dbPath);
 if (!fs.existsSync(dataDir)) {
