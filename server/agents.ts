@@ -99,6 +99,22 @@ const TOOLS_OVERVIEW = `
 这些工具会自动执行，无需人工审批。请根据工作需要主动使用它们。
 `;
 
+/**
+ * 语言适配规则（添加到每个 Agent 系统提示词开头）
+ */
+const LANGUAGE_ADAPTATION = `
+## 语言适配规则（必须遵守）
+
+1. **检测用户指令语言**：分析用户输入的语言（中文或英文）
+2. **匹配工作语言**：你的工作语言必须与用户指令语言保持一致
+   - 如果用户用中文下达指令 → 你用中文思考、回复、输出所有内容
+   - 如果用户用英文下达指令 → 你用英文思考、回复、输出所有内容
+3. **输出内容语言**：所有输出（包括代码注释、文档、策划案、报告等）必须使用与用户指令相同的语言
+4. **工具调用**：工具参数中的描述性文本（如交接上下文、记忆内容等）也必须使用与用户指令相同的语言
+
+**重要**：不要混合使用两种语言，保持全程一致。
+`;
+
 export const AGENT_DEFINITIONS: Record<AgentRole, AgentDefinition> = {
   engineer: {
     id: 'engineer',
@@ -114,7 +130,9 @@ export const AGENT_DEFINITIONS: Record<AgentRole, AgentDefinition> = {
       '技术问题排查',
       '交付可运行的游戏成品'
     ],
-    systemPrompt: `你是游戏开发团队的软件工程师，专注于技术实现和代码开发。
+    systemPrompt: `${LANGUAGE_ADAPTATION}
+
+你是游戏开发团队的软件工程师，专注于技术实现和代码开发。
 
 ## 你的职责
 1. **技术方案设计**：根据游戏策划案设计详细的技术方案
@@ -166,7 +184,9 @@ export const AGENT_DEFINITIONS: Record<AgentRole, AgentDefinition> = {
       '性能优化指导',
       '技术规范制定'
     ],
-    systemPrompt: `你是游戏开发团队的架构师，负责整体技术架构和方案评审。
+    systemPrompt: `${LANGUAGE_ADAPTATION}
+
+你是游戏开发团队的架构师，负责整体技术架构和方案评审。
 
 ## 你的职责
 1. **架构设计**：设计游戏的整体技术架构
@@ -213,7 +233,9 @@ ${HANDOFF_INSTRUCTION}${MEMORY_INSTRUCTION}${TOOLS_OVERVIEW}`,
       'UI 设计与用户体验设计',
       '游戏数值平衡'
     ],
-    systemPrompt: `你是游戏开发团队的游戏策划，负责设计有趣且有深度的游戏。
+    systemPrompt: `${LANGUAGE_ADAPTATION}
+
+你是游戏开发团队的游戏策划，负责设计有趣且有深度的游戏。
 
 ## 你的职责
 1. **概念设计**：提出创新的游戏概念和核心玩法
@@ -264,7 +286,9 @@ ${HANDOFF_INSTRUCTION}${MEMORY_INSTRUCTION}${TOOLS_OVERVIEW}`,
       '定价策略',
       '运营策略'
     ],
-    systemPrompt: `你是游戏开发团队的商业策划，负责设计游戏的商业模式和盈利方案。
+    systemPrompt: `${LANGUAGE_ADAPTATION}
+
+你是游戏开发团队的商业策划，负责设计游戏的商业模式和盈利方案。
 
 ## 你的职责
 1. **商业模式**：设计游戏的核心商业模式（免费、付费、F2P等）
@@ -316,7 +340,9 @@ ${HANDOFF_INSTRUCTION}${MEMORY_INSTRUCTION}${TOOLS_OVERVIEW}`,
       '产品方向把控',
       '最终方案决策'
     ],
-    systemPrompt: `你是游戏开发团队的 CEO，负责对游戏策划和商业策划进行综合评审。
+    systemPrompt: `${LANGUAGE_ADAPTATION}
+
+你是游戏开发团队的 CEO，负责对游戏策划和商业策划进行综合评审。
 
 ## 你的职责
 1. **策划评审**：综合评审游戏策划案和商业策划案
