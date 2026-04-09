@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Agent, AgentRole, LogEntry } from '../types';
 import { api, API_BASE } from '../config';
+import { useI18n } from '../i18n';
 
 interface Props {
   agents: Agent[];
@@ -12,14 +13,6 @@ interface Props {
   onModelChange: (model: string) => void;
   onAgentChange?: (agentId: AgentRole) => void;
 }
-
-const AGENT_NAMES: Record<string, { name: string; emoji: string; color: string }> = {
-  engineer: { name: '软件工程师', emoji: '👨‍💻', color: '#0052D9' },
-  architect: { name: '架构师', emoji: '🏗️', color: '#00A870' },
-  game_designer: { name: '游戏策划', emoji: '🎮', color: '#9B30FF' },
-  biz_designer: { name: '商业策划', emoji: '💼', color: '#E37318' },
-  ceo: { name: 'CEO', emoji: '👔', color: '#C9353F' },
-};
 
 interface ModelInfo {
   modelId?: string;
@@ -33,6 +26,14 @@ interface ModelInfo {
 const getStorageKey = (projectId: string) => `commandPanel_lastAgent_${projectId}`;
 
 export default function CommandPanel({ agents, logs, projectId, selectedAgentId, onCommandSent, model, onModelChange, onAgentChange }: Props) {
+  const { l, locale, isZh } = useI18n();
+  const AGENT_NAMES: Record<string, { name: string; emoji: string; color: string }> = {
+    engineer: { name: isZh ? '软件工程师' : 'Engineer', emoji: '👨‍💻', color: '#0052D9' },
+    architect: { name: isZh ? '架构师' : 'Architect', emoji: '🏗️', color: '#00A870' },
+    game_designer: { name: isZh ? '游戏策划' : 'Game Designer', emoji: '🎮', color: '#9B30FF' },
+    biz_designer: { name: isZh ? '商业策划' : 'Business Designer', emoji: '💼', color: '#E37318' },
+    ceo: { name: 'CEO', emoji: '👔', color: '#C9353F' },
+  };
   // 从 localStorage 读取上次选择的 Agent（按项目隔离）
   const getSavedAgent = (): AgentRole | null => {
     const saved = localStorage.getItem(getStorageKey(projectId));
@@ -184,7 +185,7 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
   const renderLog = (log: LogEntry) => {
     const agentInfo = AGENT_NAMES[log.agent_id];
     const agentLabel = `${agentInfo?.emoji} ${agentInfo?.name || log.agent_id}`;
-    const timeStr = new Date(log.created_at).toLocaleTimeString('zh-CN');
+    const timeStr = new Date(log.created_at).toLocaleTimeString(locale);
     const isExpanded = expandedLog === log.id;
 
     // user_command（用户指令）- 青色背景
@@ -200,7 +201,7 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
           </span>
           {isLong && (
             <button onClick={() => toggleExpand(log.id)} className="text-cyan-500 hover:text-cyan-400 shrink-0 ml-1">
-              {isExpanded ? '收起' : '展开'}
+              {isExpanded ? l('收起', 'Collapse') : l('展开', 'Expand')}
             </button>
           )}
         </div>
@@ -220,7 +221,7 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
           </span>
           {isLong && (
             <button onClick={() => toggleExpand(log.id)} className="text-blue-500 hover:text-blue-400 shrink-0 ml-1">
-              {isExpanded ? '收起' : '展开'}
+              {isExpanded ? l('收起', 'Collapse') : l('展开', 'Expand')}
             </button>
           )}
         </div>
@@ -243,7 +244,7 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
           )}
           {log.content && log.content.length > 200 && (
             <button onClick={() => toggleExpand(log.id)} className="text-yellow-500 hover:text-yellow-400 shrink-0 ml-1">
-              {isExpanded ? '收起' : '展开'}
+              {isExpanded ? l('收起', 'Collapse') : l('展开', 'Expand')}
             </button>
           )}
         </div>
@@ -265,7 +266,7 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
           </span>
           {log.content.length > 200 && (
             <button onClick={() => toggleExpand(log.id)} className={`shrink-0 ml-1 ${log.is_error ? 'text-red-500' : 'text-green-500'}`}>
-              {isExpanded ? '收起' : '展开'}
+              {isExpanded ? l('收起', 'Collapse') : l('展开', 'Expand')}
             </button>
           )}
         </div>
@@ -312,7 +313,7 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
     <div className="flex gap-4 h-[calc(100vh-160px)]">
       {/* 左侧：Agent 选择 */}
       <div className="w-56 shrink-0 bg-gray-900 rounded-xl border border-gray-800 p-3">
-        <div className="text-xs text-gray-500 font-medium mb-2 px-1">选择 Agent</div>
+        <div className="text-xs text-gray-500 font-medium mb-2 px-1">{l('选择 Agent', 'Select Agent')}</div>
         <div className="space-y-1">
           {agents.map(agent => {
             const isSelected = agent.id === selectedAgent;
@@ -330,12 +331,12 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
                   <div className="text-xs">
                     {agent.state?.status === 'working' ? (
                       <span className="text-green-400 flex items-center gap-1">
-                        <span className="w-1 h-1 bg-green-400 rounded-full animate-pulse" />工作中
+                        <span className="w-1 h-1 bg-green-400 rounded-full animate-pulse" />{l('工作中', 'Working')}
                       </span>
                     ) : agent.state?.isPaused ? (
-                      <span className="text-yellow-400">已暂停</span>
+                      <span className="text-yellow-400">{l('已暂停', 'Paused')}</span>
                     ) : (
-                      <span className="text-gray-600">空闲</span>
+                      <span className="text-gray-600">{l('空闲', 'Idle')}</span>
                     )}
                   </div>
                 </div>
@@ -350,7 +351,7 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
             disabled={clearing || agentLogs.length === 0}
             className="w-full text-xs text-gray-500 hover:text-red-400 disabled:text-gray-700 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-1.5 py-1.5 rounded-lg hover:bg-red-900/20"
           >
-            🗑️ {clearing ? '清除中...' : '清除聊天记录'}
+            🗑️ {clearing ? l('清除中...', 'Clearing...') : l('清除聊天记录', 'Clear Chat History')}
           </button>
         </div>
       </div>
@@ -361,8 +362,8 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
         <div className="bg-gray-900 rounded-xl border border-gray-800 px-4 py-3 flex items-center gap-3 shrink-0">
           <span className="text-2xl">{currentAgent?.emoji}</span>
           <div>
-            <div className="font-semibold text-white text-sm">向 {currentAgent?.name} 下达指令</div>
-            <div className="text-xs text-gray-500">指令将以流式方式执行，结果实时显示</div>
+            <div className="font-semibold text-white text-sm">{l(`向 ${currentAgent?.name} 下达指令`, `Send command to ${currentAgent?.name}`)}</div>
+            <div className="text-xs text-gray-500">{l('指令将以流式方式执行，结果实时显示', 'Commands run in streaming mode with real-time output')}</div>
           </div>
           <div className="ml-auto flex items-center gap-3">
             <label className="flex items-center gap-1.5 text-xs text-gray-400 cursor-pointer">
@@ -372,7 +373,7 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
                 onChange={e => setAutoScroll(e.target.checked)}
                 className="rounded border-gray-600"
               />
-              自动滚动
+              {l('自动滚动', 'Auto Scroll')}
             </label>
             <select
               value={model}
@@ -383,7 +384,7 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
                 const id = m.modelId || (m as any).model || (m as any).id;
                 const label = m.name || id;
                 return (
-                  <option key={id} value={id}>{label}{id === models[0]?.modelId || id === models[0]?.id || id === models[0]?.model ? '（推荐）' : ''}</option>
+                  <option key={id} value={id}>{label}{id === models[0]?.modelId || id === models[0]?.id || id === models[0]?.model ? l('（推荐）', ' (Recommended)') : ''}</option>
                 );
               }) : (
                 <option value="glm-5.0">glm-5.0</option>
@@ -407,14 +408,14 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
         >
           {!hasContent ? (
             <div className="text-gray-700 text-center py-8">
-              <div className="text-3xl mb-2">⌨️</div>等待指令...
+              <div className="text-3xl mb-2">⌨️</div>{l('等待指令...', 'Waiting for command...')}
             </div>
           ) : (
             agentLogs.map(log => renderLog(log))
           )}
           {currentStreamText && (
             <div className="flex gap-2 px-2 py-0.5">
-              <span className="text-gray-600 shrink-0 tabular-nums">{new Date().toLocaleTimeString('zh-CN')}</span>
+              <span className="text-gray-600 shrink-0 tabular-nums">{new Date().toLocaleTimeString(locale)}</span>
               <span className="text-blue-400 shrink-0 font-bold">MSG </span>
               <span className="text-purple-400 shrink-0">{currentAgent?.emoji} {currentAgent?.name}</span>
               <span className="text-gray-300 whitespace-pre-wrap break-words">{currentStreamText}</span>
@@ -423,7 +424,7 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
           {streaming && (
             <div className="text-blue-400 flex items-center gap-2 px-2 py-1">
               <span className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" />
-              Agent 正在处理...
+              {l('Agent 正在处理...', 'Agent is processing...')}
             </div>
           )}
         </div>
@@ -440,7 +441,7 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
                   sendCommand();
                 }
               }}
-              placeholder={`向 ${currentAgent?.name} 下达指令... (Enter 发送，Shift+Enter 换行)`}
+               placeholder={l(`向 ${currentAgent?.name} 下达指令... (Enter 发送，Shift+Enter 换行)`, `Send command to ${currentAgent?.name}... (Enter to send, Shift+Enter for new line)`)}
               rows={3}
               disabled={streaming}
               className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-blue-600 resize-none disabled:opacity-50"
@@ -450,13 +451,13 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
               disabled={!message.trim() || streaming}
               className="px-4 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium transition-colors"
             >
-              {streaming ? '执行中...' : '发送'}
+              {streaming ? l('执行中...', 'Running...') : l('发送', 'Send')}
             </button>
           </div>
 
           {/* 快捷指令 */}
           <div className="mt-2 flex flex-wrap gap-1.5">
-            {getQuickCommands(selectedAgent).map((cmd, i) => (
+            {getQuickCommands(selectedAgent, isZh).map((cmd, i) => (
               <button
                 key={i}
                 onClick={() => setMessage(cmd)}
@@ -472,7 +473,37 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
   );
 }
 
-function getQuickCommands(agentId: AgentRole): string[] {
+function getQuickCommands(agentId: AgentRole, isZh: boolean): string[] {
+  if (!isZh) {
+    const enCmds: Record<AgentRole, string[]> = {
+      game_designer: [
+        'Create a complete design plan for a casual mobile game',
+        'Design a 2048-style number puzzle game',
+        'Create a design document for Snake game',
+      ],
+      biz_designer: [
+        'Design a business model for a casual game',
+        'Analyze competitors and draft a monetization plan',
+        'Create a launch and operations plan',
+      ],
+      ceo: [
+        'Review the latest game design proposal',
+        'Review both game and business proposals together',
+        'Provide product direction suggestions',
+      ],
+      architect: [
+        'Design the technical architecture for the game',
+        'Review the engineer technical plan',
+        'Define coding standards',
+      ],
+      engineer: [
+        'Build a Snake game from the proposal (single HTML file)',
+        'Build a 2048 number puzzle game',
+        'Write a testing plan for an existing game',
+      ],
+    };
+    return enCmds[agentId] || [];
+  }
   const cmds: Record<AgentRole, string[]> = {
     game_designer: [
       '请为一款休闲手机游戏制作完整策划案',

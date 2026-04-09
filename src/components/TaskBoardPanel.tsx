@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Agent, AgentRole, TaskBoardTask, TaskStatus, TaskType } from '../types';
 import { api } from '../config';
+import { useI18n } from '../i18n';
 
 interface Props {
   agents: Agent[];
@@ -8,14 +9,6 @@ interface Props {
   projectId: string;
   onTaskUpdated: (task: TaskBoardTask) => void;
 }
-
-const STATUS_COLUMNS: { key: TaskStatus; label: string }[] = [
-  { key: 'todo', label: '待开始' },
-  { key: 'developing', label: '开发中' },
-  { key: 'testing', label: '测试中' },
-  { key: 'blocked', label: '阻塞' },
-  { key: 'done', label: '已完成' },
-];
 
 const NEXT_STATUS_OPTIONS: Record<TaskStatus, TaskStatus[]> = {
   todo: ['developing', 'blocked'],
@@ -30,11 +23,20 @@ const AGENT_EMOJI: Record<string, string> = {
   biz_designer: '💼', ceo: '👔',
 };
 
-function typeLabel(type: TaskType): string {
-  return type === 'development' ? '开发' : '测试';
-}
-
 export default function TaskBoardPanel({ agents, tasks, projectId, onTaskUpdated }: Props) {
+  const { l } = useI18n();
+  const statusColumns: { key: TaskStatus; label: string }[] = [
+    { key: 'todo', label: l('待开始', 'To Do') },
+    { key: 'developing', label: l('开发中', 'Developing') },
+    { key: 'testing', label: l('测试中', 'Testing') },
+    { key: 'blocked', label: l('阻塞', 'Blocked') },
+    { key: 'done', label: l('已完成', 'Done') },
+  ];
+
+  const typeLabel = (type: TaskType): string => {
+    return type === 'development' ? l('开发', 'Development') : l('测试', 'Testing');
+  };
+
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -93,17 +95,17 @@ export default function TaskBoardPanel({ agents, tasks, projectId, onTaskUpdated
   return (
     <div className="h-full flex flex-col">
       <div className="shrink-0 flex items-center justify-between mb-4">
-        <h2 className="text-lg font-bold text-white">🗂️ 项目任务看板</h2>
+        <h2 className="text-lg font-bold text-white">🗂️ {l('项目任务看板', 'Task Board')}</h2>
         <button
           onClick={() => setShowCreate(true)}
           className="bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
         >
-          + 新建看板任务
+          {l('+ 新建看板任务', '+ New Task')}
         </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3 flex-1 min-h-0">
-        {STATUS_COLUMNS.map(col => (
+        {statusColumns.map(col => (
           <div key={col.key} className="bg-gray-900 border border-gray-800 rounded-xl p-3 flex flex-col min-h-0">
             <div className="text-sm font-semibold text-gray-200 mb-2">{col.label} · {grouped[col.key].length}</div>
             <div className="space-y-2 overflow-y-auto">
@@ -117,8 +119,8 @@ export default function TaskBoardPanel({ agents, tasks, projectId, onTaskUpdated
                   </div>
                   <div className="text-sm text-white font-medium mb-1">{task.title}</div>
                   {task.description && <div className="text-xs text-gray-400 mb-2 line-clamp-3">{task.description}</div>}
-                  {task.source_task_id && (
-                    <div className="text-[11px] text-gray-500 mb-2">来自开发任务拆分</div>
+                    {task.source_task_id && (
+                    <div className="text-[11px] text-gray-500 mb-2">{l('来自开发任务拆分', 'Split from development task')}</div>
                   )}
                   {NEXT_STATUS_OPTIONS[task.status].length > 0 && (
                     <div className="flex flex-wrap gap-1">
@@ -129,7 +131,7 @@ export default function TaskBoardPanel({ agents, tasks, projectId, onTaskUpdated
                           onClick={() => handleMove(task, next)}
                           className="text-[11px] px-2 py-0.5 rounded bg-gray-700 hover:bg-gray-600 text-gray-200 disabled:opacity-50"
                         >
-                          移动到{STATUS_COLUMNS.find(s => s.key === next)?.label}
+                          {l('移动到', 'Move to ')}{statusColumns.find(s => s.key === next)?.label}
                         </button>
                       ))}
                     </div>
@@ -137,7 +139,7 @@ export default function TaskBoardPanel({ agents, tasks, projectId, onTaskUpdated
                 </div>
               ))}
               {grouped[col.key].length === 0 && (
-                <div className="text-xs text-gray-600 py-8 text-center">暂无任务</div>
+                <div className="text-xs text-gray-600 py-8 text-center">{l('暂无任务', 'No tasks')}</div>
               )}
             </div>
           </div>
@@ -148,13 +150,13 @@ export default function TaskBoardPanel({ agents, tasks, projectId, onTaskUpdated
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
           <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-lg mx-4 shadow-2xl">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800">
-              <h3 className="text-lg font-bold text-white">🗂️ 新建看板任务</h3>
+              <h3 className="text-lg font-bold text-white">🗂️ {l('新建看板任务', 'New Task')}</h3>
               <button onClick={() => setShowCreate(false)} className="text-gray-500 hover:text-gray-300 text-xl">✕</button>
             </div>
 
             <div className="px-6 py-4 space-y-4">
               <div>
-                <label className="block text-xs text-gray-400 mb-1.5 font-medium">任务标题 *</label>
+                <label className="block text-xs text-gray-400 mb-1.5 font-medium">{l('任务标题', 'Title')} *</label>
                 <input
                   value={formTitle}
                   onChange={e => setFormTitle(e.target.value)}
@@ -162,7 +164,7 @@ export default function TaskBoardPanel({ agents, tasks, projectId, onTaskUpdated
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-400 mb-1.5 font-medium">任务描述</label>
+                <label className="block text-xs text-gray-400 mb-1.5 font-medium">{l('任务描述', 'Description')}</label>
                 <textarea
                   value={formDesc}
                   onChange={e => setFormDesc(e.target.value)}
@@ -172,18 +174,18 @@ export default function TaskBoardPanel({ agents, tasks, projectId, onTaskUpdated
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1.5 font-medium">任务类型</label>
+                  <label className="block text-xs text-gray-400 mb-1.5 font-medium">{l('任务类型', 'Type')}</label>
                   <select
                     value={formType}
                     onChange={e => setFormType(e.target.value as TaskType)}
                     className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
                   >
-                    <option value="development">开发任务</option>
-                    <option value="testing">测试任务</option>
+                    <option value="development">{l('开发任务', 'Development Task')}</option>
+                    <option value="testing">{l('测试任务', 'Testing Task')}</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1.5 font-medium">创建人</label>
+                  <label className="block text-xs text-gray-400 mb-1.5 font-medium">{l('创建人', 'Creator')}</label>
                   <select
                     value={formBy}
                     onChange={e => setFormBy(e.target.value as AgentRole)}
@@ -202,18 +204,18 @@ export default function TaskBoardPanel({ agents, tasks, projectId, onTaskUpdated
                   checked={splitTestingTask}
                   onChange={e => setSplitTestingTask(e.target.checked)}
                 />
-                自动拆分对应测试任务（仅开发任务生效）
+                {l('自动拆分对应测试任务（仅开发任务生效）', 'Auto split corresponding testing task (for development task only)')}
               </label>
             </div>
 
             <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-800">
-              <button onClick={() => setShowCreate(false)} className="bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium px-5 py-2 rounded-lg">取消</button>
+              <button onClick={() => setShowCreate(false)} className="bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium px-5 py-2 rounded-lg">{l('取消', 'Cancel')}</button>
               <button
                 onClick={handleCreate}
                 disabled={!formTitle.trim() || creating}
                 className="bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-medium px-5 py-2 rounded-lg"
               >
-                {creating ? '创建中...' : '创建任务'}
+                {creating ? l('创建中...', 'Creating...') : l('创建任务', 'Create Task')}
               </button>
             </div>
           </div>
