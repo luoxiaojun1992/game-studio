@@ -281,7 +281,6 @@ export default function LogPanel({ logs: externalLogs, agents, projectId }: Prop
 
   return (
     <div className="bg-gray-900 rounded-xl border border-gray-800 flex flex-col h-[calc(100vh-160px)]">
-      
       <div className="px-4 py-3 border-b border-gray-800 flex items-center gap-3 shrink-0">
         <span className="font-semibold text-gray-200 text-sm">{l('运行日志', 'Logs')}</span>
 

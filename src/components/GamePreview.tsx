@@ -41,7 +41,6 @@ export default function GamePreview({ game, onClose }: Props) {
 
   return (
     <div className="bg-gray-900 rounded-xl border border-gray-800 flex flex-col h-full">
-      
       <div className="px-5 py-3 border-b border-gray-800 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
           <span className="text-xl">🎮</span>

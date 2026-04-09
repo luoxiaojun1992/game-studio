@@ -102,7 +102,6 @@ export default function AgentCard({ agent, onPauseToggle, onSendCommand, streamL
       className={`bg-gray-900 rounded-xl border ${statusCfg.bg} p-4 flex flex-col gap-3 transition-all hover:border-opacity-80`}
       style={{ borderTopColor: agent.color, borderTopWidth: 3 }}
     >
-      
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-2">
             <span className="text-2xl">{agent.emoji}</span>

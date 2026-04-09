@@ -190,7 +190,6 @@ export default function HandoffPanel({ agents, projectId }: Props) {
 
   return (
     <div className="h-full flex flex-col">
-      
       <div className="shrink-0 flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <h2 className="text-lg font-bold text-white">🔄 {l('任务交接', 'Handoffs')}</h2>
@@ -341,12 +340,10 @@ export default function HandoffPanel({ agents, projectId }: Props) {
                   'border-gray-800'
                 }`}
               >
-                
                 <div
                   className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-gray-800/30"
                   onClick={() => setExpandedId(isExpanded ? null : handoff.id)}
                 >
-                  
                   <div className="flex items-center gap-1.5 shrink-0">
                     <span className="text-lg">{AGENT_EMOJI[handoff.from_agent_id]}</span>
                     <span className="text-gray-500 text-xs">→</span>
@@ -387,7 +384,6 @@ export default function HandoffPanel({ agents, projectId }: Props) {
                 
                 {isExpanded && (
                   <div className="border-t border-gray-800 px-4 py-3 space-y-3">
-                    
                     <div>
                       <div className="text-xs text-gray-500 mb-1 font-medium">{l('任务描述', 'Task Description')}</div>
                       <div className="text-sm text-gray-300 bg-gray-800/50 rounded-lg p-2.5 whitespace-pre-wrap leading-relaxed">
@@ -503,7 +499,6 @@ export default function HandoffPanel({ agents, projectId }: Props) {
             </div>
 
             <div className="px-6 py-4 space-y-4">
-              
               <div className="flex items-center gap-3">
                 <div className="flex-1">
                   <label className="block text-xs text-gray-400 mb-1.5 font-medium">{l('来源 Agent', 'From Agent')}</label>

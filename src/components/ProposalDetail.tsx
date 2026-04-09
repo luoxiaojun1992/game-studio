@@ -57,7 +57,6 @@ export default function ProposalDetail({ proposal, onDecide, onClose }: Props) {
 
   return (
     <div className="bg-gray-900 rounded-xl border border-gray-800 flex flex-col h-full">
-      
       <div className="px-5 py-4 border-b border-gray-800 flex items-start justify-between">
         <div>
           <div className="text-xs text-gray-500 mb-1">{TYPE_LABELS[proposal.type] || proposal.type}</div>

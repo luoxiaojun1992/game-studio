@@ -350,7 +350,6 @@ export default function StudioPage() {
 
   return (
     <div className="flex flex-col h-screen bg-gray-950 text-gray-100">
-      
       <header className="flex items-center justify-between px-6 py-3 bg-gray-900 border-b border-gray-800 shrink-0">
         <div className="flex items-center gap-3">
           <span className="text-2xl">🎮</span>
@@ -540,7 +539,6 @@ export default function StudioPage() {
       <main className="flex-1 overflow-auto p-4">
         {activeTab === 'overview' && (
           <div className="space-y-4">
-            
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
               {agents.map(agent => (
                 <AgentCard

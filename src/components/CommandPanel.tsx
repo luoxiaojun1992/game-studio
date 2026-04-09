@@ -283,7 +283,6 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
 
   return (
     <div className="flex gap-4 h-[calc(100vh-160px)]">
-      
       <div className="w-56 shrink-0 bg-gray-900 rounded-xl border border-gray-800 p-3">
         <div className="text-xs text-gray-500 font-medium mb-2 px-1">{l('选择 Agent', 'Select Agent')}</div>
         <div className="space-y-1">
@@ -330,7 +329,6 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
 
       
       <div className="flex-1 flex flex-col gap-3">
-        
         <div className="bg-gray-900 rounded-xl border border-gray-800 px-4 py-3 flex items-center gap-3 shrink-0">
           <span className="text-2xl">{currentAgent?.emoji}</span>
           <div>
