@@ -86,9 +86,12 @@ const TOOLS_OVERVIEW = `
 | \`submit_proposal\` | 提交策划案或方案文档 |
 | \`submit_game\` | 提交游戏成品（单文件 HTML） |
 | \`get_proposals\` | 查询已有的提案列表 |
+| \`get_agent_logs\` | 查询当前项目下你自己的历史日志 |
 | \`get_pending_handoffs\` | 查询待处理的任务交接 |
 
 这些工具会自动执行，无需人工审批。请根据工作需要主动使用它们。
+
+在收到新任务或继续历史任务前，优先调用 \`get_agent_logs\` 查看最近上下文，避免重复劳动和信息遗漏。
 `;
 
 /**
