@@ -407,17 +407,16 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           limit: z.number().min(1).max(200).optional().default(20).describe('返回条数上限')
         },
         async ({ limit }) => {
-          const logs = db.getLogs(scopedProjectId, agentId, limit || 20);
+          const logs = db.getLogs(scopedProjectId, agentId, limit);
           if (logs.length === 0) {
             return {
               content: [{ type: 'text' as const, text: '暂无历史日志。' }]
             };
           }
           const text = logs.map(logItem => {
-            const time = logItem.created_at.replace('T', ' ').slice(0, 19);
             const actionPart = logItem.action ? `[${logItem.action}] ` : '';
             const toolPart = logItem.tool_name ? ` (tool: ${logItem.tool_name})` : '';
-            return `[${time}][${logItem.level}/${logItem.log_type}] ${actionPart}${logItem.content}${toolPart}`;
+            return `[${logItem.created_at}][${logItem.level}/${logItem.log_type}] ${actionPart}${logItem.content}${toolPart}`;
           }).join('\n');
           return {
             content: [{ type: 'text' as const, text }]
