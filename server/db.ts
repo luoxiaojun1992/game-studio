@@ -190,6 +190,7 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_agent_memories_agent ON agent_memories(agent_id);
   CREATE INDEX IF NOT EXISTS idx_agent_memories_project_agent ON agent_memories(project_id, agent_id);
   CREATE INDEX IF NOT EXISTS idx_agent_memories_category ON agent_memories(category);
+  CREATE INDEX IF NOT EXISTS idx_agent_memories_project_agent_created_at ON agent_memories(project_id, agent_id, created_at DESC);
 
   -- 任务看板表（开发/测试任务及状态）
   CREATE TABLE IF NOT EXISTS task_board_tasks (
