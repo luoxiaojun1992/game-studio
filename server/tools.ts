@@ -1,9 +1,9 @@
 /**
- * 游戏开发工作室自定义工具
- * 使用 CodeBuddy Agent SDK 的 Custom Tools 机制注册
+ * comment
+ * comment
  *
- * 这些工具通过 MCP Server 直接注册到 SDK，Agent 可以像使用内置工具一样调用它们，
- * 不再需要通过 curl 调用 localhost API。
+ * comment
+ * comment
  */
 import { z } from 'zod';
 import { tool, createSdkMcpServer, type SdkMcpServerResult } from '@tencent-ai/agent-sdk';
@@ -13,16 +13,16 @@ import { AgentRole } from './agents.js';
 import { sseBroadcaster } from './sse-broadcaster.js';
 
 /**
- * 工具回调函数类型 — 用于记录日志
+ * comment
  */
 type ToolLogFn = (agentId: AgentRole, action: string, detail: string, level: 'info' | 'warn' | 'error' | 'success') => void;
 type AutoHandoffHook = (handoff: db.DbHandoff) => Promise<void> | void;
 
 /**
- * 创建工作室 MCP Server，包含所有自定义工具
+ * comment
  *
- * @param agentId - 当前 Agent 的角色 ID，用于标识操作来源
- * @param logFn - 日志记录函数
+ * comment
+ * comment
  */
 export function createStudioToolsServer(projectId: string, agentId: AgentRole, logFn?: ToolLogFn, onAutoHandoff?: AutoHandoffHook): SdkMcpServerResult {
   const log = logFn || (() => {});
@@ -66,7 +66,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
     name: 'studio-tools',
     version: '1.0.0',
     tools: [
-      // ==================== 记忆工具 ====================
+      // comment
 
       tool(
         'save_memory',
@@ -122,7 +122,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         }
       ),
 
-      // ==================== 交接工具 ====================
+      // comment
 
       tool(
         'create_handoff',
@@ -188,7 +188,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         }
       ),
 
-      // ==================== 任务看板工具 ====================
+      // comment
 
       tool(
         'split_dev_test_tasks',
@@ -331,7 +331,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         }
       ),
 
-      // ==================== 提案工具 ====================
+      // comment
 
       tool(
         'submit_proposal',
@@ -384,7 +384,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         }
       ),
 
-      // ==================== 游戏工具 ====================
+      // comment
 
       tool(
         'submit_game',
@@ -423,7 +423,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         }
       ),
 
-      // ==================== 查询工具 ====================
+      // comment
 
       tool(
         'get_proposals',
@@ -481,7 +481,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 }
 
 /**
- * 获取 Agent 的记忆摘要，用于注入到 systemPrompt
+ * comment
  */
 export function getMemorySummaryForPrompt(projectId: string, agentId: AgentRole): string {
   const memories = db.getAgentMemories(projectId, agentId, undefined, 20);

@@ -25,12 +25,12 @@ export default function LogPanel({ logs: externalLogs, agents, projectId }: Prop
   const [autoScroll, setAutoScroll] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // 同步外部 logs（后端已在 SSE 初始化时返回最新 1000 条）
+  // comment
   useEffect(() => {
     setLogs(externalLogs);
   }, [externalLogs]);
 
-  // SSE 实时追加流日志（合并到同一个列表）
+  // comment
   useEffect(() => {
     const es = new EventSource(api.observeUrl(projectId));
 
@@ -40,7 +40,7 @@ export default function LogPanel({ logs: externalLogs, agents, projectId }: Prop
         if (event.type === 'stream_event') {
           const se = event.event;
           if (se.type === 'text' && se.agentId) {
-            // 追加到同一条 text 日志，或新建
+            // comment
             setLogs(prev => {
               const last = prev[prev.length - 1];
               if (last && last.log_type === 'text' && last.agent_id === se.agentId) {
@@ -122,14 +122,14 @@ export default function LogPanel({ logs: externalLogs, agents, projectId }: Prop
     return () => es.close();
   }, [projectId, isZh]);
 
-  // 自动滚动
+  // comment
   useEffect(() => {
     if (autoScroll && containerRef.current) {
       containerRef.current.scrollTop = containerRef.current.scrollHeight;
     }
   }, [logs, autoScroll]);
 
-  // 前端过滤
+  // comment
   const filteredLogs = logs.filter(log => {
     if (filterAgent !== 'all' && log.agent_id !== filterAgent) return false;
     if (filterLevel !== 'all' && log.level !== filterLevel) return false;
@@ -154,7 +154,7 @@ export default function LogPanel({ logs: externalLogs, agents, projectId }: Prop
     const timeStr = new Date(log.created_at).toLocaleTimeString(locale);
     const isExpanded = expandedLog === log.id;
 
-    // system 日志
+    // comment
     if (log.log_type === 'system') {
       const levelCfg = LEVEL_CONFIG[log.level] || LEVEL_CONFIG.info;
       const longDetail = log.content && log.content.length > 200;
@@ -180,7 +180,7 @@ export default function LogPanel({ logs: externalLogs, agents, projectId }: Prop
       );
     }
 
-    // user_command（用户指令）
+    // comment
     if (log.log_type === 'user_command') {
       const isLong = log.content && log.content.length > 300;
       return (
@@ -294,7 +294,7 @@ export default function LogPanel({ logs: externalLogs, agents, projectId }: Prop
 
   return (
     <div className="bg-gray-900 rounded-xl border border-gray-800 flex flex-col h-[calc(100vh-160px)]">
-      {/* 工具栏 */}
+      {/* comment */}
       <div className="px-4 py-3 border-b border-gray-800 flex items-center gap-3 shrink-0">
         <span className="font-semibold text-gray-200 text-sm">{l('运行日志', 'Logs')}</span>
 
@@ -347,7 +347,7 @@ export default function LogPanel({ logs: externalLogs, agents, projectId }: Prop
         <span className="text-xs text-gray-600">{filteredLogs.length} {l('条', 'items')}</span>
       </div>
 
-      {/* 日志内容 */}
+      {/* comment */}
       <div
         ref={containerRef}
         className="flex-1 overflow-y-auto font-mono text-xs p-2 space-y-0.5"

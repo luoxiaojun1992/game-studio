@@ -41,7 +41,7 @@ export default function GamePreview({ game, onClose }: Props) {
 
   return (
     <div className="bg-gray-900 rounded-xl border border-gray-800 flex flex-col h-full">
-      {/* 头部 */}
+      {/* comment */}
       <div className="px-5 py-3 border-b border-gray-800 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
           <span className="text-xl">🎮</span>
@@ -63,14 +63,14 @@ export default function GamePreview({ game, onClose }: Props) {
         </div>
       </div>
 
-      {/* 游戏描述 */}
+      {/* comment */}
       {game.description && (
         <div className="px-5 py-2 bg-gray-800/50 border-b border-gray-800 shrink-0">
           <p className="text-sm text-gray-400">{game.description}</p>
         </div>
       )}
 
-      {/* 游戏预览 iframe */}
+      {/* comment */}
       <div className="flex-1 relative">
         {loading ? (
           <div className="absolute inset-0 flex items-center justify-center text-gray-500">
@@ -89,7 +89,7 @@ export default function GamePreview({ game, onClose }: Props) {
         )}
       </div>
 
-      {/* 底部：查看源码 */}
+      {/* comment */}
       {fullGame?.html_content && (
         <details className="border-t border-gray-800 shrink-0">
           <summary className="px-5 py-2 text-xs text-gray-500 cursor-pointer hover:text-gray-300 transition-colors">

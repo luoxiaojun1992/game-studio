@@ -58,7 +58,7 @@ export default function HandoffPanel({ agents, projectId }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<HandoffStatus | 'all'>('all');
 
-  // 新建交接表单
+  // comment
   const [formFrom, setFormFrom] = useState<AgentRole>('game_designer');
   const [formTo, setFormTo] = useState<AgentRole>('architect');
   const [formTitle, setFormTitle] = useState('');
@@ -143,7 +143,7 @@ export default function HandoffPanel({ agents, projectId }: Props) {
     loadHandoffs();
   };
 
-  // 快捷交接：选择常用流程
+  // comment
   const quickHandoffs = [
     { from: 'game_designer' as AgentRole, to: 'ceo' as AgentRole, title: l('游戏策划案评审', 'Game Design Review'), desc: l('请评审最新的游戏策划案，确认游戏概念和玩法设计的可行性。', 'Please review the latest game design proposal and verify concept/playability feasibility.') },
     { from: 'ceo' as AgentRole, to: 'architect' as AgentRole, title: l('技术架构设计', 'Architecture Design'), desc: l('策划案已通过，请基于策划案设计技术架构方案。', 'The design proposal is approved, please prepare the technical architecture plan.') },
@@ -169,7 +169,7 @@ export default function HandoffPanel({ agents, projectId }: Props) {
   const pendingCount = handoffs.filter(h => h.status === 'pending').length;
   const activeCount = handoffs.filter(h => ['pending', 'accepted', 'working'].includes(h.status)).length;
 
-  // 计算交接链（用于可视化流水线）
+  // comment
   const buildPipeline = () => {
     const steps: { agent: AgentRole; incoming: Handoff[]; outgoing: Handoff[] }[] = [];
     const order: AgentRole[] = ['game_designer', 'ceo', 'architect', 'engineer', 'biz_designer'];
@@ -196,7 +196,7 @@ export default function HandoffPanel({ agents, projectId }: Props) {
 
   return (
     <div className="h-full flex flex-col">
-      {/* 头部操作栏 */}
+      {/* comment */}
       <div className="shrink-0 flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <h2 className="text-lg font-bold text-white">🔄 {l('任务交接', 'Handoffs')}</h2>
@@ -221,7 +221,7 @@ export default function HandoffPanel({ agents, projectId }: Props) {
         </div>
       </div>
 
-      {/* 交接流水线可视化 */}
+      {/* comment */}
       <div className="shrink-0 bg-gray-900 rounded-xl border border-gray-800 p-4 mb-4">
         <h3 className="text-sm font-semibold text-gray-300 mb-3">📋 {l('交接流水线', 'Handoff Pipeline')}</h3>
         <div className="flex items-center gap-2 overflow-x-auto pb-2">
@@ -266,7 +266,7 @@ export default function HandoffPanel({ agents, projectId }: Props) {
         </div>
       </div>
 
-      {/* 快捷交接 */}
+      {/* comment */}
       <div className="shrink-0 bg-gray-900 rounded-xl border border-gray-800 p-4 mb-4">
         <h3 className="text-sm font-semibold text-gray-300 mb-3">⚡ {l('快捷交接', 'Quick Handoffs')}</h3>
         <div className="flex flex-wrap gap-2">
@@ -285,7 +285,7 @@ export default function HandoffPanel({ agents, projectId }: Props) {
         </div>
       </div>
 
-      {/* 筛选标签 */}
+      {/* comment */}
       <div className="shrink-0 flex items-center gap-1.5 mb-3">
         {statusTabs.map(tab => (
           <button
@@ -303,7 +303,7 @@ export default function HandoffPanel({ agents, projectId }: Props) {
         ))}
       </div>
 
-      {/* 交接列表 */}
+      {/* comment */}
       <div className="flex-1 overflow-y-auto space-y-2">
         {filteredHandoffs.length === 0 ? (
           <div className="flex items-center justify-center h-48 text-gray-600">
@@ -347,19 +347,19 @@ export default function HandoffPanel({ agents, projectId }: Props) {
                   'border-gray-800'
                 }`}
               >
-                {/* 卡片头部 */}
+                {/* comment */}
                 <div
                   className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-gray-800/30"
                   onClick={() => setExpandedId(isExpanded ? null : handoff.id)}
                 >
-                  {/* 交接方向 */}
+                  {/* comment */}
                   <div className="flex items-center gap-1.5 shrink-0">
                     <span className="text-lg">{AGENT_EMOJI[handoff.from_agent_id]}</span>
                     <span className="text-gray-500 text-xs">→</span>
                     <span className="text-lg">{AGENT_EMOJI[handoff.to_agent_id]}</span>
                   </div>
 
-                  {/* 标题和状态 */}
+                  {/* comment */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium text-white truncate">{handoff.title}</span>
@@ -386,14 +386,14 @@ export default function HandoffPanel({ agents, projectId }: Props) {
                     </div>
                   </div>
 
-                  {/* 展开箭头 */}
+                  {/* comment */}
                   <span className={`text-gray-500 transition-transform shrink-0 ${isExpanded ? 'rotate-180' : ''}`}>▼</span>
                 </div>
 
-                {/* 展开详情 */}
+                {/* comment */}
                 {isExpanded && (
                   <div className="border-t border-gray-800 px-4 py-3 space-y-3">
-                    {/* 描述 */}
+                    {/* comment */}
                     <div>
                       <div className="text-xs text-gray-500 mb-1 font-medium">{l('任务描述', 'Task Description')}</div>
                       <div className="text-sm text-gray-300 bg-gray-800/50 rounded-lg p-2.5 whitespace-pre-wrap leading-relaxed">
@@ -401,7 +401,7 @@ export default function HandoffPanel({ agents, projectId }: Props) {
                       </div>
                     </div>
 
-                    {/* 上下文 */}
+                    {/* comment */}
                     {handoff.context && (
                       <div>
                         <div className="text-xs text-gray-500 mb-1 font-medium">{l('上下文信息', 'Context')}</div>
@@ -411,7 +411,7 @@ export default function HandoffPanel({ agents, projectId }: Props) {
                       </div>
                     )}
 
-                    {/* 结果（已完成/已拒绝时显示） */}
+                    {/* comment */}
                     {handoff.result && (
                       <div>
                         <div className="text-xs text-gray-500 mb-1 font-medium">
@@ -423,14 +423,14 @@ export default function HandoffPanel({ agents, projectId }: Props) {
                       </div>
                     )}
 
-                    {/* 时间线 */}
+                    {/* comment */}
                     <div className="flex items-center gap-4 text-xs text-gray-500">
                       <span>{l('创建', 'Created')}: {new Date(handoff.created_at).toLocaleString(locale)}</span>
                       {handoff.accepted_at && <span>{l('接收', 'Accepted')}: {new Date(handoff.accepted_at).toLocaleString(locale)}</span>}
                       {handoff.completed_at && <span>{l('完成', 'Completed')}: {new Date(handoff.completed_at).toLocaleString(locale)}</span>}
                     </div>
 
-                    {/* 操作按钮 */}
+                    {/* comment */}
                     <div className="flex gap-2 pt-2 border-t border-gray-800">
                       {handoff.status === 'pending' && (
                         <>
@@ -494,7 +494,7 @@ export default function HandoffPanel({ agents, projectId }: Props) {
         )}
       </div>
 
-      {/* 新建交接对话框 */}
+      {/* comment */}
       {showCreateDialog && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
           <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-lg mx-4 shadow-2xl">
@@ -509,7 +509,7 @@ export default function HandoffPanel({ agents, projectId }: Props) {
             </div>
 
             <div className="px-6 py-4 space-y-4">
-              {/* 交接方向 */}
+              {/* comment */}
               <div className="flex items-center gap-3">
                 <div className="flex-1">
                   <label className="block text-xs text-gray-400 mb-1.5 font-medium">{l('来源 Agent', 'From Agent')}</label>
@@ -538,7 +538,7 @@ export default function HandoffPanel({ agents, projectId }: Props) {
                 </div>
               </div>
 
-              {/* 优先级 */}
+              {/* comment */}
               <div>
                 <label className="block text-xs text-gray-400 mb-1.5 font-medium">{l('优先级', 'Priority')}</label>
                 <div className="flex gap-2">
@@ -558,7 +558,7 @@ export default function HandoffPanel({ agents, projectId }: Props) {
                 </div>
               </div>
 
-              {/* 标题 */}
+              {/* comment */}
               <div>
                 <label className="block text-xs text-gray-400 mb-1.5 font-medium">{l('任务标题', 'Task Title')} *</label>
                 <input
@@ -569,7 +569,7 @@ export default function HandoffPanel({ agents, projectId }: Props) {
                 />
               </div>
 
-              {/* 描述 */}
+              {/* comment */}
               <div>
                 <label className="block text-xs text-gray-400 mb-1.5 font-medium">{l('任务描述', 'Task Description')} *</label>
                 <textarea
@@ -581,7 +581,7 @@ export default function HandoffPanel({ agents, projectId }: Props) {
                 />
               </div>
 
-              {/* 上下文（可选） */}
+              {/* comment */}
               <div>
                 <label className="block text-xs text-gray-400 mb-1.5 font-medium">
                   {l('上下文信息', 'Context')} <span className="text-gray-600">{l('(可选)', '(optional)')}</span>
@@ -596,7 +596,7 @@ export default function HandoffPanel({ agents, projectId }: Props) {
               </div>
             </div>
 
-            {/* 底部按钮 */}
+            {/* comment */}
             <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-800">
               <button
                 onClick={() => setShowCreateDialog(false)}

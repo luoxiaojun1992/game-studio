@@ -22,7 +22,7 @@ interface ModelInfo {
   description?: string;
 }
 
-// 按项目隔离的 localStorage key
+// comment
 const getStorageKey = (projectId: string) => `commandPanel_lastAgent_${projectId}`;
 
 export default function CommandPanel({ agents, logs, projectId, selectedAgentId, onCommandSent, model, onModelChange, onAgentChange }: Props) {
@@ -34,7 +34,7 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
     biz_designer: { name: isZh ? '商业策划' : 'Business Designer', emoji: '💼', color: '#E37318' },
     ceo: { name: 'CEO', emoji: '👔', color: '#C9353F' },
   };
-  // 从 localStorage 读取上次选择的 Agent（按项目隔离）
+  // comment
   const getSavedAgent = (): AgentRole | null => {
     const saved = localStorage.getItem(getStorageKey(projectId));
     if (saved && agents.find(a => a.id === saved)) {
@@ -43,14 +43,14 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
     return null;
   };
 
-  // 获取默认 Agent
+  // comment
   const getDefaultAgent = (): AgentRole => {
     const workingAgent = agents.find(a => a.state?.status === 'working');
     return workingAgent?.id || agents[0]?.id || 'game_designer';
   };
 
-  // 初始化状态：优先使用 localStorage 保存的值，其次使用默认 Agent
-  // 注意：selectedAgentId 作为外部跳转参数，不在这里用于初始化（会由 useEffect 处理）
+  // comment
+  // comment
   const [selectedAgent, setSelectedAgent] = useState<AgentRole>(() => {
     return getSavedAgent() || getDefaultAgent();
   });
@@ -63,14 +63,14 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
   const [expandedLog, setExpandedLog] = useState<string | null>(null);
   const outputRef = useRef<HTMLDivElement>(null);
 
-  // 从 logs 取当前 Agent 的最新 1000 条记录
+  // comment
   const agentLogs = useMemo((): LogEntry[] => {
     return logs
       .filter(l => l.agent_id === selectedAgent)
       .slice(-1000);
   }, [logs, selectedAgent]);
 
-  // 动态获取可用模型列表
+  // comment
   useEffect(() => {
     api.getModels().then((res: any) => {
       if (res.models && res.models.length > 0) {
@@ -95,7 +95,7 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
     });
   }, [model, onModelChange]);
 
-  // 外部指定目标 Agent（从团队总览点击跳转）
+  // comment
   useEffect(() => {
     if (selectedAgentId && selectedAgentId !== selectedAgent) {
       setSelectedAgent(selectedAgentId);
@@ -103,26 +103,26 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
     }
   }, [selectedAgentId, projectId]);
 
-  // 在指令中心内切换 Agent 时，记住选择并通知父组件
+  // comment
   const handleAgentChange = (agentId: AgentRole) => {
     setSelectedAgent(agentId);
     localStorage.setItem(getStorageKey(projectId), agentId);
     onAgentChange?.(agentId);
   };
 
-  // 切换 Agent 时清空流式文本
+  // comment
   useEffect(() => {
     setCurrentStreamText('');
   }, [selectedAgent]);
 
-  // 自动滚动到底部（最新日志），与运行日志逻辑一致
+  // comment
   useEffect(() => {
     if (autoScroll && outputRef.current) {
       outputRef.current.scrollTop = outputRef.current.scrollHeight;
     }
   }, [agentLogs, currentStreamText, autoScroll]);
 
-  // 清除聊天记录
+  // comment
   const clearHistory = async () => {
     if (clearing) return;
     setClearing(true);
@@ -181,14 +181,14 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
   const currentAgent = AGENT_NAMES[selectedAgent];
   const hasContent = agentLogs.length > 0 || currentStreamText;
 
-  // 渲染单条日志，与运行日志格式一致
+  // comment
   const renderLog = (log: LogEntry) => {
     const agentInfo = AGENT_NAMES[log.agent_id];
     const agentLabel = `${agentInfo?.emoji} ${agentInfo?.name || log.agent_id}`;
     const timeStr = new Date(log.created_at).toLocaleTimeString(locale);
     const isExpanded = expandedLog === log.id;
 
-    // user_command（用户指令）- 青色背景
+    // comment
     if (log.log_type === 'user_command') {
       const isLong = log.content && log.content.length > 300;
       return (
@@ -297,7 +297,7 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
       );
     }
 
-    // system 或其他类型
+    // comment
     return (
       <div key={log.id} className="flex gap-2 px-2 py-0.5">
         <span className="text-gray-600 shrink-0 tabular-nums">{timeStr}</span>
@@ -311,7 +311,7 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
 
   return (
     <div className="flex gap-4 h-[calc(100vh-160px)]">
-      {/* 左侧：Agent 选择 */}
+      {/* comment */}
       <div className="w-56 shrink-0 bg-gray-900 rounded-xl border border-gray-800 p-3">
         <div className="text-xs text-gray-500 font-medium mb-2 px-1">{l('选择 Agent', 'Select Agent')}</div>
         <div className="space-y-1">
@@ -356,9 +356,9 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
         </div>
       </div>
 
-      {/* 右侧：指令输入和输出 */}
+      {/* comment */}
       <div className="flex-1 flex flex-col gap-3">
-        {/* 当前 Agent 信息 + 自动滚动开关 */}
+        {/* comment */}
         <div className="bg-gray-900 rounded-xl border border-gray-800 px-4 py-3 flex items-center gap-3 shrink-0">
           <span className="text-2xl">{currentAgent?.emoji}</span>
           <div>
@@ -395,7 +395,7 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
           </div>
         </div>
 
-        {/* 聊天输出区域 */}
+        {/* comment */}
         <div 
           ref={outputRef} 
           className="flex-1 bg-gray-950 rounded-xl border border-gray-800 font-mono text-xs p-2 overflow-y-auto space-y-0.5"
@@ -431,7 +431,7 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
           )}
         </div>
 
-        {/* 指令输入 */}
+        {/* comment */}
         <div className="bg-gray-900 rounded-xl border border-gray-800 p-3 shrink-0">
           <div className="flex gap-3">
             <textarea
@@ -459,7 +459,7 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
             </button>
           </div>
 
-          {/* 快捷指令 */}
+          {/* comment */}
           <div className="mt-2 flex flex-wrap gap-1.5">
             {getQuickCommands(selectedAgent, isZh).map((cmd, i) => (
               <button

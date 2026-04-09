@@ -50,7 +50,7 @@ const AGENT_TITLES_EN: Record<string, string> = {
   ceo: 'Product decisions and team coordination',
 };
 
-// Responsibilities 翻译映射（中文 -> 英文）
+// comment
 const RESPONSIBILITIES_MAP: Record<string, string> = {
   // Engineer
   '技术方案设计与评估': 'Technical solution design & evaluation',
@@ -104,7 +104,7 @@ export default function AgentCard({ agent, onPauseToggle, onSendCommand, streamL
       className={`bg-gray-900 rounded-xl border ${statusCfg.bg} p-4 flex flex-col gap-3 transition-all hover:border-opacity-80`}
       style={{ borderTopColor: agent.color, borderTopWidth: 3 }}
     >
-      {/* 头部 */}
+      {/* comment */}
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-2">
             <span className="text-2xl">{agent.emoji}</span>
@@ -114,7 +114,7 @@ export default function AgentCard({ agent, onPauseToggle, onSendCommand, streamL
             </div>
           </div>
 
-        {/* 状态点和交接指示 */}
+        {/* comment */}
         <div className="flex items-center gap-1.5">
           <span className={`w-2 h-2 rounded-full ${statusCfg.dot} ${status === 'working' ? 'animate-pulse' : ''}`} />
           <span className={`text-xs ${statusCfg.color}`}>{statusCfg.label}</span>
@@ -131,7 +131,7 @@ export default function AgentCard({ agent, onPauseToggle, onSendCommand, streamL
         </div>
       </div>
 
-      {/* 当前任务 */}
+      {/* comment */}
       <div className="min-h-[40px]">
         {agent.state?.currentTask ? (
           <div className="text-xs text-gray-400 bg-gray-800 rounded-lg p-2 leading-relaxed">
@@ -149,7 +149,7 @@ export default function AgentCard({ agent, onPauseToggle, onSendCommand, streamL
         )}
       </div>
 
-      {/* 职责列表 */}
+      {/* comment */}
       <div className="space-y-1">
         {agent.responsibilities?.slice(0, 2).map((r, i) => (
           <div key={i} className="text-xs text-gray-500 flex items-start gap-1">
@@ -159,7 +159,7 @@ export default function AgentCard({ agent, onPauseToggle, onSendCommand, streamL
         ))}
       </div>
 
-      {/* 操作按钮 */}
+      {/* comment */}
       <div className="flex gap-2 mt-auto pt-2 border-t border-gray-800">
         <button
           onClick={onSendCommand}

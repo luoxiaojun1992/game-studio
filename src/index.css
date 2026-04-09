@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ===== 主题变量 ===== */
+/* comment */
 :root {
   /* Light Theme */
   --color-primary: 23 23 23;
@@ -35,7 +35,7 @@
   --color-accent-foreground: 23 23 23;
 }
 
-/* ===== 基础样式 ===== */
+/* comment */
 * {
   margin: 0;
   padding: 0;
@@ -58,7 +58,7 @@ body {
   transition: background-color 0.3s, color 0.3s;
 }
 
-/* ===== 自定义滚动条 ===== */
+/* comment */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -77,15 +77,15 @@ body {
   background: rgb(var(--color-muted-foreground));
 }
 
-/* ===== TDesign 全局 CSS 变量覆盖 ===== */
+/* comment */
 :root {
-  /* 品牌色 */
+  /* comment */
   --td-brand-color: #3b82f6;
   --td-brand-color-hover: #60a5fa;
   --td-brand-color-active: #2563eb;
   --td-brand-color-light: rgba(59, 130, 246, 0.1);
   
-  /* 背景色 - 浅色模式 */
+  /* comment */
   --td-bg-color-page: #ffffff;
   --td-bg-color-container: #fafafa;
   --td-bg-color-container-hover: #f5f5f5;
@@ -96,29 +96,29 @@ body {
   --td-bg-color-component-hover: #eeeeee;
   --td-bg-color-component-disabled: #f5f5f5;
   
-  /* 文字色 - 浅色模式 */
+  /* comment */
   --td-text-color-primary: #171717;
   --td-text-color-secondary: #737373;
   --td-text-color-placeholder: #a3a3a3;
   --td-text-color-disabled: #d4d4d4;
   --td-text-color-anti: #ffffff;
   
-  /* 边框色 - 浅色模式 */
+  /* comment */
   --td-border-level-1-color: #e5e5e5;
   --td-border-level-2-color: #d4d4d4;
   --td-component-stroke: #e5e5e5;
   --td-component-border: #e5e5e5;
   
-  /* 遮罩 */
+  /* comment */
   --td-mask-active: rgba(0, 0, 0, 0.6);
   --td-mask-disabled: rgba(255, 255, 255, 0.6);
   
-  /* 阴影 */
+  /* comment */
   --td-shadow-1: 0 1px 10px rgba(0, 0, 0, 0.05), 0 4px 5px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.12);
   --td-shadow-2: 0 3px 14px 2px rgba(0, 0, 0, 0.05), 0 8px 10px 1px rgba(0, 0, 0, 0.06), 0 5px 5px -3px rgba(0, 0, 0, 0.1);
   --td-shadow-3: 0 6px 30px 5px rgba(0, 0, 0, 0.05), 0 16px 24px 2px rgba(0, 0, 0, 0.04), 0 8px 10px -5px rgba(0, 0, 0, 0.08);
   
-  /* 圆角 */
+  /* comment */
   --td-radius-small: 4px;
   --td-radius-default: 6px;
   --td-radius-medium: 8px;
@@ -126,15 +126,15 @@ body {
   --td-radius-extraLarge: 16px;
 }
 
-/* 深色模式 TDesign 变量 */
+/* comment */
 .dark {
-  /* 品牌色 */
+  /* comment */
   --td-brand-color: #60a5fa;
   --td-brand-color-hover: #93c5fd;
   --td-brand-color-active: #3b82f6;
   --td-brand-color-light: rgba(96, 165, 250, 0.15);
   
-  /* 背景色 - 深色模式 */
+  /* comment */
   --td-bg-color-page: #121212;
   --td-bg-color-container: #1c1c1c;
   --td-bg-color-container-hover: #262626;
@@ -145,31 +145,31 @@ body {
   --td-bg-color-component-hover: #303030;
   --td-bg-color-component-disabled: #262626;
   
-  /* 文字色 - 深色模式 */
+  /* comment */
   --td-text-color-primary: #fafafa;
   --td-text-color-secondary: #a3a3a3;
   --td-text-color-placeholder: #737373;
   --td-text-color-disabled: #525252;
   --td-text-color-anti: #171717;
   
-  /* 边框色 - 深色模式 */
+  /* comment */
   --td-border-level-1-color: #404040;
   --td-border-level-2-color: #525252;
   --td-component-stroke: #404040;
   --td-component-border: #404040;
   
-  /* 遮罩 - 深色模式 */
+  /* comment */
   --td-mask-active: rgba(0, 0, 0, 0.8);
   --td-mask-disabled: rgba(38, 38, 38, 0.6);
   
-  /* 阴影 - 深色模式 */
+  /* comment */
   --td-shadow-1: 0 1px 10px rgba(0, 0, 0, 0.3), 0 4px 5px rgba(0, 0, 0, 0.35), 0 2px 4px -1px rgba(0, 0, 0, 0.4);
   --td-shadow-2: 0 3px 14px 2px rgba(0, 0, 0, 0.3), 0 8px 10px 1px rgba(0, 0, 0, 0.32), 0 5px 5px -3px rgba(0, 0, 0, 0.38);
   --td-shadow-3: 0 6px 30px 5px rgba(0, 0, 0, 0.3), 0 16px 24px 2px rgba(0, 0, 0, 0.28), 0 8px 10px -5px rgba(0, 0, 0, 0.35);
   
 }
 
-/* ===== TDesign Select 选择器 ===== */
+/* comment */
 .t-select__wrap {
   background-color: var(--td-bg-color-component) !important;
   border-color: var(--td-component-stroke) !important;
@@ -223,7 +223,7 @@ body {
   color: var(--td-text-color-secondary) !important;
 }
 
-/* Select 下拉弹窗 */
+/* comment */
 .t-popup__content {
   background-color: var(--td-bg-color-container) !important;
   border: 1px solid var(--td-component-stroke) !important;
@@ -257,7 +257,7 @@ body {
   background-color: var(--td-brand-color-light) !important;
 }
 
-/* ===== TDesign Button 按钮 ===== */
+/* comment */
 .t-button--variant-outline {
   border-color: var(--td-component-stroke) !important;
   color: var(--td-text-color-primary) !important;
@@ -290,7 +290,7 @@ body {
   background-color: var(--td-bg-color-component-hover) !important;
 }
 
-/* ===== TDesign Tag 标签 ===== */
+/* comment */
 .t-tag {
   background-color: var(--td-bg-color-component) !important;
   color: var(--td-text-color-secondary) !important;
@@ -304,7 +304,7 @@ body {
   color: var(--td-text-color-secondary) !important;
 }
 
-/* ===== TDesign Tooltip 提示 ===== */
+/* comment */
 .t-tooltip .t-popup__content {
   background-color: var(--td-bg-color-container) !important;
   color: var(--td-text-color-primary) !important;
@@ -316,7 +316,7 @@ body {
   border-color: var(--td-component-stroke) !important;
 }
 
-/* ===== ChatSender 样式 ===== */
+/* comment */
 t-chat-sender,
 .t-chat-sender {
   --td-chat-sender-bg: var(--td-bg-color-component) !important;
@@ -355,7 +355,7 @@ t-chat-sender::part(send-btn):disabled,
   color: var(--td-text-color-disabled) !important;
 }
 
-/* ===== ChatMarkdown 样式 ===== */
+/* comment */
 .chat-markdown {
   color: var(--td-text-color-primary);
   line-height: 1.7;
@@ -436,7 +436,7 @@ t-chat-sender::part(send-btn):disabled,
   background-color: var(--td-bg-color-component);
 }
 
-/* ===== 工具类 ===== */
+/* comment */
 @layer utilities {
   .scrollbar-thin {
     scrollbar-width: thin;
@@ -452,7 +452,7 @@ t-chat-sender::part(send-btn):disabled,
   }
 }
 
-/* ===== 工具调用折叠组件样式 ===== */
+/* comment */
 .tool-calls-collapse-enter {
   opacity: 0;
   transform: translateY(-8px);
@@ -475,7 +475,7 @@ t-chat-sender::part(send-btn):disabled,
   transition: opacity 150ms ease-in, transform 150ms ease-in;
 }
 
-/* 工具调用收缩横条动画 */
+/* comment */
 .tool-collapse-bar {
   transition: all 0.2s ease;
 }
@@ -489,7 +489,7 @@ t-chat-sender::part(send-btn):disabled,
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
-/* 工具图标徽章样式 */
+/* comment */
 .tool-icon-badge {
   display: inline-flex;
   align-items: center;
@@ -506,7 +506,7 @@ t-chat-sender::part(send-btn):disabled,
   transform: scale(1.05);
 }
 
-/* 工具详情卡片样式 */
+/* comment */
 .tool-detail-card {
   border-left: 3px solid var(--td-brand-color);
   transition: all 0.2s ease;
@@ -534,7 +534,7 @@ t-chat-sender::part(send-btn):disabled,
   }
 }
 
-/* 步骤计数器样式 */
+/* comment */
 .step-counter {
   display: inline-flex;
   align-items: center;
@@ -549,7 +549,7 @@ t-chat-sender::part(send-btn):disabled,
   color: var(--td-brand-color);
 }
 
-/* 展开/折叠按钮增强 */
+/* comment */
 .expand-toggle-btn {
   display: inline-flex;
   align-items: center;
@@ -575,7 +575,7 @@ t-chat-sender::part(send-btn):disabled,
   transform: rotate(180deg);
 }
 
-/* ===== 内联权限确认卡片动画 ===== */
+/* comment */
 @keyframes fade-in-up {
   from {
     opacity: 0;
@@ -591,7 +591,7 @@ t-chat-sender::part(send-btn):disabled,
   animation: fade-in-up 0.3s ease-out forwards;
 }
 
-/* 内联权限卡片呼吸效果 */
+/* comment */
 @keyframes permission-pulse {
   0%, 100% {
     box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.2);

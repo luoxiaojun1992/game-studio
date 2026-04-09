@@ -42,7 +42,7 @@ const TABS: { key: TabKey; label: { zh: string; en: string }; icon: string }[] =
 ];
 const DEFAULT_PROJECT_ID = 'default';
 
-// 按项目隔离的 localStorage key
+// comment
 const getCommandAgentKey = (projectId: string) => `commandPanel_lastAgent_${projectId}`;
 
 export default function StudioPage() {
@@ -59,16 +59,16 @@ export default function StudioPage() {
   const prevProjectIdRef = useRef<string>(DEFAULT_PROJECT_ID);
   const [newProjectName, setNewProjectName] = useState('');
 
-  // 处理项目切换，同步 Agent 状态到 Star-Office-UI
+  // comment
   const setSelectedProjectId = useCallback(async (newProjectId: string) => {
     const oldProjectId = prevProjectIdRef.current;
     if (oldProjectId === newProjectId) return;
 
-    // 先更新状态
+    // comment
     setSelectedProjectIdState(newProjectId);
     prevProjectIdRef.current = newProjectId;
 
-    // 调用 API 同步 Star-Office-UI
+    // comment
     try {
       await api.switchProject(oldProjectId, newProjectId);
       console.log(`[Project Switch] Synced from ${oldProjectId} to ${newProjectId}`);
@@ -90,17 +90,17 @@ export default function StudioPage() {
   const [connected, setConnected] = useState(false);
   const eventSourceRef = useRef<EventSource | null>(null);
 
-  // 初始化 SSE 观测连接
-  // 注意：React.StrictMode 开发模式下 useEffect 会执行两次，
-  // 通过标记位避免建立重复连接
+  // comment
+  // comment
+  // comment
   const connectedRef = useRef(false);
 
   const handleSSEEvent = useCallback((event: SSEEvent) => {
     switch (event.type) {
       case 'init':
-        // 合并 Agent 定义和状态
+        // comment
         setAgents(prev => {
-          if (prev.length === 0) return prev; // 等待 agents API
+          if (prev.length === 0) return prev; // comment
           return prev.map(agent => {
             const state = (event as any).agents?.find((s: AgentState) => s.id === agent.id);
             return state ? { ...agent, state } : agent;
@@ -122,7 +122,7 @@ export default function StudioPage() {
         break;
 
       case 'logs_cleared':
-        // 清除指定 Agent 或全部日志
+        // comment
         if ((event as any).agentId) {
           setLogs(prev => prev.filter(l => l.agent_id !== (event as any).agentId));
         } else {
@@ -141,7 +141,7 @@ export default function StudioPage() {
             timestamp: Date.now()
           }]);
         }
-        // 实时更新 logs，让指令中心能显示最新聊天记录
+        // comment
         if (streamEvent.agentId && ['text', 'tool', 'tool_result', 'agent_done', 'agent_error'].includes(streamEvent.type)) {
           setLogs(prev => {
             const newLog: LogEntry = {
@@ -228,7 +228,7 @@ export default function StudioPage() {
   }, [selectedProjectId]);
 
   const connectSSE = useCallback(() => {
-    // 防止 StrictMode 重复连接
+    // comment
     if (connectedRef.current) return;
     connectedRef.current = true;
 
@@ -242,7 +242,7 @@ export default function StudioPage() {
     es.onopen = () => setConnected(true);
     es.onerror = () => {
       setConnected(false);
-      connectedRef.current = false; // 允许重连
+      connectedRef.current = false; // comment
       setTimeout(connectSSE, 3000);
     };
 
@@ -254,7 +254,7 @@ export default function StudioPage() {
     };
   }, [handleSSEEvent, selectedProjectId]);
 
-  // 加载 Agents
+  // comment
   useEffect(() => {
     api.getAgents(selectedProjectId).then(data => setAgents(data.agents || []));
   }, [selectedProjectId]);
@@ -284,7 +284,7 @@ export default function StudioPage() {
     setSelectedGame(null);
   }, [selectedProjectId]);
 
-  // agents 加载后 / 项目切换时，从 localStorage 读取保存的 Agent
+  // comment
   useEffect(() => {
     if (agents.length === 0) return;
     const saved = localStorage.getItem(getCommandAgentKey(selectedProjectId));
@@ -295,22 +295,22 @@ export default function StudioPage() {
     }
   }, [agents, selectedProjectId]);
 
-  // 连接 SSE
+  // comment
   useEffect(() => {
     connectSSE();
     return () => {
       eventSourceRef.current?.close();
-      connectedRef.current = false; // StrictMode cleanup 后允许重建连接
+      connectedRef.current = false; // comment
     };
   }, [connectSSE, selectedProjectId]);
 
-  // 处理权限响应
+  // comment
   const handlePermissionResponse = async (requestId: string, behavior: 'allow' | 'deny', message?: string, updatedInput?: Record<string, unknown>) => {
     await api.respondPermission(requestId, behavior, message, selectedProjectId, updatedInput);
     setPendingPermissions(prev => prev.filter(p => p.requestId !== requestId));
   };
 
-  // 暂停/恢复 Agent
+  // comment
   const handleTogglePause = async (agentId: AgentRole) => {
     const agent = agents.find(a => a.id === agentId);
     if (!agent) return;
@@ -319,7 +319,7 @@ export default function StudioPage() {
     } else {
       await api.pauseAgent(agentId, selectedProjectId);
     }
-    // 状态会通过 SSE 更新
+    // comment
   };
 
   const handleCreateProject = async () => {
@@ -363,13 +363,13 @@ export default function StudioPage() {
     }
   };
 
-  // 审批提案
+  // comment
   const handleDecideProposal = async (proposalId: string, decision: 'approved' | 'rejected', comment: string) => {
     await api.decideProposal(proposalId, decision, comment);
     setSelectedProposal(null);
   };
 
-  // 预览游戏
+  // comment
   const handlePreviewGame = (game: Game) => {
     setSelectedGame(game);
   };
@@ -381,7 +381,7 @@ export default function StudioPage() {
 
   return (
     <div className="flex flex-col h-screen bg-gray-950 text-gray-100">
-      {/* 顶部导航栏 */}
+      {/* comment */}
       <header className="flex items-center justify-between px-6 py-3 bg-gray-900 border-b border-gray-800 shrink-0">
         <div className="flex items-center gap-3">
           <span className="text-2xl">🎮</span>
@@ -391,7 +391,7 @@ export default function StudioPage() {
           </div>
         </div>
 
-        {/* 状态指示器 */}
+        {/* comment */}
         <div className="flex items-center gap-4">
           {pendingPermissions.length > 0 && (
             <div className="flex items-center gap-1.5 bg-orange-500/20 border border-orange-500/40 rounded-full px-3 py-1 text-xs text-orange-300 animate-pulse">
@@ -472,7 +472,7 @@ export default function StudioPage() {
         </div>
       </header>
 
-      {/* 权限请求悬浮通知 */}
+      {/* comment */}
       {pendingPermissions.length > 0 && (
         <div className="shrink-0 bg-orange-950/50 border-b border-orange-900/50 px-6 py-2">
           <div className="text-xs text-orange-300 font-medium mb-1">⚠️ {l('有 Agent 正在请求操作权限，需要您确认：', 'An agent is requesting tool permission, please review:')}</div>
@@ -539,7 +539,7 @@ export default function StudioPage() {
         </div>
       )}
 
-      {/* 标签导航 */}
+      {/* comment */}
       <nav className="shrink-0 flex items-center gap-1 px-6 py-2 bg-gray-900/50 border-b border-gray-800">
         {TABS.map(tab => (
           <button
@@ -567,11 +567,11 @@ export default function StudioPage() {
         ))}
       </nav>
 
-      {/* 主内容区 */}
+      {/* comment */}
       <main className="flex-1 overflow-auto p-4">
         {activeTab === 'overview' && (
           <div className="space-y-4">
-            {/* Agent 卡片网格 */}
+            {/* comment */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
               {agents.map(agent => (
                 <AgentCard
@@ -589,7 +589,7 @@ export default function StudioPage() {
               ))}
             </div>
 
-            {/* 最新提案预览 */}
+            {/* comment */}
             {proposals.length > 0 && (
               <div className="bg-gray-900 rounded-xl border border-gray-800 p-4">
                 <div className="flex items-center justify-between mb-3">
@@ -746,12 +746,12 @@ export default function StudioPage() {
         )}
       </main>
 
-      {/* 模态：提案详情 */}
+      {/* comment */}
     </div>
   );
 }
 
-// 提案状态徽章
+// comment
 function ProposalStatusBadge({ status, isZh }: { status: string; isZh: boolean }) {
   const config: Record<string, { label: string; className: string }> = {
     pending_review: { label: isZh ? '待评审' : 'Pending Review', className: 'bg-yellow-500/20 text-yellow-300 border-yellow-600/40' },
@@ -770,7 +770,7 @@ function ProposalStatusBadge({ status, isZh }: { status: string; isZh: boolean }
   );
 }
 
-// Agent emoji 映射
+// comment
 function getAgentEmoji(agentId: string): string {
   const map: Record<string, string> = {
     engineer: '👨‍💻', architect: '🏗️', game_designer: '🎮',
@@ -779,11 +779,11 @@ function getAgentEmoji(agentId: string): string {
   return map[agentId] || '🤖';
 }
 
-// 格式化工具输入值，便于展示
+// comment
 function formatToolValue(value: any, isZh: boolean): string {
   if (value === null || value === undefined) return 'null';
   if (typeof value === 'string') {
-    // 命令类内容完整显示
+    // comment
     if (value.length > 2000) return value.slice(0, 2000) + (isZh ? '\n... (内容过长已截断)' : '\n... (content truncated)');
     return value;
   }
@@ -792,7 +792,7 @@ function formatToolValue(value: any, isZh: boolean): string {
   return String(value);
 }
 
-// AskUserQuestion 回复表单
+// comment
 function AskUserQuestionForm({ options, singleSelect, onReply, onDeny }: {
   options?: string[];
   singleSelect: boolean;
@@ -804,7 +804,7 @@ function AskUserQuestionForm({ options, singleSelect, onReply, onDeny }: {
   const [customText, setCustomText] = useState('');
 
   if (options && options.length > 0) {
-    // 有预设选项
+    // comment
     return (
       <div className="space-y-2">
         <div className="flex flex-wrap gap-1.5">
@@ -850,7 +850,7 @@ function AskUserQuestionForm({ options, singleSelect, onReply, onDeny }: {
     );
   }
 
-  // 无预设选项，自由输入
+  // comment
   return (
     <div className="space-y-2">
       <input

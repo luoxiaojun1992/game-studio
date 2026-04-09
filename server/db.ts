@@ -6,29 +6,29 @@ import fs from 'fs';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// 产出目录相关常量（必须在 ensureProject 调用之前初始化）
+// comment
 const PROJECT_ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
 const MAX_PROJECT_ID_LENGTH = 64;
 const MAX_FILENAME_LENGTH = 50;
 const MAX_VERSION_LENGTH = 30;
 
-// 数据库文件路径
+// comment
 const dbPath = path.join(__dirname, '..', 'data', 'studio.db');
 
-// 确保 data 目录存在
+// comment
 const dataDir = path.dirname(dbPath);
 if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
 
-// 创建数据库连接
+// comment
 const db = new Database(dbPath);
 
-// 启用 WAL 模式以提高性能
+// comment
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
-// 初始化数据库表
+// comment
 db.exec(`
   -- 项目表
   CREATE TABLE IF NOT EXISTS projects (
@@ -271,7 +271,7 @@ function ensureProjectIsolationColumns(): void {
 ensureProjectIsolationColumns();
 ensureProject('default');
 
-// ============= 类型定义 =============
+// comment
 
 export interface DbAgentSession {
   id: string;
@@ -327,7 +327,7 @@ export interface DbGame {
   updated_at: string;
 }
 
-// ============= 统一日志 =============
+// comment
 
 export type LogLevel = 'info' | 'warn' | 'error' | 'success';
 export type LogType = 'system' | 'text' | 'tool' | 'tool_result' | 'done' | 'error' | 'user_command';
@@ -409,7 +409,7 @@ export interface DbProjectSettings {
   updated_at: string;
 }
 
-// ============= Agent 会话操作 =============
+// comment
 
 export function getAgentSession(projectId: string, agentId: string): DbAgentSession | undefined {
   const stmt = db.prepare('SELECT * FROM agent_sessions WHERE project_id = ? AND agent_id = ? ORDER BY updated_at DESC LIMIT 1');
@@ -449,7 +449,7 @@ export function updateAgentStatus(projectId: string, agentId: string, status: Db
   }
 }
 
-// ============= Agent 消息操作 =============
+// comment
 
 export function getAgentMessages(projectId: string, agentId: string, limit = 50): DbAgentMessage[] {
   const session = getAgentSession(projectId, agentId);
@@ -467,7 +467,7 @@ export function createAgentMessage(message: DbAgentMessage): DbAgentMessage {
   return message;
 }
 
-// ============= 提案操作 =============
+// comment
 
 export function getAllProposals(): DbProposal[] {
   const stmt = db.prepare('SELECT * FROM proposals ORDER BY created_at DESC');
@@ -523,7 +523,7 @@ export function updateProposal(id: string, updates: Partial<DbProposal>): boolea
   return result.changes > 0;
 }
 
-// ============= 游戏操作 =============
+// comment
 
 export function getAllGames(): DbGame[] {
   const stmt = db.prepare('SELECT * FROM games ORDER BY created_at DESC');
@@ -575,7 +575,7 @@ export function updateGame(id: string, updates: Partial<DbGame>): boolean {
   return result.changes > 0;
 }
 
-// ============= 统一日志操作 =============
+// comment
 
 export function addLog(log: DbLog): void {
   const stmt = db.prepare(`
@@ -605,7 +605,7 @@ export function deleteLogs(projectId: string, agentId?: string): void {
   stmt.run(projectId);
 }
 
-// ============= 指令操作 =============
+// comment
 
 export function createCommand(command: DbCommand): DbCommand {
   const stmt = db.prepare(`
@@ -639,7 +639,7 @@ export function getAllCommands(projectId: string, limit = 50): DbCommand[] {
   return stmt.all(projectId, limit) as DbCommand[];
 }
 
-// ============= 权限请求操作 =============
+// comment
 
 export interface DbPermissionRequest {
   id: string;
@@ -703,7 +703,7 @@ export function getPermissionRequest(id: string): DbPermissionRequest | null {
   return result || null;
 }
 
-// ============= 任务交接操作 =============
+// comment
 
 export function createHandoff(handoff: DbHandoff): DbHandoff {
   const stmt = db.prepare(`
@@ -758,27 +758,27 @@ export function updateHandoff(id: string, updates: Partial<DbHandoff>): boolean 
   return result.changes > 0;
 }
 
-// ============= 清除消息操作 =============
+// comment
 
 /**
- * 清除指定 Agent 的所有消息和会话，重置 SDK session
+ * comment
  */
 export function clearAgentMessages(projectId: string, agentId: string): boolean {
   const session = getAgentSession(projectId, agentId);
   if (!session) return true;
 
-  // 删除该会话的所有消息
+  // comment
   const deleteMsgs = db.prepare('DELETE FROM agent_messages WHERE agent_session_id = ?');
   deleteMsgs.run(session.id);
 
-  // 重置会话，清除 sdk_session_id（使下次对话从新会话开始）
+  // comment
   const updateSession = db.prepare('UPDATE agent_sessions SET sdk_session_id = NULL, current_task = NULL, updated_at = ? WHERE id = ?');
   updateSession.run(new Date().toISOString(), session.id);
 
   return true;
 }
 
-// ============= Agent 长期记忆操作 =============
+// comment
 
 export function createAgentMemory(memory: DbAgentMemory): DbAgentMemory {
   const stmt = db.prepare(`
@@ -815,7 +815,7 @@ export function clearAgentMemories(projectId: string, agentId: string): boolean 
   return true;
 }
 
-// ============= 任务看板操作 =============
+// comment
 
 export function createTaskBoardTask(task: DbTaskBoardTask): DbTaskBoardTask {
   const stmt = db.prepare(`
@@ -943,7 +943,7 @@ export function ensureProject(projectId: string): void {
     const now = new Date().toISOString();
     createProject({ id: safeProjectId, name: safeProjectId, created_at: now, updated_at: now });
   }
-  // 确保项目配置存在（首次访问项目时自动初始化默认配置）
+  // comment
   getProjectSettings(safeProjectId);
 }
 
@@ -966,9 +966,9 @@ export function updateTaskBoardTask(id: string, updates: Partial<DbTaskBoardTask
   return result.changes > 0;
 }
 
-// ============= 产出目录操作 =============
+// comment
 
-// 产出根目录
+// comment
 const OUTPUT_DIR = path.join(__dirname, '..', 'output');
 
 function sanitizeFilename(value: string, maxLength: number): string {
@@ -997,7 +997,7 @@ function resolveSafePath(baseDir: string, fileName: string): string {
 }
 
 /**
- * 确保产出目录存在
+ * comment
  */
 export function ensureOutputDir(): string {
   if (!fs.existsSync(OUTPUT_DIR)) {
@@ -1010,7 +1010,7 @@ function ensureProjectOutputDirs(projectId: string): { projectDir: string; propo
   const root = ensureOutputDir();
   const safeProjectId = normalizeProjectId(projectId);
   const projectDir = path.join(root, safeProjectId);
-  // 统一采用 output/{projectId}/proposals 与 output/{projectId}/games 两类产出目录，避免混放。
+  // comment
   const proposalsDir = path.join(projectDir, 'proposals');
   const gamesDir = path.join(projectDir, 'games');
   [projectDir, proposalsDir, gamesDir].forEach((dir) => {
@@ -1020,7 +1020,7 @@ function ensureProjectOutputDirs(projectId: string): { projectDir: string; propo
 }
 
 /**
- * 保存策划案到产出目录
+ * comment
  */
 export function saveProposalToFile(proposal: DbProposal): string | null {
   const { proposalsDir } = ensureProjectOutputDirs(proposal.project_id);
@@ -1044,7 +1044,7 @@ export function saveProposalToFile(proposal: DbProposal): string | null {
 }
 
 /**
- * 保存游戏到产出目录
+ * comment
  */
 export function saveGameToFile(game: DbGame): string | null {
   const { gamesDir } = ensureProjectOutputDirs(game.project_id);

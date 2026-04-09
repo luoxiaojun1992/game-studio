@@ -33,7 +33,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// 将 AgentManager 的事件转发到 SSE
+// comment
 agentManager.on('agent_status_changed', (data) => {
   sseBroadcaster.broadcast({ type: 'agent_status_changed', ...data }, data.projectId);
   starOfficeSyncService.notifyAgentStatusChanged(data.projectId, data.agentId, data.state);
@@ -56,13 +56,13 @@ agentManager.on('agent_resumed', (data) => {
   starOfficeSyncService.scheduleProjectStateSync(data.projectId, 'agent_resumed');
 });
 
-// ============= 健康检查 =============
+// comment
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// ============= 查询可用模型 =============
+// comment
 
 app.get('/api/models', async (req, res) => {
   try {
@@ -70,12 +70,12 @@ app.get('/api/models', async (req, res) => {
     const models = await q.supportedModels();
     res.json({ models: models || [] });
   } catch (error: any) {
-    // 如果 SDK 查询失败，返回错误信息
+    // comment
     res.status(500).json({ error: error?.message || '获取模型列表失败', models: [] });
   }
 });
 
-// ============= SSE 观测流 =============
+// comment
 
 app.get('/api/observe', (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream');
@@ -83,7 +83,7 @@ app.get('/api/observe', (req, res) => {
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('Access-Control-Allow-Origin', '*');
 
-  // 发送初始状态
+  // comment
   const project = normalizeProjectId(req.query.projectId);
 
   const initialState = {
@@ -91,7 +91,7 @@ app.get('/api/observe', (req, res) => {
     projectId: project,
     agents: agentManager.getAllAgentStates(project),
     proposals: db.getAllProposals().filter(p => p.project_id === project),
-    games: db.getAllGames().filter(g => g.project_id === project).map(g => ({ ...g, html_content: undefined })), // 不传 HTML 内容
+    games: db.getAllGames().filter(g => g.project_id === project).map(g => ({ ...g, html_content: undefined })), // comment
     logs: db.getLogs(project, undefined, 1000),
     tasks: db.getTaskBoardTasks(project),
     pendingPermissions: agentManager.getPendingPermissions(project)
@@ -100,7 +100,7 @@ app.get('/api/observe', (req, res) => {
 
   sseBroadcaster.addClient(res, project);
 
-  // 心跳
+  // comment
   const heartbeat = setInterval(() => {
     try { res.write(': heartbeat\n\n'); } catch (e) { clearInterval(heartbeat); sseBroadcaster.removeClient(res); }
   }, 30000);
@@ -111,7 +111,7 @@ app.get('/api/observe', (req, res) => {
   });
 });
 
-// ============= 登录检查 =============
+// comment
 
 app.get('/api/check-login', async (req, res) => {
   const response: any = { isLoggedIn: false };
@@ -138,7 +138,7 @@ app.get('/api/check-login', async (req, res) => {
   res.json(response);
 });
 
-// ============= Agent 状态 API =============
+// comment
 
 app.get('/api/agents', (req, res) => {
   const projectId = normalizeProjectId(req.query.projectId);
@@ -163,9 +163,9 @@ app.get('/api/agents/:agentId/messages', (req, res) => {
   res.json({ messages: messages.map(m => ({ ...m, tool_calls: m.tool_calls ? JSON.parse(m.tool_calls) : null })) });
 });
 
-// ============= Agent 控制 API =============
+// comment
 
-// 暂停 Agent
+// comment
 app.post('/api/agents/:agentId/pause', (req, res) => {
   const { agentId } = req.params;
   const projectId = normalizeProjectId(req.query.projectId ?? req.body?.projectId);
@@ -173,7 +173,7 @@ app.post('/api/agents/:agentId/pause', (req, res) => {
   res.json({ success: true, message: `Agent ${agentId} 已暂停` });
 });
 
-// 恢复 Agent
+// comment
 app.post('/api/agents/:agentId/resume', (req, res) => {
   const { agentId } = req.params;
   const projectId = normalizeProjectId(req.query.projectId ?? req.body?.projectId);
@@ -181,7 +181,7 @@ app.post('/api/agents/:agentId/resume', (req, res) => {
   res.json({ success: true, message: `Agent ${agentId} 已恢复` });
 });
 
-// 向 Agent 下达指令
+// comment
 app.post('/api/agents/:agentId/command', async (req, res) => {
   const { agentId } = req.params;
   const { message, model = 'glm-5.0', projectId: bodyProjectId } = req.body;
@@ -189,7 +189,7 @@ app.post('/api/agents/:agentId/command', async (req, res) => {
 
   if (!message) return res.status(400).json({ error: '指令内容不能为空' });
 
-  // 保存指令记录
+  // comment
   const commandId = uuidv4();
   const command = db.createCommand({
     id: commandId,
@@ -202,7 +202,7 @@ app.post('/api/agents/:agentId/command', async (req, res) => {
     executed_at: new Date().toISOString()
   });
 
-  // 将用户指令记录到 logs，方便在指令中心显示历史记录
+  // comment
   db.addLog({
     id: uuidv4(),
     project_id: projectId,
@@ -216,7 +216,7 @@ app.post('/api/agents/:agentId/command', async (req, res) => {
     created_at: new Date().toISOString()
   });
 
-  // 设置 SSE 响应（流式返回）
+  // comment
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
@@ -244,23 +244,23 @@ app.post('/api/agents/:agentId/command', async (req, res) => {
   }
 });
 
-// ============= 提案 API =============
+// comment
 
-// 获取所有提案
+// comment
 app.get('/api/proposals', (req, res) => {
   const project = normalizeProjectId(req.query.projectId);
   const proposals = db.getAllProposals().filter(p => p.project_id === project);
   res.json({ proposals });
 });
 
-// 获取单个提案
+// comment
 app.get('/api/proposals/:id', (req, res) => {
   const proposal = db.getProposal(req.params.id);
   if (!proposal) return res.status(404).json({ error: '提案不存在' });
   res.json({ proposal });
 });
 
-// CEO 评审提案（Agent 触发）
+// comment
 app.post('/api/proposals/:id/review', (req, res) => {
   const { id } = req.params;
   const { reviewer_agent_id, status, review_comment } = req.body;
@@ -284,7 +284,7 @@ app.post('/api/proposals/:id/review', (req, res) => {
   res.json({ success: true, proposal: updated });
 });
 
-// ============= 游戏成品 API =============
+// comment
 
 app.get('/api/projects', (req, res) => {
   const projects = db.getAllProjectIds().map(id => ({ id, name: db.getProject(id)?.name || id }));
@@ -338,7 +338,7 @@ app.post('/api/projects', (req, res) => {
   res.json({ project });
 });
 
-// 切换项目 - 同步 Agent 状态到 Star-Office-UI
+// comment
 app.post('/api/projects/switch', async (req, res) => {
   const fromProjectId = typeof req.body?.fromProjectId === 'string' ? req.body.fromProjectId.trim() : null;
   const toProjectId = typeof req.body?.toProjectId === 'string' ? normalizeProjectId(req.body.toProjectId) : null;
@@ -356,7 +356,7 @@ app.post('/api/projects/switch', async (req, res) => {
   }
 });
 
-// 获取游戏列表
+// comment
 app.get('/api/games', (req, res) => {
   const project = normalizeProjectId(req.query.projectId);
   const games = db.getAllGames().filter(g => g.project_id === project).map(g => ({
@@ -367,14 +367,14 @@ app.get('/api/games', (req, res) => {
   res.json({ games });
 });
 
-// 获取单个游戏（含 HTML 内容）
+// comment
 app.get('/api/games/:id', (req, res) => {
   const game = db.getGame(req.params.id);
   if (!game) return res.status(404).json({ error: '游戏不存在' });
   res.json({ game });
 });
 
-// 游戏 HTML 预览（直接返回 HTML）
+// comment
 app.get('/api/games/:id/preview', (req, res) => {
   const game = db.getGame(req.params.id);
   if (!game) return res.status(404).send('<html><body><h1>游戏不存在</h1></body></html>');
@@ -382,7 +382,7 @@ app.get('/api/games/:id/preview', (req, res) => {
   res.send(game.html_content);
 });
 
-// 更新游戏状态
+// comment
 app.patch('/api/games/:id', (req, res) => {
   const { id } = req.params;
   const updates = req.body;
@@ -395,7 +395,7 @@ app.patch('/api/games/:id', (req, res) => {
   res.json({ success: true, game: { ...game, html_content: undefined } });
 });
 
-// ============= 日志 API =============
+// comment
 
 app.get('/api/projects/:projectId/logs', (req, res) => {
   const projectId = normalizeProjectId(req.params.projectId);
@@ -408,12 +408,12 @@ app.delete('/api/projects/:projectId/logs', (req, res) => {
   const projectId = normalizeProjectId(req.params.projectId);
   const agentId = typeof req.query.agentId === 'string' ? req.query.agentId.trim() : '';
   db.deleteLogs(projectId, agentId || undefined);
-  // 广播日志清除事件，让前端更新显示
+  // comment
   sseBroadcaster.broadcast({ type: 'logs_cleared', projectId, agentId: agentId || null }, projectId);
   res.json({ success: true });
 });
 
-// ============= 指令历史 API =============
+// comment
 
 app.get('/api/commands', (req, res) => {
   const projectId = normalizeProjectId(req.query.projectId);
@@ -421,7 +421,7 @@ app.get('/api/commands', (req, res) => {
   res.json({ commands });
 });
 
-// ============= 权限响应 API =============
+// comment
 
 app.post('/api/permission-response', (req, res) => {
   const { requestId, behavior, message, projectId: bodyProjectId, updatedInput } = req.body;
@@ -431,9 +431,9 @@ app.post('/api/permission-response', (req, res) => {
   res.json({ success: true });
 });
 
-// ============= 任务交接 API =============
+// comment
 
-// 获取所有交接记录
+// comment
 app.get('/api/handoffs', (req, res) => {
   const projectId = normalizeProjectId(req.query.projectId);
   const { agentId, status, limit } = req.query;
@@ -443,7 +443,7 @@ app.get('/api/handoffs', (req, res) => {
     const result = db.getHandoffsForAgent(projectId, agentId as string, limit ? parseInt(limit as string) : 20);
     return res.json(result);
   } else if (status) {
-    // 按状态筛选
+    // comment
     const all = db.getAllHandoffs(projectId, limit ? parseInt(limit as string) : 50);
     handoffs = all.filter(h => h.status === status);
   } else {
@@ -453,7 +453,7 @@ app.get('/api/handoffs', (req, res) => {
   res.json({ handoffs });
 });
 
-// 获取待处理的交接
+// comment
 app.get('/api/handoffs/pending', (req, res) => {
   const projectId = normalizeProjectId(req.query.projectId);
   const { toAgentId } = req.query;
@@ -461,7 +461,7 @@ app.get('/api/handoffs/pending', (req, res) => {
   res.json({ handoffs });
 });
 
-// 创建交接（用户手动创建，或 Agent 系统创建）
+// comment
 app.post('/api/handoffs', (req, res) => {
   const { from_agent_id, to_agent_id, title, description, context, priority, source_command_id, project_id } = req.body;
   const projectId = normalizeProjectId(project_id ?? req.query.projectId);
@@ -491,10 +491,10 @@ app.post('/api/handoffs', (req, res) => {
     updated_at: now,
   });
 
-  // 广播交接事件
+  // comment
   sseBroadcaster.broadcast({ type: 'handoff_created', handoff }, handoff.project_id);
 
-  // 记录日志
+  // comment
   agentManager.addLog(handoff.project_id, from_agent_id as AgentRole, '创建交接', `${from_agent_id} → ${to_agent_id}: ${title}`, 'info');
   if (autoHandoffEnabled) {
     agentManager.addLog(handoff.project_id, to_agent_id as AgentRole, '自动接收交接', `从 ${from_agent_id} 接手: ${title}`, 'success');
@@ -511,7 +511,7 @@ app.post('/api/handoffs', (req, res) => {
   res.json({ handoff });
 });
 
-// 接受交接（仅标记接受，不自动执行）
+// comment
 app.post('/api/handoffs/:id/accept', (req, res) => {
   const { id } = req.params;
   const handoff = db.getHandoff(id);
@@ -553,7 +553,7 @@ app.post('/api/handoffs/:id/accept', (req, res) => {
   res.json({ handoff: updated });
 });
 
-// 确认交接并开始执行（用户二次确认后触发）
+// comment
 app.post('/api/handoffs/:id/confirm', (req, res) => {
   const { id } = req.params;
   const handoff = db.getHandoff(id);
@@ -574,7 +574,7 @@ app.post('/api/handoffs/:id/confirm', (req, res) => {
   sseBroadcaster.broadcast({ type: 'handoff_updated', handoff: updated }, handoff.project_id);
   agentManager.addLog(handoff.project_id, handoff.to_agent_id as AgentRole, '开始执行交接任务', `${handoff.title}`, 'success');
 
-  // 自动向目标 Agent 下发任务
+  // comment
   agentManager.sendMessage(
     handoff.project_id,
     handoff.to_agent_id as AgentRole,
@@ -586,7 +586,7 @@ app.post('/api/handoffs/:id/confirm', (req, res) => {
   res.json({ handoff: updated });
 });
 
-// 完成交接（目标 Agent 完成任务）
+// comment
 app.post('/api/handoffs/:id/complete', (req, res) => {
   const { id } = req.params;
   const { result } = req.body;
@@ -604,7 +604,7 @@ app.post('/api/handoffs/:id/complete', (req, res) => {
   res.json({ handoff: updated });
 });
 
-// 拒绝交接
+// comment
 app.post('/api/handoffs/:id/reject', (req, res) => {
   const { id } = req.params;
   const { reason } = req.body;
@@ -624,7 +624,7 @@ app.post('/api/handoffs/:id/reject', (req, res) => {
   res.json({ handoff: updated });
 });
 
-// 取消交接
+// comment
 app.post('/api/handoffs/:id/cancel', (req, res) => {
   const { id } = req.params;
   const handoff = db.getHandoff(id);
@@ -639,7 +639,7 @@ app.post('/api/handoffs/:id/cancel', (req, res) => {
   res.json({ handoff: updated });
 });
 
-// ============= 任务看板 API =============
+// comment
 
 const TASK_STATUS_FLOW: Record<string, string[]> = {
   todo: ['developing', 'blocked'],
@@ -748,9 +748,9 @@ app.patch('/api/tasks/:id/status', (req, res) => {
   res.json({ task: updated });
 });
 
-// ============= Agent 消息 API =============
+// comment
 
-// 清除 Agent 聊天记录
+// comment
 app.delete('/api/agents/:agentId/messages', (req, res) => {
   const { agentId } = req.params;
   const projectId = normalizeProjectId(req.query.projectId ?? req.body?.projectId);
@@ -759,9 +759,9 @@ app.delete('/api/agents/:agentId/messages', (req, res) => {
   res.json({ success: true });
 });
 
-// ============= Agent 长期记忆 API =============
+// comment
 
-// 获取 Agent 记忆
+// comment
 app.get('/api/agents/:agentId/memories', (req, res) => {
   const { agentId } = req.params;
   const { category } = req.query;
@@ -770,14 +770,14 @@ app.get('/api/agents/:agentId/memories', (req, res) => {
   res.json({ memories });
 });
 
-// 获取所有 Agent 记忆
+// comment
 app.get('/api/memories', (req, res) => {
   const projectId = normalizeProjectId(req.query.projectId);
   const memories = db.getAllAgentMemories(projectId);
   res.json({ memories });
 });
 
-// 保存 Agent 记忆（Agent 通过 API 自主保存）
+// comment
 app.post('/api/agents/:agentId/memories', (req, res) => {
   const { agentId } = req.params;
   const { category = 'general', content, importance = 'normal', source_task, projectId: bodyProjectId } = req.body;
@@ -791,7 +791,7 @@ app.post('/api/agents/:agentId/memories', (req, res) => {
     project_id: projectId,
     agent_id: agentId,
     category,
-    content: content.slice(0, 5000), // 限制长度
+    content: content.slice(0, 5000), // comment
     importance,
     source_task: source_task || null,
     created_at: now,
@@ -803,26 +803,26 @@ app.post('/api/agents/:agentId/memories', (req, res) => {
   res.json({ memory });
 });
 
-// 删除单条记忆
+// comment
 app.delete('/api/memories/:id', (req, res) => {
   const success = db.deleteAgentMemory(req.params.id);
   if (!success) return res.status(404).json({ error: '记忆不存在' });
   res.json({ success: true });
 });
 
-// 清除 Agent 全部记忆
+// comment
 app.delete('/api/agents/:agentId/memories', (req, res) => {
   const projectId = normalizeProjectId(req.query.projectId ?? req.body?.projectId);
   db.clearAgentMemories(projectId, req.params.agentId);
   res.json({ success: true });
 });
 
-// ============= 产出目录静态服务 =============
+// comment
 
-// 确保产出目录存在
+// comment
 db.ensureOutputDir();
 
-// 提供产出目录的静态文件访问
+// comment
 app.use('/output', express.static(path.join(__dirname, '..', 'output'), {
   setHeaders: (res, filePath) => {
     if (filePath.endsWith('.html')) {
@@ -831,9 +831,9 @@ app.use('/output', express.static(path.join(__dirname, '..', 'output'), {
   }
 }));
 
-// ============= 提案创建时同步保存到产出目录 =============
+// comment
 
-// 覆盖创建提案的逻辑，增加文件保存
+// comment
 app.post('/api/proposals', (req, res) => {
   const { project_id, type, title, content, author_agent_id } = req.body;
   if (!type || !title || !content || !author_agent_id) {
@@ -860,19 +860,19 @@ app.post('/api/proposals', (req, res) => {
   });
   db.ensureProject(proposal.project_id);
 
-  // 同时保存到产出目录
+  // comment
   const filePath = db.saveProposalToFile(proposal);
 
-  // 通知观测系统
+  // comment
   sseBroadcaster.broadcast({ type: 'proposal_created', proposal, filePath }, proposal.project_id);
 
-  // 记录日志
+  // comment
   agentManager.addLog(proposal.project_id, author_agent_id as AgentRole, '提交提案', `提案: ${title}${filePath ? ` → 已保存到 ${path.basename(filePath)}` : ''}`, 'success');
 
   res.json({ proposal, filePath });
 });
 
-// 用户审批提案时也保存最终版本
+// comment
 app.post('/api/proposals/:id/decide', (req, res) => {
   const { id } = req.params;
   const { decision, comment } = req.body;
@@ -892,7 +892,7 @@ app.post('/api/proposals/:id/decide', (req, res) => {
   const updated = db.getProposal(id);
   if (!updated) return res.status(500).json({ error: '提案更新后读取失败' });
 
-  // 审批后保存最终版到产出目录
+  // comment
   const filePath = db.saveProposalToFile(updated);
 
   sseBroadcaster.broadcast({ type: 'proposal_decided', proposal: updated, decision, comment, filePath }, updated.project_id);
@@ -900,7 +900,7 @@ app.post('/api/proposals/:id/decide', (req, res) => {
   res.json({ success: true, proposal: updated, filePath });
 });
 
-// 覆盖游戏提交，增加文件保存
+// comment
 app.post('/api/games', (req, res) => {
   const { project_id, name, description, html_content, proposal_id, author_agent_id, version } = req.body;
   if (!name || !html_content || !author_agent_id) {
@@ -923,7 +923,7 @@ app.post('/api/games', (req, res) => {
   });
   db.ensureProject(game.project_id);
 
-  // 同时保存到产出目录
+  // comment
   const filePath = db.saveGameToFile(game);
 
   sseBroadcaster.broadcast({ type: 'game_submitted', game: { ...game, html_content: undefined, hasContent: true }, filePath }, game.project_id);
@@ -932,12 +932,12 @@ app.post('/api/games', (req, res) => {
   res.json({ game: { ...game, html_content: undefined }, filePath });
 });
 
-// ============= 启动服务器 =============
+// comment
 
 app.listen(PORT, async () => {
-  // 等待 Star-Office-UI Agent 注册完成后再继续
+  // comment
   await starOfficeSyncService.syncAllProjectsOnBoot();
-  // 启动 Supervisor 监控 Star-Office-UI 健康状态
+  // comment
   starOfficeSyncService.startSupervisor();
   console.log(`
 ╔══════════════════════════════════════════════════════╗

@@ -1,6 +1,6 @@
 /**
- * 游戏开发 Agent 团队定义
- * 定义所有 Agent 的角色、系统提示词和职责
+ * comment
+ * comment
  */
 
 export type AgentRole = 'engineer' | 'architect' | 'game_designer' | 'biz_designer' | 'ceo';
@@ -14,13 +14,13 @@ export interface AgentDefinition {
   systemPrompt: string;
   description: string;
   responsibilities: string[];
-  /** 该 Agent 完成任务后可以移交的目标 Agent */
+  /* comment */
   handoffTargets?: AgentRole[];
 }
 
 /**
- * 任务交接指引（追加到每个 Agent 的系统提示词末尾）
- * 重构后使用自然语言描述，Agent 通过 MCP 自定义工具直接调用
+ * comment
+ * comment
  */
 const HANDOFF_INSTRUCTION = `
 
@@ -51,8 +51,8 @@ const HANDOFF_INSTRUCTION = `
 `;
 
 /**
- * 长期记忆指引（追加到每个 Agent 的系统提示词末尾）
- * 重构后使用自然语言描述，Agent 通过 MCP 自定义工具直接调用
+ * comment
+ * comment
  */
 const MEMORY_INSTRUCTION = `
 
@@ -74,8 +74,8 @@ const MEMORY_INSTRUCTION = `
 `;
 
 /**
- * 工作室工具总览（追加到每个 Agent 的系统提示词末尾）
- * 告知 Agent 可以使用哪些自定义工具
+ * comment
+ * comment
  */
 const TOOLS_OVERVIEW = `
 
@@ -100,7 +100,7 @@ const TOOLS_OVERVIEW = `
 `;
 
 /**
- * 语言适配规则（添加到每个 Agent 系统提示词开头）
+ * comment
  */
 const LANGUAGE_ADAPTATION = `
 ## 语言适配规则（必须遵守）
@@ -112,7 +112,7 @@ const LANGUAGE_ADAPTATION = `
 3. **输出内容语言**：所有输出（包括代码注释、文档、策划案、报告等）必须使用与用户指令相同的语言
 4. **工具调用**：工具参数中的描述性文本（如交接上下文、记忆内容等）也必须使用与用户指令相同的语言
 
-**重要**：不要混合使用两种语言，保持全程一致。
+* comment
 `;
 
 export const AGENT_DEFINITIONS: Record<AgentRole, AgentDefinition> = {

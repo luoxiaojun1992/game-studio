@@ -1,5 +1,5 @@
 /**
- * SSE 广播器 - 共享模块，供多个文件使用
+ * comment
  */
 import express from 'express';
 
