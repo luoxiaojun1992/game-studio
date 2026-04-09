@@ -195,7 +195,7 @@ class StarOfficeSyncService {
         return null;
       }
     } catch (error) {
-      console.warn(`[star-office-sync] Error registering agent ${agentName}:`, error);
+      console.warn('[star-office-sync] Error registering agent %s:', agentName, error);
       return null;
     }
   }
@@ -422,7 +422,7 @@ class StarOfficeSyncService {
                 });
               }
             } else {
-              console.warn(`[star-office-sync] Error pushing state for ${key}:`, error);
+              console.warn('[star-office-sync] Error pushing state for %s:', key, error);
             }
           }
         }
@@ -434,7 +434,7 @@ class StarOfficeSyncService {
         try {
           await this.postJson(setStateUrl, statePayload);
         } catch (error) {
-          console.warn(`[star-office-sync] Error posting set_state for ${projectId}:`, error);
+          console.warn('[star-office-sync] Error posting set_state for %s:', projectId, error);
         }
       }
     } finally {
@@ -523,7 +523,7 @@ class StarOfficeSyncService {
               });
               console.log(`[star-office-sync] Marked ${key} as offline`);
             } catch (error) {
-              console.warn(`[star-office-sync] Failed to mark ${key} as offline:`, error);
+              console.warn('[star-office-sync] Failed to mark %s as offline:', key, error);
             }
           }
         }
