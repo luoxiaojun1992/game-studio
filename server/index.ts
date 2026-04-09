@@ -5,7 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import * as db from './db.js';
 import { agentManager } from './agent-manager.js';
-import { AGENT_DEFINITIONS, getAllAgents, AgentRole } from './agents.js';
+import { getAllAgents, AgentRole } from './agents.js';
 import { sseBroadcaster } from './sse-broadcaster.js';
 import { starOfficeSyncService } from './star-office-sync.js';
 import { StreamEvent } from './agent-manager.js';
@@ -20,11 +20,13 @@ const PROJECT_ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
 const MAX_PROJECT_ID_LENGTH = 64;
 const MAX_FILENAME_LENGTH = 50;
 const MAX_VERSION_LENGTH = 30;
-const PROPOSAL_TYPES = new Set<db.DbProposal['type']>(['game_design', 'biz_design', 'tech_arch', 'tech_impl', 'ceo_review']);
+const PROPOSAL_TYPE_VALUES: db.DbProposal['type'][] = ['game_design', 'biz_design', 'tech_arch', 'tech_impl', 'ceo_review'];
+const PROPOSAL_TYPES = new Set<db.DbProposal['type']>(PROPOSAL_TYPE_VALUES);
 const TASK_TYPES = new Set<db.DbTaskBoardTask['task_type']>(['development', 'testing']);
 const HANDOFF_PRIORITIES = new Set<db.DbHandoff['priority']>(['low', 'normal', 'high', 'urgent']);
 const USER_DECISIONS = new Set(['approved', 'rejected']);
-const AGENT_IDS = new Set<AgentRole>(Object.keys(AGENT_DEFINITIONS) as AgentRole[]);
+const AGENT_ID_VALUES: AgentRole[] = ['engineer', 'architect', 'game_designer', 'biz_designer', 'ceo'];
+const AGENT_IDS = new Set<AgentRole>(AGENT_ID_VALUES);
 const AGENT_ID_OPTIONS_TEXT = Array.from(AGENT_IDS).join(' / ');
 
 // Normalizes any project selector to a safe runtime project id.
@@ -43,6 +45,8 @@ const validateProjectIdInput = (value: unknown, fieldName: string): { ok: true; 
   }
   return { ok: true, projectId: raw };
 };
+
+const isProposalType = (value: string): value is db.DbProposal['type'] => PROPOSAL_TYPES.has(value as db.DbProposal['type']);
 
 const validateAgentIdInput = (value: unknown, fieldName: string): { ok: true; agentId: AgentRole } | { ok: false; error: string } => {
   if (typeof value !== 'string') return { ok: false, error: `${fieldName} 必须是字符串` };
@@ -823,7 +827,7 @@ app.post('/api/proposals', (req, res) => {
   if (!type || !title || !content || !author_agent_id) {
     return res.status(400).json({ error: '缺少必要字段' });
   }
-  if (typeof type !== 'string' || !PROPOSAL_TYPES.has(type as db.DbProposal['type'])) {
+  if (typeof type !== 'string' || !isProposalType(type)) {
     return res.status(400).json({ error: 'type 不合法，仅支持 game_design / biz_design / tech_arch / tech_impl / ceo_review' });
   }
   const proposalAuthorValidation = validateAgentIdInput(author_agent_id, 'author_agent_id');
