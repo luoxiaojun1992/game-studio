@@ -20,14 +20,13 @@ const PROJECT_ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
 const MAX_PROJECT_ID_LENGTH = 64;
 const MAX_FILENAME_LENGTH = 50;
 const MAX_VERSION_LENGTH = 30;
-const PROPOSAL_TYPE_VALUES: db.DbProposal['type'][] = ['game_design', 'biz_design', 'tech_arch', 'tech_impl', 'ceo_review'];
-const PROPOSAL_TYPES = new Set<db.DbProposal['type']>(PROPOSAL_TYPE_VALUES);
+const PROPOSAL_TYPES = new Set<db.DbProposal['type']>(['game_design', 'biz_design', 'tech_arch', 'tech_impl', 'ceo_review']);
 const TASK_TYPES = new Set<db.DbTaskBoardTask['task_type']>(['development', 'testing']);
 const HANDOFF_PRIORITIES = new Set<db.DbHandoff['priority']>(['low', 'normal', 'high', 'urgent']);
 const USER_DECISIONS = new Set(['approved', 'rejected']);
 const AGENT_ID_VALUES: AgentRole[] = ['engineer', 'architect', 'game_designer', 'biz_designer', 'ceo'];
 const AGENT_IDS = new Set<AgentRole>(AGENT_ID_VALUES);
-const AGENT_ID_OPTIONS_TEXT = Array.from(AGENT_IDS).join(' / ');
+const AGENT_ID_OPTIONS_TEXT = AGENT_ID_VALUES.join(' / ');
 
 // Normalizes any project selector to a safe runtime project id.
 const normalizeProjectId = (value: unknown): string => {
@@ -898,13 +897,13 @@ app.post('/api/games', (req, res) => {
   if (proposal_id !== undefined && proposal_id !== null && typeof proposal_id !== 'string') {
     return res.status(400).json({ error: 'proposal_id 必须是字符串' });
   }
+  if (version !== undefined && version !== null && typeof version !== 'string') {
+    return res.status(400).json({ error: 'version 必须是字符串' });
+  }
   const normalizedVersion = typeof version === 'string' ? version.trim() : undefined;
   const normalizedName = typeof name === 'string' ? name.trim() : '';
   const normalizedHtml = typeof html_content === 'string' ? html_content.trim() : '';
   if (version !== undefined && version !== null) {
-    if (typeof version !== 'string') {
-      return res.status(400).json({ error: 'version 必须是字符串' });
-    }
     if (!normalizedVersion || normalizedVersion.length > MAX_VERSION_LENGTH) {
       return res.status(400).json({ error: `version 长度必须在 1-${MAX_VERSION_LENGTH} 之间` });
     }
