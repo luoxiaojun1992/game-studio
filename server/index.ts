@@ -17,6 +17,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const DEFAULT_PROJECT_ID = 'default';
 
+// Normalizes any project selector to a safe runtime project id.
 const normalizeProjectId = (value: unknown): string => {
   const raw = typeof value === 'string' ? value.trim() : '';
   return raw || DEFAULT_PROJECT_ID;
@@ -32,6 +33,8 @@ app.use((req, res, next) => {
   if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();
 });
+
+// Bridge in-process agent events to SSE clients and remote Star-Office synchronization.
 agentManager.on('agent_status_changed', (data) => {
   sseBroadcaster.broadcast({ type: 'agent_status_changed', ...data }, data.projectId);
   starOfficeSyncService.notifyAgentStatusChanged(data.projectId, data.agentId, data.state);
@@ -53,9 +56,13 @@ agentManager.on('agent_resumed', (data) => {
   sseBroadcaster.broadcast({ type: 'agent_resumed', ...data }, data.projectId);
   starOfficeSyncService.scheduleProjectStateSync(data.projectId, 'agent_resumed');
 });
+
+// Lightweight service health endpoint for process liveness probes.
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+// Lists supported foundation models from the SDK runtime.
 app.get('/api/models', async (req, res) => {
   try {
     const q = new Query('', {});
@@ -65,6 +72,8 @@ app.get('/api/models', async (req, res) => {
     res.status(500).json({ error: error?.message || '获取模型列表失败', models: [] });
   }
 });
+
+// Unified observation stream: initial snapshot + incremental events via Server-Sent Events.
 app.get('/api/observe', (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
@@ -72,6 +81,7 @@ app.get('/api/observe', (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   const project = normalizeProjectId(req.query.projectId);
 
+  // Send one full snapshot so the UI can hydrate all panels without extra round trips.
   const initialState = {
     type: 'init',
     projectId: project,
@@ -85,6 +95,7 @@ app.get('/api/observe', (req, res) => {
   res.write(`data: ${JSON.stringify(initialState)}\n\n`);
 
   sseBroadcaster.addClient(res, project);
+  // Keep the SSE channel alive through proxy/load-balancer idle timeouts.
   const heartbeat = setInterval(() => {
     try { res.write(': heartbeat\n\n'); } catch (e) { clearInterval(heartbeat); sseBroadcaster.removeClient(res); }
   }, 30000);
@@ -94,6 +105,8 @@ app.get('/api/observe', (req, res) => {
     clearInterval(heartbeat);
   });
 });
+
+// Auth probe endpoint used by UI to decide whether login actions are needed.
 app.get('/api/check-login', async (req, res) => {
   const response: any = { isLoggedIn: false };
   try {
@@ -118,6 +131,8 @@ app.get('/api/check-login', async (req, res) => {
   }
   res.json(response);
 });
+
+// Returns static agent definitions merged with current per-project runtime state.
 app.get('/api/agents', (req, res) => {
   const projectId = normalizeProjectId(req.query.projectId);
   const definitions = getAllAgents();
@@ -134,12 +149,15 @@ app.get('/api/agents', (req, res) => {
   res.json({ agents: agentsWithState });
 });
 
+// Returns recent chat history for one agent within the selected project.
 app.get('/api/agents/:agentId/messages', (req, res) => {
   const { agentId } = req.params;
   const projectId = normalizeProjectId(req.query.projectId);
   const messages = db.getAgentMessages(projectId, agentId as AgentRole, 100);
   res.json({ messages: messages.map(m => ({ ...m, tool_calls: m.tool_calls ? JSON.parse(m.tool_calls) : null })) });
 });
+
+// Manual runtime controls for operator intervention.
 app.post('/api/agents/:agentId/pause', (req, res) => {
   const { agentId } = req.params;
   const projectId = normalizeProjectId(req.query.projectId ?? req.body?.projectId);
@@ -152,6 +170,8 @@ app.post('/api/agents/:agentId/resume', (req, res) => {
   agentManager.resumeAgent(projectId, agentId as AgentRole);
   res.json({ success: true, message: `Agent ${agentId} 已恢复` });
 });
+
+// Executes an explicit user command against one agent and streams progress over SSE.
 app.post('/api/agents/:agentId/command', async (req, res) => {
   const { agentId } = req.params;
   const { message, model = 'glm-5.0', projectId: bodyProjectId } = req.body;
@@ -207,6 +227,8 @@ app.post('/api/agents/:agentId/command', async (req, res) => {
     res.end();
   }
 });
+
+// Proposal domain APIs.
 app.get('/api/proposals', (req, res) => {
   const project = normalizeProjectId(req.query.projectId);
   const proposals = db.getAllProposals().filter(p => p.project_id === project);
@@ -239,6 +261,8 @@ app.post('/api/proposals/:id/review', (req, res) => {
 
   res.json({ success: true, proposal: updated });
 });
+
+// Project metadata and project-level settings APIs.
 app.get('/api/projects', (req, res) => {
   const projects = db.getAllProjectIds().map(id => ({ id, name: db.getProject(id)?.name || id }));
   res.json({ projects });
@@ -306,6 +330,8 @@ app.post('/api/projects/switch', async (req, res) => {
     res.status(500).json({ error: '切换项目失败', details: String(error) });
   }
 });
+
+// Game asset and preview APIs.
 app.get('/api/games', (req, res) => {
   const project = normalizeProjectId(req.query.projectId);
   const games = db.getAllGames().filter(g => g.project_id === project).map(g => ({
@@ -337,6 +363,8 @@ app.patch('/api/games/:id', (req, res) => {
   sseBroadcaster.broadcast({ type: 'game_updated', game: { ...game, html_content: undefined } }, game.project_id);
   res.json({ success: true, game: { ...game, html_content: undefined } });
 });
+
+// Audit/log retrieval and maintenance APIs.
 app.get('/api/projects/:projectId/logs', (req, res) => {
   const projectId = normalizeProjectId(req.params.projectId);
   const agentId = req.query.agentId as string | undefined;
@@ -363,12 +391,15 @@ app.post('/api/permission-response', (req, res) => {
   if (!success) return res.status(404).json({ error: '权限请求不存在或已超时' });
   res.json({ success: true });
 });
+
+// Inter-agent handoff lifecycle APIs.
 app.get('/api/handoffs', (req, res) => {
   const projectId = normalizeProjectId(req.query.projectId);
   const { agentId, status, limit } = req.query;
   let handoffs;
 
   if (agentId) {
+    // Agent-specific view returns the database result format directly for compatibility.
     const result = db.getHandoffsForAgent(projectId, agentId as string, limit ? parseInt(limit as string) : 20);
     return res.json(result);
   } else if (status) {
@@ -417,6 +448,7 @@ app.post('/api/handoffs', (req, res) => {
   sseBroadcaster.broadcast({ type: 'handoff_created', handoff }, handoff.project_id);
   agentManager.addLog(handoff.project_id, from_agent_id as AgentRole, '创建交接', `${from_agent_id} → ${to_agent_id}: ${title}`, 'info');
   if (autoHandoffEnabled) {
+    // When auto-handoff is enabled, dispatch immediately instead of waiting for manual accept/confirm.
     agentManager.addLog(handoff.project_id, to_agent_id as AgentRole, '自动接收交接', `从 ${from_agent_id} 接手: ${title}`, 'success');
     agentManager.addLog(handoff.project_id, to_agent_id as AgentRole, '开始执行交接任务', `${handoff.title}`, 'success');
     agentManager.sendMessage(
@@ -441,6 +473,7 @@ app.post('/api/handoffs/:id/accept', (req, res) => {
     }
 
     const now = new Date().toISOString();
+    // Backward-compatible path for old pending records created before autopilot toggle.
     db.updateHandoff(id, { status: 'working', accepted_at: now });
     const updated = db.getHandoff(id)!;
 
@@ -546,6 +579,8 @@ app.post('/api/handoffs/:id/cancel', (req, res) => {
 
   res.json({ handoff: updated });
 });
+
+// Task-board APIs and enforced state machine transitions.
 const TASK_STATUS_FLOW: Record<string, string[]> = {
   todo: ['developing', 'blocked'],
   developing: ['testing', 'blocked'],
@@ -637,6 +672,7 @@ app.patch('/api/tasks/:id/status', (req, res) => {
   };
 
   if (status === 'developing' || status === 'testing') {
+    // Preserve first start time to keep lead-time metrics stable.
     updates.started_at = task.started_at || now;
   }
   if (status === 'done') {
@@ -652,6 +688,8 @@ app.patch('/api/tasks/:id/status', (req, res) => {
   agentManager.addLog(task.project_id, (updated_by || task.created_by) as AgentRole, '更新任务状态', `${task.title}: ${task.status} → ${status}`, 'success');
   res.json({ task: updated });
 });
+
+// Agent memory APIs.
 app.delete('/api/agents/:agentId/messages', (req, res) => {
   const { agentId } = req.params;
   const projectId = normalizeProjectId(req.query.projectId ?? req.body?.projectId);
@@ -705,6 +743,8 @@ app.delete('/api/agents/:agentId/memories', (req, res) => {
   db.clearAgentMemories(projectId, req.params.agentId);
   res.json({ success: true });
 });
+
+// Static publishing of generated output artifacts (HTML previews, etc.).
 db.ensureOutputDir();
 app.use('/output', express.static(path.join(__dirname, '..', 'output'), {
   setHeaders: (res, filePath) => {
@@ -713,6 +753,8 @@ app.use('/output', express.static(path.join(__dirname, '..', 'output'), {
     }
   }
 }));
+
+// Proposal submission and human-decision APIs.
 app.post('/api/proposals', (req, res) => {
   const { project_id, type, title, content, author_agent_id } = req.body;
   if (!type || !title || !content || !author_agent_id) {
@@ -768,6 +810,8 @@ app.post('/api/proposals/:id/decide', (req, res) => {
 
   res.json({ success: true, proposal: updated, filePath });
 });
+
+// Game submission API.
 app.post('/api/games', (req, res) => {
   const { project_id, name, description, html_content, proposal_id, author_agent_id, version } = req.body;
   if (!name || !html_content || !author_agent_id) {
@@ -796,6 +840,8 @@ app.post('/api/games', (req, res) => {
 
   res.json({ game: { ...game, html_content: undefined }, filePath });
 });
+
+// Boot sequence: synchronize existing state first, then start long-running supervisor loop.
 app.listen(PORT, async () => {
   await starOfficeSyncService.syncAllProjectsOnBoot();
   starOfficeSyncService.startSupervisor();

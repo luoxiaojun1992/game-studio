@@ -100,6 +100,7 @@ class StarOfficeSyncService {
   }
 
   /**
+   * Fetches current remote agent IDs from Star-Office-UI for reconciliation.
    */
   private async getRemoteAgentIds(): Promise<Set<string>> {
     if (!agentsUrl) return new Set();
@@ -113,6 +114,7 @@ class StarOfficeSyncService {
   }
 
   /**
+   * Acquires a process-wide registration lock to serialize register/sync operations.
    */
   private async acquireRegisterLock(): Promise<void> {
     if (!this.globalRegisterLock) {
@@ -130,6 +132,7 @@ class StarOfficeSyncService {
   }
 
   /**
+   * Releases the registration lock and wakes the next waiter if present.
    */
   private releaseRegisterLock(): void {
     const nextResolve = this.pendingRegisterResolve.shift();
@@ -187,6 +190,7 @@ class StarOfficeSyncService {
   }
 
   /**
+   * Ensures local cache and remote registration are consistent, then returns the remote agent ID.
    */
   private async ensureAgentRegisteredAndGetId(projectId: string, agentRole: AgentRole, state: AgentState): Promise<string | null> {
     await this.acquireRegisterLock();
@@ -211,6 +215,7 @@ class StarOfficeSyncService {
   }
 
   /**
+   * Registers all known project agents during service startup.
    */
   async syncAllProjectsOnBoot(): Promise<void> {
     if (!this.isEnabled()) return;
@@ -318,6 +323,7 @@ class StarOfficeSyncService {
   }
 
   /**
+   * Syncs all agents in one project to Star-Office-UI and publishes aggregate project state.
    */
   private async syncProjectState(projectId: string, reason: string): Promise<void> {
     if (!this.isEnabled()) return;
@@ -409,6 +415,7 @@ class StarOfficeSyncService {
   }
 
   /**
+   * Guards state sync execution so stale timers do not sync non-current projects.
    */
   private async syncProjectStateIfCurrent(projectId: string, reason: string): Promise<void> {
     if (this.currentProjectId !== projectId) {
@@ -420,12 +427,14 @@ class StarOfficeSyncService {
   }
 
   /**
+   * Returns the project currently considered active for outbound synchronization.
    */
   getCurrentProjectId(): string {
     return this.currentProjectId;
   }
 
   /**
+   * Switches active project context and propagates offline/online transitions to remote UI.
    */
   async switchProject(fromProjectId: string | null, toProjectId: string): Promise<void> {
     if (!this.isEnabled()) return;
