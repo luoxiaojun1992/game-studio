@@ -95,7 +95,7 @@ export default function LogPanel({ logs: externalLogs, agents, projectId }: Prop
               agent_id: se.agentId,
               log_type: 'done' as const,
               level: 'success' as const,
-              content: l('完成', 'Completed') + `${se.duration ? (isZh ? ` (耗时 ${(se.duration / 1000).toFixed(1)}s)` : ` (${(se.duration / 1000).toFixed(1)}s)`) : ''}`,
+              content: (isZh ? '完成' : 'Completed') + `${se.duration ? (isZh ? ` (耗时 ${(se.duration / 1000).toFixed(1)}s)` : ` (${(se.duration / 1000).toFixed(1)}s)`) : ''}`,
               tool_name: null,
               action: null,
               is_error: false,
@@ -108,7 +108,7 @@ export default function LogPanel({ logs: externalLogs, agents, projectId }: Prop
               agent_id: se.agentId,
               log_type: 'error' as const,
               level: 'error' as const,
-              content: se.error || l('未知错误', 'Unknown error'),
+              content: se.error || (isZh ? '未知错误' : 'Unknown error'),
               tool_name: null,
               action: null,
               is_error: true,
@@ -120,7 +120,7 @@ export default function LogPanel({ logs: externalLogs, agents, projectId }: Prop
     };
 
     return () => es.close();
-  }, [projectId, l, isZh]);
+  }, [projectId, isZh]);
 
   // 自动滚动
   useEffect(() => {

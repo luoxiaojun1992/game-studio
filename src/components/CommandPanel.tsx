@@ -362,7 +362,9 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
         <div className="bg-gray-900 rounded-xl border border-gray-800 px-4 py-3 flex items-center gap-3 shrink-0">
           <span className="text-2xl">{currentAgent?.emoji}</span>
           <div>
-            <div className="font-semibold text-white text-sm">{l(`向 ${currentAgent?.name} 下达指令`, `Send command to ${currentAgent?.name}`)}</div>
+            <div className="font-semibold text-white text-sm">
+              {isZh ? `向 ${currentAgent?.name} 下达指令` : `Send command to ${currentAgent?.name}`}
+            </div>
             <div className="text-xs text-gray-500">{l('指令将以流式方式执行，结果实时显示', 'Commands run in streaming mode with real-time output')}</div>
           </div>
           <div className="ml-auto flex items-center gap-3">
@@ -441,7 +443,9 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
                   sendCommand();
                 }
               }}
-               placeholder={l(`向 ${currentAgent?.name} 下达指令... (Enter 发送，Shift+Enter 换行)`, `Send command to ${currentAgent?.name}... (Enter to send, Shift+Enter for new line)`)}
+               placeholder={isZh
+                 ? `向 ${currentAgent?.name} 下达指令... (Enter 发送，Shift+Enter 换行)`
+                 : `Send command to ${currentAgent?.name}... (Enter to send, Shift+Enter for new line)`}
               rows={3}
               disabled={streaming}
               className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-blue-600 resize-none disabled:opacity-50"

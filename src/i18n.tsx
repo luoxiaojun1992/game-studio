@@ -5,7 +5,8 @@ export type UILanguage = 'zh-CN' | 'en-US';
 const LANGUAGE_STORAGE_KEY = 'game_studio_ui_language';
 
 function detectBrowserLanguage(): UILanguage {
-  if (typeof navigator !== 'undefined' && navigator.language.toLowerCase().startsWith('zh')) {
+  const browserLanguage = typeof navigator !== 'undefined' ? navigator.language : undefined;
+  if (typeof browserLanguage === 'string' && browserLanguage.toLowerCase().startsWith('zh')) {
     return 'zh-CN';
   }
   return 'en-US';
@@ -34,7 +35,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     try {
       localStorage.setItem(LANGUAGE_STORAGE_KEY, language);
     } catch {}
-    document.documentElement.lang = language;
+    document.documentElement.lang = language.startsWith('zh') ? 'zh' : 'en';
   }, [language]);
 
   const value = useMemo<I18nContextValue>(() => {
