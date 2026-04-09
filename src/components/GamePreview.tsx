@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Game } from '../types';
 import { api } from '../config';
+import { useI18n } from '../i18n';
 
 interface Props {
   game: Game;
@@ -8,6 +9,7 @@ interface Props {
 }
 
 export default function GamePreview({ game, onClose }: Props) {
+  const { l } = useI18n();
   const [fullGame, setFullGame] = useState<Game | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -39,7 +41,7 @@ export default function GamePreview({ game, onClose }: Props) {
             rel="noopener noreferrer"
             className="text-xs bg-blue-600/20 hover:bg-blue-600/40 border border-blue-600/40 text-blue-300 rounded-lg px-3 py-1.5 transition-all"
           >
-            🔗 新窗口打开
+            {l('🔗 新窗口打开', '🔗 Open in New Window')}
           </a>
           <button onClick={onClose} className="text-gray-600 hover:text-gray-400 text-xl">✕</button>
         </div>
@@ -58,7 +60,7 @@ export default function GamePreview({ game, onClose }: Props) {
           <div className="absolute inset-0 flex items-center justify-center text-gray-500">
             <div className="text-center">
               <div className="text-3xl mb-2 animate-spin">⚙️</div>
-              <p className="text-sm">加载游戏...</p>
+              <p className="text-sm">{l('加载游戏...', 'Loading game...')}</p>
             </div>
           </div>
         ) : (
@@ -75,11 +77,11 @@ export default function GamePreview({ game, onClose }: Props) {
       {fullGame?.html_content && (
         <details className="border-t border-gray-800 shrink-0">
           <summary className="px-5 py-2 text-xs text-gray-500 cursor-pointer hover:text-gray-300 transition-colors">
-            查看游戏源码
+            {l('查看游戏源码', 'View Game Source')}
           </summary>
           <pre className="px-5 py-3 text-xs text-gray-400 font-mono overflow-x-auto max-h-48 bg-gray-950">
             {fullGame.html_content.slice(0, 5000)}
-            {fullGame.html_content.length > 5000 && '\n\n... (代码过长，已截断)'}
+            {fullGame.html_content.length > 5000 && l('\n\n... (代码过长，已截断)', '\n\n... (code too long, truncated)')}
           </pre>
         </details>
       )}

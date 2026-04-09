@@ -11,17 +11,18 @@ import GamePreview from '../components/GamePreview';
 import HandoffPanel from '../components/HandoffPanel';
 import TaskBoardPanel from '../components/TaskBoardPanel';
 import StarOfficeStudio from '../components/StarOfficeStudio';
+import { useI18n } from '../i18n';
 
-const TABS: { key: TabKey; label: string; icon: string }[] = [
-  { key: 'overview', label: '团队总览', icon: '🏠' },
-  { key: 'pixel_studio', label: 'Studio', icon: '🏢' },
-  { key: 'proposals', label: '策划案', icon: '📋' },
-  { key: 'tasks', label: '任务看板', icon: '🗂️' },
-  { key: 'handoffs', label: '任务交接', icon: '🔄' },
-  { key: 'settings', label: '配置中心', icon: '⚙️' },
-  { key: 'games', label: '游戏成品', icon: '🎮' },
-  { key: 'logs', label: '运行日志', icon: '📜' },
-  { key: 'commands', label: '指令中心', icon: '⌨️' },
+const TABS: { key: TabKey; label: { zh: string; en: string }; icon: string }[] = [
+  { key: 'overview', label: { zh: '团队总览', en: 'Overview' }, icon: '🏠' },
+  { key: 'pixel_studio', label: { zh: 'Studio', en: 'Studio' }, icon: '🏢' },
+  { key: 'proposals', label: { zh: '策划案', en: 'Proposals' }, icon: '📋' },
+  { key: 'tasks', label: { zh: '任务看板', en: 'Task Board' }, icon: '🗂️' },
+  { key: 'handoffs', label: { zh: '任务交接', en: 'Handoffs' }, icon: '🔄' },
+  { key: 'settings', label: { zh: '配置中心', en: 'Settings' }, icon: '⚙️' },
+  { key: 'games', label: { zh: '游戏成品', en: 'Games' }, icon: '🎮' },
+  { key: 'logs', label: { zh: '运行日志', en: 'Logs' }, icon: '📜' },
+  { key: 'commands', label: { zh: '指令中心', en: 'Commands' }, icon: '⌨️' },
 ];
 const DEFAULT_PROJECT_ID = 'default';
 
@@ -29,6 +30,7 @@ const DEFAULT_PROJECT_ID = 'default';
 const getCommandAgentKey = (projectId: string) => `commandPanel_lastAgent_${projectId}`;
 
 export default function StudioPage() {
+  const { l, language, setLanguage, isZh } = useI18n();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [games, setGames] = useState<Game[]>([]);
@@ -312,11 +314,11 @@ export default function StudioPage() {
     try {
       const id = name.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64);
       if (!id) {
-        setProjectError('项目名无效，请使用字母数字下划线或短横线。');
+        setProjectError(l('项目名无效，请使用字母数字下划线或短横线。', 'Invalid project name. Use letters, numbers, underscores or hyphens.'));
         return;
       }
       if (id === DEFAULT_PROJECT_ID) {
-        setProjectError('不能创建与默认项目同名的项目。');
+        setProjectError(l('不能创建与默认项目同名的项目。', 'Cannot create project with the same name as default project.'));
         return;
       }
       const data = await api.createProject({ id, name });
@@ -369,7 +371,7 @@ export default function StudioPage() {
           <span className="text-2xl">🎮</span>
           <div>
             <h1 className="text-lg font-bold text-white">Game Dev Studio</h1>
-            <p className="text-xs text-gray-400">游戏开发 Agent 团队 · 观测控制台 · 项目 {selectedProjectId}</p>
+            <p className="text-xs text-gray-400">{l('游戏开发 Agent 团队 · 观测控制台 · 项目', 'Game development agent team · observability console · project')} {selectedProjectId}</p>
           </div>
         </div>
 
@@ -378,35 +380,49 @@ export default function StudioPage() {
           {pendingPermissions.length > 0 && (
             <div className="flex items-center gap-1.5 bg-orange-500/20 border border-orange-500/40 rounded-full px-3 py-1 text-xs text-orange-300 animate-pulse">
               <span>⚠️</span>
-              <span>{pendingPermissions.length} 个待审批操作</span>
+              <span>{pendingPermissions.length} {l('个待审批操作', 'pending approvals')}</span>
             </div>
           )}
           {pendingProposals.length > 0 && (
             <div className="flex items-center gap-1.5 bg-blue-500/20 border border-blue-500/40 rounded-full px-3 py-1 text-xs text-blue-300">
               <span>📋</span>
-              <span>{pendingProposals.length} 个待审批方案</span>
+              <span>{pendingProposals.length} {l('个待审批方案', 'pending proposals')}</span>
             </div>
           )}
           {pendingHandoffs.length > 0 && (
             <div className="flex items-center gap-1.5 bg-purple-500/20 border border-purple-500/40 rounded-full px-3 py-1 text-xs text-purple-300 animate-pulse cursor-pointer" onClick={() => setActiveTab('handoffs')}>
               <span>🔄</span>
-              <span>{pendingHandoffs.length} 个待接收交接</span>
+              <span>{pendingHandoffs.length} {l('个待接收交接', 'pending handoffs')}</span>
             </div>
           )}
           {activeTasks.length > 0 && (
             <div className="flex items-center gap-1.5 bg-cyan-500/20 border border-cyan-500/40 rounded-full px-3 py-1 text-xs text-cyan-300 cursor-pointer" onClick={() => setActiveTab('tasks')}>
               <span>🗂️</span>
-              <span>{activeTasks.length} 个看板任务进行中</span>
+              <span>{activeTasks.length} {l('个看板任务进行中', 'active board tasks')}</span>
             </div>
           )}
           {workingAgents.length > 0 && (
             <div className="flex items-center gap-1.5 bg-green-500/20 border border-green-500/40 rounded-full px-3 py-1 text-xs text-green-300">
               <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse inline-block" />
-              <span>{workingAgents.length} 个 Agent 工作中</span>
+              <span>{workingAgents.length} {l('个 Agent 工作中', 'agents working')}</span>
             </div>
           )}
+          <div className="flex items-center rounded-lg border border-gray-700 overflow-hidden">
+            <button
+              onClick={() => setLanguage('zh-CN')}
+              className={`px-2.5 py-1 text-xs ${language === 'zh-CN' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'}`}
+            >
+              中文
+            </button>
+            <button
+              onClick={() => setLanguage('en-US')}
+              className={`px-2.5 py-1 text-xs ${language === 'en-US' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'}`}
+            >
+              EN
+            </button>
+          </div>
           <div className="flex items-center gap-2 text-xs">
-            <span className="text-gray-400">项目</span>
+            <span className="text-gray-400">{l('项目', 'Project')}</span>
             <select
               value={selectedProjectId}
               onChange={e => setSelectedProjectId(e.target.value)}
@@ -419,7 +435,7 @@ export default function StudioPage() {
             <input
               value={newProjectName}
               onChange={e => setNewProjectName(e.target.value)}
-              placeholder="新建项目名"
+              placeholder={l('新建项目名', 'New project name')}
               className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-gray-200 w-28"
             />
             <button
@@ -427,7 +443,7 @@ export default function StudioPage() {
               disabled={!newProjectName.trim() || creatingProject}
               className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded px-2 py-1"
             >
-              {creatingProject ? '创建中' : '新建'}
+              {creatingProject ? l('创建中', 'Creating') : l('新建', 'Create')}
             </button>
             {projectError && (
               <span className="text-red-400">{projectError}</span>
@@ -435,7 +451,7 @@ export default function StudioPage() {
           </div>
           <div className={`flex items-center gap-1.5 text-xs ${connected ? 'text-green-400' : 'text-red-400'}`}>
             <span className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-green-400' : 'bg-red-400'} ${connected ? '' : 'animate-pulse'}`} />
-            {connected ? '已连接' : '连接中...'}
+            {connected ? l('已连接', 'Connected') : l('连接中...', 'Connecting...')}
           </div>
         </div>
       </header>
@@ -443,7 +459,7 @@ export default function StudioPage() {
       {/* 权限请求悬浮通知 */}
       {pendingPermissions.length > 0 && (
         <div className="shrink-0 bg-orange-950/50 border-b border-orange-900/50 px-6 py-2">
-          <div className="text-xs text-orange-300 font-medium mb-1">⚠️ 有 Agent 正在请求操作权限，需要您确认：</div>
+          <div className="text-xs text-orange-300 font-medium mb-1">⚠️ {l('有 Agent 正在请求操作权限，需要您确认：', 'An agent is requesting tool permission, please review:')}</div>
           <div className="space-y-2">
             {pendingPermissions.map(perm => {
               const isAskUser = perm.toolName === 'AskUserQuestion';
@@ -460,7 +476,7 @@ export default function StudioPage() {
                   </div>
 
                   {isAskUser ? (
-                    /* AskUserQuestion: 显示问题 + 输入框 */
+                    /* AskUserQuestion */
                     <div>
                       {question && <div className="text-sm text-gray-200 mb-2">{question}</div>}
                       <AskUserQuestionForm
@@ -471,7 +487,7 @@ export default function StudioPage() {
                       />
                     </div>
                   ) : (
-                    /* 普通工具权限请求 */
+                     /* Permission request */
                     <>
                       {perm.input && Object.keys(perm.input).length > 0 && (
                         <div className="bg-gray-900/60 rounded-md p-2 mb-2 font-mono text-xs text-gray-300 overflow-x-auto whitespace-pre-wrap break-all max-h-40 overflow-y-auto border border-gray-700/50">
@@ -479,7 +495,7 @@ export default function StudioPage() {
                             <div key={key}>
                               <span className="text-blue-400">{key}</span>
                               <span className="text-gray-500">: </span>
-                              <span className="text-gray-200">{formatToolValue(value)}</span>
+                              <span className="text-gray-200">{formatToolValue(value, isZh)}</span>
                             </div>
                           ))}
                         </div>
@@ -489,13 +505,13 @@ export default function StudioPage() {
                           onClick={() => handlePermissionResponse(perm.requestId, 'allow')}
                           className="bg-green-600 hover:bg-green-500 text-white rounded px-3 py-1 text-xs font-medium transition-colors"
                         >
-                          ✅ 允许执行
+                          {l('✅ 允许执行', '✅ Allow')}
                         </button>
                         <button
                           onClick={() => handlePermissionResponse(perm.requestId, 'deny')}
                           className="bg-red-700 hover:bg-red-600 text-white rounded px-3 py-1 text-xs font-medium transition-colors"
                         >
-                          ❌ 拒绝
+                          {l('❌ 拒绝', '❌ Deny')}
                         </button>
                       </div>
                     </>
@@ -520,7 +536,7 @@ export default function StudioPage() {
             }`}
           >
             <span>{tab.icon}</span>
-            <span>{tab.label}</span>
+            <span>{isZh ? tab.label.zh : tab.label.en}</span>
             {tab.key === 'proposals' && pendingProposals.length > 0 && (
               <span className="bg-blue-400 text-blue-900 text-xs rounded-full px-1.5 py-0.5 font-bold min-w-[18px] text-center">
                 {pendingProposals.length}
@@ -561,9 +577,9 @@ export default function StudioPage() {
             {proposals.length > 0 && (
               <div className="bg-gray-900 rounded-xl border border-gray-800 p-4">
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-semibold text-gray-300">最新提案</h3>
+                  <h3 className="text-sm font-semibold text-gray-300">{l('最新提案', 'Latest Proposals')}</h3>
                   <button onClick={() => setActiveTab('proposals')} className="text-xs text-blue-400 hover:text-blue-300">
-                    查看全部 →
+                    {l('查看全部 →', 'View all →')}
                   </button>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
@@ -574,7 +590,7 @@ export default function StudioPage() {
                       className="bg-gray-800 hover:bg-gray-750 rounded-lg p-3 cursor-pointer border border-gray-700 hover:border-gray-600 transition-all"
                     >
                       <div className="flex items-center gap-2 mb-1">
-                        <ProposalStatusBadge status={p.status} />
+                        <ProposalStatusBadge status={p.status} isZh={isZh} />
                         <span className="text-xs text-gray-500">{p.author_agent_id}</span>
                       </div>
                       <p className="text-sm text-gray-200 font-medium truncate">{p.title}</p>
@@ -612,7 +628,7 @@ export default function StudioPage() {
                 <div className="flex items-center justify-center h-64 text-gray-500">
                   <div className="text-center">
                     <div className="text-4xl mb-2">📋</div>
-                    <p>选择一个提案查看详情</p>
+                     <p>{l('选择一个提案查看详情', 'Select a proposal to view details')}</p>
                   </div>
                 </div>
               )}
@@ -636,7 +652,7 @@ export default function StudioPage() {
                 <div className="flex items-center justify-center h-64 text-gray-500">
                   <div className="text-center">
                     <div className="text-4xl mb-2">🎮</div>
-                    <p>选择一个游戏预览</p>
+                     <p>{l('选择一个游戏预览', 'Select a game to preview')}</p>
                   </div>
                 </div>
               )}
@@ -689,14 +705,14 @@ export default function StudioPage() {
         {activeTab === 'settings' && (
           <div className="max-w-2xl space-y-4">
             <div className="bg-gray-900 rounded-xl border border-gray-800 p-4">
-              <h3 className="text-sm font-semibold text-gray-300 mb-1">配置中心</h3>
-              <p className="text-xs text-gray-500 mb-4">当前项目：{selectedProjectId}</p>
+              <h3 className="text-sm font-semibold text-gray-300 mb-1">{l('配置中心', 'Settings')}</h3>
+              <p className="text-xs text-gray-500 mb-4">{l('当前项目', 'Current project')}: {selectedProjectId}</p>
               <div className="flex items-center justify-between rounded-lg border border-gray-800 bg-gray-900/60 px-4 py-3">
                 <div>
-                  <div className="text-sm text-white font-medium">🤖 自动驾驶模式</div>
-                  <div className="text-xs text-gray-400 mt-1">
-                    开启后，所有工具调用（交接、提交方案、提交成品等）自动放行，无需手动审批。
-                  </div>
+                    <div className="text-sm text-white font-medium">🤖 {l('自动驾驶模式', 'Autopilot Mode')}</div>
+                    <div className="text-xs text-gray-400 mt-1">
+                      {l('开启后，所有工具调用（交接、提交方案、提交成品等）自动放行，无需手动审批。', 'When enabled, all tool calls (handoffs, proposal submissions, game submissions, etc.) are auto-approved.')}
+                    </div>
                 </div>
                 <button
                   onClick={() => handleToggleAutoHandoff(!projectSettings.autopilot_enabled)}
@@ -706,7 +722,7 @@ export default function StudioPage() {
                       : 'bg-gray-800 text-gray-300 border-gray-700 hover:bg-gray-700'
                   }`}
                 >
-                  {projectSettings.autopilot_enabled ? '已开启' : '已关闭'}
+                  {projectSettings.autopilot_enabled ? l('已开启', 'Enabled') : l('已关闭', 'Disabled')}
                 </button>
               </div>
             </div>
@@ -720,15 +736,15 @@ export default function StudioPage() {
 }
 
 // 提案状态徽章
-function ProposalStatusBadge({ status }: { status: string }) {
+function ProposalStatusBadge({ status, isZh }: { status: string; isZh: boolean }) {
   const config: Record<string, { label: string; className: string }> = {
-    pending_review: { label: '待评审', className: 'bg-yellow-500/20 text-yellow-300 border-yellow-600/40' },
-    under_review: { label: '评审中', className: 'bg-blue-500/20 text-blue-300 border-blue-600/40' },
-    approved: { label: '已通过', className: 'bg-green-500/20 text-green-300 border-green-600/40' },
-    rejected: { label: '已拒绝', className: 'bg-red-500/20 text-red-300 border-red-600/40' },
-    revision_needed: { label: '需修改', className: 'bg-orange-500/20 text-orange-300 border-orange-600/40' },
-    user_approved: { label: '已批准', className: 'bg-emerald-500/20 text-emerald-300 border-emerald-600/40' },
-    user_rejected: { label: '已驳回', className: 'bg-rose-500/20 text-rose-300 border-rose-600/40' },
+    pending_review: { label: isZh ? '待评审' : 'Pending Review', className: 'bg-yellow-500/20 text-yellow-300 border-yellow-600/40' },
+    under_review: { label: isZh ? '评审中' : 'In Review', className: 'bg-blue-500/20 text-blue-300 border-blue-600/40' },
+    approved: { label: isZh ? '已通过' : 'Approved', className: 'bg-green-500/20 text-green-300 border-green-600/40' },
+    rejected: { label: isZh ? '已拒绝' : 'Rejected', className: 'bg-red-500/20 text-red-300 border-red-600/40' },
+    revision_needed: { label: isZh ? '需修改' : 'Needs Revision', className: 'bg-orange-500/20 text-orange-300 border-orange-600/40' },
+    user_approved: { label: isZh ? '已批准' : 'Approved by User', className: 'bg-emerald-500/20 text-emerald-300 border-emerald-600/40' },
+    user_rejected: { label: isZh ? '已驳回' : 'Rejected by User', className: 'bg-rose-500/20 text-rose-300 border-rose-600/40' },
   };
   const c = config[status] || config.pending_review;
   return (
@@ -748,11 +764,11 @@ function getAgentEmoji(agentId: string): string {
 }
 
 // 格式化工具输入值，便于展示
-function formatToolValue(value: any): string {
+function formatToolValue(value: any, isZh: boolean): string {
   if (value === null || value === undefined) return 'null';
   if (typeof value === 'string') {
     // 命令类内容完整显示
-    if (value.length > 2000) return value.slice(0, 2000) + '\n... (内容过长已截断)';
+    if (value.length > 2000) return value.slice(0, 2000) + (isZh ? '\n... (内容过长已截断)' : '\n... (content truncated)');
     return value;
   }
   if (Array.isArray(value)) return JSON.stringify(value, null, 2);
@@ -767,6 +783,7 @@ function AskUserQuestionForm({ options, singleSelect, onReply, onDeny }: {
   onReply: (answer: string) => void;
   onDeny: () => void;
 }) {
+  const { l } = useI18n();
   const [selected, setSelected] = useState<string[]>([]);
   const [customText, setCustomText] = useState('');
 
@@ -804,13 +821,13 @@ function AskUserQuestionForm({ options, singleSelect, onReply, onDeny }: {
             disabled={selected.length === 0}
             className="bg-green-600 hover:bg-green-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded px-3 py-1 text-xs font-medium transition-colors"
           >
-            ✅ 提交回复
+            {l('✅ 提交回复', '✅ Submit')}
           </button>
           <button
             onClick={onDeny}
             className="bg-red-700 hover:bg-red-600 text-white rounded px-3 py-1 text-xs font-medium transition-colors"
           >
-            ❌ 跳过
+            {l('❌ 跳过', '❌ Skip')}
           </button>
         </div>
       </div>
@@ -829,7 +846,7 @@ function AskUserQuestionForm({ options, singleSelect, onReply, onDeny }: {
             onReply(customText.trim());
           }
         }}
-        placeholder="输入你的回复..."
+        placeholder={l('输入你的回复...', 'Enter your reply...')}
         className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-500"
         autoFocus
       />
@@ -839,13 +856,13 @@ function AskUserQuestionForm({ options, singleSelect, onReply, onDeny }: {
           disabled={!customText.trim()}
           className="bg-green-600 hover:bg-green-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded px-3 py-1 text-xs font-medium transition-colors"
         >
-          ✅ 提交回复
+          {l('✅ 提交回复', '✅ Submit')}
         </button>
         <button
           onClick={onDeny}
           className="bg-red-700 hover:bg-red-600 text-white rounded px-3 py-1 text-xs font-medium transition-colors"
         >
-          ❌ 跳过
+          {l('❌ 跳过', '❌ Skip')}
         </button>
       </div>
     </div>

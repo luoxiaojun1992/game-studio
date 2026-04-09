@@ -1,5 +1,6 @@
 import React from 'react';
 import { Agent, AgentRole, Handoff } from '../types';
+import { useI18n } from '../i18n';
 
 interface Props {
   agent: Agent;
@@ -18,8 +19,14 @@ const STATUS_CONFIG = {
 };
 
 export default function AgentCard({ agent, onPauseToggle, onSendCommand, streamLog, pendingHandoffs = [], activeHandoffs = [] }: Props) {
+  const { l } = useI18n();
   const status = agent.state?.status || 'idle';
-  const statusCfg = STATUS_CONFIG[status];
+  const statusCfg = {
+    idle: { ...STATUS_CONFIG.idle, label: l('空闲', 'Idle') },
+    working: { ...STATUS_CONFIG.working, label: l('工作中', 'Working') },
+    paused: { ...STATUS_CONFIG.paused, label: l('已暂停', 'Paused') },
+    error: { ...STATUS_CONFIG.error, label: l('出错', 'Error') },
+  }[status];
   const isPaused = agent.state?.isPaused;
 
   const incomingPending = pendingHandoffs.filter(h => h.to_agent_id === agent.id);
@@ -46,12 +53,12 @@ export default function AgentCard({ agent, onPauseToggle, onSendCommand, streamL
           <span className={`w-2 h-2 rounded-full ${statusCfg.dot} ${status === 'working' ? 'animate-pulse' : ''}`} />
           <span className={`text-xs ${statusCfg.color}`}>{statusCfg.label}</span>
           {incomingPending.length > 0 && (
-            <span className="bg-purple-500/20 text-purple-300 border border-purple-500/40 text-xs px-1.5 py-0 rounded-full font-bold" title={`${incomingPending.length} 个待接收交接`}>
+            <span className="bg-purple-500/20 text-purple-300 border border-purple-500/40 text-xs px-1.5 py-0 rounded-full font-bold" title={`${incomingPending.length} ${l('个待接收交接', 'pending handoffs')}`}>
               📥 {incomingPending.length}
             </span>
           )}
           {outgoingActive.length > 0 && (
-            <span className="bg-green-500/20 text-green-300 border border-green-500/40 text-xs px-1.5 py-0 rounded-full font-bold" title={`${outgoingActive.length} 个已发出交接`}>
+            <span className="bg-green-500/20 text-green-300 border border-green-500/40 text-xs px-1.5 py-0 rounded-full font-bold" title={`${outgoingActive.length} ${l('个已发出交接', 'outgoing handoffs')}`}>
               📤 {outgoingActive.length}
             </span>
           )}
@@ -62,7 +69,7 @@ export default function AgentCard({ agent, onPauseToggle, onSendCommand, streamL
       <div className="min-h-[40px]">
         {agent.state?.currentTask ? (
           <div className="text-xs text-gray-400 bg-gray-800 rounded-lg p-2 leading-relaxed">
-            <span className="text-gray-500">任务：</span>
+            <span className="text-gray-500">{l('任务', 'Task')}:</span>
             <span className="text-gray-300">{agent.state.currentTask.slice(0, 80)}
               {agent.state.currentTask.length > 80 ? '...' : ''}
             </span>
@@ -72,7 +79,7 @@ export default function AgentCard({ agent, onPauseToggle, onSendCommand, streamL
             {streamLog.content.slice(-80)}
           </div>
         ) : (
-          <div className="text-xs text-gray-600 italic">等待任务...</div>
+          <div className="text-xs text-gray-600 italic">{l('等待任务...', 'Waiting for tasks...')}</div>
         )}
       </div>
 
@@ -92,7 +99,7 @@ export default function AgentCard({ agent, onPauseToggle, onSendCommand, streamL
           onClick={onSendCommand}
           className="flex-1 text-xs bg-blue-600/20 hover:bg-blue-600/40 border border-blue-600/40 text-blue-300 rounded-lg py-1.5 transition-all"
         >
-          下达指令
+          {l('下达指令', 'Send Command')}
         </button>
         <button
           onClick={onPauseToggle}
@@ -102,7 +109,7 @@ export default function AgentCard({ agent, onPauseToggle, onSendCommand, streamL
               : 'bg-yellow-600/20 hover:bg-yellow-600/40 border-yellow-600/40 text-yellow-300'
           }`}
         >
-          {isPaused ? '▶ 恢复' : '⏸ 暂停'}
+          {isPaused ? l('▶ 恢复', '▶ Resume') : l('⏸ 暂停', '⏸ Pause')}
         </button>
       </div>
     </div>

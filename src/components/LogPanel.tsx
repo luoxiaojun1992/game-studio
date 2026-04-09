@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { LogEntry, Agent } from '../types';
 import { api } from '../config';
+import { useI18n } from '../i18n';
 
 interface Props {
   logs: LogEntry[];
@@ -15,15 +16,8 @@ const LEVEL_CONFIG: Record<string, { label: string; className: string; bg: strin
   success: { label: 'OK  ', className: 'text-green-400', bg: 'bg-green-900/10' },
 };
 
-const AGENT_NAMES: Record<string, { name: string; emoji: string }> = {
-  engineer: { name: '工程师', emoji: '👨‍💻' },
-  architect: { name: '架构师', emoji: '🏗️' },
-  game_designer: { name: '游戏策划', emoji: '🎮' },
-  biz_designer: { name: '商业策划', emoji: '💼' },
-  ceo: { name: 'CEO', emoji: '👔' },
-};
-
 export default function LogPanel({ logs: externalLogs, agents, projectId }: Props) {
+  const { l, locale, isZh } = useI18n();
   const [logs, setLogs] = useState<LogEntry[]>(externalLogs);
   const [filterAgent, setFilterAgent] = useState<string>('all');
   const [filterLevel, setFilterLevel] = useState<string>('all');
@@ -101,7 +95,7 @@ export default function LogPanel({ logs: externalLogs, agents, projectId }: Prop
               agent_id: se.agentId,
               log_type: 'done' as const,
               level: 'success' as const,
-              content: `完成${se.duration ? ` (耗时 ${(se.duration / 1000).toFixed(1)}s)` : ''}`,
+              content: (isZh ? '完成' : 'Completed') + `${se.duration ? (isZh ? ` (耗时 ${(se.duration / 1000).toFixed(1)}s)` : ` (${(se.duration / 1000).toFixed(1)}s)`) : ''}`,
               tool_name: null,
               action: null,
               is_error: false,
@@ -114,7 +108,7 @@ export default function LogPanel({ logs: externalLogs, agents, projectId }: Prop
               agent_id: se.agentId,
               log_type: 'error' as const,
               level: 'error' as const,
-              content: se.error || '未知错误',
+              content: se.error || (isZh ? '未知错误' : 'Unknown error'),
               tool_name: null,
               action: null,
               is_error: true,
@@ -126,7 +120,7 @@ export default function LogPanel({ logs: externalLogs, agents, projectId }: Prop
     };
 
     return () => es.close();
-  }, [projectId]);
+  }, [projectId, isZh]);
 
   // 自动滚动
   useEffect(() => {
@@ -146,10 +140,18 @@ export default function LogPanel({ logs: externalLogs, agents, projectId }: Prop
     setExpandedLog(prev => prev === id ? null : id);
   };
 
+  const AGENT_NAMES: Record<string, { name: string; emoji: string }> = {
+    engineer: { name: isZh ? '工程师' : 'Engineer', emoji: '👨‍💻' },
+    architect: { name: isZh ? '架构师' : 'Architect', emoji: '🏗️' },
+    game_designer: { name: isZh ? '游戏策划' : 'Game Designer', emoji: '🎮' },
+    biz_designer: { name: isZh ? '商业策划' : 'Business Designer', emoji: '💼' },
+    ceo: { name: 'CEO', emoji: '👔' },
+  };
+
   const renderLog = (log: LogEntry) => {
     const agentInfo = AGENT_NAMES[log.agent_id];
     const agentLabel = `${agentInfo?.emoji} ${agentInfo?.name || log.agent_id}`;
-    const timeStr = new Date(log.created_at).toLocaleTimeString('zh-CN');
+    const timeStr = new Date(log.created_at).toLocaleTimeString(locale);
     const isExpanded = expandedLog === log.id;
 
     // system 日志
@@ -172,7 +174,7 @@ export default function LogPanel({ logs: externalLogs, agents, projectId }: Prop
             </span>
           )}
           {longDetail && (
-            <span className="text-gray-700 shrink-0">{isExpanded ? '收起 ▲' : '展开 ▼'}</span>
+            <span className="text-gray-700 shrink-0">{isExpanded ? l('收起 ▲', 'Collapse ▲') : l('展开 ▼', 'Expand ▼')}</span>
           )}
         </div>
       );
@@ -191,7 +193,7 @@ export default function LogPanel({ logs: externalLogs, agents, projectId }: Prop
           </span>
           {isLong && (
             <button onClick={() => toggleExpand(log.id)} className="text-cyan-500 hover:text-cyan-400 shrink-0 ml-1">
-              {isExpanded ? '收起' : '展开'}
+              {isExpanded ? l('收起', 'Collapse') : l('展开', 'Expand')}
             </button>
           )}
         </div>
@@ -211,7 +213,7 @@ export default function LogPanel({ logs: externalLogs, agents, projectId }: Prop
           </span>
           {isLong && (
             <button onClick={() => toggleExpand(log.id)} className="text-blue-500 hover:text-blue-400 shrink-0 ml-1">
-              {isExpanded ? '收起' : '展开'}
+              {isExpanded ? l('收起', 'Collapse') : l('展开', 'Expand')}
             </button>
           )}
         </div>
@@ -234,7 +236,7 @@ export default function LogPanel({ logs: externalLogs, agents, projectId }: Prop
           )}
           {log.content && log.content.length > 200 && (
             <button onClick={() => toggleExpand(log.id)} className="text-yellow-500 hover:text-yellow-400 shrink-0 ml-1">
-              {isExpanded ? '收起' : '展开'}
+              {isExpanded ? l('收起', 'Collapse') : l('展开', 'Expand')}
             </button>
           )}
         </div>
@@ -256,7 +258,7 @@ export default function LogPanel({ logs: externalLogs, agents, projectId }: Prop
           </span>
           {log.content.length > 200 && (
             <button onClick={() => toggleExpand(log.id)} className={`shrink-0 ml-1 ${log.is_error ? 'text-red-500' : 'text-green-500'}`}>
-              {isExpanded ? '收起' : '展开'}
+              {isExpanded ? l('收起', 'Collapse') : l('展开', 'Expand')}
             </button>
           )}
         </div>
@@ -294,14 +296,14 @@ export default function LogPanel({ logs: externalLogs, agents, projectId }: Prop
     <div className="bg-gray-900 rounded-xl border border-gray-800 flex flex-col h-[calc(100vh-160px)]">
       {/* 工具栏 */}
       <div className="px-4 py-3 border-b border-gray-800 flex items-center gap-3 shrink-0">
-        <span className="font-semibold text-gray-200 text-sm">运行日志</span>
+        <span className="font-semibold text-gray-200 text-sm">{l('运行日志', 'Logs')}</span>
 
         <select
           value={filterAgent}
           onChange={e => setFilterAgent(e.target.value)}
           className="bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-xs text-gray-300 focus:outline-none"
         >
-          <option value="all">全部 Agent</option>
+          <option value="all">{l('全部 Agent', 'All Agents')}</option>
           {agents.map(a => (
             <option key={a.id} value={a.id}>{AGENT_NAMES[a.id]?.emoji} {a.name}</option>
           ))}
@@ -312,11 +314,11 @@ export default function LogPanel({ logs: externalLogs, agents, projectId }: Prop
           onChange={e => setFilterLevel(e.target.value)}
           className="bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-xs text-gray-300 focus:outline-none"
         >
-          <option value="all">全部级别</option>
-          <option value="success">成功</option>
-          <option value="info">信息</option>
-          <option value="warn">警告</option>
-          <option value="error">错误</option>
+          <option value="all">{l('全部级别', 'All Levels')}</option>
+          <option value="success">{l('成功', 'Success')}</option>
+          <option value="info">{l('信息', 'Info')}</option>
+          <option value="warn">{l('警告', 'Warn')}</option>
+          <option value="error">{l('错误', 'Error')}</option>
         </select>
 
         <label className="flex items-center gap-1.5 text-xs text-gray-400 cursor-pointer">
@@ -326,7 +328,7 @@ export default function LogPanel({ logs: externalLogs, agents, projectId }: Prop
             onChange={e => setAutoScroll(e.target.checked)}
             className="rounded border-gray-600"
           />
-          自动滚动
+          {l('自动滚动', 'Auto Scroll')}
         </label>
 
         <button
@@ -337,12 +339,12 @@ export default function LogPanel({ logs: externalLogs, agents, projectId }: Prop
             } catch {}
           }}
           className="text-xs text-gray-500 hover:text-red-400 transition-colors px-2 py-1 rounded hover:bg-red-900/20"
-          title="清除日志"
+          title={l('清除日志', 'Clear Logs')}
         >
-          🗑️ 清除
+          🗑️ {l('清除', 'Clear')}
         </button>
 
-        <span className="text-xs text-gray-600">{filteredLogs.length} 条</span>
+        <span className="text-xs text-gray-600">{filteredLogs.length} {l('条', 'items')}</span>
       </div>
 
       {/* 日志内容 */}
@@ -363,7 +365,7 @@ export default function LogPanel({ logs: externalLogs, agents, projectId }: Prop
         {filteredLogs.length === 0 && (
           <div className="text-center text-gray-600 py-8">
             <div className="text-3xl mb-2">📜</div>
-            暂无日志，发送指令后将在此显示完整日志
+            {l('暂无日志，发送指令后将在此显示完整日志', 'No logs yet. Send a command to view logs here.')}
           </div>
         )}
       </div>
