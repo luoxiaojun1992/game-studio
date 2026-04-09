@@ -98,10 +98,9 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           limit: z.number().min(1).max(50).optional().default(20).describe('返回条数上限')
         },
         async ({ category, keyword, limit }) => {
-          const normalizedKeyword = keyword?.trim();
           const memories = db.getAgentMemories(scopedProjectId, agentId, {
             category,
-            keyword: normalizedKeyword,
+            keyword,
             limit
           });
           if (memories.length === 0) {
