@@ -788,7 +788,7 @@ export function getAgentMemories(
     params.push(`%${escapeLikeWildcards(keyword)}%`);
   }
   const effectiveLimit = options.limit && options.limit > 0 ? options.limit : limit;
-  const sql = `SELECT * FROM agent_memories WHERE ${conditions.join(' AND ')} ORDER BY importance DESC, created_at DESC LIMIT ?`;
+  const sql = `SELECT * FROM agent_memories WHERE ${conditions.join(' AND ')} ORDER BY created_at DESC, importance DESC LIMIT ?`;
   params.push(effectiveLimit);
   const stmt = db.prepare(sql);
   return stmt.all(...params) as DbAgentMemory[];
