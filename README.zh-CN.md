@@ -19,14 +19,14 @@
 
 ## 界面预览
 
-![团队总览](./docs/images/team.png)
-![Studio 工作台](./docs/images/studio.png)
-![策划案](./docs/images/proposal.png)
-![任务看板](./docs/images/task.png)
-![任务交接](./docs/images/handoff.png)
-![游戏成品](./docs/images/artifact.png)
-![运行日志](./docs/images/log.png)
-![指令中心](./docs/images/command.png)
+![团队总览](./docs/images/team.zh-CN.png)
+![Studio 工作台](./docs/images/studio.zh-CN.png)
+![策划案](./docs/images/proposal.zh-CN.png)
+![任务看板](./docs/images/task.zh-CN.png)
+![任务交接](./docs/images/handoff.zh-CN.png)
+![游戏成品](./docs/images/artifact.zh-CN.png)
+![运行日志](./docs/images/log.zh-CN.png)
+![指令中心](./docs/images/command.zh-CN.png)
 
 ## 技术栈
 
