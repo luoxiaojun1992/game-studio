@@ -26,6 +26,7 @@ export interface StreamEvent {
 }
 
 /**
+ * Coordinates per-project agent runtime state, streaming sessions, logs, and permission handshakes.
  */
 class AgentManager extends EventEmitter {
   private agentStatesByProject: Map<string, Map<AgentRole, AgentState>> = new Map();
@@ -134,6 +135,7 @@ class AgentManager extends EventEmitter {
   }
 
   /**
+   * Marks an agent as paused in memory and persistence, then emits a pause event.
    */
   pauseAgent(projectId: string, agentId: AgentRole): void {
     const scopedProjectId = this.normalizeProjectId(projectId);
@@ -145,6 +147,7 @@ class AgentManager extends EventEmitter {
   }
 
   /**
+   * Clears paused state for an agent and returns it to idle status.
    */
   resumeAgent(projectId: string, agentId: AgentRole): void {
     const scopedProjectId = this.normalizeProjectId(projectId);
@@ -156,6 +159,7 @@ class AgentManager extends EventEmitter {
   }
 
   /**
+   * Returns whether an agent is currently paused for the target project scope.
    */
   isAgentPaused(projectId: string, agentId: AgentRole): boolean {
     const scopedProjectId = this.normalizeProjectId(projectId);
@@ -164,6 +168,7 @@ class AgentManager extends EventEmitter {
   }
 
   /**
+   * Writes a system-level timeline log entry for a specific agent.
    */
   addLog(projectId: string, agentId: AgentRole, action: string, detail: string | null, level: db.LogLevel = 'info'): void {
     const scopedProjectId = this.normalizeProjectId(projectId);
@@ -183,6 +188,7 @@ class AgentManager extends EventEmitter {
   }
 
   /**
+   * Persists a structured agent log item from model/tool execution events.
    */
   addAgentLogEntry(
     projectId: string,
@@ -209,6 +215,7 @@ class AgentManager extends EventEmitter {
   }
 
   /**
+   * Produces a short, readable summary for tool invocation input payloads.
    */
   private summarizeToolInput(toolName: string, input: Record<string, unknown>): string {
     try {
@@ -252,6 +259,7 @@ class AgentManager extends EventEmitter {
   }
 
   /**
+   * Produces a compact tool result preview suitable for UI timelines and logs.
    */
   private summarizeToolResult(toolName: string, result: string, isError: boolean): string {
     if (isError) {
@@ -280,6 +288,7 @@ class AgentManager extends EventEmitter {
   }
 
   /**
+   * Prevents the engineer agent from finishing while its task-board items remain unfinished.
    */
   private validateEngineerTaskBoardBeforeFinish(projectId: string): string | null {
     const tasks = db.getTaskBoardTasks(projectId)
@@ -311,6 +320,7 @@ class AgentManager extends EventEmitter {
   }
 
   /**
+   * Builds the final system prompt by combining static role prompt and project memory summary.
    */
   private buildSystemPrompt(projectId: string, agentId: AgentRole): string {
     const agentDef = AGENT_DEFINITIONS[agentId];
@@ -319,6 +329,7 @@ class AgentManager extends EventEmitter {
   }
 
   /**
+   * Runs one agent turn end-to-end, including streaming events, tool permissions, and state transitions.
    */
   async sendMessage(
     projectId: string,
@@ -653,6 +664,7 @@ class AgentManager extends EventEmitter {
   }
 
   /**
+   * Resolves a pending permission request and forwards the decision to the waiting stream.
    */
   respondToPermission(requestId: string, behavior: 'allow' | 'deny', message?: string, projectId?: string, updatedInput?: Record<string, unknown>): boolean {
     const pending = this.pendingPermissions.get(requestId);
@@ -684,6 +696,7 @@ class AgentManager extends EventEmitter {
   }
 
   /**
+   * Returns pending permission requests by merging in-memory live requests with persisted DB records.
    */
   getPendingPermissions(projectId?: string): Array<{ requestId: string; toolName: string; input: any; projectId: string; agentId: AgentRole; timestamp: number }> {
     const scopedProjectId = projectId ? this.normalizeProjectId(projectId) : undefined;
