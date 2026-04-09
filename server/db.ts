@@ -385,6 +385,8 @@ export interface DbTaskBoardTask {
   updated_at: string;
 }
 
+const CEO_AGENT_ID = 'ceo' as const;
+
 export interface DbProjectSettings {
   project_id: string;
   autopilot_enabled: number;
@@ -458,7 +460,7 @@ export function getScopedProposals(
     conditions.push('status = ?');
     params.push(options.status);
   }
-  if (options?.agentId && !(options.includeAllForCeo && options.agentId === 'ceo')) {
+  if (options?.agentId && !(options.includeAllForCeo && options.agentId === CEO_AGENT_ID)) {
     conditions.push('(author_agent_id = ? OR reviewer_agent_id = ?)');
     params.push(options.agentId, options.agentId);
   }
@@ -708,12 +710,12 @@ export function getAllHandoffs(projectId: string, limit = 50): DbHandoff[] {
 
 export function getPendingHandoffs(projectId: string, toAgentId?: string, limit?: number): DbHandoff[] {
   const params: any[] = [projectId];
-  let sql = "SELECT * FROM handoffs WHERE project_id = ?";
+  let sql = 'SELECT * FROM handoffs WHERE project_id = ?';
   if (toAgentId) {
-    sql += " AND to_agent_id = ?";
+    sql += ' AND to_agent_id = ?';
     params.push(toAgentId);
   }
-  sql += " AND status IN ('pending', 'accepted', 'working') ORDER BY created_at DESC";
+  sql += ' AND status IN (\'pending\', \'accepted\', \'working\') ORDER BY created_at DESC';
   if (limit && limit > 0) {
     sql += ' LIMIT ?';
     params.push(limit);

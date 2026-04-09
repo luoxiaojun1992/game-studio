@@ -94,14 +94,15 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         '获取你之前保存的长期记忆，帮助你回忆之前的决策、经验和成果。',
         {
           category: z.enum(['general', 'preference', 'decision', 'lesson', 'achievement']).optional().describe('按类别筛选，不填则返回全部'),
-          keyword: z.string().optional().describe('按关键词模糊搜索记忆内容，可选'),
+          keyword: z.string().trim().max(200).optional().describe('按关键词模糊搜索记忆内容，可选，最长 200 字符'),
           limit: z.number().min(1).max(50).optional().default(20).describe('返回条数上限')
         },
         async ({ category, keyword, limit }) => {
+          const normalizedKeyword = keyword?.trim();
           const memories = db.getAgentMemories(scopedProjectId, agentId, {
             category,
-            keyword,
-            limit: limit || 20
+            keyword: normalizedKeyword,
+            limit
           });
           if (memories.length === 0) {
             return {
