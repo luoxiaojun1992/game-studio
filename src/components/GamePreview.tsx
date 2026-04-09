@@ -8,8 +8,24 @@ interface Props {
   onClose: () => void;
 }
 
+const AGENT_NAMES_ZH: Record<string, string> = {
+  engineer: '软件工程师',
+  architect: '架构师',
+  game_designer: '游戏策划',
+  biz_designer: '商业策划',
+  ceo: 'CEO',
+};
+
+const AGENT_NAMES_EN: Record<string, string> = {
+  engineer: 'Engineer',
+  architect: 'Architect',
+  game_designer: 'Game Designer',
+  biz_designer: 'Business Designer',
+  ceo: 'CEO',
+};
+
 export default function GamePreview({ game, onClose }: Props) {
-  const { l } = useI18n();
+  const { l, isZh } = useI18n();
   const [fullGame, setFullGame] = useState<Game | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -31,7 +47,7 @@ export default function GamePreview({ game, onClose }: Props) {
           <span className="text-xl">🎮</span>
           <div>
             <h2 className="font-bold text-white text-base">{game.name}</h2>
-            <div className="text-xs text-gray-500">v{game.version} · {game.author_agent_id}</div>
+            <div className="text-xs text-gray-500">v{game.version} · {(isZh ? AGENT_NAMES_ZH : AGENT_NAMES_EN)[game.author_agent_id] || game.author_agent_id}</div>
           </div>
         </div>
         <div className="flex items-center gap-2">

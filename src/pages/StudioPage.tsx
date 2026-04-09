@@ -13,6 +13,22 @@ import TaskBoardPanel from '../components/TaskBoardPanel';
 import StarOfficeStudio from '../components/StarOfficeStudio';
 import { useI18n } from '../i18n';
 
+const AGENT_NAMES_ZH: Record<string, string> = {
+  engineer: '软件工程师',
+  architect: '架构师',
+  game_designer: '游戏策划',
+  biz_designer: '商业策划',
+  ceo: 'CEO',
+};
+
+const AGENT_NAMES_EN: Record<string, string> = {
+  engineer: 'Engineer',
+  architect: 'Architect',
+  game_designer: 'Game Designer',
+  biz_designer: 'Business Designer',
+  ceo: 'CEO',
+};
+
 const TABS: { key: TabKey; label: { zh: string; en: string }; icon: string }[] = [
   { key: 'overview', label: { zh: '团队总览', en: 'Overview' }, icon: '🏠' },
   { key: 'pixel_studio', label: { zh: 'Studio', en: 'Studio' }, icon: '🏢' },
@@ -591,7 +607,7 @@ export default function StudioPage() {
                     >
                       <div className="flex items-center gap-2 mb-1">
                         <ProposalStatusBadge status={p.status} isZh={isZh} />
-                        <span className="text-xs text-gray-500">{p.author_agent_id}</span>
+                        <span className="text-xs text-gray-500">{(isZh ? AGENT_NAMES_ZH : AGENT_NAMES_EN)[p.author_agent_id] || p.author_agent_id}</span>
                       </div>
                       <p className="text-sm text-gray-200 font-medium truncate">{p.title}</p>
                     </div>

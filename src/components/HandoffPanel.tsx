@@ -29,13 +29,30 @@ const AGENT_EMOJI: Record<string, string> = {
   biz_designer: '💼', ceo: '👔',
 };
 
-function getAgentName(agents: Agent[], agentId: string): string {
+const AGENT_NAMES_ZH: Record<string, string> = {
+  engineer: '软件工程师',
+  architect: '架构师',
+  game_designer: '游戏策划',
+  biz_designer: '商业策划',
+  ceo: 'CEO',
+};
+
+const AGENT_NAMES_EN: Record<string, string> = {
+  engineer: 'Engineer',
+  architect: 'Architect',
+  game_designer: 'Game Designer',
+  biz_designer: 'Business Designer',
+  ceo: 'CEO',
+};
+
+function getAgentName(agents: Agent[], agentId: string, isZh: boolean): string {
   const agent = agents.find(a => a.id === agentId);
-  return agent ? agent.name : agentId;
+  const nameMap = isZh ? AGENT_NAMES_ZH : AGENT_NAMES_EN;
+  return nameMap[agentId] || (agent ? agent.name : agentId);
 }
 
 export default function HandoffPanel({ agents, projectId }: Props) {
-  const { l, locale } = useI18n();
+  const { l, locale, isZh } = useI18n();
   const [handoffs, setHandoffs] = useState<Handoff[]>([]);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -226,7 +243,7 @@ export default function HandoffPanel({ agents, projectId }: Props) {
               }`}>
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-lg">{AGENT_EMOJI[step.agent]}</span>
-                  <span className="text-xs font-medium text-white truncate">{getAgentName(agents, step.agent)}</span>
+                  <span className="text-xs font-medium text-white truncate">{getAgentName(agents, step.agent, isZh)}</span>
                 </div>
                 <div className="flex items-center gap-1 text-xs">
                   {step.incoming.length > 0 && (
@@ -363,7 +380,7 @@ export default function HandoffPanel({ agents, projectId }: Props) {
                       )}
                     </div>
                     <div className="text-xs text-gray-500 mt-0.5">
-                      {getAgentName(agents, handoff.from_agent_id)} → {getAgentName(agents, handoff.to_agent_id)}
+                      {getAgentName(agents, handoff.from_agent_id, isZh)} → {getAgentName(agents, handoff.to_agent_id, isZh)}
                       <span className="mx-2">·</span>
                       {new Date(handoff.created_at).toLocaleString(locale)}
                     </div>
@@ -441,7 +458,7 @@ export default function HandoffPanel({ agents, projectId }: Props) {
                         <div className="w-full">
                           <div className="flex items-center gap-2 mb-2 p-2 bg-blue-900/20 border border-blue-700/40 rounded-lg">
                             <span className="text-blue-300 text-sm">⚠️</span>
-                            <span className="text-blue-300 text-xs">{l('任务已接收，请确认后开始执行。目标 Agent（', 'Task accepted. Confirm to start execution. Target Agent (')}{getAgentName(agents, handoff.to_agent_id)}{l('）将收到任务指令。', ') will receive the task command.')}</span>
+                            <span className="text-blue-300 text-xs">{l('任务已接收，请确认后开始执行。目标 Agent（', 'Task accepted. Confirm to start execution. Target Agent (')}{getAgentName(agents, handoff.to_agent_id, isZh)}{l('）将收到任务指令。', ') will receive the task command.')}</span>
                           </div>
                           <div className="flex gap-2">
                             <button

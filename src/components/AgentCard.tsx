@@ -18,8 +18,74 @@ const STATUS_CONFIG = {
   error: { label: '出错', color: 'text-red-400', dot: 'bg-red-400', bg: 'border-red-800/50' },
 };
 
+const AGENT_NAMES_ZH: Record<string, string> = {
+  engineer: '软件工程师',
+  architect: '架构师',
+  game_designer: '游戏策划',
+  biz_designer: '商业策划',
+  ceo: 'CEO',
+};
+
+const AGENT_NAMES_EN: Record<string, string> = {
+  engineer: 'Engineer',
+  architect: 'Architect',
+  game_designer: 'Game Designer',
+  biz_designer: 'Business Designer',
+  ceo: 'CEO',
+};
+
+const AGENT_TITLES_ZH: Record<string, string> = {
+  engineer: '负责技术实现和代码开发',
+  architect: '负责整体架构设计和技术评审',
+  game_designer: '负责游戏玩法设计和策划案',
+  biz_designer: '负责商业模式和运营策略',
+  ceo: '负责产品决策和团队协调',
+};
+
+const AGENT_TITLES_EN: Record<string, string> = {
+  engineer: 'Technical implementation and development',
+  architect: 'Architecture design and technical review',
+  game_designer: 'Game design and proposal creation',
+  biz_designer: 'Business model and operations strategy',
+  ceo: 'Product decisions and team coordination',
+};
+
+// Responsibilities 翻译映射（中文 -> 英文）
+const RESPONSIBILITIES_MAP: Record<string, string> = {
+  // Engineer
+  '技术方案设计与评估': 'Technical solution design & evaluation',
+  '游戏功能开发实现': 'Game feature development',
+  '代码编写与软件测试': 'Code writing & software testing',
+  '技术问题排查': 'Technical troubleshooting',
+  '交付可运行的游戏成品': 'Deliver playable game products',
+  // Architect
+  '整体技术架构设计': 'Overall technical architecture design',
+  '技术选型决策': 'Technology stack decisions',
+  '代码质量评审': 'Code quality review',
+  '性能优化指导': 'Performance optimization guidance',
+  '技术规范制定': 'Technical standards formulation',
+  // Game Designer
+  '游戏概念设计': 'Game concept design',
+  '游戏玩法规则设计': 'Gameplay & rules design',
+  '关卡和内容设计': 'Level & content design',
+  'UI 设计与用户体验设计': 'UI & UX design',
+  '游戏数值平衡': 'Game balance & tuning',
+  // Business Designer
+  '商业模式设计': 'Business model design',
+  '盈利方案规划': 'Monetization planning',
+  '市场分析': 'Market analysis',
+  '定价策略': 'Pricing strategy',
+  '运营策略': 'Operations strategy',
+  // CEO
+  '策划案综合评审': 'Proposal comprehensive review',
+  '商业决策审批': 'Business decision approval',
+  '团队协调管理': 'Team coordination & management',
+  '产品方向把控': 'Product direction control',
+  '最终方案决策': 'Final decision making',
+};
+
 export default function AgentCard({ agent, onPauseToggle, onSendCommand, streamLog, pendingHandoffs = [], activeHandoffs = [] }: Props) {
-  const { l } = useI18n();
+  const { l, isZh } = useI18n();
   const status = agent.state?.status || 'idle';
   const statusCfg = {
     idle: { ...STATUS_CONFIG.idle, label: l('空闲', 'Idle') },
@@ -43,8 +109,8 @@ export default function AgentCard({ agent, onPauseToggle, onSendCommand, streamL
           <div className="flex items-center gap-2">
             <span className="text-2xl">{agent.emoji}</span>
             <div>
-              <div className="font-semibold text-white text-sm">{agent.name}</div>
-              <div className="text-xs text-gray-500">{agent.title}</div>
+              <div className="font-semibold text-white text-sm">{(isZh ? AGENT_NAMES_ZH : AGENT_NAMES_EN)[agent.id] || agent.name}</div>
+              <div className="text-xs text-gray-500">{(isZh ? AGENT_TITLES_ZH : AGENT_TITLES_EN)[agent.id] || agent.title}</div>
             </div>
           </div>
 
@@ -88,7 +154,7 @@ export default function AgentCard({ agent, onPauseToggle, onSendCommand, streamL
         {agent.responsibilities?.slice(0, 2).map((r, i) => (
           <div key={i} className="text-xs text-gray-500 flex items-start gap-1">
             <span className="text-gray-600 shrink-0 mt-0.5">•</span>
-            <span className="truncate">{r}</span>
+            <span className="truncate">{isZh ? r : (RESPONSIBILITIES_MAP[r] || r)}</span>
           </div>
         ))}
       </div>

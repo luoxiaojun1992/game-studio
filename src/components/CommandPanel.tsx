@@ -327,7 +327,7 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
               >
                 <span className="text-lg">{agent.emoji}</span>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm text-gray-200 font-medium truncate">{agent.name}</div>
+                  <div className="text-sm text-gray-200 font-medium truncate">{AGENT_NAMES[agent.id]?.name || agent.name}</div>
                   <div className="text-xs">
                     {agent.state?.status === 'working' ? (
                       <span className="text-green-400 flex items-center gap-1">

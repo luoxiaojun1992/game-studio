@@ -59,7 +59,7 @@ function ProposalItem({ proposal, selected, onClick }: { proposal: Proposal; sel
     ceo_review: l('👔 CEO评审', '👔 CEO Review'),
   };
 
-  const statusCfg: Record<ProposalStatus, { label: string; className: string }> = {
+  const statusConfigMap: Record<ProposalStatus, { label: string; className: string }> = {
     pending_review: { label: l('待评审', 'Pending Review'), className: 'bg-yellow-500/20 text-yellow-300 border-yellow-600/40' },
     under_review: { label: l('评审中', 'In Review'), className: 'bg-blue-500/20 text-blue-300 border-blue-600/40' },
     approved: { label: l('已通过', 'Approved'), className: 'bg-green-500/20 text-green-300 border-green-600/40' },
@@ -67,7 +67,8 @@ function ProposalItem({ proposal, selected, onClick }: { proposal: Proposal; sel
     revision_needed: { label: l('需修改', 'Needs Revision'), className: 'bg-orange-500/20 text-orange-300 border-orange-600/40' },
     user_approved: { label: l('✅ 已批准', '✅ User Approved'), className: 'bg-emerald-500/20 text-emerald-300 border-emerald-600/40' },
     user_rejected: { label: l('❌ 已驳回', '❌ User Rejected'), className: 'bg-rose-500/20 text-rose-300 border-rose-600/40' },
-  }[proposal.status];
+  };
+  const statusCfg = statusConfigMap[proposal.status];
 
   return (
     <div
