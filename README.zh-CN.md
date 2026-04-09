@@ -24,6 +24,7 @@
 ![策划案](./docs/images/proposal.zh-CN.png)
 ![任务看板](./docs/images/task.zh-CN.png)
 ![任务交接](./docs/images/handoff.zh-CN.png)
+![配置中心](./docs/images/setting.zh-CN.png)
 ![游戏成品](./docs/images/artifact.zh-CN.png)
 ![运行日志](./docs/images/log.zh-CN.png)
 ![指令中心](./docs/images/command.zh-CN.png)

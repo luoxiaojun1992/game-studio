@@ -25,6 +25,7 @@ A multi-agent game development workspace built on the CodeBuddy Agent SDK, provi
 ![Proposal](./docs/images/proposal.png)
 ![Task Board](./docs/images/task.png)
 ![Task Handoff](./docs/images/handoff.png)
+![Settings](./docs/images/setting.png)
 ![Game Artifact](./docs/images/artifact.png)
 ![Runtime Logs](./docs/images/log.png)
 ![Command Center](./docs/images/command.png)
