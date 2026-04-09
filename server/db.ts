@@ -772,6 +772,7 @@ export function getAgentMemories(
   categoryOrOptions?: string | { category?: string; keyword?: string; limit?: number },
   limit = 50
 ): DbAgentMemory[] {
+  const escapeLikePattern = (value: string): string => value.replace(/[\\%_]/g, '\\$&');
   const options = typeof categoryOrOptions === 'string'
     ? { category: categoryOrOptions, limit }
     : (categoryOrOptions || { limit });
@@ -783,8 +784,8 @@ export function getAgentMemories(
   }
   const keyword = (options.keyword || '').trim();
   if (keyword) {
-    conditions.push('content LIKE ?');
-    params.push(`%${keyword}%`);
+    conditions.push("content LIKE ? ESCAPE '\\'");
+    params.push(`%${escapeLikePattern(keyword)}%`);
   }
   const effectiveLimit = options.limit && options.limit > 0 ? options.limit : limit;
   const sql = `SELECT * FROM agent_memories WHERE ${conditions.join(' AND ')} ORDER BY importance DESC, created_at DESC LIMIT ?`;
