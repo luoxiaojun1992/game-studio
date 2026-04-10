@@ -20,9 +20,9 @@ const PROJECT_ID_PATTERN = db.PROJECT_ID_PATTERN;
 const MAX_PROJECT_ID_LENGTH = db.MAX_PROJECT_ID_LENGTH;
 const MAX_FILENAME_LENGTH = db.MAX_FILENAME_LENGTH;
 const MAX_VERSION_LENGTH = db.MAX_VERSION_LENGTH;
-const PROPOSAL_TYPES = new Set<db.DbProposal['type']>(['game_design', 'biz_design', 'tech_arch', 'tech_impl', 'ceo_review']);
-const TASK_TYPES = new Set<db.DbTaskBoardTask['task_type']>(['development', 'testing']);
-const HANDOFF_PRIORITIES = new Set<db.DbHandoff['priority']>(['low', 'normal', 'high', 'urgent']);
+const PROPOSAL_TYPES = new Set<db.DbProposal['type']>(db.PROPOSAL_TYPES);
+const TASK_TYPES = new Set<db.DbTaskBoardTask['task_type']>(db.TASK_TYPES);
+const HANDOFF_PRIORITIES = new Set<db.DbHandoff['priority']>(db.HANDOFF_PRIORITIES);
 const USER_DECISIONS = new Set(['approved', 'rejected']);
 const TEAM_BUILDING_AGENT_ID: AgentRole = 'team_builder';
 let cachedAgentIdOptions: AgentRole[] | null = null;
@@ -77,6 +77,20 @@ const validateTitleInput = (value: unknown, fieldName: string): { ok: true; titl
     return { ok: true, title: db.normalizeAndValidateTitle(value, fieldName) };
   } catch (error: any) {
     return { ok: false, error: error?.message || `${fieldName} 不合法` };
+  }
+};
+const validateRequiredTextInput = (value: unknown, fieldName: string): { ok: true; text: string } | { ok: false; error: string } => {
+  try {
+    return { ok: true, text: db.normalizeAndValidateRequiredText(value, fieldName) };
+  } catch (error: any) {
+    return { ok: false, error: error?.message || `${fieldName} 格式验证失败` };
+  }
+};
+const validateOptionalTextInput = (value: unknown, fieldName: string): { ok: true; text: string | null } | { ok: false; error: string } => {
+  try {
+    return { ok: true, text: db.normalizeOptionalText(value, fieldName) };
+  } catch (error: any) {
+    return { ok: false, error: error?.message || `${fieldName} 格式验证失败` };
   }
 };
 
@@ -526,6 +540,10 @@ app.post('/api/handoffs', (req, res) => {
   }
   const titleValidation = validateTitleInput(title, 'title');
   if (!titleValidation.ok) return res.status(400).json({ error: titleValidation.error });
+  const descriptionValidation = validateRequiredTextInput(description, 'description');
+  if (!descriptionValidation.ok) return res.status(400).json({ error: descriptionValidation.error });
+  const contextValidation = validateOptionalTextInput(context, 'context');
+  if (!contextValidation.ok) return res.status(400).json({ error: contextValidation.error });
 
   const now = new Date().toISOString();
   const settings = db.getProjectSettings(projectId);
@@ -537,8 +555,8 @@ app.post('/api/handoffs', (req, res) => {
       from_agent_id: fromAgentValidation.agentId,
       to_agent_id: toAgentValidation.agentId,
     title: titleValidation.title,
-    description,
-    context: context || null,
+    description: descriptionValidation.text,
+    context: contextValidation.text,
     status: autoHandoffEnabled ? 'working' : 'pending',
     priority: normalizedPriority,
     result: null,
@@ -729,13 +747,15 @@ app.post('/api/tasks', (req, res) => {
   }
   const titleValidation = validateTitleInput(title, 'title');
   if (!titleValidation.ok) return res.status(400).json({ error: titleValidation.error });
+  const descriptionValidation = validateOptionalTextInput(description, 'description');
+  if (!descriptionValidation.ok) return res.status(400).json({ error: descriptionValidation.error });
 
   const now = new Date().toISOString();
   const task = db.createTaskBoardTask({
     id: uuidv4(),
     project_id: projectValidation.projectId,
     title: titleValidation.title,
-    description: description ? String(description).trim() : null,
+    description: descriptionValidation.text,
     task_type,
     status: 'todo',
     source_task_id: null,
@@ -756,7 +776,7 @@ app.post('/api/tasks', (req, res) => {
       id: uuidv4(),
       project_id: projectValidation.projectId,
       title: `${titleValidation.title}（测试）`,
-      description: description ? `由开发任务拆分：${String(description).trim()}` : '由开发任务自动拆分的测试任务',
+      description: descriptionValidation.text ? `由开发任务拆分：${descriptionValidation.text}` : '由开发任务自动拆分的测试任务',
       task_type: 'testing',
       status: 'todo',
       source_task_id: task.id,
@@ -887,6 +907,8 @@ app.post('/api/proposals', (req, res) => {
   if (!proposalAuthorValidation.ok) return res.status(400).json({ error: proposalAuthorValidation.error });
   const titleValidation = validateTitleInput(title, 'title');
   if (!titleValidation.ok) return res.status(400).json({ error: titleValidation.error });
+  const contentValidation = validateRequiredTextInput(content, 'content');
+  if (!contentValidation.ok) return res.status(400).json({ error: contentValidation.error });
 
   const now = new Date().toISOString();
   const proposal = db.createProposal({
@@ -894,7 +916,7 @@ app.post('/api/proposals', (req, res) => {
     project_id: projectValidation.projectId,
     type,
     title: titleValidation.title,
-    content,
+    content: contentValidation.text,
     author_agent_id: proposalAuthorValidation.agentId,
     status: 'pending_review',
     reviewer_agent_id: null,
@@ -951,8 +973,10 @@ app.post('/api/games', (req, res) => {
   if (missing.length > 0) {
     return res.status(400).json({ error: `缺少必要字段：${missing.join(', ')}` });
   }
-  if (typeof name !== 'string') return res.status(400).json({ error: 'name 必须是字符串' });
-  if (typeof html_content !== 'string') return res.status(400).json({ error: 'html_content 必须是字符串' });
+  const nameValidation = validateRequiredTextInput(name, 'name');
+  if (!nameValidation.ok) return res.status(400).json({ error: nameValidation.error });
+  const htmlValidation = validateRequiredTextInput(html_content, 'html_content');
+  if (!htmlValidation.ok) return res.status(400).json({ error: htmlValidation.error });
   const projectValidation = validateProjectIdInput(project_id, 'project_id');
   if (!projectValidation.ok) return res.status(400).json({ error: projectValidation.error });
   const gameAuthorValidation = validateAgentIdInput(author_agent_id, 'author_agent_id');
@@ -964,11 +988,13 @@ app.post('/api/games', (req, res) => {
     return res.status(400).json({ error: 'version 必须是字符串' });
   }
   const normalizedVersion = typeof version === 'string' ? version.trim() : undefined;
-  const trimmedProposalId = typeof proposal_id === 'string' ? proposal_id.trim() : '';
-  const normalizedProposalId = trimmedProposalId || null;
-  const normalizedName = typeof name === 'string' ? name.trim() : '';
+  const proposalIdValidation = validateOptionalTextInput(proposal_id, 'proposal_id');
+  if (!proposalIdValidation.ok) return res.status(400).json({ error: proposalIdValidation.error });
+  const descriptionValidation = validateOptionalTextInput(description, 'description');
+  if (!descriptionValidation.ok) return res.status(400).json({ error: descriptionValidation.error });
+  const normalizedProposalId = proposalIdValidation.text;
+  const normalizedName = nameValidation.text;
   const originalHtmlContent = typeof html_content === 'string' ? html_content : '';
-  const normalizedHtmlForValidation = typeof html_content === 'string' ? html_content.trim() : '';
   if (version !== undefined && version !== null) {
     if (!normalizedVersion || normalizedVersion.length > MAX_VERSION_LENGTH) {
       return res.status(400).json({ error: `version 长度必须在 1-${MAX_VERSION_LENGTH} 之间` });
@@ -977,16 +1003,12 @@ app.post('/api/games', (req, res) => {
   if (!normalizedName || normalizedName.length > MAX_FILENAME_LENGTH) {
     return res.status(400).json({ error: `name 长度必须在 1-${MAX_FILENAME_LENGTH} 之间` });
   }
-  if (!normalizedHtmlForValidation) {
-    return res.status(400).json({ error: 'html_content 必须是非空字符串' });
-  }
-
   const now = new Date().toISOString();
   const game = db.createGame({
     id: uuidv4(),
     project_id: projectValidation.projectId,
     name: normalizedName,
-    description: description || null,
+    description: descriptionValidation.text,
     html_content: originalHtmlContent,
     proposal_id: normalizedProposalId,
     version: normalizedVersion || '1.0.0',

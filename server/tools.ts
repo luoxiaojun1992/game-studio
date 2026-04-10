@@ -26,6 +26,15 @@ const singleLineTitleSchema = (fieldName: string) =>
       return z.NEVER;
     }
   });
+const requiredTextSchema = (fieldName: string) =>
+  z.string().transform((value, ctx) => {
+    try {
+      return db.normalizeAndValidateRequiredText(value, fieldName);
+    } catch (error: any) {
+      ctx.addIssue({ code: 'custom', message: error?.message || `${fieldName} 验证失败` });
+      return z.NEVER;
+    }
+  });
 const toSingleLinePreview = (content: string | null | undefined) =>
   (content || '')
     .replace(/[\r\n]+/g, ' ')
@@ -146,11 +155,11 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
             '目标 Agent ID：engineer=软件工程师（含软件测试）, architect=架构师, game_designer=游戏策划（含UI设计）, biz_designer=商业策划, ceo=CEO'
           ),
           title: singleLineTitleSchema('title').describe('简短的任务标题'),
-          description: z.string().describe('详细的任务描述'),
+          description: requiredTextSchema('description').describe('详细的任务描述'),
           context: z.string().optional().describe(
             '上下文信息：你的工作成果摘要、相关文件路径、关键决策等。这些信息对下一个 Agent 完成任务至关重要。'
           ),
-          priority: z.enum(['low', 'normal', 'high', 'urgent']).optional().default('normal').describe('任务优先级')
+          priority: z.enum(db.HANDOFF_PRIORITIES).optional().default('normal').describe('任务优先级')
         },
         async ({ to_agent_id, title, description, context, priority }) => {
           const allowedTargets = ALLOWED_HANDOFF_TARGETS[agentId] || [];
@@ -207,9 +216,17 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         {
           project_id: z.string().optional().default('default').describe('项目 ID'),
           feature_title: singleLineTitleSchema('feature_title').describe('功能标题'),
-          development_description: z.string().describe('开发任务描述'),
-          testing_description: z.string().optional().describe('测试任务描述（不填则自动生成）'),
-          priority_hint: z.enum(['low', 'normal', 'high', 'urgent']).optional().default('normal').describe('优先级提示（用于描述，不影响状态机）')
+          development_description: requiredTextSchema('development_description').describe('开发任务描述'),
+          testing_description: z.string().optional().transform((value, ctx) => {
+            if (value === undefined) return undefined;
+            try {
+              return db.normalizeAndValidateRequiredText(value, 'testing_description');
+            } catch (error: any) {
+              ctx.addIssue({ code: 'custom', message: error?.message || 'testing_description 验证失败' });
+              return z.NEVER;
+            }
+          }).describe('测试任务描述（不填则自动生成）'),
+          priority_hint: z.enum(db.HANDOFF_PRIORITIES).optional().default('normal').describe('优先级提示（用于描述，不影响状态机）')
         },
         async ({ project_id, feature_title, development_description, testing_description, priority_hint }) => {
           validateAgentPermission(['engineer'], '拆分开发与测试任务');
@@ -265,8 +282,8 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         '查询任务看板中的任务，用于查看待办和当前进度。可选按 agent_id 筛选 created_by/updated_by；不传则查询项目内全部任务。',
         {
           project_id: z.string().optional().describe('项目 ID，不填默认当前项目（且仅允许当前项目）'),
-          status: z.enum(['todo', 'developing', 'testing', 'blocked', 'done']).optional().describe('按状态筛选'),
-          task_type: z.enum(['development', 'testing']).optional().describe('按任务类型筛选'),
+          status: z.enum(db.TASK_STATUSES).optional().describe('按状态筛选'),
+          task_type: z.enum(db.TASK_TYPES).optional().describe('按任务类型筛选'),
           agent_id: AGENT_ID_ENUM.optional().describe('按创建者/更新者 Agent ID 筛选；不传则查询全部'),
           limit: z.number().min(1).max(100).optional().default(20).describe('返回条数上限')
         },
@@ -295,7 +312,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         '更新看板任务状态，维护开发与测试过程进度。',
         {
           task_id: z.string().describe('任务 ID'),
-          status: z.enum(['todo', 'developing', 'testing', 'blocked', 'done']).describe('目标状态')
+          status: z.enum(db.TASK_STATUSES).describe('目标状态')
         },
         async ({ task_id, status }) => {
           validateAgentPermission(['engineer'], '更新任务看板状态');
@@ -350,11 +367,11 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         '提交一份策划案或方案文档（如游戏策划案、商业策划案、技术方案等）。提案提交后将通知管理者进行审批。',
         {
           project_id: z.string().optional().default('default').describe('项目 ID，用于归档到 /output/{project_id}/... 目录'),
-          type: z.enum(['game_design', 'biz_design', 'tech_arch', 'tech_impl', 'ceo_review']).describe(
+          type: z.enum(db.PROPOSAL_TYPES).describe(
             '提案类型：game_design=游戏策划, biz_design=商业策划, tech_arch=架构方案, tech_impl=技术方案'
           ),
           title: singleLineTitleSchema('title').describe('提案标题'),
-          content: z.string().describe('提案的完整内容（Markdown 格式）')
+          content: requiredTextSchema('content').describe('提案的完整内容（Markdown 格式）')
         },
         async ({ project_id, type, title, content }) => {
           if (type === 'game_design') {
@@ -400,10 +417,17 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         '提交一个完成的游戏成品（单文件 HTML）。游戏将被保存到数据库和产出目录中。',
         {
           project_id: z.string().optional().default('default').describe('项目 ID，用于归档到 /output/{project_id}/... 目录'),
-          name: z.string().describe('游戏名称'),
-          html_content: z.string().min(100).describe('完整的游戏 HTML 代码（必须是包含所有 CSS/JS 的单文件 HTML）'),
+          name: requiredTextSchema('name').describe('游戏名称'),
+          html_content: requiredTextSchema('html_content').describe('完整的游戏 HTML 代码（必须是包含所有 CSS/JS 的单文件 HTML）'),
           description: z.string().optional().describe('游戏简介'),
-          version: z.string().optional().default('1.0.0').describe('版本号'),
+          version: z.string().max(db.MAX_VERSION_LENGTH, `version 长度不能超过 ${db.MAX_VERSION_LENGTH}`).transform((value, ctx) => {
+            try {
+              return db.normalizeAndValidateRequiredText(value, 'version');
+            } catch (error: any) {
+              ctx.addIssue({ code: 'custom', message: error?.message || 'version 验证失败' });
+              return z.NEVER;
+            }
+          }).optional().default('1.0.0').describe('版本号'),
           proposal_id: z.string().optional().describe('关联的策划案 ID（如果有）')
         },
         async ({ project_id, name, html_content, description, version, proposal_id }) => {
@@ -479,7 +503,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         'get_proposals',
         '查询已有的提案列表，用于了解当前项目的策划案进度。可选按 agent_id 筛选 author/reviewer；不传则查询项目内全部提案。',
         {
-          status: z.enum(['pending_review', 'under_review', 'approved', 'rejected', 'revision_needed', 'user_approved', 'user_rejected']).optional().describe('按状态筛选'),
+          status: z.enum(db.PROPOSAL_STATUSES).optional().describe('按状态筛选'),
           agent_id: AGENT_ID_ENUM.optional().describe('按作者/评审 Agent ID 筛选；不传则查询全部'),
           limit: z.number().min(1).max(50).optional().default(10).describe('返回条数上限')
         },
