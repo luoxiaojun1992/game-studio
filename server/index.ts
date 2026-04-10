@@ -72,6 +72,13 @@ const validateAgentIdInput = (value: unknown, fieldName: string): { ok: true; ag
   }
   return { ok: true, agentId: agentId as AgentRole };
 };
+const validateTitleInput = (value: unknown, fieldName: string): { ok: true; title: string } | { ok: false; error: string } => {
+  if (typeof value !== 'string') return { ok: false, error: `${fieldName} 必须是字符串` };
+  const title = value.trim();
+  if (!title) return { ok: false, error: `${fieldName} 不能为空` };
+  if (/[\r\n]/.test(title)) return { ok: false, error: `${fieldName} 不允许包含换行符` };
+  return { ok: true, title };
+};
 
 app.use(express.json({ limit: '10mb' }));
 
@@ -517,6 +524,8 @@ app.post('/api/handoffs', (req, res) => {
   if (source_command_id !== undefined && source_command_id !== null && typeof source_command_id !== 'string') {
     return res.status(400).json({ error: 'source_command_id 必须是字符串' });
   }
+  const titleValidation = validateTitleInput(title, 'title');
+  if (!titleValidation.ok) return res.status(400).json({ error: titleValidation.error });
 
   const now = new Date().toISOString();
   const settings = db.getProjectSettings(projectId);
@@ -527,7 +536,7 @@ app.post('/api/handoffs', (req, res) => {
     project_id: projectId,
       from_agent_id: fromAgentValidation.agentId,
       to_agent_id: toAgentValidation.agentId,
-    title,
+    title: titleValidation.title,
     description,
     context: context || null,
     status: autoHandoffEnabled ? 'working' : 'pending',
@@ -540,10 +549,10 @@ app.post('/api/handoffs', (req, res) => {
     updated_at: now,
   });
   sseBroadcaster.broadcast({ type: 'handoff_created', handoff }, handoff.project_id);
-  agentManager.addLog(handoff.project_id, handoff.from_agent_id as AgentRole, '创建交接', `${handoff.from_agent_id} → ${handoff.to_agent_id}: ${title}`, 'info');
+  agentManager.addLog(handoff.project_id, handoff.from_agent_id as AgentRole, '创建交接', `${handoff.from_agent_id} → ${handoff.to_agent_id}: ${handoff.title}`, 'info');
   if (autoHandoffEnabled) {
     // When auto-handoff is enabled, dispatch immediately instead of waiting for manual accept/confirm.
-    agentManager.addLog(handoff.project_id, handoff.to_agent_id as AgentRole, '自动接收交接', `从 ${handoff.from_agent_id} 接手: ${title}`, 'success');
+    agentManager.addLog(handoff.project_id, handoff.to_agent_id as AgentRole, '自动接收交接', `从 ${handoff.from_agent_id} 接手: ${handoff.title}`, 'success');
     agentManager.addLog(handoff.project_id, handoff.to_agent_id as AgentRole, '开始执行交接任务', `${handoff.title}`, 'success');
     agentManager.sendMessage(
       handoff.project_id,
@@ -718,12 +727,14 @@ app.post('/api/tasks', (req, res) => {
   if (split_testing_task !== undefined && typeof split_testing_task !== 'boolean') {
     return res.status(400).json({ error: 'split_testing_task 必须是布尔值' });
   }
+  const titleValidation = validateTitleInput(title, 'title');
+  if (!titleValidation.ok) return res.status(400).json({ error: titleValidation.error });
 
   const now = new Date().toISOString();
   const task = db.createTaskBoardTask({
     id: uuidv4(),
     project_id: projectValidation.projectId,
-    title: String(title).trim(),
+    title: titleValidation.title,
     description: description ? String(description).trim() : null,
     task_type,
     status: 'todo',
@@ -744,7 +755,7 @@ app.post('/api/tasks', (req, res) => {
     testingTask = db.createTaskBoardTask({
       id: uuidv4(),
       project_id: projectValidation.projectId,
-      title: `${String(title).trim()}（测试）`,
+      title: `${titleValidation.title}（测试）`,
       description: description ? `由开发任务拆分：${String(description).trim()}` : '由开发任务自动拆分的测试任务',
       task_type: 'testing',
       status: 'todo',
@@ -874,13 +885,15 @@ app.post('/api/proposals', (req, res) => {
   }
   const proposalAuthorValidation = validateAgentIdInput(author_agent_id, 'author_agent_id');
   if (!proposalAuthorValidation.ok) return res.status(400).json({ error: proposalAuthorValidation.error });
+  const titleValidation = validateTitleInput(title, 'title');
+  if (!titleValidation.ok) return res.status(400).json({ error: titleValidation.error });
 
   const now = new Date().toISOString();
   const proposal = db.createProposal({
     id: uuidv4(),
     project_id: projectValidation.projectId,
     type,
-    title,
+    title: titleValidation.title,
     content,
     author_agent_id: proposalAuthorValidation.agentId,
     status: 'pending_review',
@@ -896,7 +909,7 @@ app.post('/api/proposals', (req, res) => {
   db.ensureProject(proposal.project_id);
   const filePath = db.saveProposalToFile(proposal);
   sseBroadcaster.broadcast({ type: 'proposal_created', proposal, filePath }, proposal.project_id);
-  agentManager.addLog(proposal.project_id, proposalAuthorValidation.agentId, '提交提案', `提案: ${title}${filePath ? ` → 已保存到 ${path.basename(filePath)}` : ''}`, 'success');
+  agentManager.addLog(proposal.project_id, proposalAuthorValidation.agentId, '提交提案', `提案: ${proposal.title}${filePath ? ` → 已保存到 ${path.basename(filePath)}` : ''}`, 'success');
 
   res.json({ proposal, filePath });
 });
