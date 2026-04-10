@@ -164,3 +164,7 @@ Main endpoints (prefix `/api`):
 ## Extension Development
 
 See [DEVELOPMENT.md](./DEVELOPMENT.md).
+
+## Architecture Documentation
+
+See [ARCHITECTURE.md](./ARCHITECTURE.md).
