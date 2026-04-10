@@ -17,6 +17,12 @@ const CONTENT_PREVIEW_LENGTH = 160;
 const FETCH_MULTIPLIER = 4;
 const MIN_FETCH_WINDOW = 20;
 const MAX_FETCH_WINDOW = 200;
+const toSingleLinePreview = (content: string | null | undefined) =>
+  (content || '')
+    .replace(/[\r\n]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, CONTENT_PREVIEW_LENGTH);
 
 /**
  *
@@ -520,12 +526,6 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           validateAgentPermission([TEAM_BUILDING_AGENT_ID], '查询项目最新信息');
           const effectiveLimit = limit || 20;
           const fetchWindow = Math.min(Math.max(effectiveLimit * FETCH_MULTIPLIER, MIN_FETCH_WINDOW), MAX_FETCH_WINDOW);
-          const toSingleLinePreview = (content: string | null | undefined) =>
-            (content || '')
-              .replace(/[\r\n]+/g, ' ')
-              .replace(/\s+/g, ' ')
-              .trim()
-              .slice(0, CONTENT_PREVIEW_LENGTH);
           const proposals = db.getScopedProposals(scopedProjectId, { limit: fetchWindow });
           const projectTasks = db.getTaskBoardTasks({ projectId: scopedProjectId, limit: fetchWindow });
           const handoffs = db.getAllHandoffs(scopedProjectId, fetchWindow);
