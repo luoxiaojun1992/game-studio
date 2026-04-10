@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { tool, createSdkMcpServer, type SdkMcpServerResult } from '@tencent-ai/agent-sdk';
 import { v4 as uuidv4 } from 'uuid';
 import * as db from './db.js';
-import { AgentRole } from './agents.js';
+import { AgentRole, getAllAgents } from './agents.js';
 import { sseBroadcaster } from './sse-broadcaster.js';
 
 /**
@@ -240,21 +240,21 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
       tool(
         'get_tasks',
-        '查询任务看板中的任务，用于查看待办和当前进度。默认仅查询 created_by/updated_by 为当前 Agent 的任务。',
+        '查询任务看板中的任务，用于查看待办和当前进度。可选按 agent_id 筛选 created_by/updated_by；不传则查询项目内全部任务。',
         {
           project_id: z.string().optional().describe('项目 ID，不填默认当前项目（且仅允许当前项目）'),
           status: z.enum(['todo', 'developing', 'testing', 'blocked', 'done']).optional().describe('按状态筛选'),
           task_type: z.enum(['development', 'testing']).optional().describe('按任务类型筛选'),
-          only_mine: z.boolean().optional().default(true).describe('是否仅查询 created_by/updated_by 为当前 Agent 的任务（默认 true）'),
+          agent_id: z.enum(['engineer', 'architect', 'game_designer', 'biz_designer', 'ceo']).optional().describe('按创建者/更新者 Agent ID 筛选；不传则查询全部'),
           limit: z.number().min(1).max(100).optional().default(20).describe('返回条数上限')
         },
-        async ({ project_id, status, task_type, only_mine, limit }) => {
+        async ({ project_id, status, task_type, agent_id, limit }) => {
           const targetProjectId = enforceProject(project_id);
           const tasks = db.getTaskBoardTasks({
             projectId: targetProjectId,
             status,
             taskType: task_type,
-            agentId: only_mine ? agentId : undefined,
+            agentId: agent_id,
             limit: limit || 20
           });
           if (tasks.length === 0) {
@@ -434,19 +434,37 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
       ),
 
       tool(
+        'get_agents',
+        '查询所有 Agent 的信息（含 agent_id、名称、职责等），用于确认可用 Agent ID。',
+        {},
+        async () => {
+          const agents = getAllAgents();
+          if (agents.length === 0) {
+            return {
+              content: [{ type: 'text' as const, text: '当前没有可用的 Agent。' }]
+            };
+          }
+          const text = agents.map(a =>
+            `${a.id} | ${a.name} | ${a.title}\n职责: ${a.responsibilities.join('、')}`
+          ).join('\n\n');
+          return {
+            content: [{ type: 'text' as const, text }]
+          };
+        }
+      ),
+
+      tool(
         'get_proposals',
-        '查询已有的提案列表，用于了解当前项目的策划案进度。默认仅查询 author/reviewer 为当前 Agent 的提案（only_mine=true）；传 only_mine=false 可查询项目内全部提案。',
+        '查询已有的提案列表，用于了解当前项目的策划案进度。可选按 agent_id 筛选 author/reviewer；不传则查询项目内全部提案。',
         {
           status: z.enum(['pending_review', 'under_review', 'approved', 'rejected', 'revision_needed', 'user_approved', 'user_rejected']).optional().describe('按状态筛选'),
-          only_mine: z.boolean().optional().default(true).describe('是否仅查询 author/reviewer 为当前 Agent 的提案（默认 true）'),
-          include_all_for_ceo: z.boolean().optional().default(false).describe('当当前 Agent 为 CEO 且 only_mine=true 时，是否放宽为查询项目内全部提案（默认 false）'),
+          agent_id: z.enum(['engineer', 'architect', 'game_designer', 'biz_designer', 'ceo']).optional().describe('按作者/评审 Agent ID 筛选；不传则查询全部'),
           limit: z.number().min(1).max(50).optional().default(10).describe('返回条数上限')
         },
-        async ({ status, only_mine, include_all_for_ceo, limit }) => {
+        async ({ status, agent_id, limit }) => {
           const proposals = db.getScopedProposals(scopedProjectId, {
             status,
-            agentId: only_mine ? agentId : undefined,
-            includeAllForCeo: include_all_for_ceo,
+            agentId: agent_id,
             limit: limit || 10
           });
           if (proposals.length === 0) {
@@ -465,13 +483,13 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
       tool(
         'get_pending_handoffs',
-        '查询待处理的任务交接。默认仅查询发给当前 Agent 的交接；传 only_mine=false 可查询项目内全部待处理交接。',
+        '查询待处理的任务交接。可选按 agent_id 筛选发给该 Agent 的交接；不传则查询项目内全部待处理交接。',
         {
-          only_mine: z.boolean().optional().default(true).describe('是否仅查询发给当前 Agent 的交接（默认 true）'),
+          agent_id: z.enum(['engineer', 'architect', 'game_designer', 'biz_designer', 'ceo']).optional().describe('目标 Agent ID（to_agent_id）筛选；不传则查询全部'),
           limit: z.number().min(1).max(20).optional().default(5).describe('返回条数上限')
         },
-        async ({ only_mine, limit }) => {
-          const handoffs = db.getPendingHandoffs(scopedProjectId, only_mine ? agentId : undefined, limit || 5);
+        async ({ agent_id, limit }) => {
+          const handoffs = db.getPendingHandoffs(scopedProjectId, agent_id, limit || 5);
           if (handoffs.length === 0) {
             return {
               content: [{ type: 'text' as const, text: '没有待处理的交接任务。' }]
