@@ -19,7 +19,7 @@ export function normalizeAndValidateTitle(value: unknown, fieldName = 'title'): 
   if (!title) {
     throw new Error(`${fieldName} 不能为空`);
   }
-  if (!SINGLE_LINE_TITLE_PATTERN.test(value) || !SINGLE_LINE_TITLE_PATTERN.test(title)) {
+  if (!SINGLE_LINE_TITLE_PATTERN.test(value)) {
     throw new Error(`${fieldName} 不允许包含换行符`);
   }
   return title;
