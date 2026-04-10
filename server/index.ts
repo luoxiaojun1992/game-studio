@@ -25,7 +25,6 @@ const TASK_TYPES = new Set<db.DbTaskBoardTask['task_type']>(['development', 'tes
 const HANDOFF_PRIORITIES = new Set<db.DbHandoff['priority']>(['low', 'normal', 'high', 'urgent']);
 const USER_DECISIONS = new Set(['approved', 'rejected']);
 const TEAM_BUILDING_AGENT_ID: AgentRole = 'team_builder';
-const SINGLE_LINE_PATTERN = /^[^\r\n]*$/;
 let cachedAgentIdOptions: AgentRole[] | null = null;
 let cachedAgentIdSet: Set<AgentRole> | null = null;
 const getAgentIdOptions = (): AgentRole[] => {
@@ -74,11 +73,11 @@ const validateAgentIdInput = (value: unknown, fieldName: string): { ok: true; ag
   return { ok: true, agentId: agentId as AgentRole };
 };
 const validateTitleInput = (value: unknown, fieldName: string): { ok: true; title: string } | { ok: false; error: string } => {
-  if (typeof value !== 'string') return { ok: false, error: `${fieldName} 必须是字符串` };
-  if (!SINGLE_LINE_PATTERN.test(value)) return { ok: false, error: `${fieldName} 不允许包含换行符` };
-  const title = value.trim();
-  if (!title) return { ok: false, error: `${fieldName} 不能为空` };
-  return { ok: true, title };
+  try {
+    return { ok: true, title: db.normalizeAndValidateTitle(value, fieldName) };
+  } catch (error: any) {
+    return { ok: false, error: error?.message || `${fieldName} 不合法` };
+  }
 };
 
 app.use(express.json({ limit: '10mb' }));

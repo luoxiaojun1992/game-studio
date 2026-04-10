@@ -17,7 +17,6 @@ const CONTENT_PREVIEW_LENGTH = 160;
 const FETCH_MULTIPLIER = 4;
 const MIN_FETCH_WINDOW = 20;
 const MAX_FETCH_WINDOW = 200;
-const SINGLE_LINE_PATTERN = /^[^\r\n]*$/;
 const toSingleLinePreview = (content: string | null | undefined) =>
   (content || '')
     .replace(/[\r\n]+/g, ' ')
@@ -137,7 +136,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           to_agent_id: AGENT_ID_ENUM.describe(
             '目标 Agent ID：engineer=软件工程师（含软件测试）, architect=架构师, game_designer=游戏策划（含UI设计）, biz_designer=商业策划, ceo=CEO'
           ),
-          title: z.string().regex(SINGLE_LINE_PATTERN, '标题不允许包含换行符').describe('简短的任务标题'),
+          title: z.string().trim().min(1, '标题不能为空').regex(db.SINGLE_LINE_TITLE_PATTERN, '标题不允许包含换行符').describe('简短的任务标题'),
           description: z.string().describe('详细的任务描述'),
           context: z.string().optional().describe(
             '上下文信息：你的工作成果摘要、相关文件路径、关键决策等。这些信息对下一个 Agent 完成任务至关重要。'
@@ -198,7 +197,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         '将一个功能目标拆分为开发任务和测试任务，并写入任务看板。',
         {
           project_id: z.string().optional().default('default').describe('项目 ID'),
-          feature_title: z.string().regex(SINGLE_LINE_PATTERN, '标题不允许包含换行符').describe('功能标题'),
+          feature_title: z.string().trim().min(1, '标题不能为空').regex(db.SINGLE_LINE_TITLE_PATTERN, '标题不允许包含换行符').describe('功能标题'),
           development_description: z.string().describe('开发任务描述'),
           testing_description: z.string().optional().describe('测试任务描述（不填则自动生成）'),
           priority_hint: z.enum(['low', 'normal', 'high', 'urgent']).optional().default('normal').describe('优先级提示（用于描述，不影响状态机）')
@@ -345,7 +344,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           type: z.enum(['game_design', 'biz_design', 'tech_arch', 'tech_impl', 'ceo_review']).describe(
             '提案类型：game_design=游戏策划, biz_design=商业策划, tech_arch=架构方案, tech_impl=技术方案'
           ),
-          title: z.string().regex(SINGLE_LINE_PATTERN, '标题不允许包含换行符').describe('提案标题'),
+          title: z.string().trim().min(1, '标题不能为空').regex(db.SINGLE_LINE_TITLE_PATTERN, '标题不允许包含换行符').describe('提案标题'),
           content: z.string().describe('提案的完整内容（Markdown 格式）')
         },
         async ({ project_id, type, title, content }) => {

@@ -9,6 +9,21 @@ export const PROJECT_ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
 export const MAX_PROJECT_ID_LENGTH = 64;
 export const MAX_FILENAME_LENGTH = 50;
 export const MAX_VERSION_LENGTH = 30;
+export const SINGLE_LINE_TITLE_PATTERN = /^[^\r\n]*$/;
+
+export function normalizeAndValidateTitle(value: unknown, fieldName = 'title'): string {
+  if (typeof value !== 'string') {
+    throw new Error(`${fieldName} 必须是字符串`);
+  }
+  if (!SINGLE_LINE_TITLE_PATTERN.test(value)) {
+    throw new Error(`${fieldName} 不允许包含换行符`);
+  }
+  const title = value.trim();
+  if (!title) {
+    throw new Error(`${fieldName} 不能为空`);
+  }
+  return title;
+}
 const dbPath = path.join(__dirname, '..', 'data', 'studio.db');
 const dataDir = path.dirname(dbPath);
 if (!fs.existsSync(dataDir)) {
@@ -479,6 +494,7 @@ export function getProposal(id: string): DbProposal | undefined {
 }
 
 export function createProposal(proposal: DbProposal): DbProposal {
+  const normalizedTitle = normalizeAndValidateTitle(proposal.title, 'title');
   const stmt = db.prepare(`
     INSERT INTO proposals (id, project_id, type, title, content, author_agent_id, status, reviewer_agent_id, review_comment, user_decision, user_comment, version, parent_id, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -487,7 +503,7 @@ export function createProposal(proposal: DbProposal): DbProposal {
     proposal.id,
     proposal.project_id,
     proposal.type,
-    proposal.title,
+    normalizedTitle,
     proposal.content,
     proposal.author_agent_id,
     proposal.status,
@@ -500,17 +516,21 @@ export function createProposal(proposal: DbProposal): DbProposal {
     proposal.created_at,
     proposal.updated_at
   );
-  return proposal;
+  return { ...proposal, title: normalizedTitle };
 }
 
 export function updateProposal(id: string, updates: Partial<DbProposal>): boolean {
+  const normalizedUpdates: Partial<DbProposal> = { ...updates };
+  if (normalizedUpdates.title !== undefined) {
+    normalizedUpdates.title = normalizeAndValidateTitle(normalizedUpdates.title, 'title');
+  }
   const fields: string[] = [];
   const values: any[] = [];
   const allowed: (keyof DbProposal)[] = ['status', 'reviewer_agent_id', 'review_comment', 'user_decision', 'user_comment', 'content', 'title'];
   for (const key of allowed) {
-    if (updates[key] !== undefined) {
+    if (normalizedUpdates[key] !== undefined) {
       fields.push(`${key} = ?`);
-      values.push(updates[key]);
+      values.push(normalizedUpdates[key]);
     }
   }
   if (fields.length === 0) return false;
@@ -690,12 +710,13 @@ export function getPermissionRequest(id: string): DbPermissionRequest | null {
   return result || null;
 }
 export function createHandoff(handoff: DbHandoff): DbHandoff {
+  const normalizedTitle = normalizeAndValidateTitle(handoff.title, 'title');
   const stmt = db.prepare(`
     INSERT INTO handoffs (id, project_id, from_agent_id, to_agent_id, title, description, context, status, priority, result, accepted_at, completed_at, source_command_id, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
-  stmt.run(handoff.id, handoff.project_id, handoff.from_agent_id, handoff.to_agent_id, handoff.title, handoff.description, handoff.context, handoff.status, handoff.priority, handoff.result, handoff.accepted_at, handoff.completed_at, handoff.source_command_id, handoff.created_at, handoff.updated_at);
-  return handoff;
+  stmt.run(handoff.id, handoff.project_id, handoff.from_agent_id, handoff.to_agent_id, normalizedTitle, handoff.description, handoff.context, handoff.status, handoff.priority, handoff.result, handoff.accepted_at, handoff.completed_at, handoff.source_command_id, handoff.created_at, handoff.updated_at);
+  return { ...handoff, title: normalizedTitle };
 }
 
 export function getHandoff(id: string): DbHandoff | undefined {
@@ -815,6 +836,7 @@ export function clearAgentMemories(projectId: string, agentId: string): boolean 
   return true;
 }
 export function createTaskBoardTask(task: DbTaskBoardTask): DbTaskBoardTask {
+  const normalizedTitle = normalizeAndValidateTitle(task.title, 'title');
   const stmt = db.prepare(`
     INSERT INTO task_board_tasks (
       id, project_id, title, description, task_type, status, source_task_id,
@@ -824,7 +846,7 @@ export function createTaskBoardTask(task: DbTaskBoardTask): DbTaskBoardTask {
   stmt.run(
     task.id,
     task.project_id,
-    task.title,
+    normalizedTitle,
     task.description,
     task.task_type,
     task.status,
@@ -836,7 +858,7 @@ export function createTaskBoardTask(task: DbTaskBoardTask): DbTaskBoardTask {
     task.created_at,
     task.updated_at
   );
-  return task;
+  return { ...task, title: normalizedTitle };
 }
 
 export function getTaskBoardTask(id: string): DbTaskBoardTask | undefined {
@@ -972,13 +994,17 @@ export function ensureProject(projectId: string): void {
 }
 
 export function updateTaskBoardTask(id: string, updates: Partial<DbTaskBoardTask>): boolean {
+  const normalizedUpdates: Partial<DbTaskBoardTask> = { ...updates };
+  if (normalizedUpdates.title !== undefined) {
+    normalizedUpdates.title = normalizeAndValidateTitle(normalizedUpdates.title, 'title');
+  }
   const fields: string[] = [];
   const values: any[] = [];
   const allowed: (keyof DbTaskBoardTask)[] = ['title', 'description', 'status', 'updated_by', 'started_at', 'completed_at'];
   for (const key of allowed) {
-    if (updates[key] !== undefined) {
+    if (normalizedUpdates[key] !== undefined) {
       fields.push(`${key} = ?`);
-      values.push(updates[key]);
+      values.push(normalizedUpdates[key]);
     }
   }
   if (fields.length === 0) return false;
