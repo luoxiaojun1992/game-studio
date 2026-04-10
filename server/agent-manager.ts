@@ -329,15 +329,20 @@ class AgentManager extends EventEmitter {
     return agentDef.systemPrompt + memorySummary;
   }
 
-  private sendTeamBuilderSummaryRequest(projectId: string, sourceAgentId: AgentRole, sourceTask: string): void {
+  private sendTeamBuilderSummaryRequest(projectId: string, sourceAgentId: AgentRole, sourceTask: string, failureReason?: string): void {
     if (sourceAgentId === this.teamBuildingAgentId) return;
     const TASK_PREVIEW_LENGTH = 300;
     const taskPreview = sourceTask.slice(0, TASK_PREVIEW_LENGTH);
     const isZh = /[\u4e00-\u9fff]/.test(sourceTask);
     const triggerFailedAction = isZh ? '团队建设总结触发失败' : 'Team builder summary trigger failed';
+    const failureContext = failureReason
+      ? (isZh
+          ? `\n会话结果：失败\n失败原因：${failureReason.slice(0, 500)}\n`
+          : `\nSession result: failed\nFailure reason: ${failureReason.slice(0, 500)}\n`)
+      : (isZh ? '\n会话结果：成功\n' : '\nSession result: success\n');
     const summaryPrompt = isZh
-      ? `请执行一次团队建设总结（当前项目：${projectId}）。\n\n触发来源：${sourceAgentId} 的会话已结束。\n来源任务：${taskPreview}\n\n请按以下步骤执行：\n1. 调用 get_project_latest_info 获取当前项目最新信息（建议 20~50 条）。\n2. 输出本轮关键信号、风险与改进建议。\n3. 提炼高价值结论并调用 save_memory 写入长期记忆（优先 high / critical）。\n4. 仅处理当前项目信息，严禁跨项目。`
-      : `Please run one team-building summary for project "${projectId}".\n\nTrigger source: ${sourceAgentId} session has finished.\nSource task: ${taskPreview}\n\nPlease follow these steps:\n1. Call get_project_latest_info to fetch latest project signals (recommended 20~50 items).\n2. Summarize key signals, risks, and improvement suggestions.\n3. Extract high-value conclusions and persist them via save_memory (prefer high/critical).\n4. Only process information from the current project; no cross-project inference.`;
+      ? `请执行一次团队建设总结（当前项目：${projectId}）。\n\n触发来源：${sourceAgentId} 的会话已结束。\n来源任务：${taskPreview}${failureContext}\n请按以下步骤执行：\n1. 调用 get_project_latest_info 获取当前项目最新信息（建议 20~50 条）。\n2. 输出本轮关键信号、风险与改进建议。\n3. 提炼高价值结论并调用 save_memory 写入长期记忆（优先 high / critical）。\n4. 仅处理当前项目信息，严禁跨项目。`
+      : `Please run one team-building summary for project "${projectId}".\n\nTrigger source: ${sourceAgentId} session has finished.\nSource task: ${taskPreview}${failureContext}\nPlease follow these steps:\n1. Call get_project_latest_info to fetch latest project signals (recommended 20~50 items).\n2. Summarize key signals, risks, and improvement suggestions.\n3. Extract high-value conclusions and persist them via save_memory (prefer high/critical).\n4. Only process information from the current project; no cross-project inference.`;
 
     void this.sendMessage(
       projectId,
@@ -679,6 +684,7 @@ class AgentManager extends EventEmitter {
       this.emit('stream_event', errorEvent);
       if (onEvent) onEvent(errorEvent);
       this.addAgentLogEntry(scopedProjectId, agentId, 'error', error?.message || String(error), { isError: true });
+      this.sendTeamBuilderSummaryRequest(scopedProjectId, agentId, message, error?.message || String(error));
       throw error;
     } finally {
       releaseActiveStream();

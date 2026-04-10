@@ -520,6 +520,12 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           validateAgentPermission([TEAM_BUILDING_AGENT_ID], '查询项目最新信息');
           const effectiveLimit = limit || 20;
           const fetchWindow = Math.min(Math.max(effectiveLimit * FETCH_MULTIPLIER, MIN_FETCH_WINDOW), MAX_FETCH_WINDOW);
+          const toSingleLinePreview = (content: string | null | undefined) =>
+            (content || '')
+              .replace(/[\r\n]+/g, ' ')
+              .replace(/\s+/g, ' ')
+              .trim()
+              .slice(0, CONTENT_PREVIEW_LENGTH);
           const proposals = db.getScopedProposals(scopedProjectId, { limit: fetchWindow });
           const projectTasks = db.getTaskBoardTasks({ projectId: scopedProjectId, limit: fetchWindow });
           const handoffs = db.getAllHandoffs(scopedProjectId, fetchWindow);
@@ -529,23 +535,23 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           const unified = [
             ...proposals.map(item => ({
               timestamp: item.updated_at || item.created_at,
-              line: `[proposal][${item.status}] ${item.title} | author=${item.author_agent_id} | reviewer=${item.reviewer_agent_id || '-'} | ${item.created_at}`
+              line: `[proposal][${item.status}] ${item.title} | author=${item.author_agent_id} | reviewer=${item.reviewer_agent_id || '-'} | sort_at=${item.updated_at || item.created_at} | created_at=${item.created_at}${item.updated_at ? ` | updated_at=${item.updated_at}` : ''}`
             })),
             ...projectTasks.map(item => ({
               timestamp: item.updated_at || item.created_at,
-              line: `[task][${item.status}/${item.task_type}] ${item.title} | by=${item.created_by} | ${item.created_at}`
+              line: `[task][${item.status}/${item.task_type}] ${item.title} | by=${item.created_by} | sort_at=${item.updated_at || item.created_at} | created_at=${item.created_at}${item.updated_at ? ` | updated_at=${item.updated_at}` : ''}`
             })),
             ...handoffs.map(item => ({
               timestamp: item.updated_at || item.created_at,
-              line: `[handoff][${item.status}/${item.priority}] ${item.title} | ${item.from_agent_id}→${item.to_agent_id} | ${item.created_at}`
+              line: `[handoff][${item.status}/${item.priority}] ${item.title} | ${item.from_agent_id}→${item.to_agent_id} | sort_at=${item.updated_at || item.created_at} | created_at=${item.created_at}${item.updated_at ? ` | updated_at=${item.updated_at}` : ''}`
             })),
             ...logs.map(item => ({
               timestamp: item.created_at,
-              line: `[log][${item.level}/${item.log_type}] ${item.agent_id} | ${item.action || '-'} | ${(item.content || '').slice(0, CONTENT_PREVIEW_LENGTH)} | ${item.created_at}`
+              line: `[log][${item.level}/${item.log_type}] ${item.agent_id} | ${item.action || '-'} | ${toSingleLinePreview(item.content)} | sort_at=${item.created_at}`
             })),
             ...memories.map(item => ({
               timestamp: item.updated_at || item.created_at,
-              line: `[memory][${item.category}/${item.importance}] ${item.agent_id} | ${(item.content || '').slice(0, CONTENT_PREVIEW_LENGTH)} | ${item.created_at}`
+              line: `[memory][${item.category}/${item.importance}] ${item.agent_id} | ${toSingleLinePreview(item.content)} | sort_at=${item.updated_at || item.created_at} | created_at=${item.created_at}${item.updated_at ? ` | updated_at=${item.updated_at}` : ''}`
             }))
           ]
             .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
