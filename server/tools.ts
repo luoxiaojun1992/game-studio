@@ -439,12 +439,14 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         {
           status: z.enum(['pending_review', 'under_review', 'approved', 'rejected', 'revision_needed', 'user_approved', 'user_rejected']).optional().describe('按状态筛选'),
           only_mine: z.boolean().optional().default(true).describe('是否仅查询当前 Agent 相关提案（默认 true）'),
+          include_all_for_ceo: z.boolean().optional().default(false).describe('当当前 Agent 为 CEO 且 only_mine=true 时，是否放宽为查询项目内全部提案（默认 false）'),
           limit: z.number().min(1).max(50).optional().default(10).describe('返回条数上限')
         },
-        async ({ status, only_mine, limit }) => {
+        async ({ status, only_mine, include_all_for_ceo, limit }) => {
           const proposals = db.getScopedProposals(scopedProjectId, {
             status,
             agentId: only_mine ? agentId : undefined,
+            includeAllForCeo: include_all_for_ceo,
             limit: limit || 10
           });
           if (proposals.length === 0) {
