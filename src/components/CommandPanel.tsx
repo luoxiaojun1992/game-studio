@@ -31,17 +31,19 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
     game_designer: { name: isZh ? '游戏策划' : 'Game Designer', emoji: '🎮', color: '#9B30FF' },
     biz_designer: { name: isZh ? '商业策划' : 'Business Designer', emoji: '💼', color: '#E37318' },
     ceo: { name: 'CEO', emoji: '👔', color: '#C9353F' },
+    team_builder: { name: isZh ? '团队建设' : 'Team Building', emoji: '🧠', color: '#2F7DFF' },
   };
+  const commandableAgents = useMemo(() => agents.filter(agent => agent.id !== 'team_builder'), [agents]);
   const getSavedAgent = (): AgentRole | null => {
     const saved = localStorage.getItem(getStorageKey(projectId));
-    if (saved && agents.find(a => a.id === saved)) {
+    if (saved && saved !== 'team_builder' && commandableAgents.find(a => a.id === saved)) {
       return saved as AgentRole;
     }
     return null;
   };
   const getDefaultAgent = (): AgentRole => {
-    const workingAgent = agents.find(a => a.state?.status === 'working');
-    return workingAgent?.id || agents[0]?.id || 'game_designer';
+    const workingAgent = commandableAgents.find(a => a.state?.status === 'working');
+    return workingAgent?.id || commandableAgents[0]?.id || 'game_designer';
   };
   const [selectedAgent, setSelectedAgent] = useState<AgentRole>(() => {
     return getSavedAgent() || getDefaultAgent();
@@ -88,6 +90,13 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
       localStorage.setItem(getStorageKey(projectId), selectedAgentId);
     }
   }, [selectedAgentId, projectId]);
+  useEffect(() => {
+    if (selectedAgent === 'team_builder' || !commandableAgents.find(a => a.id === selectedAgent)) {
+      const nextAgent = getDefaultAgent();
+      setSelectedAgent(nextAgent);
+      localStorage.setItem(getStorageKey(projectId), nextAgent);
+    }
+  }, [commandableAgents, selectedAgent, projectId]);
   const handleAgentChange = (agentId: AgentRole) => {
     setSelectedAgent(agentId);
     localStorage.setItem(getStorageKey(projectId), agentId);
@@ -286,7 +295,7 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
       <div className="w-56 shrink-0 bg-gray-900 rounded-xl border border-gray-800 p-3">
         <div className="text-xs text-gray-500 font-medium mb-2 px-1">{l('选择 Agent', 'Select Agent')}</div>
         <div className="space-y-1">
-          {agents.map(agent => {
+          {commandableAgents.map(agent => {
             const isSelected = agent.id === selectedAgent;
             return (
               <button
@@ -475,6 +484,9 @@ function getQuickCommands(agentId: AgentRole, isZh: boolean): string[] {
         'Build a 2048 number puzzle game',
         'Write a testing plan for an existing game',
       ],
+      team_builder: [
+        'Summarize latest project signals and store high-value memories',
+      ],
     };
     return enCmds[agentId] || [];
   }
@@ -503,6 +515,9 @@ function getQuickCommands(agentId: AgentRole, isZh: boolean): string[] {
       '根据策划案开发一个贪吃蛇游戏（单文件HTML）',
       '开发一个2048数字消除游戏',
       '为已有游戏编写测试方案',
+    ],
+    team_builder: [
+      '总结当前项目最新信息并沉淀高价值记忆',
     ],
   };
   return cmds[agentId] || [];

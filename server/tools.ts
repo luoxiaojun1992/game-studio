@@ -12,6 +12,7 @@ import { sseBroadcaster } from './sse-broadcaster.js';
  */
 type ToolLogFn = (agentId: AgentRole, action: string, detail: string, level: 'info' | 'warn' | 'error' | 'success') => void;
 type AutoHandoffHook = (handoff: db.DbHandoff) => Promise<void> | void;
+const TEAM_BUILDING_AGENT_ID: AgentRole = 'team_builder';
 
 /**
  *
@@ -51,7 +52,8 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
     ceo: ['architect', 'biz_designer'],
     architect: ['engineer'],
     engineer: ['biz_designer'],
-    biz_designer: ['ceo']
+    biz_designer: ['ceo'],
+    team_builder: []
   };
   const AGENT_ID_ENUM = z.enum(AGENT_IDS);
 
@@ -501,6 +503,58 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           ).join('\n\n');
           return {
             content: [{ type: 'text' as const, text }]
+          };
+        }
+      ),
+      tool(
+        'get_project_latest_info',
+        '查询当前项目最新 n 条关键信息，覆盖提案、任务、交接、日志、记忆，供总结提炼使用。',
+        {
+          limit: z.number().min(1).max(100).optional().default(20).describe('返回条数上限（跨类型混合排序）')
+        },
+        async ({ limit }) => {
+          validateAgentPermission([TEAM_BUILDING_AGENT_ID], '查询项目最新信息');
+          const effectiveLimit = limit || 20;
+          const fetchWindow = Math.min(Math.max(effectiveLimit * 4, 20), 200);
+          const proposals = db.getScopedProposals(scopedProjectId, { limit: fetchWindow });
+          const tasks = db.getTaskBoardTasks({ projectId: scopedProjectId, limit: fetchWindow });
+          const handoffs = db.getAllHandoffs(scopedProjectId, fetchWindow);
+          const logs = db.getLogs(scopedProjectId, undefined, fetchWindow);
+          const memories = db.getAllAgentMemories(scopedProjectId, fetchWindow);
+
+          const unified = [
+            ...proposals.map(item => ({
+              timestamp: item.updated_at || item.created_at,
+              line: `[proposal][${item.status}] ${item.title} | author=${item.author_agent_id} | reviewer=${item.reviewer_agent_id || '-'} | ${item.created_at}`
+            })),
+            ...tasks.map(item => ({
+              timestamp: item.updated_at || item.created_at,
+              line: `[task][${item.status}/${item.task_type}] ${item.title} | by=${item.created_by} | ${item.created_at}`
+            })),
+            ...handoffs.map(item => ({
+              timestamp: item.updated_at || item.created_at,
+              line: `[handoff][${item.status}/${item.priority}] ${item.title} | ${item.from_agent_id}→${item.to_agent_id} | ${item.created_at}`
+            })),
+            ...logs.map(item => ({
+              timestamp: item.created_at,
+              line: `[log][${item.level}/${item.log_type}] ${item.agent_id} | ${item.action || '-'} | ${(item.content || '').slice(0, 160)} | ${item.created_at}`
+            })),
+            ...memories.map(item => ({
+              timestamp: item.updated_at || item.created_at,
+              line: `[memory][${item.category}/${item.importance}] ${item.agent_id} | ${(item.content || '').slice(0, 160)} | ${item.created_at}`
+            }))
+          ]
+            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+            .slice(0, effectiveLimit);
+
+          if (unified.length === 0) {
+            return {
+              content: [{ type: 'text' as const, text: '当前项目暂无可用于总结的信息。' }]
+            };
+          }
+
+          return {
+            content: [{ type: 'text' as const, text: unified.map(item => item.line).join('\n') }]
           };
         }
       )

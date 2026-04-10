@@ -26,6 +26,7 @@ const ROLE_COLORS: Record<AgentRole, { primary: string; accent: string }> = {
   game_designer: { primary: '#9333EA', accent: '#7E22CE' },
   biz_designer: { primary: '#EA580C', accent: '#C2410C' },
   ceo: { primary: '#DC2626', accent: '#B91C1C' },
+  team_builder: { primary: '#2563EB', accent: '#1D4ED8' },
 };
 
 const PIXELS = [
@@ -49,6 +50,7 @@ const ROLE_BADGE: Record<AgentRole, string[]> = {
   game_designer: ['...3..3.....', '..333333....', '...3..3.....'],
   biz_designer: ['....44......', '..444444....', '....44......'],
   ceo: ['....55......', '...5555.....', '....55......'],
+  team_builder: ['...11.11....', '..111111....', '...11.11....'],
 };
 
 export default function PixelAgentAvatar({ agentId, status, size = 32, className }: Props) {

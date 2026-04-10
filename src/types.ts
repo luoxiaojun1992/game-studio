@@ -1,5 +1,5 @@
 
-export type AgentRole = 'engineer' | 'architect' | 'game_designer' | 'biz_designer' | 'ceo';
+export type AgentRole = 'engineer' | 'architect' | 'game_designer' | 'biz_designer' | 'ceo' | 'team_builder';
 export type AgentStatus = 'idle' | 'working' | 'paused' | 'error';
 
 export interface AgentDefinition {
@@ -187,4 +187,4 @@ export type SSEEvent =
   | { type: 'task_created'; task: TaskBoardTask }
   | { type: 'task_updated'; task: TaskBoardTask }
   | { type: 'logs_cleared'; projectId: string; agentId: string | null };
-export type TabKey = 'overview' | 'pixel_studio' | 'proposals' | 'tasks' | 'games' | 'logs' | 'commands' | 'handoffs' | 'settings';
+export type TabKey = 'overview' | 'team_building' | 'pixel_studio' | 'proposals' | 'tasks' | 'games' | 'logs' | 'commands' | 'handoffs' | 'settings';

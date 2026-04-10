@@ -137,6 +137,7 @@ export default function LogPanel({ logs: externalLogs, agents, projectId }: Prop
     game_designer: { name: isZh ? '游戏策划' : 'Game Designer', emoji: '🎮' },
     biz_designer: { name: isZh ? '商业策划' : 'Business Designer', emoji: '💼' },
     ceo: { name: 'CEO', emoji: '👔' },
+    team_builder: { name: isZh ? '团队建设' : 'Team Building', emoji: '🧠' },
   };
 
   const renderLog = (log: LogEntry) => {

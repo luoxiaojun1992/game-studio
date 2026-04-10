@@ -24,6 +24,7 @@ const PROPOSAL_TYPES = new Set<db.DbProposal['type']>(['game_design', 'biz_desig
 const TASK_TYPES = new Set<db.DbTaskBoardTask['task_type']>(['development', 'testing']);
 const HANDOFF_PRIORITIES = new Set<db.DbHandoff['priority']>(['low', 'normal', 'high', 'urgent']);
 const USER_DECISIONS = new Set(['approved', 'rejected']);
+const TEAM_BUILDING_AGENT_ID: AgentRole = 'team_builder';
 let cachedAgentIdOptions: AgentRole[] | null = null;
 let cachedAgentIdSet: Set<AgentRole> | null = null;
 const getAgentIdOptions = (): AgentRole[] => {
@@ -201,28 +202,45 @@ app.get('/api/agents', (req, res) => {
 // Returns recent chat history for one agent within the selected project.
 app.get('/api/agents/:agentId/messages', (req, res) => {
   const { agentId } = req.params;
+  const agentValidation = validateAgentIdInput(agentId, 'agentId');
+  if (!agentValidation.ok) return res.status(400).json({ error: agentValidation.error });
   const projectId = normalizeProjectId(req.query.projectId);
-  const messages = db.getAgentMessages(projectId, agentId as AgentRole, 100);
+  const messages = db.getAgentMessages(projectId, agentValidation.agentId, 100);
   res.json({ messages: messages.map(m => ({ ...m, tool_calls: m.tool_calls ? JSON.parse(m.tool_calls) : null })) });
 });
 
 // Manual runtime controls for operator intervention.
 app.post('/api/agents/:agentId/pause', (req, res) => {
   const { agentId } = req.params;
+  const agentValidation = validateAgentIdInput(agentId, 'agentId');
+  if (!agentValidation.ok) return res.status(400).json({ error: agentValidation.error });
+  if (agentValidation.agentId === TEAM_BUILDING_AGENT_ID) {
+    return res.status(400).json({ error: '团队建设 Agent 不支持暂停' });
+  }
   const projectId = normalizeProjectId(req.query.projectId ?? req.body?.projectId);
-  agentManager.pauseAgent(projectId, agentId as AgentRole);
+  agentManager.pauseAgent(projectId, agentValidation.agentId);
   res.json({ success: true, message: `Agent ${agentId} 已暂停` });
 });
 app.post('/api/agents/:agentId/resume', (req, res) => {
   const { agentId } = req.params;
+  const agentValidation = validateAgentIdInput(agentId, 'agentId');
+  if (!agentValidation.ok) return res.status(400).json({ error: agentValidation.error });
+  if (agentValidation.agentId === TEAM_BUILDING_AGENT_ID) {
+    return res.status(400).json({ error: '团队建设 Agent 不支持恢复操作' });
+  }
   const projectId = normalizeProjectId(req.query.projectId ?? req.body?.projectId);
-  agentManager.resumeAgent(projectId, agentId as AgentRole);
+  agentManager.resumeAgent(projectId, agentValidation.agentId);
   res.json({ success: true, message: `Agent ${agentId} 已恢复` });
 });
 
 // Executes an explicit user command against one agent and streams progress over SSE.
 app.post('/api/agents/:agentId/command', async (req, res) => {
   const { agentId } = req.params;
+  const agentValidation = validateAgentIdInput(agentId, 'agentId');
+  if (!agentValidation.ok) return res.status(400).json({ error: agentValidation.error });
+  if (agentValidation.agentId === TEAM_BUILDING_AGENT_ID) {
+    return res.status(400).json({ error: '团队建设 Agent 不支持手动下达指令' });
+  }
   const { message, model = 'glm-5.0', projectId: bodyProjectId } = req.body;
   const projectId = normalizeProjectId(req.query.projectId ?? bodyProjectId);
 
@@ -259,7 +277,7 @@ app.post('/api/agents/:agentId/command', async (req, res) => {
   try {
     const response = await agentManager.sendMessage(
       projectId,
-      agentId as AgentRole,
+      agentValidation.agentId,
       message,
       model,
       (event) => {

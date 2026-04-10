@@ -19,6 +19,7 @@ const AGENT_NAMES_ZH: Record<string, string> = {
   game_designer: '游戏策划',
   biz_designer: '商业策划',
   ceo: 'CEO',
+  team_builder: '团队建设',
 };
 
 const AGENT_NAMES_EN: Record<string, string> = {
@@ -27,10 +28,12 @@ const AGENT_NAMES_EN: Record<string, string> = {
   game_designer: 'Game Designer',
   biz_designer: 'Business Designer',
   ceo: 'CEO',
+  team_builder: 'Team Building',
 };
 
 const TABS: { key: TabKey; label: { zh: string; en: string }; icon: string }[] = [
   { key: 'overview', label: { zh: '团队总览', en: 'Overview' }, icon: '🏠' },
+  { key: 'team_building', label: { zh: '团队建设', en: 'Team Building' }, icon: '🧠' },
   { key: 'pixel_studio', label: { zh: 'Studio', en: 'Studio' }, icon: '🏢' },
   { key: 'proposals', label: { zh: '策划案', en: 'Proposals' }, icon: '📋' },
   { key: 'tasks', label: { zh: '任务看板', en: 'Task Board' }, icon: '🗂️' },
@@ -266,9 +269,10 @@ export default function StudioPage() {
     setSelectedGame(null);
   }, [selectedProjectId]);
   useEffect(() => {
-    if (agents.length === 0) return;
+    const commandableAgents = agents.filter(a => a.id !== 'team_builder');
+    if (commandableAgents.length === 0) return;
     const saved = localStorage.getItem(getCommandAgentKey(selectedProjectId));
-    if (saved && agents.find(a => a.id === saved)) {
+    if (saved && commandableAgents.find(a => a.id === saved)) {
       setCommandTargetAgent(saved as AgentRole);
     } else {
       setCommandTargetAgent(undefined);
@@ -344,7 +348,9 @@ export default function StudioPage() {
   };
 
   const pendingProposals = proposals.filter(p => p.status === 'pending_review' || p.status === 'under_review');
-  const workingAgents = agents.filter(a => a.state?.status === 'working');
+  const overviewAgents = agents.filter(a => a.id !== 'team_builder');
+  const teamBuildingAgent = agents.find(a => a.id === 'team_builder');
+  const workingAgents = overviewAgents.filter(a => a.state?.status === 'working');
   const pendingHandoffs = handoffs.filter(h => h.status === 'pending');
   const activeTasks = tasks.filter(t => ['todo', 'developing', 'testing', 'blocked'].includes(t.status));
 
@@ -540,7 +546,7 @@ export default function StudioPage() {
         {activeTab === 'overview' && (
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
-              {agents.map(agent => (
+              {overviewAgents.map(agent => (
                 <AgentCard
                   key={agent.id}
                   agent={agent}
@@ -588,6 +594,24 @@ export default function StudioPage() {
         {activeTab === 'pixel_studio' && (
           <div className="space-y-4">
             <StarOfficeStudio />
+          </div>
+        )}
+
+        {activeTab === 'team_building' && (
+          <div className="space-y-4">
+            {teamBuildingAgent ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                <AgentCard
+                  agent={teamBuildingAgent}
+                  disableActions
+                  streamLog={logs.filter(l => l.agent_id === teamBuildingAgent.id && l.log_type === 'text').slice(-1)[0] ? { agentId: teamBuildingAgent.id, content: logs.filter(l => l.agent_id === teamBuildingAgent.id && l.log_type === 'text').slice(-1)[0].content, time: logs.filter(l => l.agent_id === teamBuildingAgent.id && l.log_type === 'text').slice(-1)[0].created_at } : undefined}
+                />
+              </div>
+            ) : (
+              <div className="bg-gray-900 rounded-xl border border-gray-800 p-6 text-sm text-gray-400">
+                {l('团队建设 Agent 未初始化', 'Team building agent is not initialized')}
+              </div>
+            )}
           </div>
         )}
 
@@ -672,7 +696,7 @@ export default function StudioPage() {
 
         {activeTab === 'commands' && (
           <CommandPanel
-            agents={agents}
+            agents={agents.filter(a => a.id !== 'team_builder')}
             logs={logs}
             projectId={selectedProjectId}
             selectedAgentId={commandTargetAgent}
@@ -737,7 +761,7 @@ function ProposalStatusBadge({ status, isZh }: { status: string; isZh: boolean }
 function getAgentEmoji(agentId: string): string {
   const map: Record<string, string> = {
     engineer: '👨‍💻', architect: '🏗️', game_designer: '🎮',
-    biz_designer: '💼', ceo: '👔',
+    biz_designer: '💼', ceo: '👔', team_builder: '🧠',
   };
   return map[agentId] || '🤖';
 }
