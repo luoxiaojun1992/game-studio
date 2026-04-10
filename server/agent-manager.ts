@@ -304,7 +304,7 @@ class AgentManager extends EventEmitter {
   }
 
   private buildHandoffTaskMessage(handoff: db.DbHandoff): string {
-    return `【任务交接】你收到了新的任务交接。\n\n## 来源 Agent\n- from_agent_id: ${handoff.from_agent_id}\n\n## 任务标题\n${handoff.title}\n\n## 任务描述\n${handoff.description}\n\n${handoff.context ? `## 上下文信息\n${handoff.context}\n\n` : ''}请严格基于上述 from_agent_id 的交接信息执行任务。完成后请提交相关成果。`;
+    return `【任务交接】你收到了新的任务交接。\n\n## 来源 Agent\n- from_agent_id: ${handoff.from_agent_id}\n\n## 任务标题\n${handoff.title}\n\n## 任务描述\n${handoff.description}\n\n${handoff.context ? `## 上下文信息\n${handoff.context}\n\n` : ''}请基于以上交接信息执行任务。完成后请提交相关成果。`;
   }
 
   private dispatchAutoHandoffTask(handoff: db.DbHandoff): void {

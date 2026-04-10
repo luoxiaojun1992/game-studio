@@ -53,6 +53,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
     engineer: ['biz_designer'],
     biz_designer: ['ceo']
   };
+  const AGENT_ID_ENUM = z.enum(['engineer', 'architect', 'game_designer', 'biz_designer', 'ceo']);
 
   const server = createSdkMcpServer({
     name: 'studio-tools',
@@ -120,7 +121,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         'create_handoff',
         '将任务移交给其他团队成员。当你完成自己的工作部分，需要其他 Agent 接手时调用此工具。交接需要管理者确认后目标 Agent 才会开始工作。',
         {
-          to_agent_id: z.enum(['engineer', 'architect', 'game_designer', 'biz_designer', 'ceo']).describe(
+          to_agent_id: AGENT_ID_ENUM.describe(
             '目标 Agent ID：engineer=软件工程师（含软件测试）, architect=架构师, game_designer=游戏策划（含UI设计）, biz_designer=商业策划, ceo=CEO'
           ),
           title: z.string().describe('简短的任务标题'),
@@ -245,7 +246,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           project_id: z.string().optional().describe('项目 ID，不填默认当前项目（且仅允许当前项目）'),
           status: z.enum(['todo', 'developing', 'testing', 'blocked', 'done']).optional().describe('按状态筛选'),
           task_type: z.enum(['development', 'testing']).optional().describe('按任务类型筛选'),
-          agent_id: z.enum(['engineer', 'architect', 'game_designer', 'biz_designer', 'ceo']).optional().describe('按创建者/更新者 Agent ID 筛选；不传则查询全部'),
+          agent_id: AGENT_ID_ENUM.optional().describe('按创建者/更新者 Agent ID 筛选；不传则查询全部'),
           limit: z.number().min(1).max(100).optional().default(20).describe('返回条数上限')
         },
         async ({ project_id, status, task_type, agent_id, limit }) => {
@@ -458,7 +459,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         '查询已有的提案列表，用于了解当前项目的策划案进度。可选按 agent_id 筛选 author/reviewer；不传则查询项目内全部提案。',
         {
           status: z.enum(['pending_review', 'under_review', 'approved', 'rejected', 'revision_needed', 'user_approved', 'user_rejected']).optional().describe('按状态筛选'),
-          agent_id: z.enum(['engineer', 'architect', 'game_designer', 'biz_designer', 'ceo']).optional().describe('按作者/评审 Agent ID 筛选；不传则查询全部'),
+          agent_id: AGENT_ID_ENUM.optional().describe('按作者/评审 Agent ID 筛选；不传则查询全部'),
           limit: z.number().min(1).max(50).optional().default(10).describe('返回条数上限')
         },
         async ({ status, agent_id, limit }) => {
@@ -485,7 +486,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         'get_pending_handoffs',
         '查询待处理的任务交接。可选按 agent_id 筛选发给该 Agent 的交接；不传则查询项目内全部待处理交接。',
         {
-          agent_id: z.enum(['engineer', 'architect', 'game_designer', 'biz_designer', 'ceo']).optional().describe('目标 Agent ID（to_agent_id）筛选；不传则查询全部'),
+          agent_id: AGENT_ID_ENUM.optional().describe('目标 Agent ID（to_agent_id）筛选；不传则查询全部'),
           limit: z.number().min(1).max(20).optional().default(5).describe('返回条数上限')
         },
         async ({ agent_id, limit }) => {
