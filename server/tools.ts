@@ -263,7 +263,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           }
           const text = tasks.map(t => {
             const rel = t.source_task_id ? ` | 来源:${t.source_task_id}` : '';
-            return `[${t.status}/${t.task_type}] ${t.title} (ID:${t.id})${rel}`;
+            return `[${t.status}/${t.task_type}] ${t.title} (ID:${t.id}, 创建:${t.created_by}, 更新:${t.updated_by || '-'})${rel}`;
           }).join('\n');
           return { content: [{ type: 'text' as const, text }] };
         }
