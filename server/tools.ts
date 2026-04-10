@@ -240,19 +240,21 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
       tool(
         'get_tasks',
-        '查询任务看板中的任务，用于查看待办和当前进度。',
+        '查询任务看板中的任务，用于查看待办和当前进度。默认仅查询当前 Agent 相关任务。',
         {
           project_id: z.string().optional().describe('项目 ID，不填默认全部'),
           status: z.enum(['todo', 'developing', 'testing', 'blocked', 'done']).optional().describe('按状态筛选'),
           task_type: z.enum(['development', 'testing']).optional().describe('按任务类型筛选'),
+          only_mine: z.boolean().optional().default(true).describe('是否仅查询当前 Agent 相关任务（默认 true）'),
           limit: z.number().min(1).max(100).optional().default(20).describe('返回条数上限')
         },
-        async ({ project_id, status, task_type, limit }) => {
+        async ({ project_id, status, task_type, only_mine, limit }) => {
           const targetProjectId = enforceProject(project_id);
           const tasks = db.getTaskBoardTasks({
             projectId: targetProjectId,
             status,
             taskType: task_type,
+            agentId: only_mine ? agentId : undefined,
             limit: limit || 20
           });
           if (tasks.length === 0) {
@@ -433,14 +435,16 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
       tool(
         'get_proposals',
-        '查询已有的提案列表，用于了解当前项目的策划案进度。',
+        '查询已有的提案列表，用于了解当前项目的策划案进度。默认仅查询当前 Agent 相关提案。',
         {
           status: z.enum(['pending_review', 'under_review', 'approved', 'rejected', 'revision_needed', 'user_approved', 'user_rejected']).optional().describe('按状态筛选'),
+          only_mine: z.boolean().optional().default(true).describe('是否仅查询当前 Agent 相关提案（默认 true）'),
           limit: z.number().min(1).max(50).optional().default(10).describe('返回条数上限')
         },
-        async ({ status, limit }) => {
+        async ({ status, only_mine, limit }) => {
           const proposals = db.getScopedProposals(scopedProjectId, {
             status,
+            agentId: only_mine ? agentId : undefined,
             limit: limit || 10
           });
           if (proposals.length === 0) {
@@ -459,12 +463,13 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
       tool(
         'get_pending_handoffs',
-        '查询待处理的任务交接，了解是否有其他 Agent 向你发起了交接。',
+        '查询待处理的任务交接。默认仅查询发给当前 Agent 的交接。',
         {
+          only_mine: z.boolean().optional().default(true).describe('是否仅查询发给当前 Agent 的交接（默认 true）'),
           limit: z.number().min(1).max(20).optional().default(5).describe('返回条数上限')
         },
-        async ({ limit }) => {
-          const handoffs = db.getPendingHandoffs(scopedProjectId, agentId, limit || 5);
+        async ({ only_mine, limit }) => {
+          const handoffs = db.getPendingHandoffs(scopedProjectId, only_mine ? agentId : undefined, limit || 5);
           if (handoffs.length === 0) {
             return {
               content: [{ type: 'text' as const, text: '没有待处理的交接任务。' }]
