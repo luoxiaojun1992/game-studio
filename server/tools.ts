@@ -253,7 +253,6 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
             projectId: targetProjectId,
             status,
             taskType: task_type,
-            agentId,
             limit: limit || 20
           });
           if (tasks.length === 0) {
@@ -442,8 +441,6 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         async ({ status, limit }) => {
           const proposals = db.getScopedProposals(scopedProjectId, {
             status,
-            agentId,
-            includeAllForCeo: true,
             limit: limit || 10
           });
           if (proposals.length === 0) {
