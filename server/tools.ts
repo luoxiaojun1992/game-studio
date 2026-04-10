@@ -220,7 +220,8 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           testing_description: z.string().optional().transform((value, ctx) => {
             if (value === undefined) return undefined;
             try {
-              return db.normalizeAndValidateRequiredText(value, 'testing_description');
+              const normalized = db.normalizeOptionalText(value, 'testing_description');
+              return normalized || undefined;
             } catch (error: any) {
               ctx.addIssue({ code: 'custom', message: error?.message || 'testing_description 验证失败' });
               return z.NEVER;
@@ -420,14 +421,17 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           name: requiredTextSchema('name').describe('游戏名称'),
           html_content: requiredTextSchema('html_content').describe('完整的游戏 HTML 代码（必须是包含所有 CSS/JS 的单文件 HTML）'),
           description: z.string().optional().describe('游戏简介'),
-          version: z.string().transform((value, ctx) => {
-            try {
-              return db.normalizeAndValidateRequiredText(value, 'version');
-            } catch (error: any) {
-              ctx.addIssue({ code: 'custom', message: error?.message || 'version 验证失败' });
-              return z.NEVER;
-            }
-          }).optional().default('1.0.0').describe('版本号'),
+          version: z.preprocess(
+            (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+            z.string().transform((value, ctx) => {
+              try {
+                return db.normalizeAndValidateRequiredText(value, 'version');
+              } catch (error: any) {
+                ctx.addIssue({ code: 'custom', message: error?.message || 'version 验证失败' });
+                return z.NEVER;
+              }
+            }).optional().default('1.0.0')
+          ).describe('版本号'),
           proposal_id: z.string().optional().describe('关联的策划案 ID（如果有）')
         },
         async ({ project_id, name, html_content, description, version, proposal_id }) => {
