@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { tool, createSdkMcpServer, type SdkMcpServerResult } from '@tencent-ai/agent-sdk';
 import { v4 as uuidv4 } from 'uuid';
 import * as db from './db.js';
-import { AgentRole, getAllAgents } from './agents.js';
+import { AGENT_IDS, AgentRole, getAllAgents } from './agents.js';
 import { sseBroadcaster } from './sse-broadcaster.js';
 
 /**
@@ -53,7 +53,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
     engineer: ['biz_designer'],
     biz_designer: ['ceo']
   };
-  const AGENT_ID_ENUM = z.enum(['engineer', 'architect', 'game_designer', 'biz_designer', 'ceo']);
+  const AGENT_ID_ENUM = z.enum(AGENT_IDS);
 
   const server = createSdkMcpServer({
     name: 'studio-tools',

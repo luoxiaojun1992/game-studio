@@ -1,7 +1,8 @@
 /**
  */
 
-export type AgentRole = 'engineer' | 'architect' | 'game_designer' | 'biz_designer' | 'ceo';
+export const AGENT_IDS = ['engineer', 'architect', 'game_designer', 'biz_designer', 'ceo'] as const;
+export type AgentRole = typeof AGENT_IDS[number];
 
 export interface AgentDefinition {
   id: AgentRole;
