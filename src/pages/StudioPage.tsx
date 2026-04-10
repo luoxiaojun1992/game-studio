@@ -353,6 +353,11 @@ export default function StudioPage() {
   const workingAgents = overviewAgents.filter(a => a.state?.status === 'working');
   const pendingHandoffs = handoffs.filter(h => h.status === 'pending');
   const activeTasks = tasks.filter(t => ['todo', 'developing', 'testing', 'blocked'].includes(t.status));
+  const getLatestStreamLog = (agentId: AgentRole) => {
+    const latest = logs.filter(log => log.agent_id === agentId && log.log_type === 'text').slice(-1)[0];
+    if (!latest) return undefined;
+    return { agentId, content: latest.content, time: latest.created_at };
+  };
 
   return (
     <div className="flex flex-col h-screen bg-gray-950 text-gray-100">
@@ -555,7 +560,7 @@ export default function StudioPage() {
                     setCommandTargetAgent(agent.id);
                     setActiveTab('commands');
                   }}
-                  streamLog={logs.filter(l => l.agent_id === agent.id && l.log_type === 'text').slice(-1)[0] ? { agentId: agent.id, content: logs.filter(l => l.agent_id === agent.id && l.log_type === 'text').slice(-1)[0].content, time: logs.filter(l => l.agent_id === agent.id && l.log_type === 'text').slice(-1)[0].created_at } : undefined}
+                  streamLog={getLatestStreamLog(agent.id)}
                   pendingHandoffs={pendingHandoffs}
                   activeHandoffs={handoffs.filter(h => ['pending', 'accepted', 'working'].includes(h.status))}
                 />
@@ -604,7 +609,7 @@ export default function StudioPage() {
                 <AgentCard
                   agent={teamBuildingAgent}
                   disableActions
-                  streamLog={logs.filter(l => l.agent_id === teamBuildingAgent.id && l.log_type === 'text').slice(-1)[0] ? { agentId: teamBuildingAgent.id, content: logs.filter(l => l.agent_id === teamBuildingAgent.id && l.log_type === 'text').slice(-1)[0].content, time: logs.filter(l => l.agent_id === teamBuildingAgent.id && l.log_type === 'text').slice(-1)[0].created_at } : undefined}
+                  streamLog={getLatestStreamLog(teamBuildingAgent.id)}
                 />
               </div>
             ) : (

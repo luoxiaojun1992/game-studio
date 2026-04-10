@@ -13,6 +13,7 @@ import { sseBroadcaster } from './sse-broadcaster.js';
 type ToolLogFn = (agentId: AgentRole, action: string, detail: string, level: 'info' | 'warn' | 'error' | 'success') => void;
 type AutoHandoffHook = (handoff: db.DbHandoff) => Promise<void> | void;
 const TEAM_BUILDING_AGENT_ID: AgentRole = 'team_builder';
+const CONTENT_PREVIEW_LENGTH = 160;
 
 /**
  *
@@ -537,11 +538,11 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
             })),
             ...logs.map(item => ({
               timestamp: item.created_at,
-              line: `[log][${item.level}/${item.log_type}] ${item.agent_id} | ${item.action || '-'} | ${(item.content || '').slice(0, 160)} | ${item.created_at}`
+              line: `[log][${item.level}/${item.log_type}] ${item.agent_id} | ${item.action || '-'} | ${(item.content || '').slice(0, CONTENT_PREVIEW_LENGTH)} | ${item.created_at}`
             })),
             ...memories.map(item => ({
               timestamp: item.updated_at || item.created_at,
-              line: `[memory][${item.category}/${item.importance}] ${item.agent_id} | ${(item.content || '').slice(0, 160)} | ${item.created_at}`
+              line: `[memory][${item.category}/${item.importance}] ${item.agent_id} | ${(item.content || '').slice(0, CONTENT_PREVIEW_LENGTH)} | ${item.created_at}`
             }))
           ]
             .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
