@@ -1,7 +1,8 @@
 /**
  */
 
-export type AgentRole = 'engineer' | 'architect' | 'game_designer' | 'biz_designer' | 'ceo';
+export const AGENT_IDS = ['engineer', 'architect', 'game_designer', 'biz_designer', 'ceo'] as const;
+export type AgentRole = typeof AGENT_IDS[number];
 
 export interface AgentDefinition {
   id: AgentRole;
@@ -85,6 +86,7 @@ const TOOLS_OVERVIEW = `
 | \`update_task_status\` | 更新任务看板状态（遵循状态流转约束） |
 | \`submit_proposal\` | 提交策划案或方案文档 |
 | \`submit_game\` | 提交游戏成品（单文件 HTML） |
+| \`get_agents\` | 查询所有 Agent 信息（含 agent_id） |
 | \`get_proposals\` | 查询已有的提案列表 |
 | \`get_agent_logs\` | 查询当前项目下你自己的历史日志 |
 | \`get_pending_handoffs\` | 查询待处理的任务交接 |
