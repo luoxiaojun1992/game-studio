@@ -75,9 +75,9 @@ const validateAgentIdInput = (value: unknown, fieldName: string): { ok: true; ag
 };
 const validateTitleInput = (value: unknown, fieldName: string): { ok: true; title: string } | { ok: false; error: string } => {
   if (typeof value !== 'string') return { ok: false, error: `${fieldName} 必须是字符串` };
+  if (!SINGLE_LINE_PATTERN.test(value)) return { ok: false, error: `${fieldName} 不允许包含换行符` };
   const title = value.trim();
   if (!title) return { ok: false, error: `${fieldName} 不能为空` };
-  if (!SINGLE_LINE_PATTERN.test(title)) return { ok: false, error: `${fieldName} 不允许包含换行符` };
   return { ok: true, title };
 };
 
