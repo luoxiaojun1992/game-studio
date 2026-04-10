@@ -73,6 +73,18 @@ const validateAgentIdInput = (value: unknown, fieldName: string): { ok: true; ag
   }
   return { ok: true, agentId: agentId as AgentRole };
 };
+const validateOptionalAgentIdInput = (
+  value: unknown,
+  fieldName: string
+): { ok: true; agentId: AgentRole | null } | { ok: false; error: string } => {
+  if (value === undefined || value === null) return { ok: true, agentId: null };
+  if (typeof value !== 'string') return { ok: false, error: `${fieldName} 必须是字符串` };
+  const raw = value.trim();
+  if (!raw) return { ok: true, agentId: null };
+  const validation = validateAgentIdInput(raw, fieldName);
+  if (!validation.ok) return validation;
+  return { ok: true, agentId: validation.agentId };
+};
 const validateTitleInput = (value: unknown, fieldName: string): { ok: true; title: string } | { ok: false; error: string } => {
   try {
     return { ok: true, title: db.normalizeAndValidateTitle(value, fieldName) };
@@ -338,17 +350,26 @@ app.post('/api/proposals/:id/review', (req, res) => {
   const proposal = db.getProposal(id);
   if (!proposal) return res.status(404).json({ error: '提案不存在' });
 
-  db.updateProposal(id, {
-    status: status || 'under_review',
-    reviewer_agent_id,
-    review_comment
-  });
+  const reviewerValidation = validateOptionalAgentIdInput(reviewer_agent_id, 'reviewer_agent_id');
+  if (!reviewerValidation.ok) return res.status(400).json({ error: reviewerValidation.error });
+  const reviewCommentValidation = validateOptionalTextInput(review_comment, 'review_comment');
+  if (!reviewCommentValidation.ok) return res.status(400).json({ error: reviewCommentValidation.error });
+
+  try {
+    db.updateProposal(id, {
+      status: status || 'under_review',
+      reviewer_agent_id: reviewerValidation.agentId,
+      review_comment: reviewCommentValidation.text
+    });
+  } catch (error: any) {
+    return res.status(400).json({ error: error?.message || '提案参数不合法' });
+  }
 
   const updated = db.getProposal(id);
   sseBroadcaster.broadcast({ type: 'proposal_reviewed', proposal: updated }, proposal.project_id);
 
-  if (reviewer_agent_id) {
-    agentManager.addLog(proposal.project_id, reviewer_agent_id as AgentRole, '评审提案', `提案: ${proposal.title} → ${status}`, 'info');
+  if (reviewerValidation.agentId) {
+    agentManager.addLog(proposal.project_id, reviewerValidation.agentId, '评审提案', `提案: ${proposal.title} → ${status}`, 'info');
   }
 
   res.json({ success: true, proposal: updated });
@@ -821,13 +842,13 @@ app.patch('/api/tasks/:id/status', (req, res) => {
     return res.status(400).json({ error: `非法状态流转: ${task.status} -> ${status}` });
   }
 
-  const updatedByValidation = validateOptionalTextInput(updated_by, 'updated_by');
+  const updatedByValidation = validateOptionalAgentIdInput(updated_by, 'updated_by');
   if (!updatedByValidation.ok) return res.status(400).json({ error: updatedByValidation.error });
 
   const now = new Date().toISOString();
   const updates: Partial<db.DbTaskBoardTask> = {
     status,
-    updated_by: updatedByValidation.text
+    updated_by: updatedByValidation.agentId
   };
 
   if (status === 'developing' || status === 'testing') {
@@ -849,23 +870,28 @@ app.patch('/api/tasks/:id/status', (req, res) => {
   if (!success) return res.status(500).json({ error: '任务状态更新失败' });
   const updated = db.getTaskBoardTask(id)!;
   sseBroadcaster.broadcast({ type: 'task_updated', task: updated }, task.project_id);
-  agentManager.addLog(task.project_id, (updatedByValidation.text || task.created_by) as AgentRole, '更新任务状态', `${task.title}: ${task.status} → ${status}`, 'success');
+  const taskOperator = updatedByValidation.agentId || (task.created_by as AgentRole);
+  agentManager.addLog(task.project_id, taskOperator, '更新任务状态', `${task.title}: ${task.status} → ${status}`, 'success');
   res.json({ task: updated });
 });
 
 // Agent memory APIs.
 app.delete('/api/agents/:agentId/messages', (req, res) => {
   const { agentId } = req.params;
+  const agentValidation = validateAgentIdInput(agentId, 'agentId');
+  if (!agentValidation.ok) return res.status(400).json({ error: agentValidation.error });
   const projectId = normalizeProjectId(req.query.projectId ?? req.body?.projectId);
-  db.clearAgentMessages(projectId, agentId);
-  agentManager.addLog(projectId, agentId as AgentRole, '清除聊天记录', '用户清除了该 Agent 的所有聊天记录和会话', 'warn');
+  db.clearAgentMessages(projectId, agentValidation.agentId);
+  agentManager.addLog(projectId, agentValidation.agentId, '清除聊天记录', '用户清除了该 Agent 的所有聊天记录和会话', 'warn');
   res.json({ success: true });
 });
 app.get('/api/agents/:agentId/memories', (req, res) => {
   const { agentId } = req.params;
+  const agentValidation = validateAgentIdInput(agentId, 'agentId');
+  if (!agentValidation.ok) return res.status(400).json({ error: agentValidation.error });
   const { category } = req.query;
   const projectId = normalizeProjectId(req.query.projectId);
-  const memories = db.getAgentMemories(projectId, agentId, category as string | undefined);
+  const memories = db.getAgentMemories(projectId, agentValidation.agentId, category as string | undefined);
   res.json({ memories });
 });
 app.get('/api/memories', (req, res) => {
@@ -875,6 +901,8 @@ app.get('/api/memories', (req, res) => {
 });
 app.post('/api/agents/:agentId/memories', (req, res) => {
   const { agentId } = req.params;
+  const agentValidation = validateAgentIdInput(agentId, 'agentId');
+  if (!agentValidation.ok) return res.status(400).json({ error: agentValidation.error });
   const { category = 'general', content, importance = 'normal', source_task, projectId: bodyProjectId } = req.body;
   const projectId = normalizeProjectId(req.query.projectId ?? bodyProjectId);
 
@@ -884,7 +912,7 @@ app.post('/api/agents/:agentId/memories', (req, res) => {
   const memory = db.createAgentMemory({
     id: uuidv4(),
     project_id: projectId,
-    agent_id: agentId,
+    agent_id: agentValidation.agentId,
     category,
     content: content.slice(0, 5000),
     importance,
@@ -893,7 +921,7 @@ app.post('/api/agents/:agentId/memories', (req, res) => {
     updated_at: now
   });
 
-  agentManager.addLog(projectId, agentId as AgentRole, '保存记忆', `类别: ${category} | 重要度: ${importance}`, 'info');
+  agentManager.addLog(projectId, agentValidation.agentId, '保存记忆', `类别: ${category} | 重要度: ${importance}`, 'info');
 
   res.json({ memory });
 });
