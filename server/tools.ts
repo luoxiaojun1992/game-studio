@@ -151,9 +151,11 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         'create_handoff',
         '将任务移交给其他团队成员。当你完成自己的工作部分，需要其他 Agent 接手时调用此工具。交接需要管理者确认后目标 Agent 才会开始工作。',
         {
-          to_agent_id: AGENT_ID_ENUM.describe(
-            '目标 Agent ID：engineer=软件工程师（含软件测试）, architect=架构师, game_designer=游戏策划（含UI设计）, biz_designer=商业策划, ceo=CEO'
-          ),
+          to_agent_id: AGENT_ID_ENUM
+            .refine((value) => value !== TEAM_BUILDING_AGENT_ID, { message: 'to_agent_id 不支持 team_builder' })
+            .describe(
+              '目标 Agent ID：engineer=软件工程师（含软件测试）, architect=架构师, game_designer=游戏策划（含UI设计）, biz_designer=商业策划, ceo=CEO（不支持 team_builder）'
+            ),
           title: singleLineTitleSchema('title').describe('简短的任务标题'),
           description: requiredTextSchema('description').describe('详细的任务描述'),
           context: z.string().optional().describe(
