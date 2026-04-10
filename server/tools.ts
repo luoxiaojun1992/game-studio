@@ -465,7 +465,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
       tool(
         'get_pending_handoffs',
-        '查询待处理的任务交接。默认仅查询发给当前 Agent 的交接。',
+        '查询待处理的任务交接。默认仅查询发给当前 Agent 的交接；传 only_mine=false 可查询项目内全部待处理交接。',
         {
           only_mine: z.boolean().optional().default(true).describe('是否仅查询发给当前 Agent 的交接（默认 true）'),
           limit: z.number().min(1).max(20).optional().default(5).describe('返回条数上限')
