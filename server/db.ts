@@ -15,12 +15,12 @@ export function normalizeAndValidateTitle(value: unknown, fieldName = 'title'): 
   if (typeof value !== 'string') {
     throw new Error(`${fieldName} 必须是字符串`);
   }
-  if (!SINGLE_LINE_TITLE_PATTERN.test(value)) {
-    throw new Error(`${fieldName} 不允许包含换行符`);
-  }
   const title = value.trim();
   if (!title) {
     throw new Error(`${fieldName} 不能为空`);
+  }
+  if (!SINGLE_LINE_TITLE_PATTERN.test(value) || !SINGLE_LINE_TITLE_PATTERN.test(title)) {
+    throw new Error(`${fieldName} 不允许包含换行符`);
   }
   return title;
 }
