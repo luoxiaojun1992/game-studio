@@ -840,7 +840,7 @@ app.patch('/api/tasks/:id/status', (req, res) => {
     updates.completed_at = null;
   }
 
-  let success = false;
+  let success: boolean;
   try {
     success = db.updateTaskBoardTask(id, updates);
   } catch (error: any) {
