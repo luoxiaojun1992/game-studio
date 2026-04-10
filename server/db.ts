@@ -791,7 +791,8 @@ export function getAgentMemories(
     params.push(`%${escapeLikeWildcards(keyword)}%`);
   }
   const effectiveLimit = options.limit && options.limit > 0 ? options.limit : limit;
-  const sql = `SELECT * FROM agent_memories WHERE ${conditions.join(' AND ')} ORDER BY created_at DESC, CASE importance WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'normal' THEN 2 WHEN 'low' THEN 1 ELSE 0 END DESC LIMIT ?`;
+  const importanceOrderExpr = "CASE importance WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'normal' THEN 2 WHEN 'low' THEN 1 ELSE 0 END";
+  const sql = `SELECT * FROM agent_memories WHERE ${conditions.join(' AND ')} ORDER BY created_at DESC, ${importanceOrderExpr} DESC LIMIT ?`;
   params.push(effectiveLimit);
   const stmt = db.prepare(sql);
   return stmt.all(...params) as DbAgentMemory[];
