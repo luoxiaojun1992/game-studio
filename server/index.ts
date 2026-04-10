@@ -239,7 +239,7 @@ app.post('/api/agents/:agentId/command', async (req, res) => {
   const agentValidation = validateAgentIdInput(agentId, 'agentId');
   if (!agentValidation.ok) return res.status(400).json({ error: agentValidation.error });
   const normalizedAgentId = agentValidation.agentId;
-  if (agentValidation.agentId === TEAM_BUILDING_AGENT_ID) {
+  if (normalizedAgentId === TEAM_BUILDING_AGENT_ID) {
     return res.status(400).json({ error: '团队建设 Agent 不支持手动下达指令' });
   }
   const { message, model = 'glm-5.0', projectId: bodyProjectId } = req.body;
@@ -278,7 +278,7 @@ app.post('/api/agents/:agentId/command', async (req, res) => {
   try {
     const response = await agentManager.sendMessage(
       projectId,
-      agentValidation.agentId,
+      normalizedAgentId,
       message,
       model,
       (event) => {
