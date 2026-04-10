@@ -57,6 +57,8 @@ const validateProjectIdInput = (value: unknown, fieldName: string): { ok: true; 
   return { ok: true, projectId: raw };
 };
 
+const isEmptyProjectIdQuery = (value: unknown): boolean => value === undefined || (typeof value === 'string' && value.trim() === '');
+
 const isProposalType = (value: string): value is db.DbProposal['type'] => PROPOSAL_TYPES.has(value as db.DbProposal['type']);
 
 const validateAgentIdInput = (value: unknown, fieldName: string): { ok: true; agentId: AgentRole } | { ok: false; error: string } => {
@@ -664,7 +666,7 @@ const TASK_STATUS_FLOW: Record<string, string[]> = {
 
 app.get('/api/tasks', (req, res) => {
   let tasks: db.DbTaskBoardTask[];
-  if (req.query.projectId === undefined) {
+  if (isEmptyProjectIdQuery(req.query.projectId)) {
     tasks = db.getTaskBoardTasks(undefined);
   } else {
     const projectValidation = validateProjectIdInput(req.query.projectId, 'projectId');
