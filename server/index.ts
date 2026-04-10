@@ -238,6 +238,7 @@ app.post('/api/agents/:agentId/command', async (req, res) => {
   const { agentId } = req.params;
   const agentValidation = validateAgentIdInput(agentId, 'agentId');
   if (!agentValidation.ok) return res.status(400).json({ error: agentValidation.error });
+  const normalizedAgentId = agentValidation.agentId;
   if (agentValidation.agentId === TEAM_BUILDING_AGENT_ID) {
     return res.status(400).json({ error: '团队建设 Agent 不支持手动下达指令' });
   }
@@ -249,7 +250,7 @@ app.post('/api/agents/:agentId/command', async (req, res) => {
   const command = db.createCommand({
     id: commandId,
     project_id: projectId,
-    target_agent_id: agentId,
+    target_agent_id: normalizedAgentId,
     content: message,
     status: 'executing',
     result: null,
@@ -259,7 +260,7 @@ app.post('/api/agents/:agentId/command', async (req, res) => {
   db.addLog({
     id: uuidv4(),
     project_id: projectId,
-    agent_id: agentId,
+    agent_id: normalizedAgentId,
     log_type: 'user_command',
     level: 'info',
     content: message,
@@ -272,7 +273,7 @@ app.post('/api/agents/:agentId/command', async (req, res) => {
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
 
-  res.write(`data: ${JSON.stringify({ type: 'command_started', commandId, agentId })}\n\n`);
+  res.write(`data: ${JSON.stringify({ type: 'command_started', commandId, agentId: normalizedAgentId })}\n\n`);
 
   try {
     const response = await agentManager.sendMessage(
