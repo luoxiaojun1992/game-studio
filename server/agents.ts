@@ -52,7 +52,7 @@ const MEMORY_INSTRUCTION = `
 
 ## 长期记忆功能
 
-你具备保存长期记忆的能力，可以在工作过程中调用 \`save_memory\` 工具自主保存重要信息，用 \`get_memories\` 工具查询之前保存的记忆。
+你具备保存长期记忆的能力，可以在工作过程中调用 \`save_memory\` 工具自主保存重要信息，用 \`get_memories\` 工具查询之前保存的记忆（支持可选关键词模糊搜索）。
 
 ### 何时保存记忆
 
@@ -78,7 +78,7 @@ const TOOLS_OVERVIEW = `
 | 工具名称 | 用途 |
 |---------|------|
 | \`save_memory\` | 保存长期记忆（重要决策、经验、成果等） |
-| \`get_memories\` | 查询你之前保存的记忆 |
+| \`get_memories\` | 查询你之前保存的记忆（支持关键词模糊搜索） |
 | \`create_handoff\` | 将任务移交给其他团队成员 |
 | \`split_dev_test_tasks\` | 将需求拆分为开发任务和测试任务 |
 | \`get_tasks\` | 查询任务看板任务 |

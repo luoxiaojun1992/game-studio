@@ -190,6 +190,7 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_agent_memories_agent ON agent_memories(agent_id);
   CREATE INDEX IF NOT EXISTS idx_agent_memories_project_agent ON agent_memories(project_id, agent_id);
   CREATE INDEX IF NOT EXISTS idx_agent_memories_category ON agent_memories(category);
+  CREATE INDEX IF NOT EXISTS idx_agent_memories_project_agent_created_at ON agent_memories(project_id, agent_id, created_at DESC);
 
   -- 任务看板表（开发/测试任务及状态）
   CREATE TABLE IF NOT EXISTS task_board_tasks (
@@ -384,6 +385,8 @@ export interface DbTaskBoardTask {
   updated_at: string;
 }
 
+const CEO_AGENT_ID = 'ceo' as const;
+
 export interface DbProjectSettings {
   project_id: string;
   autopilot_enabled: number;
@@ -445,6 +448,29 @@ export function createAgentMessage(message: DbAgentMessage): DbAgentMessage {
 export function getAllProposals(): DbProposal[] {
   const stmt = db.prepare('SELECT * FROM proposals ORDER BY created_at DESC');
   return stmt.all() as DbProposal[];
+}
+
+export function getScopedProposals(
+  projectId: string,
+  options?: { status?: DbProposal['status']; limit?: number; agentId?: string; includeAllForCeo?: boolean }
+): DbProposal[] {
+  const conditions: string[] = ['project_id = ?'];
+  const params: any[] = [projectId];
+  if (options?.status) {
+    conditions.push('status = ?');
+    params.push(options.status);
+  }
+  if (options?.agentId && !(options.includeAllForCeo && options.agentId === CEO_AGENT_ID)) {
+    conditions.push('(author_agent_id = ? OR reviewer_agent_id = ?)');
+    params.push(options.agentId, options.agentId);
+  }
+  let sql = `SELECT * FROM proposals WHERE ${conditions.join(' AND ')} ORDER BY created_at DESC`;
+  if (options?.limit && options.limit > 0) {
+    sql += ' LIMIT ?';
+    params.push(options.limit);
+  }
+  const stmt = db.prepare(sql);
+  return stmt.all(...params) as DbProposal[];
 }
 
 export function getProposal(id: string): DbProposal | undefined {
@@ -682,13 +708,20 @@ export function getAllHandoffs(projectId: string, limit = 50): DbHandoff[] {
   return stmt.all(projectId, limit) as DbHandoff[];
 }
 
-export function getPendingHandoffs(projectId: string, toAgentId?: string): DbHandoff[] {
+export function getPendingHandoffs(projectId: string, toAgentId?: string, limit?: number): DbHandoff[] {
+  const params: any[] = [projectId];
+  let sql = 'SELECT * FROM handoffs WHERE project_id = ?';
   if (toAgentId) {
-    const stmt = db.prepare("SELECT * FROM handoffs WHERE project_id = ? AND to_agent_id = ? AND status IN ('pending', 'accepted', 'working') ORDER BY created_at DESC");
-    return stmt.all(projectId, toAgentId) as DbHandoff[];
+    sql += ' AND to_agent_id = ?';
+    params.push(toAgentId);
   }
-  const stmt = db.prepare("SELECT * FROM handoffs WHERE project_id = ? AND status IN ('pending', 'accepted', 'working') ORDER BY created_at DESC");
-  return stmt.all(projectId) as DbHandoff[];
+  sql += ' AND status IN (\'pending\', \'accepted\', \'working\') ORDER BY created_at DESC';
+  if (limit && limit > 0) {
+    sql += ' LIMIT ?';
+    params.push(limit);
+  }
+  const stmt = db.prepare(sql);
+  return stmt.all(...params) as DbHandoff[];
 }
 
 export function getHandoffsForAgent(projectId: string, agentId: string, limit = 20): { incoming: DbHandoff[]; outgoing: DbHandoff[] } {
@@ -736,13 +769,33 @@ export function createAgentMemory(memory: DbAgentMemory): DbAgentMemory {
   return memory;
 }
 
-export function getAgentMemories(projectId: string, agentId: string, category?: string, limit = 50): DbAgentMemory[] {
-  if (category) {
-    const stmt = db.prepare('SELECT * FROM agent_memories WHERE project_id = ? AND agent_id = ? AND category = ? ORDER BY importance DESC, created_at DESC LIMIT ?');
-    return stmt.all(projectId, agentId, category, limit) as DbAgentMemory[];
+export function getAgentMemories(
+  projectId: string,
+  agentId: string,
+  categoryOrOptions?: string | { category?: string; keyword?: string; limit?: number },
+  limit = 50
+): DbAgentMemory[] {
+  const escapeLikeWildcards = (value: string): string => value.replace(/[\\%_]/g, (ch) => `\\${ch}`);
+  const options = typeof categoryOrOptions === 'string'
+    ? { category: categoryOrOptions, limit }
+    : (categoryOrOptions || { limit });
+  const conditions: string[] = ['project_id = ?', 'agent_id = ?'];
+  const params: any[] = [projectId, agentId];
+  if (options.category) {
+    conditions.push('category = ?');
+    params.push(options.category);
   }
-  const stmt = db.prepare('SELECT * FROM agent_memories WHERE project_id = ? AND agent_id = ? ORDER BY importance DESC, created_at DESC LIMIT ?');
-  return stmt.all(projectId, agentId, limit) as DbAgentMemory[];
+  const keyword = options.keyword?.trim();
+  if (keyword) {
+    conditions.push("content LIKE ? ESCAPE '\\'");
+    params.push(`%${escapeLikeWildcards(keyword)}%`);
+  }
+  const effectiveLimit = options.limit && options.limit > 0 ? options.limit : limit;
+  const importanceOrderExpr = "CASE importance WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'normal' THEN 2 WHEN 'low' THEN 1 ELSE 0 END";
+  const sql = `SELECT * FROM agent_memories WHERE ${conditions.join(' AND ')} ORDER BY created_at DESC, ${importanceOrderExpr} DESC LIMIT ?`;
+  params.push(effectiveLimit);
+  const stmt = db.prepare(sql);
+  return stmt.all(...params) as DbAgentMemory[];
 }
 
 export function getAllAgentMemories(projectId: string, limit = 100): DbAgentMemory[] {
@@ -791,13 +844,41 @@ export function getTaskBoardTask(id: string): DbTaskBoardTask | undefined {
   return stmt.get(id) as DbTaskBoardTask | undefined;
 }
 
-export function getTaskBoardTasks(projectId?: string): DbTaskBoardTask[] {
-  if (projectId) {
-    const stmt = db.prepare('SELECT * FROM task_board_tasks WHERE project_id = ? ORDER BY created_at DESC');
-    return stmt.all(projectId) as DbTaskBoardTask[];
+export function getTaskBoardTasks(
+  projectIdOrOptions?: string | { projectId?: string; status?: DbTaskBoardTask['status']; taskType?: DbTaskBoardTask['task_type']; agentId?: string; limit?: number }
+): DbTaskBoardTask[] {
+  const options = typeof projectIdOrOptions === 'string'
+    ? { projectId: projectIdOrOptions }
+    : (projectIdOrOptions || {});
+  const conditions: string[] = [];
+  const params: any[] = [];
+  if (options.projectId) {
+    conditions.push('project_id = ?');
+    params.push(options.projectId);
   }
-  const stmt = db.prepare('SELECT * FROM task_board_tasks ORDER BY created_at DESC');
-  return stmt.all() as DbTaskBoardTask[];
+  if (options.status) {
+    conditions.push('status = ?');
+    params.push(options.status);
+  }
+  if (options.taskType) {
+    conditions.push('task_type = ?');
+    params.push(options.taskType);
+  }
+  if (options.agentId) {
+    conditions.push('(created_by = ? OR updated_by = ?)');
+    params.push(options.agentId, options.agentId);
+  }
+  let sql = 'SELECT * FROM task_board_tasks';
+  if (conditions.length > 0) {
+    sql += ` WHERE ${conditions.join(' AND ')}`;
+  }
+  sql += ' ORDER BY created_at DESC';
+  if (options.limit && options.limit > 0) {
+    sql += ' LIMIT ?';
+    params.push(options.limit);
+  }
+  const stmt = db.prepare(sql);
+  return stmt.all(...params) as DbTaskBoardTask[];
 }
 
 export function getAllProjectIds(): string[] {

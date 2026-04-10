@@ -94,10 +94,15 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         '获取你之前保存的长期记忆，帮助你回忆之前的决策、经验和成果。',
         {
           category: z.enum(['general', 'preference', 'decision', 'lesson', 'achievement']).optional().describe('按类别筛选，不填则返回全部'),
+          keyword: z.string().trim().max(200).optional().describe('按关键词模糊搜索记忆内容，可选，最长 200 字符'),
           limit: z.number().min(1).max(50).optional().default(20).describe('返回条数上限')
         },
-        async ({ category, limit }) => {
-          const memories = db.getAgentMemories(scopedProjectId, agentId, category, limit || 20);
+        async ({ category, keyword, limit }) => {
+          const memories = db.getAgentMemories(scopedProjectId, agentId, {
+            category,
+            keyword,
+            limit
+          });
           if (memories.length === 0) {
             return {
               content: [{ type: 'text' as const, text: '暂无保存的记忆。' }]
@@ -235,19 +240,23 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
       tool(
         'get_tasks',
-        '查询任务看板中的任务，用于查看待办和当前进度。',
+        '查询任务看板中的任务，用于查看待办和当前进度。默认仅查询 created_by/updated_by 为当前 Agent 的任务。',
         {
-          project_id: z.string().optional().describe('项目 ID，不填默认全部'),
+          project_id: z.string().optional().describe('项目 ID，不填默认当前项目（且仅允许当前项目）'),
           status: z.enum(['todo', 'developing', 'testing', 'blocked', 'done']).optional().describe('按状态筛选'),
           task_type: z.enum(['development', 'testing']).optional().describe('按任务类型筛选'),
+          only_mine: z.boolean().optional().default(true).describe('是否仅查询 created_by/updated_by 为当前 Agent 的任务（默认 true）'),
           limit: z.number().min(1).max(100).optional().default(20).describe('返回条数上限')
         },
-        async ({ project_id, status, task_type, limit }) => {
+        async ({ project_id, status, task_type, only_mine, limit }) => {
           const targetProjectId = enforceProject(project_id);
-          let tasks = db.getTaskBoardTasks(targetProjectId);
-          if (status) tasks = tasks.filter(t => t.status === status);
-          if (task_type) tasks = tasks.filter(t => t.task_type === task_type);
-          tasks = tasks.slice(0, limit || 20);
+          const tasks = db.getTaskBoardTasks({
+            projectId: targetProjectId,
+            status,
+            taskType: task_type,
+            agentId: only_mine ? agentId : undefined,
+            limit: limit || 20
+          });
           if (tasks.length === 0) {
             return { content: [{ type: 'text' as const, text: '没有匹配的看板任务。' }] };
           }
@@ -426,17 +435,20 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
       tool(
         'get_proposals',
-        '查询已有的提案列表，用于了解当前项目的策划案进度。',
+        '查询已有的提案列表，用于了解当前项目的策划案进度。默认仅查询 author/reviewer 为当前 Agent 的提案（only_mine=true）；传 only_mine=false 可查询项目内全部提案。',
         {
           status: z.enum(['pending_review', 'under_review', 'approved', 'rejected', 'revision_needed', 'user_approved', 'user_rejected']).optional().describe('按状态筛选'),
+          only_mine: z.boolean().optional().default(true).describe('是否仅查询 author/reviewer 为当前 Agent 的提案（默认 true）'),
+          include_all_for_ceo: z.boolean().optional().default(false).describe('当当前 Agent 为 CEO 且 only_mine=true 时，是否放宽为查询项目内全部提案（默认 false）'),
           limit: z.number().min(1).max(50).optional().default(10).describe('返回条数上限')
         },
-        async ({ status, limit }) => {
-          let proposals = db.getAllProposals().filter(p => p.project_id === scopedProjectId);
-          if (status) {
-            proposals = proposals.filter(p => p.status === status);
-          }
-          proposals = proposals.slice(0, limit || 10);
+        async ({ status, only_mine, include_all_for_ceo, limit }) => {
+          const proposals = db.getScopedProposals(scopedProjectId, {
+            status,
+            agentId: only_mine ? agentId : undefined,
+            includeAllForCeo: include_all_for_ceo,
+            limit: limit || 10
+          });
           if (proposals.length === 0) {
             return {
               content: [{ type: 'text' as const, text: '没有找到匹配的提案。' }]
@@ -453,19 +465,19 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
       tool(
         'get_pending_handoffs',
-        '查询待处理的任务交接，了解是否有其他 Agent 向你发起了交接。',
+        '查询待处理的任务交接。默认仅查询发给当前 Agent 的交接；传 only_mine=false 可查询项目内全部待处理交接。',
         {
+          only_mine: z.boolean().optional().default(true).describe('是否仅查询发给当前 Agent 的交接（默认 true）'),
           limit: z.number().min(1).max(20).optional().default(5).describe('返回条数上限')
         },
-        async ({ limit }) => {
-          const handoffs = db.getPendingHandoffs(scopedProjectId, agentId);
-          const relevant = handoffs.slice(0, limit || 5);
-          if (relevant.length === 0) {
+        async ({ only_mine, limit }) => {
+          const handoffs = db.getPendingHandoffs(scopedProjectId, only_mine ? agentId : undefined, limit || 5);
+          if (handoffs.length === 0) {
             return {
               content: [{ type: 'text' as const, text: '没有待处理的交接任务。' }]
             };
           }
-          const text = relevant.map(h =>
+          const text = handoffs.map(h =>
             `[${h.status}] ${h.title} (来自: ${h.from_agent_id}, 优先级: ${h.priority}, ${h.created_at.slice(0, 10)})\n  描述: ${h.description.slice(0, 100)}`
           ).join('\n\n');
           return {
@@ -482,7 +494,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 /**
  */
 export function getMemorySummaryForPrompt(projectId: string, agentId: AgentRole): string {
-  const memories = db.getAgentMemories(projectId, agentId, undefined, 20);
+  const memories = db.getAgentMemories(projectId, agentId, { limit: 20 });
   if (memories.length === 0) return '';
 
   const summary = memories.map(m =>
