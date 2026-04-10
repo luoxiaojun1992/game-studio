@@ -435,7 +435,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
       tool(
         'get_proposals',
-        '查询已有的提案列表，用于了解当前项目的策划案进度。默认仅查询当前 Agent 相关提案。',
+        '查询已有的提案列表，用于了解当前项目的策划案进度。默认仅查询 author/reviewer 为当前 Agent 的提案（only_mine=true）；传 only_mine=false 可查询项目内全部提案。',
         {
           status: z.enum(['pending_review', 'under_review', 'approved', 'rejected', 'revision_needed', 'user_approved', 'user_rejected']).optional().describe('按状态筛选'),
           only_mine: z.boolean().optional().default(true).describe('是否仅查询 author/reviewer 为当前 Agent 的提案（默认 true）'),
