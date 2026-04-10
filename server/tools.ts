@@ -534,24 +534,24 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
           const unified = [
             ...proposals.map(item => ({
-              timestamp: item.updated_at || item.created_at,
-              line: `[proposal][${item.status}] ${item.title} | author=${item.author_agent_id} | reviewer=${item.reviewer_agent_id || '-'} | sort_at=${item.updated_at || item.created_at} | created_at=${item.created_at}${item.updated_at ? ` | updated_at=${item.updated_at}` : ''}`
+              timestamp: item.created_at,
+              line: `[proposal][${item.status}] ${item.title} | author=${item.author_agent_id} | reviewer=${item.reviewer_agent_id || '-'} | sort_at=${item.created_at} | created_at=${item.created_at}${item.updated_at ? ` | updated_at=${item.updated_at}` : ''}`
             })),
             ...projectTasks.map(item => ({
-              timestamp: item.updated_at || item.created_at,
-              line: `[task][${item.status}/${item.task_type}] ${item.title} | by=${item.created_by} | sort_at=${item.updated_at || item.created_at} | created_at=${item.created_at}${item.updated_at ? ` | updated_at=${item.updated_at}` : ''}`
+              timestamp: item.created_at,
+              line: `[task][${item.status}/${item.task_type}] ${item.title} | by=${item.created_by} | sort_at=${item.created_at} | created_at=${item.created_at}${item.updated_at ? ` | updated_at=${item.updated_at}` : ''}`
             })),
             ...handoffs.map(item => ({
-              timestamp: item.updated_at || item.created_at,
-              line: `[handoff][${item.status}/${item.priority}] ${item.title} | ${item.from_agent_id}→${item.to_agent_id} | sort_at=${item.updated_at || item.created_at} | created_at=${item.created_at}${item.updated_at ? ` | updated_at=${item.updated_at}` : ''}`
+              timestamp: item.created_at,
+              line: `[handoff][${item.status}/${item.priority}] ${item.title} | ${item.from_agent_id}→${item.to_agent_id} | sort_at=${item.created_at} | created_at=${item.created_at}${item.updated_at ? ` | updated_at=${item.updated_at}` : ''}`
             })),
             ...logs.map(item => ({
               timestamp: item.created_at,
               line: `[log][${item.level}/${item.log_type}] ${item.agent_id} | ${item.action || '-'} | ${toSingleLinePreview(item.content)} | sort_at=${item.created_at}`
             })),
             ...memories.map(item => ({
-              timestamp: item.updated_at || item.created_at,
-              line: `[memory][${item.category}/${item.importance}] ${item.agent_id} | ${toSingleLinePreview(item.content)} | sort_at=${item.updated_at || item.created_at} | created_at=${item.created_at}${item.updated_at ? ` | updated_at=${item.updated_at}` : ''}`
+              timestamp: item.created_at,
+              line: `[memory][${item.category}/${item.importance}] ${item.agent_id} | ${toSingleLinePreview(item.content)} | sort_at=${item.created_at} | created_at=${item.created_at}${item.updated_at ? ` | updated_at=${item.updated_at}` : ''}`
             }))
           ]
             .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
