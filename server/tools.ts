@@ -240,12 +240,12 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
       tool(
         'get_tasks',
-        '查询任务看板中的任务，用于查看待办和当前进度。默认仅查询当前 Agent 相关任务。',
+        '查询任务看板中的任务，用于查看待办和当前进度。默认仅查询 created_by/updated_by 为当前 Agent 的任务。',
         {
           project_id: z.string().optional().describe('项目 ID，不填默认当前项目（且仅允许当前项目）'),
           status: z.enum(['todo', 'developing', 'testing', 'blocked', 'done']).optional().describe('按状态筛选'),
           task_type: z.enum(['development', 'testing']).optional().describe('按任务类型筛选'),
-          only_mine: z.boolean().optional().default(true).describe('是否仅查询当前 Agent 相关任务（默认 true）'),
+          only_mine: z.boolean().optional().default(true).describe('是否仅查询 created_by/updated_by 为当前 Agent 的任务（默认 true）'),
           limit: z.number().min(1).max(100).optional().default(20).describe('返回条数上限')
         },
         async ({ project_id, status, task_type, only_mine, limit }) => {
@@ -438,7 +438,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         '查询已有的提案列表，用于了解当前项目的策划案进度。默认仅查询当前 Agent 相关提案。',
         {
           status: z.enum(['pending_review', 'under_review', 'approved', 'rejected', 'revision_needed', 'user_approved', 'user_rejected']).optional().describe('按状态筛选'),
-          only_mine: z.boolean().optional().default(true).describe('是否仅查询当前 Agent 相关提案（默认 true）'),
+          only_mine: z.boolean().optional().default(true).describe('是否仅查询 author/reviewer 为当前 Agent 的提案（默认 true）'),
           include_all_for_ceo: z.boolean().optional().default(false).describe('当当前 Agent 为 CEO 且 only_mine=true 时，是否放宽为查询项目内全部提案（默认 false）'),
           limit: z.number().min(1).max(50).optional().default(10).describe('返回条数上限')
         },
