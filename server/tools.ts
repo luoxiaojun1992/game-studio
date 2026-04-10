@@ -22,7 +22,7 @@ const singleLineTitleSchema = (fieldName: string) =>
     try {
       return db.normalizeAndValidateTitle(value, fieldName);
     } catch (error: any) {
-      ctx.addIssue({ code: 'custom', message: error?.message || `${fieldName} 不合法` });
+      ctx.addIssue({ code: 'custom', message: error?.message || `${fieldName} 验证失败` });
       return z.NEVER;
     }
   });
