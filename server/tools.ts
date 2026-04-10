@@ -474,7 +474,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
             };
           }
           const text = proposals.map(p =>
-            `[${p.status}] ${p.title} (作者: ${p.author_agent_id}, 类型: ${p.type}, ${p.created_at.slice(0, 10)})`
+            `[${p.status}] ${p.title} (作者: ${p.author_agent_id}, 评审: ${p.reviewer_agent_id || '未分配'}, 类型: ${p.type}, ${p.created_at.slice(0, 10)})`
           ).join('\n');
           return {
             content: [{ type: 'text' as const, text }]
@@ -497,7 +497,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
             };
           }
           const text = handoffs.map(h =>
-            `[${h.status}] ${h.title} (来自: ${h.from_agent_id}, 优先级: ${h.priority}, ${h.created_at.slice(0, 10)})\n  描述: ${h.description.slice(0, 100)}`
+            `[${h.status}] ${h.title} (来自: ${h.from_agent_id}, 发给: ${h.to_agent_id}, 优先级: ${h.priority}, ${h.created_at.slice(0, 10)})\n  描述: ${h.description.slice(0, 100)}`
           ).join('\n\n');
           return {
             content: [{ type: 'text' as const, text }]
