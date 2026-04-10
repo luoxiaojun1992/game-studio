@@ -21,6 +21,7 @@ interface ModelInfo {
   name?: string;
   description?: string;
 }
+const TEAM_BUILDING_AGENT_ID: AgentRole = 'team_builder';
 const getStorageKey = (projectId: string) => `commandPanel_lastAgent_${projectId}`;
 
 export default function CommandPanel({ agents, logs, projectId, selectedAgentId, onCommandSent, model, onModelChange, onAgentChange }: Props) {
@@ -33,10 +34,10 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
     ceo: { name: 'CEO', emoji: '👔', color: '#C9353F' },
     team_builder: { name: isZh ? '团队建设' : 'Team Building', emoji: '🧠', color: '#2F7DFF' },
   };
-  const commandableAgents = useMemo(() => agents.filter(agent => agent.id !== 'team_builder'), [agents]);
+  const commandableAgents = useMemo(() => agents.filter(agent => agent.id !== TEAM_BUILDING_AGENT_ID), [agents]);
   const getSavedAgent = (): AgentRole | null => {
     const saved = localStorage.getItem(getStorageKey(projectId));
-    if (saved && saved !== 'team_builder' && commandableAgents.find(a => a.id === saved)) {
+    if (saved && saved !== TEAM_BUILDING_AGENT_ID && commandableAgents.find(a => a.id === saved)) {
       return saved as AgentRole;
     }
     return null;
@@ -91,7 +92,7 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
     }
   }, [selectedAgentId, projectId]);
   useEffect(() => {
-    if (selectedAgent === 'team_builder' || !commandableAgents.find(a => a.id === selectedAgent)) {
+    if (selectedAgent === TEAM_BUILDING_AGENT_ID || !commandableAgents.find(a => a.id === selectedAgent)) {
       const nextAgent = getDefaultAgent();
       setSelectedAgent(nextAgent);
       localStorage.setItem(getStorageKey(projectId), nextAgent);

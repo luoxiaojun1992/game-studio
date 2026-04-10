@@ -14,6 +14,9 @@ type ToolLogFn = (agentId: AgentRole, action: string, detail: string, level: 'in
 type AutoHandoffHook = (handoff: db.DbHandoff) => Promise<void> | void;
 const TEAM_BUILDING_AGENT_ID: AgentRole = 'team_builder';
 const CONTENT_PREVIEW_LENGTH = 160;
+const FETCH_MULTIPLIER = 4;
+const MIN_FETCH_WINDOW = 20;
+const MAX_FETCH_WINDOW = 200;
 
 /**
  *
@@ -516,7 +519,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         async ({ limit }) => {
           validateAgentPermission([TEAM_BUILDING_AGENT_ID], '查询项目最新信息');
           const effectiveLimit = limit || 20;
-          const fetchWindow = Math.min(Math.max(effectiveLimit * 4, 20), 200);
+          const fetchWindow = Math.min(Math.max(effectiveLimit * FETCH_MULTIPLIER, MIN_FETCH_WINDOW), MAX_FETCH_WINDOW);
           const proposals = db.getScopedProposals(scopedProjectId, { limit: fetchWindow });
           const tasks = db.getTaskBoardTasks({ projectId: scopedProjectId, limit: fetchWindow });
           const handoffs = db.getAllHandoffs(scopedProjectId, fetchWindow);
