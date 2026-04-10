@@ -18,8 +18,6 @@ const PORT = process.env.PORT || 3000;
 const DEFAULT_PROJECT_ID = 'default';
 const PROJECT_ID_PATTERN = db.PROJECT_ID_PATTERN;
 const MAX_PROJECT_ID_LENGTH = db.MAX_PROJECT_ID_LENGTH;
-const MAX_FILENAME_LENGTH = db.MAX_FILENAME_LENGTH;
-const MAX_VERSION_LENGTH = db.MAX_VERSION_LENGTH;
 const PROPOSAL_TYPES = new Set<db.DbProposal['type']>(db.PROPOSAL_TYPES);
 const TASK_TYPES = new Set<db.DbTaskBoardTask['task_type']>(db.TASK_TYPES);
 const HANDOFF_PRIORITIES = new Set<db.DbHandoff['priority']>(db.HANDOFF_PRIORITIES);
@@ -448,7 +446,12 @@ app.get('/api/games/:id/preview', (req, res) => {
 app.patch('/api/games/:id', (req, res) => {
   const { id } = req.params;
   const updates = req.body;
-  const success = db.updateGame(id, updates);
+  let success = false;
+  try {
+    success = db.updateGame(id, updates);
+  } catch (error: any) {
+    return res.status(400).json({ error: error?.message || '游戏更新参数不合法' });
+  }
   if (!success) return res.status(404).json({ error: '游戏不存在' });
 
   const game = db.getGame(id);
@@ -995,28 +998,25 @@ app.post('/api/games', (req, res) => {
   const normalizedProposalId = proposalIdValidation.text;
   const normalizedName = nameValidation.text;
   const originalHtmlContent = typeof html_content === 'string' ? html_content : '';
-  if (version !== undefined && version !== null) {
-    if (!normalizedVersion || normalizedVersion.length > MAX_VERSION_LENGTH) {
-      return res.status(400).json({ error: `version 长度必须在 1-${MAX_VERSION_LENGTH} 之间` });
-    }
-  }
-  if (!normalizedName || normalizedName.length > MAX_FILENAME_LENGTH) {
-    return res.status(400).json({ error: `name 长度必须在 1-${MAX_FILENAME_LENGTH} 之间` });
-  }
   const now = new Date().toISOString();
-  const game = db.createGame({
-    id: uuidv4(),
-    project_id: projectValidation.projectId,
-    name: normalizedName,
-    description: descriptionValidation.text,
-    html_content: originalHtmlContent,
-    proposal_id: normalizedProposalId,
-    version: normalizedVersion || '1.0.0',
-    status: 'draft',
-    author_agent_id: gameAuthorValidation.agentId,
-    created_at: now,
-    updated_at: now
-  });
+  let game: db.DbGame;
+  try {
+    game = db.createGame({
+      id: uuidv4(),
+      project_id: projectValidation.projectId,
+      name: normalizedName,
+      description: descriptionValidation.text,
+      html_content: originalHtmlContent,
+      proposal_id: normalizedProposalId,
+      version: normalizedVersion || '1.0.0',
+      status: 'draft',
+      author_agent_id: gameAuthorValidation.agentId,
+      created_at: now,
+      updated_at: now
+    });
+  } catch (error: any) {
+    return res.status(400).json({ error: error?.message || '游戏参数不合法' });
+  }
   db.ensureProject(game.project_id);
   const filePath = db.saveGameToFile(game);
 

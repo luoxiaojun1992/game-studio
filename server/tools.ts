@@ -420,7 +420,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           name: requiredTextSchema('name').describe('游戏名称'),
           html_content: requiredTextSchema('html_content').describe('完整的游戏 HTML 代码（必须是包含所有 CSS/JS 的单文件 HTML）'),
           description: z.string().optional().describe('游戏简介'),
-          version: z.string().max(db.MAX_VERSION_LENGTH, `version 长度不能超过 ${db.MAX_VERSION_LENGTH}`).transform((value, ctx) => {
+          version: z.string().transform((value, ctx) => {
             try {
               return db.normalizeAndValidateRequiredText(value, 'version');
             } catch (error: any) {
