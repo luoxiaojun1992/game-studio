@@ -362,7 +362,7 @@ app.post('/api/proposals/:id/review', (req, res) => {
       review_comment: reviewCommentValidation.text
     });
   } catch (error: any) {
-    return res.status(400).json({ error: error?.message || '提案参数不合法' });
+    return res.status(400).json({ error: error?.message || '提案更新失败' });
   }
 
   const updated = db.getProposal(id);
@@ -871,7 +871,7 @@ app.patch('/api/tasks/:id/status', (req, res) => {
   const updated = db.getTaskBoardTask(id)!;
   sseBroadcaster.broadcast({ type: 'task_updated', task: updated }, task.project_id);
   const taskCreatorValidation = validateAgentIdInput(task.created_by, 'task.created_by');
-  if (!taskCreatorValidation.ok) return res.status(500).json({ error: taskCreatorValidation.error });
+  if (!taskCreatorValidation.ok) return res.status(500).json({ error: '内部错误：任务创建者数据不合法' });
   const taskOperator = updatedByValidation.agentId || taskCreatorValidation.agentId;
   agentManager.addLog(task.project_id, taskOperator, '更新任务状态', `${task.title}: ${task.status} → ${status}`, 'success');
   res.json({ task: updated });
