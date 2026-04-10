@@ -502,7 +502,7 @@ app.post('/api/handoffs', (req, res) => {
   const now = new Date().toISOString();
   const settings = db.getProjectSettings(projectId);
   const autoHandoffEnabled = settings.autopilot_enabled === 1;
-  const normalizedPriority = typeof priority === 'string' ? priority : 'normal';
+  const normalizedPriority = (typeof priority === 'string' ? priority : 'normal') as db.DbHandoff['priority'];
   const handoff = db.createHandoff({
     id: uuidv4(),
     project_id: projectId,
