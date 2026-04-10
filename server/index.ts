@@ -664,9 +664,15 @@ app.post('/api/handoffs/:id/complete', (req, res) => {
   const { result } = req.body;
   const handoff = db.getHandoff(id);
   if (!handoff) return res.status(404).json({ error: '交接记录不存在' });
+  const resultValidation = validateOptionalTextInput(result, 'result');
+  if (!resultValidation.ok) return res.status(400).json({ error: resultValidation.error });
 
   const now = new Date().toISOString();
-  db.updateHandoff(id, { status: 'completed', result: result || null, completed_at: now });
+  try {
+    db.updateHandoff(id, { status: 'completed', result: resultValidation.text, completed_at: now });
+  } catch (error: any) {
+    return res.status(400).json({ error: error?.message || '交接参数不合法' });
+  }
   const updated = db.getHandoff(id)!;
 
   sseBroadcaster.broadcast({ type: 'handoff_updated', handoff: updated }, handoff.project_id);
@@ -683,8 +689,14 @@ app.post('/api/handoffs/:id/reject', (req, res) => {
   if (handoff.status !== 'pending') {
     return res.status(400).json({ error: `交接状态不是待处理，当前状态: ${handoff.status}` });
   }
+  const reasonValidation = validateOptionalTextInput(reason, 'reason');
+  if (!reasonValidation.ok) return res.status(400).json({ error: reasonValidation.error });
 
-  db.updateHandoff(id, { status: 'rejected', result: reason || '被拒绝' });
+  try {
+    db.updateHandoff(id, { status: 'rejected', result: reasonValidation.text || '被拒绝' });
+  } catch (error: any) {
+    return res.status(400).json({ error: error?.message || '交接参数不合法' });
+  }
   const updated = db.getHandoff(id)!;
 
   sseBroadcaster.broadcast({ type: 'handoff_updated', handoff: updated }, handoff.project_id);
@@ -809,10 +821,13 @@ app.patch('/api/tasks/:id/status', (req, res) => {
     return res.status(400).json({ error: `非法状态流转: ${task.status} -> ${status}` });
   }
 
+  const updatedByValidation = validateOptionalTextInput(updated_by, 'updated_by');
+  if (!updatedByValidation.ok) return res.status(400).json({ error: updatedByValidation.error });
+
   const now = new Date().toISOString();
   const updates: Partial<db.DbTaskBoardTask> = {
     status,
-    updated_by: updated_by || null
+    updated_by: updatedByValidation.text
   };
 
   if (status === 'developing' || status === 'testing') {
@@ -825,11 +840,16 @@ app.patch('/api/tasks/:id/status', (req, res) => {
     updates.completed_at = null;
   }
 
-  const success = db.updateTaskBoardTask(id, updates);
+  let success = false;
+  try {
+    success = db.updateTaskBoardTask(id, updates);
+  } catch (error: any) {
+    return res.status(400).json({ error: error?.message || '任务参数不合法' });
+  }
   if (!success) return res.status(500).json({ error: '任务状态更新失败' });
   const updated = db.getTaskBoardTask(id)!;
   sseBroadcaster.broadcast({ type: 'task_updated', task: updated }, task.project_id);
-  agentManager.addLog(task.project_id, (updated_by || task.created_by) as AgentRole, '更新任务状态', `${task.title}: ${task.status} → ${status}`, 'success');
+  agentManager.addLog(task.project_id, (updatedByValidation.text || task.created_by) as AgentRole, '更新任务状态', `${task.title}: ${task.status} → ${status}`, 'success');
   res.json({ task: updated });
 });
 
@@ -949,22 +969,28 @@ app.post('/api/proposals/:id/decide', (req, res) => {
   if (typeof decision !== 'string' || !USER_DECISIONS.has(decision)) {
     return res.status(400).json({ error: 'decision 仅支持 approved 或 rejected' });
   }
+  const commentValidation = validateOptionalTextInput(comment, 'comment');
+  if (!commentValidation.ok) return res.status(400).json({ error: commentValidation.error });
 
   const proposal = db.getProposal(id);
   if (!proposal) return res.status(404).json({ error: '提案不存在' });
 
   const userDecision = decision === 'approved' ? 'user_approved' : 'user_rejected';
-  db.updateProposal(id, {
-    status: userDecision,
-    user_decision: decision,
-    user_comment: comment || null
-  });
+  try {
+    db.updateProposal(id, {
+      status: userDecision,
+      user_decision: decision,
+      user_comment: commentValidation.text
+    });
+  } catch (error: any) {
+    return res.status(400).json({ error: error?.message || '提案参数不合法' });
+  }
 
   const updated = db.getProposal(id);
   if (!updated) return res.status(500).json({ error: '提案更新后读取失败' });
   const filePath = db.saveProposalToFile(updated);
 
-  sseBroadcaster.broadcast({ type: 'proposal_decided', proposal: updated, decision, comment, filePath }, updated.project_id);
+  sseBroadcaster.broadcast({ type: 'proposal_decided', proposal: updated, decision, comment: commentValidation.text, filePath }, updated.project_id);
 
   res.json({ success: true, proposal: updated, filePath });
 });
