@@ -9,6 +9,56 @@ export const PROJECT_ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
 export const MAX_PROJECT_ID_LENGTH = 64;
 export const MAX_FILENAME_LENGTH = 50;
 export const MAX_VERSION_LENGTH = 30;
+export const MIN_GAME_HTML_LENGTH = 100;
+export const SINGLE_LINE_TITLE_PATTERN = /^[^\r\n]*$/;
+export const PROPOSAL_TYPES = ['game_design', 'biz_design', 'tech_arch', 'tech_impl', 'ceo_review'] as const;
+export const PROPOSAL_STATUSES = ['pending_review', 'under_review', 'approved', 'rejected', 'revision_needed', 'user_approved', 'user_rejected'] as const;
+export const GAME_STATUSES = ['draft', 'published'] as const;
+export const HANDOFF_STATUSES = ['pending', 'accepted', 'working', 'completed', 'rejected', 'cancelled'] as const;
+export const HANDOFF_PRIORITIES = ['low', 'normal', 'high', 'urgent'] as const;
+export const TASK_TYPES = ['development', 'testing'] as const;
+export const TASK_STATUSES = ['todo', 'developing', 'testing', 'blocked', 'done'] as const;
+
+export function normalizeAndValidateRequiredText(value: unknown, fieldName: string): string {
+  if (typeof value !== 'string') {
+    throw new Error(`${fieldName} 必须是字符串`);
+  }
+  const text = value.trim();
+  if (!text) {
+    throw new Error(`${fieldName} 不能为空`);
+  }
+  return text;
+}
+
+export function normalizeOptionalText(value: unknown, fieldName: string): string | null {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== 'string') {
+    throw new Error(`${fieldName} 必须是字符串`);
+  }
+  const text = value.trim();
+  return text || null;
+}
+
+function validateEnumValue<T extends readonly string[]>(value: unknown, fieldName: string, allowed: T): T[number] {
+  if (typeof value !== 'string' || !allowed.includes(value as T[number])) {
+    throw new Error(`${fieldName} 不合法，可选值：${allowed.join(' / ')}`);
+  }
+  return value as T[number];
+}
+
+export function normalizeAndValidateTitle(value: unknown, fieldName = 'title'): string {
+  if (typeof value !== 'string') {
+    throw new Error(`${fieldName} 必须是字符串`);
+  }
+  const title = value.trim();
+  if (!title) {
+    throw new Error(`${fieldName} 不能为空`);
+  }
+  if (!SINGLE_LINE_TITLE_PATTERN.test(title)) {
+    throw new Error(`${fieldName} 不允许包含换行符`);
+  }
+  return title;
+}
 const dbPath = path.join(__dirname, '..', 'data', 'studio.db');
 const dataDir = path.dirname(dbPath);
 if (!fs.existsSync(dataDir)) {
@@ -479,18 +529,24 @@ export function getProposal(id: string): DbProposal | undefined {
 }
 
 export function createProposal(proposal: DbProposal): DbProposal {
+  const normalizedTitle = normalizeAndValidateTitle(proposal.title, 'title');
+  const normalizedProjectId = normalizeAndValidateRequiredText(proposal.project_id, 'project_id');
+  const normalizedType = validateEnumValue(proposal.type, 'type', PROPOSAL_TYPES);
+  const normalizedContent = normalizeAndValidateRequiredText(proposal.content, 'content');
+  const normalizedAuthorAgentId = normalizeAndValidateRequiredText(proposal.author_agent_id, 'author_agent_id');
+  const normalizedStatus = validateEnumValue(proposal.status, 'status', PROPOSAL_STATUSES);
   const stmt = db.prepare(`
     INSERT INTO proposals (id, project_id, type, title, content, author_agent_id, status, reviewer_agent_id, review_comment, user_decision, user_comment, version, parent_id, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   stmt.run(
     proposal.id,
-    proposal.project_id,
-    proposal.type,
-    proposal.title,
-    proposal.content,
-    proposal.author_agent_id,
-    proposal.status,
+    normalizedProjectId,
+    normalizedType,
+    normalizedTitle,
+    normalizedContent,
+    normalizedAuthorAgentId,
+    normalizedStatus,
     proposal.reviewer_agent_id,
     proposal.review_comment,
     proposal.user_decision,
@@ -500,17 +556,35 @@ export function createProposal(proposal: DbProposal): DbProposal {
     proposal.created_at,
     proposal.updated_at
   );
-  return proposal;
+  return {
+    ...proposal,
+    project_id: normalizedProjectId,
+    type: normalizedType,
+    title: normalizedTitle,
+    content: normalizedContent,
+    author_agent_id: normalizedAuthorAgentId,
+    status: normalizedStatus
+  };
 }
 
 export function updateProposal(id: string, updates: Partial<DbProposal>): boolean {
+  const normalizedUpdates: Partial<DbProposal> = { ...updates };
+  if (normalizedUpdates.title !== undefined) {
+    normalizedUpdates.title = normalizeAndValidateTitle(normalizedUpdates.title, 'title');
+  }
+  if (normalizedUpdates.content !== undefined) {
+    normalizedUpdates.content = normalizeAndValidateRequiredText(normalizedUpdates.content, 'content');
+  }
+  if (normalizedUpdates.status !== undefined) {
+    normalizedUpdates.status = validateEnumValue(normalizedUpdates.status, 'status', PROPOSAL_STATUSES);
+  }
   const fields: string[] = [];
   const values: any[] = [];
   const allowed: (keyof DbProposal)[] = ['status', 'reviewer_agent_id', 'review_comment', 'user_decision', 'user_comment', 'content', 'title'];
   for (const key of allowed) {
-    if (updates[key] !== undefined) {
+    if (normalizedUpdates[key] !== undefined) {
       fields.push(`${key} = ?`);
-      values.push(updates[key]);
+      values.push(normalizedUpdates[key]);
     }
   }
   if (fields.length === 0) return false;
@@ -532,34 +606,89 @@ export function getGame(id: string): DbGame | undefined {
 }
 
 export function createGame(game: DbGame): DbGame {
+  const normalizedProjectId = normalizeAndValidateRequiredText(game.project_id, 'project_id');
+  const normalizedName = normalizeAndValidateRequiredText(game.name, 'name');
+  if (normalizedName.length > MAX_FILENAME_LENGTH) {
+    throw new Error(`name 长度不能超过 ${MAX_FILENAME_LENGTH}`);
+  }
+  const normalizedHtmlContent = normalizeAndValidateRequiredText(game.html_content, 'html_content');
+  if (normalizedHtmlContent.length < MIN_GAME_HTML_LENGTH) {
+    throw new Error(`html_content 长度不能少于 ${MIN_GAME_HTML_LENGTH}`);
+  }
+  const normalizedVersion = normalizeAndValidateRequiredText(game.version, 'version');
+  if (normalizedVersion.length > MAX_VERSION_LENGTH) {
+    throw new Error(`version 长度不能超过 ${MAX_VERSION_LENGTH}`);
+  }
+  const normalizedStatus = validateEnumValue(game.status, 'status', GAME_STATUSES);
+  const normalizedAuthorAgentId = normalizeAndValidateRequiredText(game.author_agent_id, 'author_agent_id');
+  const normalizedDescription = normalizeOptionalText(game.description, 'description');
+  const normalizedProposalId = normalizeOptionalText(game.proposal_id, 'proposal_id');
   const stmt = db.prepare(`
     INSERT INTO games (id, project_id, name, description, html_content, proposal_id, version, status, author_agent_id, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   stmt.run(
     game.id,
-    game.project_id,
-    game.name,
-    game.description,
-    game.html_content,
-    game.proposal_id,
-    game.version,
-    game.status,
-    game.author_agent_id,
+    normalizedProjectId,
+    normalizedName,
+    normalizedDescription,
+    normalizedHtmlContent,
+    normalizedProposalId,
+    normalizedVersion,
+    normalizedStatus,
+    normalizedAuthorAgentId,
     game.created_at,
     game.updated_at
   );
-  return game;
+  return {
+    ...game,
+    project_id: normalizedProjectId,
+    name: normalizedName,
+    description: normalizedDescription,
+    html_content: normalizedHtmlContent,
+    proposal_id: normalizedProposalId,
+    version: normalizedVersion,
+    status: normalizedStatus,
+    author_agent_id: normalizedAuthorAgentId
+  };
 }
 
 export function updateGame(id: string, updates: Partial<DbGame>): boolean {
+  const normalizedUpdates: Partial<DbGame> = { ...updates };
+  if (normalizedUpdates.name !== undefined) {
+    const normalizedName = normalizeAndValidateRequiredText(normalizedUpdates.name, 'name');
+    if (normalizedName.length > MAX_FILENAME_LENGTH) {
+      throw new Error(`name 长度不能超过 ${MAX_FILENAME_LENGTH}`);
+    }
+    normalizedUpdates.name = normalizedName;
+  }
+  if (normalizedUpdates.description !== undefined) {
+    normalizedUpdates.description = normalizeOptionalText(normalizedUpdates.description, 'description');
+  }
+  if (normalizedUpdates.html_content !== undefined) {
+    const normalizedHtmlContent = normalizeAndValidateRequiredText(normalizedUpdates.html_content, 'html_content');
+    if (normalizedHtmlContent.length < MIN_GAME_HTML_LENGTH) {
+      throw new Error(`html_content 长度不能少于 ${MIN_GAME_HTML_LENGTH}`);
+    }
+    normalizedUpdates.html_content = normalizedHtmlContent;
+  }
+  if (normalizedUpdates.version !== undefined) {
+    const normalizedVersion = normalizeAndValidateRequiredText(normalizedUpdates.version, 'version');
+    if (normalizedVersion.length > MAX_VERSION_LENGTH) {
+      throw new Error(`version 长度不能超过 ${MAX_VERSION_LENGTH}`);
+    }
+    normalizedUpdates.version = normalizedVersion;
+  }
+  if (normalizedUpdates.status !== undefined) {
+    normalizedUpdates.status = validateEnumValue(normalizedUpdates.status, 'status', GAME_STATUSES);
+  }
   const fields: string[] = [];
   const values: any[] = [];
   const allowed: (keyof DbGame)[] = ['name', 'description', 'html_content', 'status', 'version'];
   for (const key of allowed) {
-    if (updates[key] !== undefined) {
+    if (normalizedUpdates[key] !== undefined) {
       fields.push(`${key} = ?`);
-      values.push(updates[key]);
+      values.push(normalizedUpdates[key]);
     }
   }
   if (fields.length === 0) return false;
@@ -690,12 +819,50 @@ export function getPermissionRequest(id: string): DbPermissionRequest | null {
   return result || null;
 }
 export function createHandoff(handoff: DbHandoff): DbHandoff {
+  const normalizedTitle = normalizeAndValidateTitle(handoff.title, 'title');
+  const normalizedProjectId = normalizeAndValidateRequiredText(handoff.project_id, 'project_id');
+  const normalizedFromAgentId = normalizeAndValidateRequiredText(handoff.from_agent_id, 'from_agent_id');
+  const normalizedToAgentId = normalizeAndValidateRequiredText(handoff.to_agent_id, 'to_agent_id');
+  const normalizedDescription = normalizeAndValidateRequiredText(handoff.description, 'description');
+  const normalizedStatus = validateEnumValue(handoff.status, 'status', HANDOFF_STATUSES);
+  const normalizedPriority = validateEnumValue(handoff.priority, 'priority', HANDOFF_PRIORITIES);
+  const normalizedContext = normalizeOptionalText(handoff.context, 'context');
+  const normalizedResult = normalizeOptionalText(handoff.result, 'result');
+  const normalizedSourceCommandId = normalizeOptionalText(handoff.source_command_id, 'source_command_id');
   const stmt = db.prepare(`
     INSERT INTO handoffs (id, project_id, from_agent_id, to_agent_id, title, description, context, status, priority, result, accepted_at, completed_at, source_command_id, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
-  stmt.run(handoff.id, handoff.project_id, handoff.from_agent_id, handoff.to_agent_id, handoff.title, handoff.description, handoff.context, handoff.status, handoff.priority, handoff.result, handoff.accepted_at, handoff.completed_at, handoff.source_command_id, handoff.created_at, handoff.updated_at);
-  return handoff;
+  stmt.run(
+    handoff.id,
+    normalizedProjectId,
+    normalizedFromAgentId,
+    normalizedToAgentId,
+    normalizedTitle,
+    normalizedDescription,
+    normalizedContext,
+    normalizedStatus,
+    normalizedPriority,
+    normalizedResult,
+    handoff.accepted_at,
+    handoff.completed_at,
+    normalizedSourceCommandId,
+    handoff.created_at,
+    handoff.updated_at
+  );
+  return {
+    ...handoff,
+    project_id: normalizedProjectId,
+    from_agent_id: normalizedFromAgentId,
+    to_agent_id: normalizedToAgentId,
+    title: normalizedTitle,
+    description: normalizedDescription,
+    context: normalizedContext,
+    status: normalizedStatus,
+    priority: normalizedPriority,
+    result: normalizedResult,
+    source_command_id: normalizedSourceCommandId
+  };
 }
 
 export function getHandoff(id: string): DbHandoff | undefined {
@@ -731,13 +898,29 @@ export function getHandoffsForAgent(projectId: string, agentId: string, limit = 
 }
 
 export function updateHandoff(id: string, updates: Partial<DbHandoff>): boolean {
+  const normalizedUpdates: Partial<DbHandoff> = { ...updates };
+  if (normalizedUpdates.status !== undefined) {
+    normalizedUpdates.status = validateEnumValue(normalizedUpdates.status, 'status', HANDOFF_STATUSES);
+  }
+  if (normalizedUpdates.priority !== undefined) {
+    normalizedUpdates.priority = validateEnumValue(normalizedUpdates.priority, 'priority', HANDOFF_PRIORITIES);
+  }
+  if (normalizedUpdates.description !== undefined) {
+    normalizedUpdates.description = normalizeAndValidateRequiredText(normalizedUpdates.description, 'description');
+  }
+  if (normalizedUpdates.context !== undefined) {
+    normalizedUpdates.context = normalizeOptionalText(normalizedUpdates.context, 'context');
+  }
+  if (normalizedUpdates.result !== undefined) {
+    normalizedUpdates.result = normalizeOptionalText(normalizedUpdates.result, 'result');
+  }
   const fields: string[] = [];
   const values: any[] = [];
   const allowed: (keyof DbHandoff)[] = ['status', 'result', 'accepted_at', 'completed_at', 'description', 'context', 'priority'];
   for (const key of allowed) {
-    if (updates[key] !== undefined) {
+    if (normalizedUpdates[key] !== undefined) {
       fields.push(`${key} = ?`);
-      values.push(updates[key]);
+      values.push(normalizedUpdates[key]);
     }
   }
   if (fields.length === 0) return false;
@@ -815,6 +998,14 @@ export function clearAgentMemories(projectId: string, agentId: string): boolean 
   return true;
 }
 export function createTaskBoardTask(task: DbTaskBoardTask): DbTaskBoardTask {
+  const normalizedTitle = normalizeAndValidateTitle(task.title, 'title');
+  const normalizedProjectId = normalizeAndValidateRequiredText(task.project_id, 'project_id');
+  const normalizedTaskType = validateEnumValue(task.task_type, 'task_type', TASK_TYPES);
+  const normalizedStatus = validateEnumValue(task.status, 'status', TASK_STATUSES);
+  const normalizedCreatedBy = normalizeAndValidateRequiredText(task.created_by, 'created_by');
+  const normalizedUpdatedBy = normalizeOptionalText(task.updated_by, 'updated_by');
+  const normalizedDescription = normalizeOptionalText(task.description, 'description');
+  const normalizedSourceTaskId = normalizeOptionalText(task.source_task_id, 'source_task_id');
   const stmt = db.prepare(`
     INSERT INTO task_board_tasks (
       id, project_id, title, description, task_type, status, source_task_id,
@@ -823,20 +1014,30 @@ export function createTaskBoardTask(task: DbTaskBoardTask): DbTaskBoardTask {
   `);
   stmt.run(
     task.id,
-    task.project_id,
-    task.title,
-    task.description,
-    task.task_type,
-    task.status,
-    task.source_task_id,
-    task.created_by,
-    task.updated_by,
+    normalizedProjectId,
+    normalizedTitle,
+    normalizedDescription,
+    normalizedTaskType,
+    normalizedStatus,
+    normalizedSourceTaskId,
+    normalizedCreatedBy,
+    normalizedUpdatedBy,
     task.started_at,
     task.completed_at,
     task.created_at,
     task.updated_at
   );
-  return task;
+  return {
+    ...task,
+    project_id: normalizedProjectId,
+    title: normalizedTitle,
+    description: normalizedDescription,
+    task_type: normalizedTaskType,
+    status: normalizedStatus,
+    source_task_id: normalizedSourceTaskId,
+    created_by: normalizedCreatedBy,
+    updated_by: normalizedUpdatedBy
+  };
 }
 
 export function getTaskBoardTask(id: string): DbTaskBoardTask | undefined {
@@ -972,13 +1173,26 @@ export function ensureProject(projectId: string): void {
 }
 
 export function updateTaskBoardTask(id: string, updates: Partial<DbTaskBoardTask>): boolean {
+  const normalizedUpdates: Partial<DbTaskBoardTask> = { ...updates };
+  if (normalizedUpdates.title !== undefined) {
+    normalizedUpdates.title = normalizeAndValidateTitle(normalizedUpdates.title, 'title');
+  }
+  if (normalizedUpdates.description !== undefined) {
+    normalizedUpdates.description = normalizeOptionalText(normalizedUpdates.description, 'description');
+  }
+  if (normalizedUpdates.status !== undefined) {
+    normalizedUpdates.status = validateEnumValue(normalizedUpdates.status, 'status', TASK_STATUSES);
+  }
+  if (normalizedUpdates.updated_by !== undefined) {
+    normalizedUpdates.updated_by = normalizeOptionalText(normalizedUpdates.updated_by, 'updated_by');
+  }
   const fields: string[] = [];
   const values: any[] = [];
   const allowed: (keyof DbTaskBoardTask)[] = ['title', 'description', 'status', 'updated_by', 'started_at', 'completed_at'];
   for (const key of allowed) {
-    if (updates[key] !== undefined) {
+    if (normalizedUpdates[key] !== undefined) {
       fields.push(`${key} = ?`);
-      values.push(updates[key]);
+      values.push(normalizedUpdates[key]);
     }
   }
   if (fields.length === 0) return false;

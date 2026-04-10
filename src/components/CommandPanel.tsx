@@ -21,6 +21,7 @@ interface ModelInfo {
   name?: string;
   description?: string;
 }
+const TEAM_BUILDING_AGENT_ID: AgentRole = 'team_builder';
 const getStorageKey = (projectId: string) => `commandPanel_lastAgent_${projectId}`;
 
 export default function CommandPanel({ agents, logs, projectId, selectedAgentId, onCommandSent, model, onModelChange, onAgentChange }: Props) {
@@ -31,17 +32,20 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
     game_designer: { name: isZh ? '游戏策划' : 'Game Designer', emoji: '🎮', color: '#9B30FF' },
     biz_designer: { name: isZh ? '商业策划' : 'Business Designer', emoji: '💼', color: '#E37318' },
     ceo: { name: 'CEO', emoji: '👔', color: '#C9353F' },
+    team_builder: { name: isZh ? '团队建设' : 'Team Building', emoji: '🧠', color: '#2F7DFF' },
   };
+  const commandableAgents = useMemo(() => agents.filter(agent => agent.id !== TEAM_BUILDING_AGENT_ID), [agents]);
+  const commandableAgentIdSet = useMemo(() => new Set(commandableAgents.map(agent => agent.id)), [commandableAgents]);
   const getSavedAgent = (): AgentRole | null => {
     const saved = localStorage.getItem(getStorageKey(projectId));
-    if (saved && agents.find(a => a.id === saved)) {
+    if (saved && saved !== TEAM_BUILDING_AGENT_ID && commandableAgentIdSet.has(saved as AgentRole)) {
       return saved as AgentRole;
     }
     return null;
   };
   const getDefaultAgent = (): AgentRole => {
-    const workingAgent = agents.find(a => a.state?.status === 'working');
-    return workingAgent?.id || agents[0]?.id || 'game_designer';
+    const workingAgent = commandableAgents.find(a => a.state?.status === 'working');
+    return workingAgent?.id || commandableAgents[0]?.id || 'game_designer';
   };
   const [selectedAgent, setSelectedAgent] = useState<AgentRole>(() => {
     return getSavedAgent() || getDefaultAgent();
@@ -88,6 +92,13 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
       localStorage.setItem(getStorageKey(projectId), selectedAgentId);
     }
   }, [selectedAgentId, projectId]);
+  useEffect(() => {
+    if (selectedAgent === TEAM_BUILDING_AGENT_ID || !commandableAgentIdSet.has(selectedAgent)) {
+      const nextAgent = getDefaultAgent();
+      setSelectedAgent(nextAgent);
+      localStorage.setItem(getStorageKey(projectId), nextAgent);
+    }
+  }, [commandableAgentIdSet, commandableAgents, selectedAgent, projectId]);
   const handleAgentChange = (agentId: AgentRole) => {
     setSelectedAgent(agentId);
     localStorage.setItem(getStorageKey(projectId), agentId);
@@ -286,7 +297,7 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
       <div className="w-56 shrink-0 bg-gray-900 rounded-xl border border-gray-800 p-3">
         <div className="text-xs text-gray-500 font-medium mb-2 px-1">{l('选择 Agent', 'Select Agent')}</div>
         <div className="space-y-1">
-          {agents.map(agent => {
+          {commandableAgents.map(agent => {
             const isSelected = agent.id === selectedAgent;
             return (
               <button
@@ -449,7 +460,7 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
 
 function getQuickCommands(agentId: AgentRole, isZh: boolean): string[] {
   if (!isZh) {
-    const enCmds: Record<AgentRole, string[]> = {
+    const enCmds: Partial<Record<AgentRole, string[]>> = {
       game_designer: [
         'Create a complete design plan for a casual mobile game',
         'Design a 2048-style number puzzle game',
@@ -478,7 +489,7 @@ function getQuickCommands(agentId: AgentRole, isZh: boolean): string[] {
     };
     return enCmds[agentId] || [];
   }
-  const cmds: Record<AgentRole, string[]> = {
+  const cmds: Partial<Record<AgentRole, string[]>> = {
     game_designer: [
       '请为一款休闲手机游戏制作完整策划案',
       '设计一个2048风格的数字消除游戏',

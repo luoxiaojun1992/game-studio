@@ -20,7 +20,7 @@ const NEXT_STATUS_OPTIONS: Record<TaskStatus, TaskStatus[]> = {
 
 const AGENT_EMOJI: Record<string, string> = {
   engineer: '👨‍💻', architect: '🏗️', game_designer: '🎮',
-  biz_designer: '💼', ceo: '👔',
+  biz_designer: '💼', ceo: '👔', team_builder: '🧠',
 };
 
 export default function TaskBoardPanel({ agents, tasks, projectId, onTaskUpdated }: Props) {

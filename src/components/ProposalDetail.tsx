@@ -14,6 +14,7 @@ const AGENT_NAMES_ZH: Record<string, string> = {
   game_designer: '🎮 游戏策划',
   biz_designer: '💼 商业策划',
   ceo: '👔 CEO',
+  team_builder: '🧠 团队建设',
 };
 
 const AGENT_NAMES_EN: Record<string, string> = {
@@ -22,6 +23,7 @@ const AGENT_NAMES_EN: Record<string, string> = {
   game_designer: '🎮 Game Designer',
   biz_designer: '💼 Business Designer',
   ceo: '👔 CEO',
+  team_builder: '🧠 Team Building',
 };
 
 const TYPE_LABELS_ZH: Record<string, string> = {

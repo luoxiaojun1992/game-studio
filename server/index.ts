@@ -18,12 +18,14 @@ const PORT = process.env.PORT || 3000;
 const DEFAULT_PROJECT_ID = 'default';
 const PROJECT_ID_PATTERN = db.PROJECT_ID_PATTERN;
 const MAX_PROJECT_ID_LENGTH = db.MAX_PROJECT_ID_LENGTH;
-const MAX_FILENAME_LENGTH = db.MAX_FILENAME_LENGTH;
-const MAX_VERSION_LENGTH = db.MAX_VERSION_LENGTH;
-const PROPOSAL_TYPES = new Set<db.DbProposal['type']>(['game_design', 'biz_design', 'tech_arch', 'tech_impl', 'ceo_review']);
-const TASK_TYPES = new Set<db.DbTaskBoardTask['task_type']>(['development', 'testing']);
-const HANDOFF_PRIORITIES = new Set<db.DbHandoff['priority']>(['low', 'normal', 'high', 'urgent']);
+const MAX_GAME_NAME_LENGTH = db.MAX_FILENAME_LENGTH;
+const MAX_GAME_VERSION_LENGTH = db.MAX_VERSION_LENGTH;
+const MIN_GAME_HTML_LENGTH = db.MIN_GAME_HTML_LENGTH;
+const PROPOSAL_TYPES = new Set<db.DbProposal['type']>(db.PROPOSAL_TYPES);
+const TASK_TYPES = new Set<db.DbTaskBoardTask['task_type']>(db.TASK_TYPES);
+const HANDOFF_PRIORITIES = new Set<db.DbHandoff['priority']>(db.HANDOFF_PRIORITIES);
 const USER_DECISIONS = new Set(['approved', 'rejected']);
+const TEAM_BUILDING_AGENT_ID: AgentRole = 'team_builder';
 let cachedAgentIdOptions: AgentRole[] | null = null;
 let cachedAgentIdSet: Set<AgentRole> | null = null;
 const getAgentIdOptions = (): AgentRole[] => {
@@ -70,6 +72,39 @@ const validateAgentIdInput = (value: unknown, fieldName: string): { ok: true; ag
     return { ok: false, error: `${fieldName} 不合法，可选值：${options.join(' / ')}` };
   }
   return { ok: true, agentId: agentId as AgentRole };
+};
+const validateOptionalAgentIdInput = (
+  value: unknown,
+  fieldName: string
+): { ok: true; agentId: AgentRole | null } | { ok: false; error: string } => {
+  if (value === undefined || value === null) return { ok: true, agentId: null };
+  if (typeof value !== 'string') return { ok: false, error: `${fieldName} 必须是字符串` };
+  const raw = value.trim();
+  if (!raw) return { ok: true, agentId: null };
+  const validation = validateAgentIdInput(raw, fieldName);
+  if (!validation.ok) return validation;
+  return { ok: true, agentId: validation.agentId };
+};
+const validateTitleInput = (value: unknown, fieldName: string): { ok: true; title: string } | { ok: false; error: string } => {
+  try {
+    return { ok: true, title: db.normalizeAndValidateTitle(value, fieldName) };
+  } catch (error: any) {
+    return { ok: false, error: error?.message || `${fieldName} 不合法` };
+  }
+};
+const validateRequiredTextInput = (value: unknown, fieldName: string): { ok: true; text: string } | { ok: false; error: string } => {
+  try {
+    return { ok: true, text: db.normalizeAndValidateRequiredText(value, fieldName) };
+  } catch (error: any) {
+    return { ok: false, error: error?.message || `${fieldName} 格式验证失败` };
+  }
+};
+const validateOptionalTextInput = (value: unknown, fieldName: string): { ok: true; text: string | null } | { ok: false; error: string } => {
+  try {
+    return { ok: true, text: db.normalizeOptionalText(value, fieldName) };
+  } catch (error: any) {
+    return { ok: false, error: error?.message || `${fieldName} 格式验证失败` };
+  }
 };
 
 app.use(express.json({ limit: '10mb' }));
@@ -201,28 +236,46 @@ app.get('/api/agents', (req, res) => {
 // Returns recent chat history for one agent within the selected project.
 app.get('/api/agents/:agentId/messages', (req, res) => {
   const { agentId } = req.params;
+  const agentValidation = validateAgentIdInput(agentId, 'agentId');
+  if (!agentValidation.ok) return res.status(400).json({ error: agentValidation.error });
   const projectId = normalizeProjectId(req.query.projectId);
-  const messages = db.getAgentMessages(projectId, agentId as AgentRole, 100);
+  const messages = db.getAgentMessages(projectId, agentValidation.agentId, 100);
   res.json({ messages: messages.map(m => ({ ...m, tool_calls: m.tool_calls ? JSON.parse(m.tool_calls) : null })) });
 });
 
 // Manual runtime controls for operator intervention.
 app.post('/api/agents/:agentId/pause', (req, res) => {
   const { agentId } = req.params;
+  const agentValidation = validateAgentIdInput(agentId, 'agentId');
+  if (!agentValidation.ok) return res.status(400).json({ error: agentValidation.error });
+  if (agentValidation.agentId === TEAM_BUILDING_AGENT_ID) {
+    return res.status(400).json({ error: '团队建设 Agent 不支持暂停' });
+  }
   const projectId = normalizeProjectId(req.query.projectId ?? req.body?.projectId);
-  agentManager.pauseAgent(projectId, agentId as AgentRole);
+  agentManager.pauseAgent(projectId, agentValidation.agentId);
   res.json({ success: true, message: `Agent ${agentId} 已暂停` });
 });
 app.post('/api/agents/:agentId/resume', (req, res) => {
   const { agentId } = req.params;
+  const agentValidation = validateAgentIdInput(agentId, 'agentId');
+  if (!agentValidation.ok) return res.status(400).json({ error: agentValidation.error });
+  if (agentValidation.agentId === TEAM_BUILDING_AGENT_ID) {
+    return res.status(400).json({ error: '团队建设 Agent 不支持恢复操作' });
+  }
   const projectId = normalizeProjectId(req.query.projectId ?? req.body?.projectId);
-  agentManager.resumeAgent(projectId, agentId as AgentRole);
+  agentManager.resumeAgent(projectId, agentValidation.agentId);
   res.json({ success: true, message: `Agent ${agentId} 已恢复` });
 });
 
 // Executes an explicit user command against one agent and streams progress over SSE.
 app.post('/api/agents/:agentId/command', async (req, res) => {
   const { agentId } = req.params;
+  const agentValidation = validateAgentIdInput(agentId, 'agentId');
+  if (!agentValidation.ok) return res.status(400).json({ error: agentValidation.error });
+  const normalizedAgentId = agentValidation.agentId;
+  if (normalizedAgentId === TEAM_BUILDING_AGENT_ID) {
+    return res.status(400).json({ error: '团队建设 Agent 不支持手动下达指令' });
+  }
   const { message, model = 'glm-5.0', projectId: bodyProjectId } = req.body;
   const projectId = normalizeProjectId(req.query.projectId ?? bodyProjectId);
 
@@ -231,7 +284,7 @@ app.post('/api/agents/:agentId/command', async (req, res) => {
   const command = db.createCommand({
     id: commandId,
     project_id: projectId,
-    target_agent_id: agentId,
+    target_agent_id: normalizedAgentId,
     content: message,
     status: 'executing',
     result: null,
@@ -241,7 +294,7 @@ app.post('/api/agents/:agentId/command', async (req, res) => {
   db.addLog({
     id: uuidv4(),
     project_id: projectId,
-    agent_id: agentId,
+    agent_id: normalizedAgentId,
     log_type: 'user_command',
     level: 'info',
     content: message,
@@ -254,12 +307,12 @@ app.post('/api/agents/:agentId/command', async (req, res) => {
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
 
-  res.write(`data: ${JSON.stringify({ type: 'command_started', commandId, agentId })}\n\n`);
+  res.write(`data: ${JSON.stringify({ type: 'command_started', commandId, agentId: normalizedAgentId })}\n\n`);
 
   try {
     const response = await agentManager.sendMessage(
       projectId,
-      agentId as AgentRole,
+      normalizedAgentId,
       message,
       model,
       (event) => {
@@ -297,17 +350,26 @@ app.post('/api/proposals/:id/review', (req, res) => {
   const proposal = db.getProposal(id);
   if (!proposal) return res.status(404).json({ error: '提案不存在' });
 
-  db.updateProposal(id, {
-    status: status || 'under_review',
-    reviewer_agent_id,
-    review_comment
-  });
+  const reviewerValidation = validateOptionalAgentIdInput(reviewer_agent_id, 'reviewer_agent_id');
+  if (!reviewerValidation.ok) return res.status(400).json({ error: reviewerValidation.error });
+  const reviewCommentValidation = validateOptionalTextInput(review_comment, 'review_comment');
+  if (!reviewCommentValidation.ok) return res.status(400).json({ error: reviewCommentValidation.error });
+
+  try {
+    db.updateProposal(id, {
+      status: status || 'under_review',
+      reviewer_agent_id: reviewerValidation.agentId,
+      review_comment: reviewCommentValidation.text
+    });
+  } catch (error: any) {
+    return res.status(400).json({ error: error?.message || '提案更新失败' });
+  }
 
   const updated = db.getProposal(id);
   sseBroadcaster.broadcast({ type: 'proposal_reviewed', proposal: updated }, proposal.project_id);
 
-  if (reviewer_agent_id) {
-    agentManager.addLog(proposal.project_id, reviewer_agent_id as AgentRole, '评审提案', `提案: ${proposal.title} → ${status}`, 'info');
+  if (reviewerValidation.agentId) {
+    agentManager.addLog(proposal.project_id, reviewerValidation.agentId, '评审提案', `提案: ${proposal.title} → ${status}`, 'info');
   }
 
   res.json({ success: true, proposal: updated });
@@ -408,7 +470,12 @@ app.get('/api/games/:id/preview', (req, res) => {
 app.patch('/api/games/:id', (req, res) => {
   const { id } = req.params;
   const updates = req.body;
-  const success = db.updateGame(id, updates);
+  let success = false;
+  try {
+    success = db.updateGame(id, updates);
+  } catch (error: any) {
+    return res.status(400).json({ error: error?.message || '游戏更新参数不合法' });
+  }
   if (!success) return res.status(404).json({ error: '游戏不存在' });
 
   const game = db.getGame(id);
@@ -498,6 +565,12 @@ app.post('/api/handoffs', (req, res) => {
   if (source_command_id !== undefined && source_command_id !== null && typeof source_command_id !== 'string') {
     return res.status(400).json({ error: 'source_command_id 必须是字符串' });
   }
+  const titleValidation = validateTitleInput(title, 'title');
+  if (!titleValidation.ok) return res.status(400).json({ error: titleValidation.error });
+  const descriptionValidation = validateRequiredTextInput(description, 'description');
+  if (!descriptionValidation.ok) return res.status(400).json({ error: descriptionValidation.error });
+  const contextValidation = validateOptionalTextInput(context, 'context');
+  if (!contextValidation.ok) return res.status(400).json({ error: contextValidation.error });
 
   const now = new Date().toISOString();
   const settings = db.getProjectSettings(projectId);
@@ -508,9 +581,9 @@ app.post('/api/handoffs', (req, res) => {
     project_id: projectId,
       from_agent_id: fromAgentValidation.agentId,
       to_agent_id: toAgentValidation.agentId,
-    title,
-    description,
-    context: context || null,
+    title: titleValidation.title,
+    description: descriptionValidation.text,
+    context: contextValidation.text,
     status: autoHandoffEnabled ? 'working' : 'pending',
     priority: normalizedPriority,
     result: null,
@@ -521,10 +594,10 @@ app.post('/api/handoffs', (req, res) => {
     updated_at: now,
   });
   sseBroadcaster.broadcast({ type: 'handoff_created', handoff }, handoff.project_id);
-  agentManager.addLog(handoff.project_id, handoff.from_agent_id as AgentRole, '创建交接', `${handoff.from_agent_id} → ${handoff.to_agent_id}: ${title}`, 'info');
+  agentManager.addLog(handoff.project_id, handoff.from_agent_id as AgentRole, '创建交接', `${handoff.from_agent_id} → ${handoff.to_agent_id}: ${handoff.title}`, 'info');
   if (autoHandoffEnabled) {
     // When auto-handoff is enabled, dispatch immediately instead of waiting for manual accept/confirm.
-    agentManager.addLog(handoff.project_id, handoff.to_agent_id as AgentRole, '自动接收交接', `从 ${handoff.from_agent_id} 接手: ${title}`, 'success');
+    agentManager.addLog(handoff.project_id, handoff.to_agent_id as AgentRole, '自动接收交接', `从 ${handoff.from_agent_id} 接手: ${handoff.title}`, 'success');
     agentManager.addLog(handoff.project_id, handoff.to_agent_id as AgentRole, '开始执行交接任务', `${handoff.title}`, 'success');
     agentManager.sendMessage(
       handoff.project_id,
@@ -612,9 +685,15 @@ app.post('/api/handoffs/:id/complete', (req, res) => {
   const { result } = req.body;
   const handoff = db.getHandoff(id);
   if (!handoff) return res.status(404).json({ error: '交接记录不存在' });
+  const resultValidation = validateOptionalTextInput(result, 'result');
+  if (!resultValidation.ok) return res.status(400).json({ error: resultValidation.error });
 
   const now = new Date().toISOString();
-  db.updateHandoff(id, { status: 'completed', result: result || null, completed_at: now });
+  try {
+    db.updateHandoff(id, { status: 'completed', result: resultValidation.text, completed_at: now });
+  } catch (error: any) {
+    return res.status(400).json({ error: error?.message || '交接参数不合法' });
+  }
   const updated = db.getHandoff(id)!;
 
   sseBroadcaster.broadcast({ type: 'handoff_updated', handoff: updated }, handoff.project_id);
@@ -631,8 +710,14 @@ app.post('/api/handoffs/:id/reject', (req, res) => {
   if (handoff.status !== 'pending') {
     return res.status(400).json({ error: `交接状态不是待处理，当前状态: ${handoff.status}` });
   }
+  const reasonValidation = validateOptionalTextInput(reason, 'reason');
+  if (!reasonValidation.ok) return res.status(400).json({ error: reasonValidation.error });
 
-  db.updateHandoff(id, { status: 'rejected', result: reason || '被拒绝' });
+  try {
+    db.updateHandoff(id, { status: 'rejected', result: reasonValidation.text || '被拒绝' });
+  } catch (error: any) {
+    return res.status(400).json({ error: error?.message || '交接参数不合法' });
+  }
   const updated = db.getHandoff(id)!;
 
   sseBroadcaster.broadcast({ type: 'handoff_updated', handoff: updated }, handoff.project_id);
@@ -699,13 +784,17 @@ app.post('/api/tasks', (req, res) => {
   if (split_testing_task !== undefined && typeof split_testing_task !== 'boolean') {
     return res.status(400).json({ error: 'split_testing_task 必须是布尔值' });
   }
+  const titleValidation = validateTitleInput(title, 'title');
+  if (!titleValidation.ok) return res.status(400).json({ error: titleValidation.error });
+  const descriptionValidation = validateOptionalTextInput(description, 'description');
+  if (!descriptionValidation.ok) return res.status(400).json({ error: descriptionValidation.error });
 
   const now = new Date().toISOString();
   const task = db.createTaskBoardTask({
     id: uuidv4(),
     project_id: projectValidation.projectId,
-    title: String(title).trim(),
-    description: description ? String(description).trim() : null,
+    title: titleValidation.title,
+    description: descriptionValidation.text,
     task_type,
     status: 'todo',
     source_task_id: null,
@@ -725,8 +814,8 @@ app.post('/api/tasks', (req, res) => {
     testingTask = db.createTaskBoardTask({
       id: uuidv4(),
       project_id: projectValidation.projectId,
-      title: `${String(title).trim()}（测试）`,
-      description: description ? `由开发任务拆分：${String(description).trim()}` : '由开发任务自动拆分的测试任务',
+      title: `${titleValidation.title}（测试）`,
+      description: descriptionValidation.text ? `由开发任务拆分：${descriptionValidation.text}` : '由开发任务自动拆分的测试任务',
       task_type: 'testing',
       status: 'todo',
       source_task_id: task.id,
@@ -753,10 +842,13 @@ app.patch('/api/tasks/:id/status', (req, res) => {
     return res.status(400).json({ error: `非法状态流转: ${task.status} -> ${status}` });
   }
 
+  const updatedByValidation = validateOptionalAgentIdInput(updated_by, 'updated_by');
+  if (!updatedByValidation.ok) return res.status(400).json({ error: updatedByValidation.error });
+
   const now = new Date().toISOString();
   const updates: Partial<db.DbTaskBoardTask> = {
     status,
-    updated_by: updated_by || null
+    updated_by: updatedByValidation.agentId
   };
 
   if (status === 'developing' || status === 'testing') {
@@ -769,27 +861,39 @@ app.patch('/api/tasks/:id/status', (req, res) => {
     updates.completed_at = null;
   }
 
-  const success = db.updateTaskBoardTask(id, updates);
+  let success: boolean;
+  try {
+    success = db.updateTaskBoardTask(id, updates);
+  } catch (error: any) {
+    return res.status(400).json({ error: error?.message || '任务参数不合法' });
+  }
   if (!success) return res.status(500).json({ error: '任务状态更新失败' });
   const updated = db.getTaskBoardTask(id)!;
   sseBroadcaster.broadcast({ type: 'task_updated', task: updated }, task.project_id);
-  agentManager.addLog(task.project_id, (updated_by || task.created_by) as AgentRole, '更新任务状态', `${task.title}: ${task.status} → ${status}`, 'success');
+  const taskCreatorValidation = validateAgentIdInput(task.created_by, 'task.created_by');
+  if (!taskCreatorValidation.ok) return res.status(500).json({ error: '内部错误：任务创建者数据不合法' });
+  const taskOperator = updatedByValidation.agentId || taskCreatorValidation.agentId;
+  agentManager.addLog(task.project_id, taskOperator, '更新任务状态', `${task.title}: ${task.status} → ${status}`, 'success');
   res.json({ task: updated });
 });
 
 // Agent memory APIs.
 app.delete('/api/agents/:agentId/messages', (req, res) => {
   const { agentId } = req.params;
+  const agentValidation = validateAgentIdInput(agentId, 'agentId');
+  if (!agentValidation.ok) return res.status(400).json({ error: agentValidation.error });
   const projectId = normalizeProjectId(req.query.projectId ?? req.body?.projectId);
-  db.clearAgentMessages(projectId, agentId);
-  agentManager.addLog(projectId, agentId as AgentRole, '清除聊天记录', '用户清除了该 Agent 的所有聊天记录和会话', 'warn');
+  db.clearAgentMessages(projectId, agentValidation.agentId);
+  agentManager.addLog(projectId, agentValidation.agentId, '清除聊天记录', '用户清除了该 Agent 的所有聊天记录和会话', 'warn');
   res.json({ success: true });
 });
 app.get('/api/agents/:agentId/memories', (req, res) => {
   const { agentId } = req.params;
+  const agentValidation = validateAgentIdInput(agentId, 'agentId');
+  if (!agentValidation.ok) return res.status(400).json({ error: agentValidation.error });
   const { category } = req.query;
   const projectId = normalizeProjectId(req.query.projectId);
-  const memories = db.getAgentMemories(projectId, agentId, category as string | undefined);
+  const memories = db.getAgentMemories(projectId, agentValidation.agentId, category as string | undefined);
   res.json({ memories });
 });
 app.get('/api/memories', (req, res) => {
@@ -799,6 +903,8 @@ app.get('/api/memories', (req, res) => {
 });
 app.post('/api/agents/:agentId/memories', (req, res) => {
   const { agentId } = req.params;
+  const agentValidation = validateAgentIdInput(agentId, 'agentId');
+  if (!agentValidation.ok) return res.status(400).json({ error: agentValidation.error });
   const { category = 'general', content, importance = 'normal', source_task, projectId: bodyProjectId } = req.body;
   const projectId = normalizeProjectId(req.query.projectId ?? bodyProjectId);
 
@@ -808,7 +914,7 @@ app.post('/api/agents/:agentId/memories', (req, res) => {
   const memory = db.createAgentMemory({
     id: uuidv4(),
     project_id: projectId,
-    agent_id: agentId,
+    agent_id: agentValidation.agentId,
     category,
     content: content.slice(0, 5000),
     importance,
@@ -817,7 +923,7 @@ app.post('/api/agents/:agentId/memories', (req, res) => {
     updated_at: now
   });
 
-  agentManager.addLog(projectId, agentId as AgentRole, '保存记忆', `类别: ${category} | 重要度: ${importance}`, 'info');
+  agentManager.addLog(projectId, agentValidation.agentId, '保存记忆', `类别: ${category} | 重要度: ${importance}`, 'info');
 
   res.json({ memory });
 });
@@ -855,14 +961,18 @@ app.post('/api/proposals', (req, res) => {
   }
   const proposalAuthorValidation = validateAgentIdInput(author_agent_id, 'author_agent_id');
   if (!proposalAuthorValidation.ok) return res.status(400).json({ error: proposalAuthorValidation.error });
+  const titleValidation = validateTitleInput(title, 'title');
+  if (!titleValidation.ok) return res.status(400).json({ error: titleValidation.error });
+  const contentValidation = validateRequiredTextInput(content, 'content');
+  if (!contentValidation.ok) return res.status(400).json({ error: contentValidation.error });
 
   const now = new Date().toISOString();
   const proposal = db.createProposal({
     id: uuidv4(),
     project_id: projectValidation.projectId,
     type,
-    title,
-    content,
+    title: titleValidation.title,
+    content: contentValidation.text,
     author_agent_id: proposalAuthorValidation.agentId,
     status: 'pending_review',
     reviewer_agent_id: null,
@@ -877,7 +987,7 @@ app.post('/api/proposals', (req, res) => {
   db.ensureProject(proposal.project_id);
   const filePath = db.saveProposalToFile(proposal);
   sseBroadcaster.broadcast({ type: 'proposal_created', proposal, filePath }, proposal.project_id);
-  agentManager.addLog(proposal.project_id, proposalAuthorValidation.agentId, '提交提案', `提案: ${title}${filePath ? ` → 已保存到 ${path.basename(filePath)}` : ''}`, 'success');
+  agentManager.addLog(proposal.project_id, proposalAuthorValidation.agentId, '提交提案', `提案: ${proposal.title}${filePath ? ` → 已保存到 ${path.basename(filePath)}` : ''}`, 'success');
 
   res.json({ proposal, filePath });
 });
@@ -889,22 +999,28 @@ app.post('/api/proposals/:id/decide', (req, res) => {
   if (typeof decision !== 'string' || !USER_DECISIONS.has(decision)) {
     return res.status(400).json({ error: 'decision 仅支持 approved 或 rejected' });
   }
+  const commentValidation = validateOptionalTextInput(comment, 'comment');
+  if (!commentValidation.ok) return res.status(400).json({ error: commentValidation.error });
 
   const proposal = db.getProposal(id);
   if (!proposal) return res.status(404).json({ error: '提案不存在' });
 
   const userDecision = decision === 'approved' ? 'user_approved' : 'user_rejected';
-  db.updateProposal(id, {
-    status: userDecision,
-    user_decision: decision,
-    user_comment: comment || null
-  });
+  try {
+    db.updateProposal(id, {
+      status: userDecision,
+      user_decision: decision,
+      user_comment: commentValidation.text
+    });
+  } catch (error: any) {
+    return res.status(400).json({ error: error?.message || '提案参数不合法' });
+  }
 
   const updated = db.getProposal(id);
   if (!updated) return res.status(500).json({ error: '提案更新后读取失败' });
   const filePath = db.saveProposalToFile(updated);
 
-  sseBroadcaster.broadcast({ type: 'proposal_decided', proposal: updated, decision, comment, filePath }, updated.project_id);
+  sseBroadcaster.broadcast({ type: 'proposal_decided', proposal: updated, decision, comment: commentValidation.text, filePath }, updated.project_id);
 
   res.json({ success: true, proposal: updated, filePath });
 });
@@ -919,8 +1035,10 @@ app.post('/api/games', (req, res) => {
   if (missing.length > 0) {
     return res.status(400).json({ error: `缺少必要字段：${missing.join(', ')}` });
   }
-  if (typeof name !== 'string') return res.status(400).json({ error: 'name 必须是字符串' });
-  if (typeof html_content !== 'string') return res.status(400).json({ error: 'html_content 必须是字符串' });
+  const nameValidation = validateRequiredTextInput(name, 'name');
+  if (!nameValidation.ok) return res.status(400).json({ error: nameValidation.error });
+  const htmlValidation = validateRequiredTextInput(html_content, 'html_content');
+  if (!htmlValidation.ok) return res.status(400).json({ error: htmlValidation.error });
   const projectValidation = validateProjectIdInput(project_id, 'project_id');
   if (!projectValidation.ok) return res.status(400).json({ error: projectValidation.error });
   const gameAuthorValidation = validateAgentIdInput(author_agent_id, 'author_agent_id');
@@ -932,37 +1050,41 @@ app.post('/api/games', (req, res) => {
     return res.status(400).json({ error: 'version 必须是字符串' });
   }
   const normalizedVersion = typeof version === 'string' ? version.trim() : undefined;
-  const trimmedProposalId = typeof proposal_id === 'string' ? proposal_id.trim() : '';
-  const normalizedProposalId = trimmedProposalId || null;
-  const normalizedName = typeof name === 'string' ? name.trim() : '';
+  const proposalIdValidation = validateOptionalTextInput(proposal_id, 'proposal_id');
+  if (!proposalIdValidation.ok) return res.status(400).json({ error: proposalIdValidation.error });
+  const descriptionValidation = validateOptionalTextInput(description, 'description');
+  if (!descriptionValidation.ok) return res.status(400).json({ error: descriptionValidation.error });
+  const normalizedProposalId = proposalIdValidation.text;
+  const normalizedName = nameValidation.text;
   const originalHtmlContent = typeof html_content === 'string' ? html_content : '';
-  const normalizedHtmlForValidation = typeof html_content === 'string' ? html_content.trim() : '';
-  if (version !== undefined && version !== null) {
-    if (!normalizedVersion || normalizedVersion.length > MAX_VERSION_LENGTH) {
-      return res.status(400).json({ error: `version 长度必须在 1-${MAX_VERSION_LENGTH} 之间` });
-    }
+  if (normalizedName.length > MAX_GAME_NAME_LENGTH) {
+    return res.status(400).json({ error: `name 长度不能超过 ${MAX_GAME_NAME_LENGTH}` });
   }
-  if (!normalizedName || normalizedName.length > MAX_FILENAME_LENGTH) {
-    return res.status(400).json({ error: `name 长度必须在 1-${MAX_FILENAME_LENGTH} 之间` });
+  if (originalHtmlContent.length < MIN_GAME_HTML_LENGTH) {
+    return res.status(400).json({ error: `html_content 长度不能少于 ${MIN_GAME_HTML_LENGTH}` });
   }
-  if (!normalizedHtmlForValidation) {
-    return res.status(400).json({ error: 'html_content 必须是非空字符串' });
+  if (normalizedVersion && normalizedVersion.length > MAX_GAME_VERSION_LENGTH) {
+    return res.status(400).json({ error: `version 长度不能超过 ${MAX_GAME_VERSION_LENGTH}` });
   }
-
   const now = new Date().toISOString();
-  const game = db.createGame({
-    id: uuidv4(),
-    project_id: projectValidation.projectId,
-    name: normalizedName,
-    description: description || null,
-    html_content: originalHtmlContent,
-    proposal_id: normalizedProposalId,
-    version: normalizedVersion || '1.0.0',
-    status: 'draft',
-    author_agent_id: gameAuthorValidation.agentId,
-    created_at: now,
-    updated_at: now
-  });
+  let game: db.DbGame;
+  try {
+    game = db.createGame({
+      id: uuidv4(),
+      project_id: projectValidation.projectId,
+      name: normalizedName,
+      description: descriptionValidation.text,
+      html_content: originalHtmlContent,
+      proposal_id: normalizedProposalId,
+      version: normalizedVersion || '1.0.0',
+      status: 'draft',
+      author_agent_id: gameAuthorValidation.agentId,
+      created_at: now,
+      updated_at: now
+    });
+  } catch (error: any) {
+    return res.status(400).json({ error: error?.message || '游戏参数不合法' });
+  }
   db.ensureProject(game.project_id);
   const filePath = db.saveGameToFile(game);
 

@@ -2,14 +2,23 @@ import React from 'react';
 import { Agent, AgentRole, Handoff } from '../types';
 import { useI18n } from '../i18n';
 
-interface Props {
+type Props = {
   agent: Agent;
-  onPauseToggle: () => void;
-  onSendCommand: () => void;
   streamLog?: { agentId: AgentRole; content: string; time: string };
   pendingHandoffs?: Handoff[];
   activeHandoffs?: Handoff[];
-}
+} & (
+  | {
+      disableActions: true;
+      onPauseToggle?: () => void;
+      onSendCommand?: () => void;
+    }
+  | {
+      disableActions?: false;
+      onPauseToggle: () => void;
+      onSendCommand: () => void;
+    }
+);
 
 const STATUS_CONFIG = {
   idle: { label: '空闲', color: 'text-gray-400', dot: 'bg-gray-500', bg: 'border-gray-700' },
@@ -24,6 +33,7 @@ const AGENT_NAMES_ZH: Record<string, string> = {
   game_designer: '游戏策划',
   biz_designer: '商业策划',
   ceo: 'CEO',
+  team_builder: '团队建设',
 };
 
 const AGENT_NAMES_EN: Record<string, string> = {
@@ -32,6 +42,7 @@ const AGENT_NAMES_EN: Record<string, string> = {
   game_designer: 'Game Designer',
   biz_designer: 'Business Designer',
   ceo: 'CEO',
+  team_builder: 'Team Building',
 };
 
 const AGENT_TITLES_ZH: Record<string, string> = {
@@ -40,6 +51,7 @@ const AGENT_TITLES_ZH: Record<string, string> = {
   game_designer: '负责游戏玩法设计和策划案',
   biz_designer: '负责商业模式和运营策略',
   ceo: '负责产品决策和团队协调',
+  team_builder: '负责团队信息总结与高价值记忆沉淀',
 };
 
 const AGENT_TITLES_EN: Record<string, string> = {
@@ -48,6 +60,7 @@ const AGENT_TITLES_EN: Record<string, string> = {
   game_designer: 'Game design and proposal creation',
   biz_designer: 'Business model and operations strategy',
   ceo: 'Product decisions and team coordination',
+  team_builder: 'Team information synthesis and high-value memory curation',
 };
 const RESPONSIBILITIES_MAP: Record<string, string> = {
   // Engineer
@@ -80,9 +93,13 @@ const RESPONSIBILITIES_MAP: Record<string, string> = {
   '团队协调管理': 'Team coordination & management',
   '产品方向把控': 'Product direction control',
   '最终方案决策': 'Final decision making',
+  // Team Builder
+  '汇总项目最新提案、任务、交接、日志、记忆': 'Aggregate latest proposals, tasks, handoffs, logs and memories',
+  '提炼可复用的高价值经验与决策': 'Extract reusable high-value insights and decisions',
+  '将高价值结论沉淀为长期记忆': 'Persist high-value conclusions into long-term memory',
+  '输出团队协作改进建议': 'Provide team collaboration improvement suggestions',
 };
-
-export default function AgentCard({ agent, onPauseToggle, onSendCommand, streamLog, pendingHandoffs = [], activeHandoffs = [] }: Props) {
+export default function AgentCard({ agent, onPauseToggle, onSendCommand, disableActions, streamLog, pendingHandoffs = [], activeHandoffs = [] }: Props) {
   const { l, isZh } = useI18n();
   const status = agent.state?.status || 'idle';
   const statusCfg = {
@@ -157,24 +174,26 @@ export default function AgentCard({ agent, onPauseToggle, onSendCommand, streamL
       </div>
 
       
-      <div className="flex gap-2 mt-auto pt-2 border-t border-gray-800">
-        <button
-          onClick={onSendCommand}
-          className="flex-1 text-xs bg-blue-600/20 hover:bg-blue-600/40 border border-blue-600/40 text-blue-300 rounded-lg py-1.5 transition-all"
-        >
-          {l('下达指令', 'Send Command')}
-        </button>
-        <button
-          onClick={onPauseToggle}
-          className={`flex-1 text-xs rounded-lg py-1.5 border transition-all ${
-            isPaused
-              ? 'bg-green-600/20 hover:bg-green-600/40 border-green-600/40 text-green-300'
-              : 'bg-yellow-600/20 hover:bg-yellow-600/40 border-yellow-600/40 text-yellow-300'
-          }`}
-        >
-          {isPaused ? l('▶ 恢复', '▶ Resume') : l('⏸ 暂停', '⏸ Pause')}
-        </button>
-      </div>
+      {!disableActions && (
+        <div className="flex gap-2 mt-auto pt-2 border-t border-gray-800">
+          <button
+            onClick={onSendCommand}
+            className="flex-1 text-xs bg-blue-600/20 hover:bg-blue-600/40 border border-blue-600/40 text-blue-300 rounded-lg py-1.5 transition-all"
+          >
+            {l('下达指令', 'Send Command')}
+          </button>
+          <button
+            onClick={onPauseToggle}
+            className={`flex-1 text-xs rounded-lg py-1.5 border transition-all ${
+              isPaused
+                ? 'bg-green-600/20 hover:bg-green-600/40 border-green-600/40 text-green-300'
+                : 'bg-yellow-600/20 hover:bg-yellow-600/40 border-yellow-600/40 text-yellow-300'
+            }`}
+          >
+            {isPaused ? l('▶ 恢复', '▶ Resume') : l('⏸ 暂停', '⏸ Pause')}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

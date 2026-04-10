@@ -26,7 +26,7 @@ const PRIORITY_CONFIG: Record<HandoffPriority, { label: string; color: string }>
 
 const AGENT_EMOJI: Record<string, string> = {
   engineer: '👨‍💻', architect: '🏗️', game_designer: '🎮',
-  biz_designer: '💼', ceo: '👔',
+  biz_designer: '💼', ceo: '👔', team_builder: '🧠',
 };
 
 const AGENT_NAMES_ZH: Record<string, string> = {
@@ -35,6 +35,7 @@ const AGENT_NAMES_ZH: Record<string, string> = {
   game_designer: '游戏策划',
   biz_designer: '商业策划',
   ceo: 'CEO',
+  team_builder: '团队建设',
 };
 
 const AGENT_NAMES_EN: Record<string, string> = {
@@ -43,6 +44,7 @@ const AGENT_NAMES_EN: Record<string, string> = {
   game_designer: 'Game Designer',
   biz_designer: 'Business Designer',
   ceo: 'CEO',
+  team_builder: 'Team Building',
 };
 
 function getAgentName(agents: Agent[], agentId: string, isZh: boolean): string {
