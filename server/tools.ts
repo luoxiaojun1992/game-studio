@@ -242,7 +242,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         'get_tasks',
         '查询任务看板中的任务，用于查看待办和当前进度。默认仅查询当前 Agent 相关任务。',
         {
-          project_id: z.string().optional().describe('项目 ID，不填默认全部'),
+          project_id: z.string().optional().describe('项目 ID，不填默认当前项目（且仅允许当前项目）'),
           status: z.enum(['todo', 'developing', 'testing', 'blocked', 'done']).optional().describe('按状态筛选'),
           task_type: z.enum(['development', 'testing']).optional().describe('按任务类型筛选'),
           only_mine: z.boolean().optional().default(true).describe('是否仅查询当前 Agent 相关任务（默认 true）'),
