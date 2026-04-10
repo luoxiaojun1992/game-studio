@@ -25,6 +25,7 @@ const TASK_TYPES = new Set<db.DbTaskBoardTask['task_type']>(['development', 'tes
 const HANDOFF_PRIORITIES = new Set<db.DbHandoff['priority']>(['low', 'normal', 'high', 'urgent']);
 const USER_DECISIONS = new Set(['approved', 'rejected']);
 const TEAM_BUILDING_AGENT_ID: AgentRole = 'team_builder';
+const NO_NEWLINES_PATTERN = /[\r\n]/;
 let cachedAgentIdOptions: AgentRole[] | null = null;
 let cachedAgentIdSet: Set<AgentRole> | null = null;
 const getAgentIdOptions = (): AgentRole[] => {
@@ -76,7 +77,7 @@ const validateTitleInput = (value: unknown, fieldName: string): { ok: true; titl
   if (typeof value !== 'string') return { ok: false, error: `${fieldName} 必须是字符串` };
   const title = value.trim();
   if (!title) return { ok: false, error: `${fieldName} 不能为空` };
-  if (/[\r\n]/.test(title)) return { ok: false, error: `${fieldName} 不允许包含换行符` };
+  if (NO_NEWLINES_PATTERN.test(title)) return { ok: false, error: `${fieldName} 不允许包含换行符` };
   return { ok: true, title };
 };
 
