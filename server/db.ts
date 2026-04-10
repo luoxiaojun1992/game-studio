@@ -9,6 +9,7 @@ export const PROJECT_ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
 export const MAX_PROJECT_ID_LENGTH = 64;
 export const MAX_FILENAME_LENGTH = 50;
 export const MAX_VERSION_LENGTH = 30;
+export const MIN_GAME_HTML_LENGTH = 100;
 export const SINGLE_LINE_TITLE_PATTERN = /^[^\r\n]*$/;
 export const PROPOSAL_TYPES = ['game_design', 'biz_design', 'tech_arch', 'tech_impl', 'ceo_review'] as const;
 export const PROPOSAL_STATUSES = ['pending_review', 'under_review', 'approved', 'rejected', 'revision_needed', 'user_approved', 'user_rejected'] as const;
@@ -611,6 +612,9 @@ export function createGame(game: DbGame): DbGame {
     throw new Error(`name 长度不能超过 ${MAX_FILENAME_LENGTH}`);
   }
   const normalizedHtmlContent = normalizeAndValidateRequiredText(game.html_content, 'html_content');
+  if (normalizedHtmlContent.length < MIN_GAME_HTML_LENGTH) {
+    throw new Error(`html_content 长度不能少于 ${MIN_GAME_HTML_LENGTH}`);
+  }
   const normalizedVersion = normalizeAndValidateRequiredText(game.version, 'version');
   if (normalizedVersion.length > MAX_VERSION_LENGTH) {
     throw new Error(`version 长度不能超过 ${MAX_VERSION_LENGTH}`);
@@ -662,7 +666,11 @@ export function updateGame(id: string, updates: Partial<DbGame>): boolean {
     normalizedUpdates.description = normalizeOptionalText(normalizedUpdates.description, 'description');
   }
   if (normalizedUpdates.html_content !== undefined) {
-    normalizedUpdates.html_content = normalizeAndValidateRequiredText(normalizedUpdates.html_content, 'html_content');
+    const normalizedHtmlContent = normalizeAndValidateRequiredText(normalizedUpdates.html_content, 'html_content');
+    if (normalizedHtmlContent.length < MIN_GAME_HTML_LENGTH) {
+      throw new Error(`html_content 长度不能少于 ${MIN_GAME_HTML_LENGTH}`);
+    }
+    normalizedUpdates.html_content = normalizedHtmlContent;
   }
   if (normalizedUpdates.version !== undefined) {
     const normalizedVersion = normalizeAndValidateRequiredText(normalizedUpdates.version, 'version');

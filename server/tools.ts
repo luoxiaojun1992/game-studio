@@ -418,12 +418,26 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         '提交一个完成的游戏成品（单文件 HTML）。游戏将被保存到数据库和产出目录中。',
         {
           project_id: z.string().optional().default('default').describe('项目 ID，用于归档到 /output/{project_id}/... 目录'),
-          name: requiredTextSchema('name').describe('游戏名称'),
-          html_content: requiredTextSchema('html_content').describe('完整的游戏 HTML 代码（必须是包含所有 CSS/JS 的单文件 HTML）'),
+          name: z.string().max(db.MAX_FILENAME_LENGTH, `name 长度不能超过 ${db.MAX_FILENAME_LENGTH}`).transform((value, ctx) => {
+            try {
+              return db.normalizeAndValidateRequiredText(value, 'name');
+            } catch (error: any) {
+              ctx.addIssue({ code: 'custom', message: error?.message || 'name 验证失败' });
+              return z.NEVER;
+            }
+          }).describe('游戏名称'),
+          html_content: z.string().min(db.MIN_GAME_HTML_LENGTH, `html_content 长度不能少于 ${db.MIN_GAME_HTML_LENGTH}`).transform((value, ctx) => {
+            try {
+              return db.normalizeAndValidateRequiredText(value, 'html_content');
+            } catch (error: any) {
+              ctx.addIssue({ code: 'custom', message: error?.message || 'html_content 验证失败' });
+              return z.NEVER;
+            }
+          }).describe('完整的游戏 HTML 代码（必须是包含所有 CSS/JS 的单文件 HTML）'),
           description: z.string().optional().describe('游戏简介'),
           version: z.preprocess(
             (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
-            z.string().transform((value, ctx) => {
+            z.string().max(db.MAX_VERSION_LENGTH, `version 长度不能超过 ${db.MAX_VERSION_LENGTH}`).transform((value, ctx) => {
               try {
                 return db.normalizeAndValidateRequiredText(value, 'version');
               } catch (error: any) {
@@ -438,19 +452,26 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           validateAgentPermission(['engineer'], '提交游戏成品');
           const targetProjectId = enforceProject(project_id);
           const now = new Date().toISOString();
-          const game = db.createGame({
-            id: uuidv4(),
-            project_id: targetProjectId,
-            name,
-            description: description || null,
-            html_content,
-            proposal_id: proposal_id || null,
-            version: version || '1.0.0',
-            status: 'draft',
-            author_agent_id: agentId,
-            created_at: now,
-            updated_at: now
-          });
+          let game: db.DbGame;
+          try {
+            game = db.createGame({
+              id: uuidv4(),
+              project_id: targetProjectId,
+              name,
+              description: description || null,
+              html_content,
+              proposal_id: proposal_id || null,
+              version: version || '1.0.0',
+              status: 'draft',
+              author_agent_id: agentId,
+              created_at: now,
+              updated_at: now
+            });
+          } catch (error: any) {
+            return {
+              content: [{ type: 'text' as const, text: `提交游戏失败：${error?.message || String(error)}` }]
+            };
+          }
           const filePath = db.saveGameToFile(game);
           sseBroadcaster.broadcast({ type: 'game_submitted', game: { ...game, html_content: undefined as any, hasContent: true }, filePath }, targetProjectId);
           log(agentId, '提交游戏', `游戏: ${name} v${version || '1.0.0'}${filePath ? ' → 已保存' : ''}`, 'success');

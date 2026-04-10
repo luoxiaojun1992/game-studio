@@ -18,6 +18,9 @@ const PORT = process.env.PORT || 3000;
 const DEFAULT_PROJECT_ID = 'default';
 const PROJECT_ID_PATTERN = db.PROJECT_ID_PATTERN;
 const MAX_PROJECT_ID_LENGTH = db.MAX_PROJECT_ID_LENGTH;
+const MAX_GAME_NAME_LENGTH = db.MAX_FILENAME_LENGTH;
+const MAX_GAME_VERSION_LENGTH = db.MAX_VERSION_LENGTH;
+const MIN_GAME_HTML_LENGTH = db.MIN_GAME_HTML_LENGTH;
 const PROPOSAL_TYPES = new Set<db.DbProposal['type']>(db.PROPOSAL_TYPES);
 const TASK_TYPES = new Set<db.DbTaskBoardTask['task_type']>(db.TASK_TYPES);
 const HANDOFF_PRIORITIES = new Set<db.DbHandoff['priority']>(db.HANDOFF_PRIORITIES);
@@ -998,6 +1001,15 @@ app.post('/api/games', (req, res) => {
   const normalizedProposalId = proposalIdValidation.text;
   const normalizedName = nameValidation.text;
   const originalHtmlContent = typeof html_content === 'string' ? html_content : '';
+  if (normalizedName.length > MAX_GAME_NAME_LENGTH) {
+    return res.status(400).json({ error: `name 长度不能超过 ${MAX_GAME_NAME_LENGTH}` });
+  }
+  if (originalHtmlContent.length < MIN_GAME_HTML_LENGTH) {
+    return res.status(400).json({ error: `html_content 长度不能少于 ${MIN_GAME_HTML_LENGTH}` });
+  }
+  if (normalizedVersion && normalizedVersion.length > MAX_GAME_VERSION_LENGTH) {
+    return res.status(400).json({ error: `version 长度不能超过 ${MAX_GAME_VERSION_LENGTH}` });
+  }
   const now = new Date().toISOString();
   let game: db.DbGame;
   try {
