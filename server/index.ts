@@ -37,10 +37,14 @@ const getAgentIdSet = (): Set<AgentRole> => {
   return cachedAgentIdSet;
 };
 
-// Normalizes any project selector to a safe runtime project id.
+// Normalizes project selector with PROJECT_ID_PATTERN/MAX_PROJECT_ID_LENGTH rules; invalid input falls back to default.
 const normalizeProjectId = (value: unknown): string => {
-  const raw = typeof value === 'string' ? value.trim() : '';
-  return raw || DEFAULT_PROJECT_ID;
+  if (typeof value !== 'string') return DEFAULT_PROJECT_ID;
+  const raw = value.trim();
+  if (!raw) return DEFAULT_PROJECT_ID;
+  if (raw.length > MAX_PROJECT_ID_LENGTH) return DEFAULT_PROJECT_ID;
+  if (!PROJECT_ID_PATTERN.test(raw)) return DEFAULT_PROJECT_ID;
+  return raw;
 };
 
 const validateProjectIdInput = (value: unknown, fieldName: string): { ok: true; projectId: string } | { ok: false; error: string } => {
