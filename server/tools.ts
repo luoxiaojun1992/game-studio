@@ -521,7 +521,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           const effectiveLimit = limit || 20;
           const fetchWindow = Math.min(Math.max(effectiveLimit * FETCH_MULTIPLIER, MIN_FETCH_WINDOW), MAX_FETCH_WINDOW);
           const proposals = db.getScopedProposals(scopedProjectId, { limit: fetchWindow });
-          const tasks = db.getTaskBoardTasks({ projectId: scopedProjectId, limit: fetchWindow });
+          const projectTasks = db.getTaskBoardTasks({ projectId: scopedProjectId, limit: fetchWindow });
           const handoffs = db.getAllHandoffs(scopedProjectId, fetchWindow);
           const logs = db.getLogs(scopedProjectId, undefined, fetchWindow);
           const memories = db.getAllAgentMemories(scopedProjectId, fetchWindow);
@@ -531,7 +531,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
               timestamp: item.updated_at || item.created_at,
               line: `[proposal][${item.status}] ${item.title} | author=${item.author_agent_id} | reviewer=${item.reviewer_agent_id || '-'} | ${item.created_at}`
             })),
-            ...tasks.map(item => ({
+            ...projectTasks.map(item => ({
               timestamp: item.updated_at || item.created_at,
               line: `[task][${item.status}/${item.task_type}] ${item.title} | by=${item.created_by} | ${item.created_at}`
             })),

@@ -35,9 +35,10 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
     team_builder: { name: isZh ? '团队建设' : 'Team Building', emoji: '🧠', color: '#2F7DFF' },
   };
   const commandableAgents = useMemo(() => agents.filter(agent => agent.id !== TEAM_BUILDING_AGENT_ID), [agents]);
+  const commandableAgentIdSet = useMemo(() => new Set(commandableAgents.map(agent => agent.id)), [commandableAgents]);
   const getSavedAgent = (): AgentRole | null => {
     const saved = localStorage.getItem(getStorageKey(projectId));
-    if (saved && saved !== TEAM_BUILDING_AGENT_ID && commandableAgents.find(a => a.id === saved)) {
+    if (saved && saved !== TEAM_BUILDING_AGENT_ID && commandableAgentIdSet.has(saved as AgentRole)) {
       return saved as AgentRole;
     }
     return null;
@@ -92,12 +93,12 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
     }
   }, [selectedAgentId, projectId]);
   useEffect(() => {
-    if (selectedAgent === TEAM_BUILDING_AGENT_ID || !commandableAgents.find(a => a.id === selectedAgent)) {
+    if (selectedAgent === TEAM_BUILDING_AGENT_ID || !commandableAgentIdSet.has(selectedAgent)) {
       const nextAgent = getDefaultAgent();
       setSelectedAgent(nextAgent);
       localStorage.setItem(getStorageKey(projectId), nextAgent);
     }
-  }, [commandableAgents, selectedAgent, projectId]);
+  }, [commandableAgentIdSet, commandableAgents, selectedAgent, projectId]);
   const handleAgentChange = (agentId: AgentRole) => {
     setSelectedAgent(agentId);
     localStorage.setItem(getStorageKey(projectId), agentId);

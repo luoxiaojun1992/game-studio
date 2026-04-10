@@ -354,7 +354,14 @@ export default function StudioPage() {
   const pendingHandoffs = handoffs.filter(h => h.status === 'pending');
   const activeTasks = tasks.filter(t => ['todo', 'developing', 'testing', 'blocked'].includes(t.status));
   const getLatestStreamLog = (agentId: AgentRole) => {
-    const latest = logs.filter(log => log.agent_id === agentId && log.log_type === 'text').slice(-1)[0];
+    let latest: LogEntry | undefined;
+    for (let i = logs.length - 1; i >= 0; i--) {
+      const item = logs[i];
+      if (item.agent_id === agentId && item.log_type === 'text') {
+        latest = item;
+        break;
+      }
+    }
     if (!latest) return undefined;
     return { agentId, content: latest.content, time: latest.created_at };
   };
