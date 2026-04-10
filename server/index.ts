@@ -870,7 +870,9 @@ app.patch('/api/tasks/:id/status', (req, res) => {
   if (!success) return res.status(500).json({ error: '任务状态更新失败' });
   const updated = db.getTaskBoardTask(id)!;
   sseBroadcaster.broadcast({ type: 'task_updated', task: updated }, task.project_id);
-  const taskOperator = updatedByValidation.agentId || (task.created_by as AgentRole);
+  const taskCreatorValidation = validateAgentIdInput(task.created_by, 'task.created_by');
+  if (!taskCreatorValidation.ok) return res.status(500).json({ error: taskCreatorValidation.error });
+  const taskOperator = updatedByValidation.agentId || taskCreatorValidation.agentId;
   agentManager.addLog(task.project_id, taskOperator, '更新任务状态', `${task.title}: ${task.status} → ${status}`, 'success');
   res.json({ task: updated });
 });
