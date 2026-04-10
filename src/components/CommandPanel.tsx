@@ -460,7 +460,7 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
 
 function getQuickCommands(agentId: AgentRole, isZh: boolean): string[] {
   if (!isZh) {
-    const enCmds: Record<AgentRole, string[]> = {
+    const enCmds: Partial<Record<AgentRole, string[]>> = {
       game_designer: [
         'Create a complete design plan for a casual mobile game',
         'Design a 2048-style number puzzle game',
@@ -486,13 +486,10 @@ function getQuickCommands(agentId: AgentRole, isZh: boolean): string[] {
         'Build a 2048 number puzzle game',
         'Write a testing plan for an existing game',
       ],
-      team_builder: [
-        'Summarize latest project signals and store high-value memories',
-      ],
     };
     return enCmds[agentId] || [];
   }
-  const cmds: Record<AgentRole, string[]> = {
+  const cmds: Partial<Record<AgentRole, string[]>> = {
     game_designer: [
       '请为一款休闲手机游戏制作完整策划案',
       '设计一个2048风格的数字消除游戏',
@@ -517,9 +514,6 @@ function getQuickCommands(agentId: AgentRole, isZh: boolean): string[] {
       '根据策划案开发一个贪吃蛇游戏（单文件HTML）',
       '开发一个2048数字消除游戏',
       '为已有游戏编写测试方案',
-    ],
-    team_builder: [
-      '总结当前项目最新信息并沉淀高价值记忆',
     ],
   };
   return cmds[agentId] || [];
