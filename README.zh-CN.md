@@ -163,3 +163,7 @@ game-studio/
 ## 二次开发
 
 详见 [DEVELOPMENT.zh-CN.md](./DEVELOPMENT.zh-CN.md)。
+
+## 架构文档
+
+详见 [ARCHITECTURE.zh-CN.md](./ARCHITECTURE.zh-CN.md)。
