@@ -90,7 +90,7 @@ const TOOLS_OVERVIEW = `
 | \`get_proposals\` | 查询已有的提案列表 |
 | \`get_agent_logs\` | 查询当前项目下你自己的历史日志 |
 | \`get_pending_handoffs\` | 查询待处理的任务交接 |
-| \`get_project_latest_info\` | 查询当前项目最新 n 条关键信息（提案/任务/交接/日志/记忆） |
+| \`get_project_latest_info\` | 查询当前项目最新 n 条关键信息（提案/任务/交接/日志/记忆，仅 team_builder 可用） |
 
 这些工具会自动执行，无需人工审批。请根据工作需要主动使用它们。
 
