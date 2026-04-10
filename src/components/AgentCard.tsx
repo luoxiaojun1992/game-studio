@@ -2,15 +2,23 @@ import React from 'react';
 import { Agent, AgentRole, Handoff } from '../types';
 import { useI18n } from '../i18n';
 
-interface Props {
+type Props = {
   agent: Agent;
-   onPauseToggle?: () => void;
-   onSendCommand?: () => void;
-   disableActions?: boolean;
   streamLog?: { agentId: AgentRole; content: string; time: string };
   pendingHandoffs?: Handoff[];
   activeHandoffs?: Handoff[];
-}
+} & (
+  | {
+      disableActions: true;
+      onPauseToggle?: () => void;
+      onSendCommand?: () => void;
+    }
+  | {
+      disableActions?: false;
+      onPauseToggle: () => void;
+      onSendCommand: () => void;
+    }
+);
 
 const STATUS_CONFIG = {
   idle: { label: '空闲', color: 'text-gray-400', dot: 'bg-gray-500', bg: 'border-gray-700' },
@@ -91,9 +99,7 @@ const RESPONSIBILITIES_MAP: Record<string, string> = {
   '将高价值结论沉淀为长期记忆': 'Persist high-value conclusions into long-term memory',
   '输出团队协作改进建议': 'Provide team collaboration improvement suggestions',
 };
-const NOOP = () => {};
-
-export default function AgentCard({ agent, onPauseToggle, onSendCommand, disableActions = false, streamLog, pendingHandoffs = [], activeHandoffs = [] }: Props) {
+export default function AgentCard({ agent, onPauseToggle, onSendCommand, disableActions, streamLog, pendingHandoffs = [], activeHandoffs = [] }: Props) {
   const { l, isZh } = useI18n();
   const status = agent.state?.status || 'idle';
   const statusCfg = {
@@ -171,13 +177,13 @@ export default function AgentCard({ agent, onPauseToggle, onSendCommand, disable
       {!disableActions && (
         <div className="flex gap-2 mt-auto pt-2 border-t border-gray-800">
           <button
-            onClick={onSendCommand || NOOP}
+            onClick={onSendCommand}
             className="flex-1 text-xs bg-blue-600/20 hover:bg-blue-600/40 border border-blue-600/40 text-blue-300 rounded-lg py-1.5 transition-all"
           >
             {l('下达指令', 'Send Command')}
           </button>
           <button
-            onClick={onPauseToggle || NOOP}
+            onClick={onPauseToggle}
             className={`flex-1 text-xs rounded-lg py-1.5 border transition-all ${
               isPaused
                 ? 'bg-green-600/20 hover:bg-green-600/40 border-green-600/40 text-green-300'
