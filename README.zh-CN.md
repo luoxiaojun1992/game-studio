@@ -107,7 +107,7 @@ npm run server
 
 ## Docker 部署
 
-如需容器化部署，请参考 [README-Docker.zh-CN.md](./README-Docker.zh-CN.md)。
+如需容器化部署，请参考 [README-Docker.zh-CN.md](./docs/README-Docker.zh-CN.md)。
 
 ## 目录结构
 
@@ -131,11 +131,15 @@ game-studio/
 ├── output/                 # 提案/游戏产出目录（运行时生成）
 ├── docker-compose.yml
 ├── README.md
-├── README-Docker.md
-├── README-Docker.zh-CN.md
-├── README.zh-CN.md
-├── DEVELOPMENT.md
-└── DEVELOPMENT.zh-CN.md
+├── docs/
+│   ├── README-Docker.md
+│   ├── README-Docker.zh-CN.md
+│   ├── DEVELOPMENT.md
+│   ├── DEVELOPMENT.zh-CN.md
+│   ├── ARCHITECTURE.md
+│   ├── ARCHITECTURE.zh-CN.md
+│   └── images/
+└── README.zh-CN.md
 ```
 
 ## API 概览
@@ -162,8 +166,8 @@ game-studio/
 
 ## 二次开发
 
-详见 [DEVELOPMENT.zh-CN.md](./DEVELOPMENT.zh-CN.md)。
+详见 [DEVELOPMENT.zh-CN.md](./docs/DEVELOPMENT.zh-CN.md)。
 
 ## 架构文档
 
-详见 [ARCHITECTURE.zh-CN.md](./ARCHITECTURE.zh-CN.md)。
+详见 [ARCHITECTURE.zh-CN.md](./docs/ARCHITECTURE.zh-CN.md)。

@@ -108,7 +108,7 @@ npm run server
 
 ## Docker Deployment
 
-For containerized deployment, see [README-Docker.md](./README-Docker.md).
+For containerized deployment, see [README-Docker.md](./docs/README-Docker.md).
 
 ## Project Structure
 
@@ -132,11 +132,15 @@ game-studio/
 ├── output/                 # Proposal/game outputs (runtime-generated)
 ├── docker-compose.yml
 ├── README.md
-├── README-Docker.md
-├── README-Docker.zh-CN.md
-├── README.zh-CN.md
-├── DEVELOPMENT.md
-└── DEVELOPMENT.zh-CN.md
+├── docs/
+│   ├── README-Docker.md
+│   ├── README-Docker.zh-CN.md
+│   ├── DEVELOPMENT.md
+│   ├── DEVELOPMENT.zh-CN.md
+│   ├── ARCHITECTURE.md
+│   ├── ARCHITECTURE.zh-CN.md
+│   └── images/
+└── README.zh-CN.md
 ```
 
 ## API Overview
@@ -163,8 +167,8 @@ Main endpoints (prefix `/api`):
 
 ## Extension Development
 
-See [DEVELOPMENT.md](./DEVELOPMENT.md).
+See [DEVELOPMENT.md](./docs/DEVELOPMENT.md).
 
 ## Architecture Documentation
 
-See [ARCHITECTURE.md](./ARCHITECTURE.md).
+See [ARCHITECTURE.md](./docs/ARCHITECTURE.md).
