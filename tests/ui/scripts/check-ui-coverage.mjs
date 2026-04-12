@@ -22,10 +22,10 @@ const walkSuites = (suite) => {
     const title = String(spec.title || '');
     const match = title.match(/\[(UI-\d+)\]/);
     if (!match) continue;
-    const testWasExecuted = (spec.tests || []).some(test =>
+    const testRan = (spec.tests || []).some(test =>
       (test.results || []).some(result => ['passed', 'failed'].includes(result.status))
     );
-    if (testWasExecuted) covered.add(match[1]);
+    if (testRan) covered.add(match[1]);
   }
   for (const child of suite.suites || []) walkSuites(child);
 };
