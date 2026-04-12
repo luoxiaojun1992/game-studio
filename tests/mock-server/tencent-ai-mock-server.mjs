@@ -3,6 +3,8 @@ import { URL } from 'node:url';
 import { randomUUID } from 'node:crypto';
 
 const PORT = Number(process.env.MOCK_SERVER_PORT || 3001);
+const MAX_MOCK_DELAY_MS = 5_000;
+const MAX_INJECTED_MOCKS = 100;
 
 const agents = [
   { id: 'engineer', name: 'Engineer', role: 'engineer', state: { id: 'engineer', status: 'idle', currentTask: null, lastMessage: null, lastActiveAt: null, isPaused: false } },
@@ -55,7 +57,7 @@ const normalizeDelayMs = (value) => {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return 0;
   if (parsed <= 0) return 0;
-  return Math.min(parsed, 30_000);
+  return Math.min(parsed, MAX_MOCK_DELAY_MS);
 };
 
 const resolveInjectedMock = (method, pathname) => {
@@ -182,6 +184,9 @@ const server = http.createServer(async (req, res) => {
         once: !!body.once,
         sse: !!body.sse
       };
+      if (injectedMocks.length >= MAX_INJECTED_MOCKS) {
+        return sendJson(res, 429, { error: `too many injected mocks; limit is ${MAX_INJECTED_MOCKS}` });
+      }
       injectedMocks.push(mock);
       return sendJson(res, 201, { mock });
     } catch (error) {
