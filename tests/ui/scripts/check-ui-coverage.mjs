@@ -8,9 +8,9 @@ const threshold = Number(thresholdArg || process.env.UI_COVERAGE_THRESHOLD || 90
 
 const results = JSON.parse(fs.readFileSync(resultsPath, 'utf8'));
 const cases = JSON.parse(fs.readFileSync(casesPath, 'utf8'));
-const requiredCaseIds = Array.isArray(cases.requiredCaseIds) ? cases.requiredCaseIds : null;
+const requiredCaseIds = cases.requiredCaseIds;
 
-if (!requiredCaseIds || requiredCaseIds.length === 0) {
+if (!Array.isArray(requiredCaseIds) || requiredCaseIds.length === 0) {
   console.error('[ui-coverage] FAILED: requiredCaseIds is missing or empty in coverage cases config');
   process.exit(1);
 }
