@@ -28,6 +28,12 @@ const fail = (message, extra = {}) => {
   process.exit(1);
 };
 
+const getErrorMessage = (error) => {
+  if (error && typeof error === 'object' && 'message' in error && error.message) return String(error.message);
+  if (error != null) return String(error);
+  return 'unknown error';
+};
+
 if (!Number.isFinite(threshold)) {
   fail(`invalid threshold value: ${String(threshold)}; threshold must be a finite number`);
 }
@@ -37,12 +43,12 @@ let cases;
 try {
   results = JSON.parse(fs.readFileSync(resultsPath, 'utf8'));
 } catch (error) {
-  fail(`cannot read or parse results file ${resultsPath}: ${error?.message || 'unknown error'}`);
+  fail(`cannot read or parse results file ${resultsPath}: ${getErrorMessage(error)}`);
 }
 try {
   cases = JSON.parse(fs.readFileSync(casesPath, 'utf8'));
 } catch (error) {
-  fail(`cannot read or parse cases file ${casesPath}: ${error?.message || 'unknown error'}`);
+  fail(`cannot read or parse cases file ${casesPath}: ${getErrorMessage(error)}`);
 }
 const requiredCaseIds = cases.requiredCaseIds;
 
