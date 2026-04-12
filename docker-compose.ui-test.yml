@@ -40,7 +40,7 @@ services:
   ui-e2e:
     image: mcr.microsoft.com/playwright:v1.54.2-jammy
     working_dir: /workspace
-    command: ["sh", "-c", "npm ci --ignore-scripts && npx playwright install chromium && until curl -sf http://ui-app:4173 >/dev/null; do echo 'waiting for ui-app...'; sleep 2; done && npm run test:ui:ci"]
+    command: ["sh", "-c", "npm ci --ignore-scripts && npx playwright install chromium && npm run test:ui:ci"]
     environment:
       - CI=true
       - UI_BASE_URL=http://ui-app:4173
