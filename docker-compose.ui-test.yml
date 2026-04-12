@@ -9,6 +9,12 @@ services:
       - ./:/workspace
     ports:
       - "3001:3001"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3001/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
 
   ui-app:
     image: node:20
@@ -20,9 +26,16 @@ services:
       - ./:/workspace
       - /workspace/node_modules
     depends_on:
-      - ui-mock-server
+      ui-mock-server:
+        condition: service_healthy
     ports:
       - "4173:4173"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4173"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
 
   ui-e2e:
     image: mcr.microsoft.com/playwright:v1.54.2-jammy
@@ -37,5 +50,7 @@ services:
       - ./:/workspace
       - /workspace/node_modules
     depends_on:
-      - ui-app
-      - ui-mock-server
+      ui-app:
+        condition: service_healthy
+      ui-mock-server:
+        condition: service_healthy
