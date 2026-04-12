@@ -29,7 +29,7 @@ const fail = (message, extra = {}) => {
 };
 
 if (!Number.isFinite(threshold)) {
-  fail(`invalid threshold value: ${thresholdArg || process.env.UI_COVERAGE_THRESHOLD || ''}`);
+  fail(`invalid threshold value: ${thresholdArg || process.env.UI_COVERAGE_THRESHOLD || ''}; threshold must be a finite number`);
 }
 
 let results;
