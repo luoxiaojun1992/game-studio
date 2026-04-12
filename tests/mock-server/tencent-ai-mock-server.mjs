@@ -24,6 +24,9 @@ const injectedMocks = [];
 const sendJson = (res, statusCode, body, headers = {}) => {
   const payload = JSON.stringify(body);
   res.writeHead(statusCode, {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type,Authorization',
     'Content-Type': 'application/json; charset=utf-8',
     'Content-Length': Buffer.byteLength(payload),
     ...headers
@@ -48,6 +51,12 @@ const readBody = (req) => new Promise((resolve, reject) => {
 });
 
 const matchPath = (configuredPath, pathname) => configuredPath === pathname;
+const normalizeDelayMs = (value) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return 0;
+  if (parsed <= 0) return 0;
+  return Math.min(parsed, 30_000);
+};
 
 const resolveInjectedMock = (method, pathname) => {
   const idx = injectedMocks.findIndex(mock => mock.method === method && matchPath(mock.path, pathname));
@@ -65,6 +74,9 @@ const sendInjectedMock = async (res, mock) => {
   }
   if (mock.sse) {
     res.writeHead(mock.status || 200, {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type,Authorization',
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
       Connection: 'keep-alive',
@@ -81,6 +93,9 @@ const sendInjectedMock = async (res, mock) => {
 
 const writeSseInit = (req, res, projectId) => {
   res.writeHead(200, {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type,Authorization',
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
     Connection: 'keep-alive'
@@ -112,6 +127,16 @@ const server = http.createServer(async (req, res) => {
   const method = req.method || 'GET';
   const parsedUrl = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
   const pathname = parsedUrl.pathname;
+
+  if (method === 'OPTIONS') {
+    res.writeHead(200, {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type,Authorization'
+    });
+    res.end();
+    return;
+  }
 
   if (pathname === '/__admin/mocks' && method === 'GET') {
     return sendJson(res, 200, { mocks: injectedMocks });
@@ -149,14 +174,14 @@ const server = http.createServer(async (req, res) => {
         status: Number(body.status || 200),
         headers: body.headers || {},
         body: body.body,
-        delayMs: Number(body.delayMs || 0),
+        delayMs: normalizeDelayMs(body.delayMs),
         once: !!body.once,
         sse: !!body.sse
       };
       injectedMocks.push(mock);
       return sendJson(res, 201, { mock });
     } catch (error) {
-      return sendJson(res, 400, { error: `invalid request body: ${error?.message || 'unknown error'}` });
+      return sendJson(res, 400, { error: `invalid request body for mock injection: ${error?.message || 'unknown parse error'}` });
     }
   }
 
@@ -198,7 +223,7 @@ const server = http.createServer(async (req, res) => {
       state.settings[id] = { project_id: id, autopilot_enabled: false };
       return sendJson(res, 201, { project });
     } catch (error) {
-      return sendJson(res, 400, { error: `invalid request body: ${error?.message || 'unknown error'}` });
+      return sendJson(res, 400, { error: `invalid request body for project creation: ${error?.message || 'unknown parse error'}` });
     }
   }
 
@@ -221,12 +246,12 @@ const server = http.createServer(async (req, res) => {
       state.settings[projectId] = next;
       return sendJson(res, 200, { settings: next });
     } catch (error) {
-      return sendJson(res, 400, { error: `invalid request body: ${error?.message || 'unknown error'}` });
+      return sendJson(res, 400, { error: `invalid request body for project settings patch: ${error?.message || 'unknown parse error'}` });
     }
   }
 
   if (pathname === '/api/observe' && method === 'GET') {
-    const projectId = normalizeProjectId(parsedUrl.searchParams.get('projectId') || 'default');
+    const projectId = normalizeProjectId(parsedUrl.searchParams.get('projectId'));
     writeSseInit(req, res, projectId);
     return;
   }

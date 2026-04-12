@@ -1,8 +1,6 @@
-version: '3.8'
-
 services:
   ui-mock-server:
-    image: node:20-alpine
+    image: node:20
     working_dir: /workspace
     command: ["node", "tests/mock-server/tencent-ai-mock-server.mjs"]
     environment:
@@ -13,13 +11,14 @@ services:
       - "3001:3001"
 
   ui-app:
-    image: node:20-alpine
+    image: node:20
     working_dir: /workspace
     command: ["sh", "-c", "npm ci && npm run dev:client -- --host 0.0.0.0 --port 4173"]
     environment:
       - VITE_API_BASE=http://ui-mock-server:3001
     volumes:
       - ./:/workspace
+      - /workspace/node_modules
     depends_on:
       - ui-mock-server
     ports:
@@ -28,7 +27,7 @@ services:
   ui-e2e:
     image: mcr.microsoft.com/playwright:v1.54.2-jammy
     working_dir: /workspace
-    command: ["sh", "-c", "npm ci && until curl -sf http://ui-app:4173 >/dev/null; do echo 'waiting for ui-app...'; sleep 2; done && npm run test:ui:ci"]
+    command: ["sh", "-c", "npm ci --ignore-scripts && npx playwright install chromium && until curl -sf http://ui-app:4173 >/dev/null; do echo 'waiting for ui-app...'; sleep 2; done && npm run test:ui:ci"]
     environment:
       - CI=true
       - UI_BASE_URL=http://ui-app:4173
@@ -36,6 +35,7 @@ services:
       - UI_COVERAGE_THRESHOLD=90
     volumes:
       - ./:/workspace
+      - /workspace/node_modules
     depends_on:
       - ui-app
       - ui-mock-server
