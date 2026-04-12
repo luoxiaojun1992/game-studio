@@ -11,7 +11,7 @@ const cases = JSON.parse(fs.readFileSync(casesPath, 'utf8'));
 const requiredCaseIds = cases.requiredCaseIds;
 
 if (!Array.isArray(requiredCaseIds) || requiredCaseIds.length === 0) {
-  console.error('[ui-coverage] FAILED: requiredCaseIds is missing or empty in coverage cases config');
+  console.error(`[ui-coverage] FAILED: requiredCaseIds is missing or empty in ${casesPath}`);
   process.exit(1);
 }
 
