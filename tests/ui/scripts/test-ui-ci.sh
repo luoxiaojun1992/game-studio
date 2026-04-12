@@ -1,4 +1,5 @@
-#!/bin/sh
+#!/bin/bash
+# Keep running after test failure so coverage/allure artifacts are still generated.
 set +e
 
 npm run test:ui
