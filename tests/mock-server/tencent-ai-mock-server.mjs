@@ -69,8 +69,9 @@ const resolveInjectedMock = (method, pathname) => {
 };
 
 const sendInjectedMock = async (res, mock) => {
-  if (mock.delayMs && mock.delayMs > 0) {
-    await new Promise(r => setTimeout(r, mock.delayMs));
+  const delayMs = normalizeDelayMs(mock.delayMs);
+  if (delayMs > 0) {
+    await new Promise(r => setTimeout(r, delayMs));
   }
   if (mock.sse) {
     res.writeHead(mock.status || 200, {
@@ -114,7 +115,10 @@ const writeSseInit = (req, res, projectId) => {
   const timer = setInterval(() => {
     res.write(': heartbeat\n\n');
   }, 15000);
-  req.on('close', () => clearInterval(timer));
+  const clearHeartbeat = () => clearInterval(timer);
+  req.on('close', clearHeartbeat);
+  res.on('close', clearHeartbeat);
+  res.on('error', clearHeartbeat);
 };
 
 const normalizeProjectId = (value) => {
