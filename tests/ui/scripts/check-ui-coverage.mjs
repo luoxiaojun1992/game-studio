@@ -29,13 +29,14 @@ const fail = (message, extra = {}) => {
 };
 
 const getErrorMessage = (error) => {
-  if (error && typeof error === 'object' && 'message' in error && error.message) return String(error.message);
+  if (error && typeof error === 'object' && 'message' in error) return String(error.message);
   if (error != null) return String(error);
   return 'unknown error';
 };
 
 if (!Number.isFinite(threshold)) {
-  fail(`invalid threshold value: ${String(threshold)}; threshold must be a finite number`);
+  const rawInput = thresholdArg || process.env.UI_COVERAGE_THRESHOLD || '';
+  fail(`invalid threshold value: ${String(threshold)} (from input: ${JSON.stringify(rawInput)}); threshold must be a finite number`);
 }
 
 let results;
