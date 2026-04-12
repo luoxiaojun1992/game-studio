@@ -5,9 +5,9 @@ const [resultsPathArg, casesPathArg, thresholdArg] = process.argv.slice(2);
 const resultsPath = resultsPathArg || 'tests/ui/artifacts/playwright-report/results.json';
 const casesPath = casesPathArg || 'tests/ui/coverage/cases.json';
 const threshold = Number(thresholdArg || process.env.UI_COVERAGE_THRESHOLD || 90);
-const summaryPath = path.resolve('tests/ui/artifacts/ui-coverage-summary.json');
 
 const writeSummary = (summary) => {
+  const summaryPath = path.resolve('tests/ui/artifacts/ui-coverage-summary.json');
   fs.mkdirSync(path.dirname(summaryPath), { recursive: true });
   fs.writeFileSync(summaryPath, JSON.stringify(summary, null, 2));
 };
@@ -29,7 +29,7 @@ const fail = (message, extra = {}) => {
 };
 
 if (!Number.isFinite(threshold)) {
-  fail(`invalid threshold value: ${thresholdArg || process.env.UI_COVERAGE_THRESHOLD || ''}; threshold must be a finite number`);
+  fail(`invalid threshold value: ${String(threshold)}; threshold must be a finite number`);
 }
 
 let results;
