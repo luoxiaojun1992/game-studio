@@ -172,3 +172,22 @@ See [DEVELOPMENT.md](./docs/DEVELOPMENT.md).
 ## Architecture Documentation
 
 See [ARCHITECTURE.md](./docs/ARCHITECTURE.md).
+
+
+## UI Testing
+
+```bash
+# Start Tencent AI mock API server
+npm run mock:server
+
+# Run UI tests (Playwright + Allure results + coverage threshold check)
+npm run test:ui:ci
+```
+
+- Playwright videos/traces and reports are written to `tests/ui/artifacts/`.
+- UI test coverage summary is generated at `tests/ui/artifacts/ui-coverage-summary.json` with a required threshold of 90%.
+- Docker Compose execution is available via:
+
+```bash
+docker compose -f docker-compose.ui-test.yml up --build --abort-on-container-exit --exit-code-from ui-e2e
+```

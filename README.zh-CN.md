@@ -171,3 +171,22 @@ game-studio/
 ## 架构文档
 
 详见 [ARCHITECTURE.zh-CN.md](./docs/ARCHITECTURE.zh-CN.md)。
+
+
+## UI 测试
+
+```bash
+# 启动 Tencent AI mock API server
+npm run mock:server
+
+# 运行 UI 测试（Playwright + Allure 结果 + 覆盖率阈值校验）
+npm run test:ui:ci
+```
+
+- Playwright 视频/trace 与报告输出在 `tests/ui/artifacts/`。
+- UI 测试覆盖率汇总输出在 `tests/ui/artifacts/ui-coverage-summary.json`，阈值要求为 90%。
+- 也可通过 Docker Compose 运行：
+
+```bash
+docker compose -f docker-compose.ui-test.yml up --build --abort-on-container-exit --exit-code-from ui-e2e
+```
