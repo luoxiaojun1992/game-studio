@@ -176,17 +176,21 @@ game-studio/
 ## UI 测试
 
 ```bash
-# 启动 Tencent AI mock API server
-npm run mock:server
-
-# 运行 UI 测试（Playwright + Allure 结果 + 覆盖率阈值校验）
-npm run test:ui:ci
+# 推荐：使用 docker compose 一键运行完整 UI 测试
+docker compose -f docker-compose.ui-test.yml up --build --abort-on-container-exit --exit-code-from ui-e2e
 ```
 
 - Playwright 视频/trace 与报告输出在 `tests/ui/artifacts/`。
 - UI 测试覆盖率汇总输出在 `tests/ui/artifacts/ui-coverage-summary.json`，阈值要求为 90%。
-- 也可通过 Docker Compose 运行：
+- 本地手动运行（需分终端）：
 
 ```bash
-docker compose -f docker-compose.ui-test.yml up --build --abort-on-container-exit --exit-code-from ui-e2e
+# 终端 1：启动 mock server
+npm run mock:server
+
+# 终端 2：启动前端并指向 mock server
+VITE_API_BASE=http://localhost:3001 npm run dev:client -- --host 0.0.0.0 --port 4173
+
+# 终端 3：执行 UI 测试 + 覆盖率 + allure 产物
+npm run test:ui:ci
 ```

@@ -30,15 +30,6 @@ test.beforeEach(async () => {
 });
 
 test('[UI-001] should load studio overview with connected state', async ({ page }) => {
-  await addMock({ method: 'GET', path: '/api/agents', status: 200, body: { agents: [
-    { id: 'engineer', name: 'Engineer', role: 'engineer', state: { id: 'engineer', status: 'idle', currentTask: null, lastMessage: null, lastActiveAt: null, isPaused: false } },
-    { id: 'architect', name: 'Architect', role: 'architect', state: { id: 'architect', status: 'idle', currentTask: null, lastMessage: null, lastActiveAt: null, isPaused: false } },
-    { id: 'game_designer', name: 'Game Designer', role: 'game_designer', state: { id: 'game_designer', status: 'idle', currentTask: null, lastMessage: null, lastActiveAt: null, isPaused: false } },
-    { id: 'biz_designer', name: 'Business Designer', role: 'biz_designer', state: { id: 'biz_designer', status: 'idle', currentTask: null, lastMessage: null, lastActiveAt: null, isPaused: false } },
-    { id: 'ceo', name: 'CEO', role: 'ceo', state: { id: 'ceo', status: 'idle', currentTask: null, lastMessage: null, lastActiveAt: null, isPaused: false } },
-    { id: 'team_builder', name: 'Team Building', role: 'team_builder', state: { id: 'team_builder', status: 'idle', currentTask: null, lastMessage: null, lastActiveAt: null, isPaused: false } }
-  ] } });
-
   await page.addInitScript(() => localStorage.setItem('game_studio_ui_language', 'en-US'));
   await page.goto('/');
 

@@ -7,12 +7,66 @@ const MAX_MOCK_DELAY_MS = 5_000;
 const MAX_INJECTED_MOCKS = 100;
 
 const agents = [
-  { id: 'engineer', name: 'Engineer', role: 'engineer', state: { id: 'engineer', status: 'idle', currentTask: null, lastMessage: null, lastActiveAt: null, isPaused: false } },
-  { id: 'architect', name: 'Architect', role: 'architect', state: { id: 'architect', status: 'idle', currentTask: null, lastMessage: null, lastActiveAt: null, isPaused: false } },
-  { id: 'game_designer', name: 'Game Designer', role: 'game_designer', state: { id: 'game_designer', status: 'idle', currentTask: null, lastMessage: null, lastActiveAt: null, isPaused: false } },
-  { id: 'biz_designer', name: 'Business Designer', role: 'biz_designer', state: { id: 'biz_designer', status: 'idle', currentTask: null, lastMessage: null, lastActiveAt: null, isPaused: false } },
-  { id: 'ceo', name: 'CEO', role: 'ceo', state: { id: 'ceo', status: 'idle', currentTask: null, lastMessage: null, lastActiveAt: null, isPaused: false } },
-  { id: 'team_builder', name: 'Team Building', role: 'team_builder', state: { id: 'team_builder', status: 'idle', currentTask: null, lastMessage: null, lastActiveAt: null, isPaused: false } }
+  {
+    id: 'engineer',
+    name: '软件工程师',
+    title: 'Software Engineer',
+    emoji: '👨‍💻',
+    color: '#0052D9',
+    description: '负责所有技术方案设计、软件开发和测试工作',
+    responsibilities: ['技术方案设计与评估', '游戏功能开发实现', '代码编写与软件测试', '技术问题排查', '交付可运行的游戏成品'],
+    state: { id: 'engineer', status: 'idle', currentTask: null, lastMessage: null, lastActiveAt: null, isPaused: false }
+  },
+  {
+    id: 'architect',
+    name: '架构师',
+    title: 'Solution Architect',
+    emoji: '🏗️',
+    color: '#00A870',
+    description: '负责整体架构设计和技术方案评审',
+    responsibilities: ['整体技术架构设计', '技术选型决策', '代码质量评审', '性能优化指导', '技术规范制定'],
+    state: { id: 'architect', status: 'idle', currentTask: null, lastMessage: null, lastActiveAt: null, isPaused: false }
+  },
+  {
+    id: 'game_designer',
+    name: '游戏策划',
+    title: 'Game Designer',
+    emoji: '🎮',
+    color: '#9B30FF',
+    description: '负责新游戏的策划和设计',
+    responsibilities: ['游戏概念设计', '游戏玩法规则设计', '关卡和内容设计', 'UI 设计与用户体验设计', '游戏数值平衡'],
+    state: { id: 'game_designer', status: 'idle', currentTask: null, lastMessage: null, lastActiveAt: null, isPaused: false }
+  },
+  {
+    id: 'biz_designer',
+    name: '商业策划',
+    title: 'Business Designer',
+    emoji: '💼',
+    color: '#E37318',
+    description: '负责游戏商业模式的策划',
+    responsibilities: ['商业模式设计', '盈利方案规划', '市场分析', '定价策略', '运营策略'],
+    state: { id: 'biz_designer', status: 'idle', currentTask: null, lastMessage: null, lastActiveAt: null, isPaused: false }
+  },
+  {
+    id: 'ceo',
+    name: 'CEO',
+    title: 'Chief Executive Officer',
+    emoji: '👔',
+    color: '#C9353F',
+    description: '负责评审游戏策划和商业策划',
+    responsibilities: ['策划案综合评审', '商业决策审批', '团队协调管理', '产品方向把控', '最终方案决策'],
+    state: { id: 'ceo', status: 'idle', currentTask: null, lastMessage: null, lastActiveAt: null, isPaused: false }
+  },
+  {
+    id: 'team_builder',
+    name: '团队建设',
+    title: 'Team Building Agent',
+    emoji: '🧠',
+    color: '#2F7DFF',
+    description: '负责提案、任务、交接、日志、记忆的总结提炼与高价值沉淀',
+    responsibilities: ['汇总项目最新提案、任务、交接、日志、记忆', '提炼可复用的高价值经验与决策', '将高价值结论沉淀为长期记忆', '输出团队协作改进建议'],
+    state: { id: 'team_builder', status: 'idle', currentTask: null, lastMessage: null, lastActiveAt: null, isPaused: false }
+  }
 ];
 
 const initialData = () => ({

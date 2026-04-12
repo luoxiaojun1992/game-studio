@@ -15,7 +15,7 @@
     "test:ui": "playwright test -c tests/ui/playwright.config.ts",
     "test:ui:coverage": "node tests/ui/scripts/check-ui-coverage.mjs tests/ui/artifacts/playwright-report/results.json tests/ui/coverage/cases.json 90",
     "test:ui:allure": "sh -c \"allure generate tests/ui/artifacts/allure-results --clean -o tests/ui/artifacts/allure-report || allure generate artifacts/allure-results --clean -o tests/ui/artifacts/allure-report || (echo '[warn] allure generate skipped; java not available' && mkdir -p tests/ui/artifacts/allure-report && (cp -r tests/ui/artifacts/allure-results tests/ui/artifacts/allure-report/allure-results || cp -r artifacts/allure-results tests/ui/artifacts/allure-report/allure-results || true))\"",
-    "test:ui:ci": "npm run test:ui && npm run test:ui:coverage && npm run test:ui:allure"
+    "test:ui:ci": "sh -c 'set +e; npm run test:ui; test_exit=$?; npm run test:ui:coverage; coverage_exit=$?; npm run test:ui:allure; allure_exit=$?; if [ $test_exit -ne 0 ]; then exit $test_exit; fi; if [ $coverage_exit -ne 0 ]; then exit $coverage_exit; fi; exit $allure_exit'"
   },
   "dependencies": {
     "@tdesign-react/aigc": "^0.1.0-alpha.1",
