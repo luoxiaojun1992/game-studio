@@ -5,17 +5,53 @@ const [resultsPathArg, casesPathArg, thresholdArg] = process.argv.slice(2);
 const resultsPath = resultsPathArg || 'tests/ui/artifacts/playwright-report/results.json';
 const casesPath = casesPathArg || 'tests/ui/coverage/cases.json';
 const threshold = Number(thresholdArg || process.env.UI_COVERAGE_THRESHOLD || 90);
+const summaryPath = path.resolve('tests/ui/artifacts/ui-coverage-summary.json');
 
-const results = JSON.parse(fs.readFileSync(resultsPath, 'utf8'));
-const cases = JSON.parse(fs.readFileSync(casesPath, 'utf8'));
+const writeSummary = (summary) => {
+  fs.mkdirSync(path.dirname(summaryPath), { recursive: true });
+  fs.writeFileSync(summaryPath, JSON.stringify(summary, null, 2));
+};
+
+const fail = (message, extra = {}) => {
+  const summary = {
+    totalCases: 0,
+    coveredCases: 0,
+    uncoveredCases: [],
+    coverage: 0,
+    threshold: Number.isFinite(threshold) ? threshold : null,
+    passed: false,
+    error: message,
+    ...extra
+  };
+  writeSummary(summary);
+  console.error(`[ui-coverage] FAILED: ${message}`);
+  process.exit(1);
+};
+
+if (!Number.isFinite(threshold)) {
+  fail(`invalid threshold value: ${thresholdArg || process.env.UI_COVERAGE_THRESHOLD || ''}`);
+}
+
+let results;
+let cases;
+try {
+  results = JSON.parse(fs.readFileSync(resultsPath, 'utf8'));
+} catch (error) {
+  fail(`cannot read or parse results file ${resultsPath}: ${error?.message || 'unknown error'}`);
+}
+try {
+  cases = JSON.parse(fs.readFileSync(casesPath, 'utf8'));
+} catch (error) {
+  fail(`cannot read or parse cases file ${casesPath}: ${error?.message || 'unknown error'}`);
+}
 const requiredCaseIds = cases.requiredCaseIds;
 
 if (!Array.isArray(requiredCaseIds) || requiredCaseIds.length === 0) {
-  console.error(`[ui-coverage] FAILED: requiredCaseIds is missing or empty in ${casesPath}`);
-  process.exit(1);
+  fail(`requiredCaseIds is missing or empty in ${casesPath}`);
 }
 
 const covered = new Set();
+const ranStatuses = new Set(['passed', 'failed', 'timedOut', 'interrupted']);
 
 const walkSuites = (suite) => {
   for (const spec of suite.specs || []) {
@@ -23,7 +59,7 @@ const walkSuites = (suite) => {
     const match = title.match(/\[(UI-\d+)\]/);
     if (!match) continue;
     const testRan = (spec.tests || []).some(test =>
-      (test.results || []).some(result => ['passed', 'failed'].includes(result.status))
+      (test.results || []).some(result => ranStatuses.has(result.status))
     );
     if (testRan) covered.add(match[1]);
   }
@@ -45,9 +81,7 @@ const summary = {
   passed: coverage >= threshold
 };
 
-const summaryPath = path.resolve('tests/ui/artifacts/ui-coverage-summary.json');
-fs.mkdirSync(path.dirname(summaryPath), { recursive: true });
-fs.writeFileSync(summaryPath, JSON.stringify(summary, null, 2));
+writeSummary(summary);
 
 console.log(`[ui-coverage] ${coveredCount}/${total} => ${coverage}% (threshold: ${threshold}%)`);
 if (!summary.passed) {
