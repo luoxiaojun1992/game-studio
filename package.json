@@ -14,7 +14,7 @@
     "mock:server": "node tests/mock-server/tencent-ai-mock-server.mjs",
     "test:ui": "playwright test -c tests/ui/playwright.config.ts",
     "test:ui:coverage": "node tests/ui/scripts/check-ui-coverage.mjs tests/ui/artifacts/playwright-report/results.json tests/ui/coverage/cases.json",
-    "test:ui:allure": "sh -c \"allure generate tests/ui/artifacts/allure-results --clean -o tests/ui/artifacts/allure-report || allure generate artifacts/allure-results --clean -o tests/ui/artifacts/allure-report || (echo '[warn] allure generate skipped; java not available' && mkdir -p tests/ui/artifacts/allure-report && (cp -r tests/ui/artifacts/allure-results tests/ui/artifacts/allure-report/allure-results || cp -r artifacts/allure-results tests/ui/artifacts/allure-report/allure-results || true))\"",
+    "test:ui:allure": "sh -c \"allure generate tests/ui/artifacts/allure-results --clean -o tests/ui/artifacts/allure-report || allure generate artifacts/allure-results --clean -o tests/ui/artifacts/allure-report || (echo '[warn] allure generate skipped; java not available' && rm -rf tests/ui/artifacts/allure-report && mkdir -p tests/ui/artifacts/allure-report && (cp -r tests/ui/artifacts/allure-results tests/ui/artifacts/allure-report/allure-results || cp -r artifacts/allure-results tests/ui/artifacts/allure-report/allure-results || true))\"",
     "test:ui:ci": "bash tests/ui/scripts/test-ui-ci.sh"
   },
   "dependencies": {
