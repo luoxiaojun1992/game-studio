@@ -83,3 +83,35 @@ test('[UI-005] should navigate major tabs', async ({ page }) => {
     await expect(page.getByRole('button', { name: tab })).toBeVisible();
   }
 });
+
+test('[UI-006] should load star-office-ui and keep agent status synced via agents api', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('game_studio_ui_language', 'en-US'));
+  await page.goto('/');
+
+  await page.getByRole('button', { name: 'Studio' }).click();
+  await expect(page.locator('iframe[title="Star-Office-UI"]')).toBeVisible();
+  await expect(page.getByText('Star-Office-UI failed to load.')).toHaveCount(0);
+
+  const pauseResponse = await fetch(`${mockAdminBase}/api/agents/engineer/pause`, { method: 'POST' });
+  if (!pauseResponse.ok) {
+    throw new Error(`failed to pause agent: ${pauseResponse.status} ${await pauseResponse.text()}`);
+  }
+
+  const apiAgentsResponse = await fetch(`${mockAdminBase}/api/agents`);
+  if (!apiAgentsResponse.ok) {
+    throw new Error(`failed to get api agents: ${apiAgentsResponse.status} ${await apiAgentsResponse.text()}`);
+  }
+  const apiAgentsData = await apiAgentsResponse.json() as { agents: Array<{ id: string; state: { status: string; isPaused: boolean } }> };
+  const engineerFromApi = apiAgentsData.agents.find(agent => agent.id === 'engineer');
+  expect(engineerFromApi?.state.status).toBe('paused');
+  expect(engineerFromApi?.state.isPaused).toBe(true);
+
+  const starOfficeAgentsResponse = await fetch(`${mockAdminBase}/agents`);
+  if (!starOfficeAgentsResponse.ok) {
+    throw new Error(`failed to get star-office agents: ${starOfficeAgentsResponse.status} ${await starOfficeAgentsResponse.text()}`);
+  }
+  const starOfficeAgents = await starOfficeAgentsResponse.json() as Array<{ agentId: string; state: string; authStatus: string }>;
+  const engineerFromStarOffice = starOfficeAgents.find(agent => agent.agentId === 'default:engineer');
+  expect(engineerFromStarOffice?.state).toBe('paused');
+  expect(engineerFromStarOffice?.authStatus).toBe('offline');
+});

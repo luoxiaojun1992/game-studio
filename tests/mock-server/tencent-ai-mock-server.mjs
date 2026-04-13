@@ -68,6 +68,7 @@ const agents = [
     state: { id: 'team_builder', status: 'idle', currentTask: null, lastMessage: null, lastActiveAt: null, isPaused: false }
   }
 ];
+const defaultAgentStateById = new Map(agents.map(agent => [agent.id, { ...agent.state }]));
 
 const initialData = () => ({
   projects: [{ id: 'default', name: 'default' }],
@@ -88,6 +89,18 @@ const sendJson = (res, statusCode, body, headers = {}) => {
     ...headers
   });
   res.end(payload);
+};
+
+const sendHtml = (res, statusCode, html, headers = {}) => {
+  res.writeHead(statusCode, {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+    'Content-Type': 'text/html; charset=utf-8',
+    'Content-Length': Buffer.byteLength(html),
+    ...headers
+  });
+  res.end(html);
 };
 
 const readBody = (req) => new Promise((resolve, reject) => {
@@ -205,6 +218,10 @@ const server = http.createServer(async (req, res) => {
   if (pathname === '/__admin/reset' && method === 'POST') {
     state = initialData();
     injectedMocks.splice(0, injectedMocks.length);
+    for (const agent of agents) {
+      const initialState = defaultAgentStateById.get(agent.id);
+      if (initialState) agent.state = { ...initialState };
+    }
     return sendJson(res, 200, { success: true });
   }
 
@@ -267,6 +284,54 @@ const server = http.createServer(async (req, res) => {
 
   if (pathname === '/api/agents' && method === 'GET') {
     return sendJson(res, 200, { agents });
+  }
+
+  if (pathname.startsWith('/api/agents/') && pathname.endsWith('/pause') && method === 'POST') {
+    const agentId = pathname.replace('/api/agents/', '').replace('/pause', '');
+    const target = agents.find(agent => agent.id === agentId);
+    if (!target) return sendJson(res, 404, { error: 'agent not found' });
+    target.state = { ...target.state, status: 'paused', isPaused: true };
+    return sendJson(res, 200, { success: true, state: target.state });
+  }
+
+  if (pathname.startsWith('/api/agents/') && pathname.endsWith('/resume') && method === 'POST') {
+    const agentId = pathname.replace('/api/agents/', '').replace('/resume', '');
+    const target = agents.find(agent => agent.id === agentId);
+    if (!target) return sendJson(res, 404, { error: 'agent not found' });
+    target.state = { ...target.state, status: 'idle', isPaused: false };
+    return sendJson(res, 200, { success: true, state: target.state });
+  }
+
+  if (pathname === '/health' && method === 'GET') {
+    return sendJson(res, 200, { ok: true });
+  }
+
+  if (pathname === '/agents' && method === 'GET') {
+    const remoteAgents = agents.map(agent => ({
+      agentId: `default:${agent.id}`,
+      name: `default:${agent.id}`,
+      state: agent.state.status,
+      authStatus: agent.state.isPaused ? 'offline' : 'online'
+    }));
+    return sendJson(res, 200, remoteAgents);
+  }
+
+  if (pathname === '/star-office-ui' && method === 'GET') {
+    const html = `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Star-Office-UI Mock</title>
+</head>
+<body>
+  <main>
+    <h1>Star-Office-UI Mock</h1>
+    <p data-testid="star-office-ready">ready</p>
+  </main>
+</body>
+</html>`;
+    return sendHtml(res, 200, html);
   }
 
   if (pathname === '/api/projects' && method === 'GET') {
