@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const allureResultsDir = process.env.ALLURE_RESULTS_DIR || 'artifacts/allure-results';
+const allureResultsDir = process.env.ALLURE_RESULTS_DIR || 'tests/ui/artifacts/allure-results';
 
 export default defineConfig({
   testDir: './e2e',
@@ -12,9 +12,9 @@ export default defineConfig({
   reporter: [
     ['line'],
     ['allure-playwright', { resultsDir: allureResultsDir, detail: true, suiteTitle: false }],
-    ['json', { outputFile: 'artifacts/playwright-report/results.json' }]
+    ['json', { outputFile: 'tests/ui/artifacts/playwright-report/results.json' }]
   ],
-  outputDir: 'artifacts/test-results',
+  outputDir: 'tests/ui/artifacts/test-results',
   use: {
     baseURL: process.env.UI_BASE_URL || 'http://localhost:4173',
     trace: 'retain-on-failure',
