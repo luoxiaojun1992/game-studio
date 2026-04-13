@@ -185,13 +185,19 @@ docker compose -f docker-compose.ui-test.yml up --build --abort-on-container-exi
 - 本地手动运行（需分终端）：
 
 ```bash
-# 终端 1：启动 mock server
+# 启动前先安装依赖（一次即可）
+npm ci
+
+# 终端 1：启动 CodeBuddy SDK mock server
 npm run mock:server
 
-# 终端 2：启动前端并指向 mock server
-# 如未单独启动 Star-Office-UI，请显式将其指向 mock server 提供的 /star-office-ui
-VITE_API_BASE=http://localhost:3001 VITE_STAR_OFFICE_UI_URL=http://localhost:3001/star-office-ui npm run dev:client -- --host 0.0.0.0 --port 4173
+# 终端 2：启动 Studio 后端（真实 /api/*），并将 CodeBuddy SDK 请求指向 mock server
+CODEBUDDY_ENDPOINT=http://localhost:3001 CODEBUDDY_API_KEY=mock-codebuddy-key STAR_OFFICE_UI_URL=http://127.0.0.1:19000 npm run server
 
-# 终端 3：执行 UI 测试 + 覆盖率 + allure 产物
+# 终端 3：启动前端并指向真实 Studio 后端
+VITE_API_BASE=http://localhost:3000 VITE_STAR_OFFICE_UI_URL=http://127.0.0.1:19000 npm run dev:client -- --host 0.0.0.0 --port 4173
+
+# 终端 4：执行 UI 测试 + 覆盖率 + allure 产物
+STUDIO_API_BASE=http://localhost:3000 STAR_OFFICE_API_BASE=http://localhost:19000 MOCK_SERVER_ADMIN_URL=http://localhost:3001 \
 npm run test:ui:ci
 ```

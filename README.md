@@ -186,13 +186,19 @@ docker compose -f docker-compose.ui-test.yml up --build --abort-on-container-exi
 - Manual local run (requires separate terminals):
 
 ```bash
-# Terminal 1: start mock server
+# Install dependencies once before starting services/tests
+npm ci
+
+# Terminal 1: start CodeBuddy SDK mock server
 npm run mock:server
 
-# Terminal 2: start UI app and point it to mock server
-# Alternatively, run a separate Star-Office-UI instance at http://127.0.0.1:19000
-VITE_API_BASE=http://localhost:3001 VITE_STAR_OFFICE_UI_URL=http://localhost:3001/star-office-ui npm run dev:client -- --host 0.0.0.0 --port 4173
+# Terminal 2: start Studio backend (real /api/*), but route CodeBuddy SDK traffic to the mock server
+CODEBUDDY_ENDPOINT=http://localhost:3001 CODEBUDDY_API_KEY=mock-codebuddy-key STAR_OFFICE_UI_URL=http://127.0.0.1:19000 npm run server
 
-# Terminal 3: run UI tests + coverage + allure generation
+# Terminal 3: start UI app and point it to the real Studio backend
+VITE_API_BASE=http://localhost:3000 VITE_STAR_OFFICE_UI_URL=http://127.0.0.1:19000 npm run dev:client -- --host 0.0.0.0 --port 4173
+
+# Terminal 4: run UI tests + coverage + allure generation
+STUDIO_API_BASE=http://localhost:3000 STAR_OFFICE_API_BASE=http://localhost:19000 MOCK_SERVER_ADMIN_URL=http://localhost:3001 \
 npm run test:ui:ci
 ```

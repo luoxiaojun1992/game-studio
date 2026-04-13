@@ -2,7 +2,7 @@ services:
   ui-mock-server:
     image: node:20
     working_dir: /workspace
-    command: ["node", "tests/mock-server/tencent-ai-mock-server.mjs"]
+    command: ["node", "tests/mock-server/codebuddy-sdk-mock-server.mjs"]
     environment:
       - MOCK_SERVER_PORT=3001
       - MOCK_SERVER_HOST=0.0.0.0
@@ -17,12 +17,41 @@ services:
       retries: 5
       start_period: 5s
 
+  studio-backend:
+    image: node:20
+    working_dir: /workspace
+    command: ["sh", "-c", "npm ci && npm run server"]
+    environment:
+      - PORT=3000
+      - CODEBUDDY_API_KEY=mock-codebuddy-key
+      - CODEBUDDY_ENDPOINT=http://ui-mock-server:3001
+      - STAR_OFFICE_UI_URL=http://star-office-ui:19000
+      - HOME=/tmp
+      - NPM_CONFIG_CACHE=/tmp/.npm
+    volumes:
+      - ./:/workspace
+      - studio-backend-node-modules:/workspace/node_modules
+    depends_on:
+      ui-mock-server:
+        condition: service_healthy
+      star-office-ui:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
   star-office-ui:
     build:
       context: ./star-office-ui
       dockerfile: Dockerfile
     environment:
       - STAR_BACKEND_PORT=19000
+      - STAR_OFFICE_MAX_CONCURRENT=100
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:19000/health"]
       interval: 30s
@@ -36,9 +65,9 @@ services:
     # (for example: HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose ...).
     user: "${HOST_UID:-1001}:${HOST_GID:-1001}"
     working_dir: /workspace
-    command: ["sh", "-c", "npm ci && npm run dev:client -- --host 0.0.0.0 --port 4173"]
+    command: ["sh", "-c", "npm run dev:client -- --host 0.0.0.0 --port 4173"]
     environment:
-      - VITE_API_BASE=http://ui-mock-server:3001
+      - VITE_API_BASE=http://studio-backend:3000
       - VITE_STAR_OFFICE_UI_URL=http://star-office-ui:19000
       - PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
       - HOME=/tmp
@@ -46,7 +75,7 @@ services:
     volumes:
       - ./:/workspace
     depends_on:
-      ui-mock-server:
+      studio-backend:
         condition: service_healthy
       star-office-ui:
         condition: service_healthy
@@ -67,10 +96,12 @@ services:
     # (for example: HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose ...).
     user: "${HOST_UID:-1001}:${HOST_GID:-1001}"
     working_dir: /workspace
-    command: ["sh", "-c", "[ -f node_modules/.package-lock.json ] || npm ci; npm run test:ui:ci"]
+    command: ["sh", "-c", "npm run test:ui:ci"]
     environment:
       - CI=true
       - UI_BASE_URL=http://ui-app:4173
+      - STUDIO_API_BASE=http://studio-backend:3000
+      - STAR_OFFICE_API_BASE=http://star-office-ui:19000
       - MOCK_SERVER_ADMIN_URL=http://ui-mock-server:3001
       - UI_COVERAGE_THRESHOLD=90
       - ALLURE_RESULTS_DIR=tests/ui/artifacts/allure-results
@@ -82,7 +113,12 @@ services:
     depends_on:
       ui-app:
         condition: service_healthy
+      studio-backend:
+        condition: service_healthy
       ui-mock-server:
         condition: service_healthy
       star-office-ui:
         condition: service_healthy
+
+volumes:
+  studio-backend-node-modules:
