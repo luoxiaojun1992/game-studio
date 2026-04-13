@@ -190,7 +190,8 @@ docker compose -f docker-compose.ui-test.yml up --build --abort-on-container-exi
 npm run mock:server
 
 # Terminal 2: start UI app and point it to mock server
-VITE_API_BASE=http://localhost:3001 npm run dev:client -- --host 0.0.0.0 --port 4173
+# Alternatively, run a separate Star-Office-UI instance at http://127.0.0.1:19000
+VITE_API_BASE=http://localhost:3001 VITE_STAR_OFFICE_UI_URL=http://localhost:3001/star-office-ui npm run dev:client -- --host 0.0.0.0 --port 4173
 
 # Terminal 3: run UI tests + coverage + allure generation
 npm run test:ui:ci
