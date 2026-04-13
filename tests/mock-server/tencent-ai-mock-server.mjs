@@ -276,17 +276,32 @@ const server = http.createServer(async (req, res) => {
   if (pathname === '/api/projects' && method === 'POST') {
     try {
       const body = await readBody(req);
-      const id = normalizeProjectId(body?.id);
-      const name = typeof body?.name === 'string' ? body.name : id;
-      if (state.projects.some(p => p.id === id)) {
-        return sendJson(res, 409, { error: 'project already exists' });
+      const rawId = typeof body?.id === 'string' ? body.id.trim() : '';
+      if (!rawId || rawId === 'default') {
+        return sendJson(res, 400, {
+          error: 'project id is required',
+          message: 'project id is required',
+          field: 'id',
+        });
       }
+
+      const id = rawId;
+      const name = typeof body?.name === 'string' && body.name.trim() ? body.name : id;
+      if (state.projects.some(p => p.id === id)) {
+        return sendJson(res, 409, {
+          error: 'project already exists',
+          message: 'project already exists',
+          field: 'id',
+        });
+      }
+
       const project = { id, name };
       state.projects.push(project);
       state.settings[id] = { project_id: id, autopilot_enabled: false };
-      return sendJson(res, 201, { project });
+      return sendJson(res, 200, { project });
     } catch (error) {
-      return sendJson(res, 400, { error: `invalid request body for project creation: ${error?.message || 'unknown parse error'}` });
+      const message = `invalid request body for project creation: ${error?.message || 'unknown parse error'}`;
+      return sendJson(res, 400, { error: message, message });
     }
   }
 
