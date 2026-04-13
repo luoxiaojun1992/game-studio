@@ -139,7 +139,7 @@ const sendInjectedMock = async (res, mock) => {
       Connection: 'keep-alive',
       ...(mock.headers || {})
     });
-    const events = Array.isArray(mock.body) ? mock.body : [mock.body ?? { type: 'init', agents, proposals: [], games: [], logs: [], tasks: [], pendingPermissions: [], projectId: 'default' }];
+    const events = Array.isArray(mock.body) ? mock.body : [mock.body ?? { type: 'init', agents: agents.map(a => a.state), proposals: [], games: [], logs: [], tasks: [], pendingPermissions: [], projectId: 'default' }];
     for (const item of events) {
       res.write(`data: ${JSON.stringify(item)}\n\n`);
     }
