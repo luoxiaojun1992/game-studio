@@ -22,16 +22,12 @@ services:
       dockerfile: Dockerfile
     environment:
       - STAR_BACKEND_PORT=19000
-      - STAR_BACKEND_HOST=0.0.0.0
-      - STAR_BACKEND_URL=http://0.0.0.0:19000
-      - STAR_STATIC_PATH=/app/dist
-      - STAR_LOG_LEVEL=info
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:19000/health"]
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 60s
+      start_period: 10s
 
   ui-app:
     image: node:20
