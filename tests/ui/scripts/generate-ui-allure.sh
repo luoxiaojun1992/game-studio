@@ -25,9 +25,14 @@ copy_results_fallback() {
 }
 
 if command -v allure >/dev/null 2>&1 && command -v java >/dev/null 2>&1; then
-  allure generate "$PRIMARY_RESULTS" --clean -o "$OUT_DIR" && exit 0
-  allure generate "$LEGACY_RESULTS" --clean -o "$OUT_DIR" && exit 0
-  echo "[warn] allure generate failed; falling back to raw allure results copy"
+  if allure generate "$PRIMARY_RESULTS" --clean -o "$OUT_DIR"; then
+    exit 0
+  fi
+  echo "[warn] allure generate failed for $PRIMARY_RESULTS; trying $LEGACY_RESULTS"
+  if allure generate "$LEGACY_RESULTS" --clean -o "$OUT_DIR"; then
+    exit 0
+  fi
+  echo "[warn] allure generate failed for both result paths; falling back to raw allure results copy"
   copy_results_fallback
   exit 0
 fi
