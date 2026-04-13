@@ -32,8 +32,9 @@ services:
 
   ui-app:
     image: node:20
-    # Override UID/GID via environment variables when local host user differs.
-    user: "${UID:-1001}:${GID:-1001}"
+    # Override UID/GID via exported HOST_UID/HOST_GID variables when local host user differs
+    # (for example: HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose ...).
+    user: "${HOST_UID:-1001}:${HOST_GID:-1001}"
     working_dir: /workspace
     command: ["sh", "-c", "npm ci && npm run dev:client -- --host 0.0.0.0 --port 4173"]
     environment:
@@ -62,8 +63,9 @@ services:
     build:
       context: .
       dockerfile: tests/ui/Dockerfile.e2e
-    # Override UID/GID via environment variables when local host user differs.
-    user: "${UID:-1001}:${GID:-1001}"
+    # Override UID/GID via exported HOST_UID/HOST_GID variables when local host user differs
+    # (for example: HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose ...).
+    user: "${HOST_UID:-1001}:${HOST_GID:-1001}"
     working_dir: /workspace
     command: ["sh", "-c", "[ -f node_modules/.package-lock.json ] || npm ci; npm run test:ui:ci"]
     environment:
