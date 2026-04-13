@@ -58,7 +58,9 @@ services:
       start_period: 20s
 
   ui-e2e:
-    image: mcr.microsoft.com/playwright:v1.59.1-jammy
+    build:
+      context: .
+      dockerfile: tests/ui/Dockerfile.e2e
     # Override UID/GID via environment variables when local host user differs.
     user: "${UID:-1001}:${GID:-1001}"
     working_dir: /workspace
