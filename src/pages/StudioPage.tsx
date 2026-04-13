@@ -531,7 +531,7 @@ export default function StudioPage() {
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            aria-selected={activeTab === tab.key}
+            aria-pressed={activeTab === tab.key}
             className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
               activeTab === tab.key
                 ? 'bg-blue-600 text-white'

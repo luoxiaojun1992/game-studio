@@ -58,7 +58,7 @@ test('[UI-005] should navigate major tabs', async ({ page }) => {
   for (const tab of ['Team Building', 'Proposals', 'Task Board', 'Handoffs', 'Settings', 'Games', 'Logs', 'Commands']) {
     const tabButton = page.getByRole('button', { name: tab });
     await tabButton.click();
-    await expect(tabButton).toHaveAttribute('aria-selected', 'true');
+    await expect(tabButton).toHaveAttribute('aria-pressed', 'true');
   }
 });
 

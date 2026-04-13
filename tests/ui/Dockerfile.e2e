@@ -2,11 +2,5 @@ FROM mcr.microsoft.com/playwright:v1.59.1-jammy
 
 USER root
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends curl openjdk-17-jre-headless \
+  && apt-get install -y --no-install-recommends openjdk-17-jre-headless \
   && rm -rf /var/lib/apt/lists/*
-
-ARG ALLURE_VERSION=2.38.1
-RUN curl -fsSL "https://github.com/allure-framework/allure2/releases/download/${ALLURE_VERSION}/allure-${ALLURE_VERSION}.tgz" -o /tmp/allure.tgz \
-  && tar -zxf /tmp/allure.tgz -C /opt \
-  && ln -s "/opt/allure-${ALLURE_VERSION}/bin/allure" /usr/local/bin/allure \
-  && rm -f /tmp/allure.tgz

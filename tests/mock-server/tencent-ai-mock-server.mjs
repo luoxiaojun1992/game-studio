@@ -2,7 +2,16 @@ import http from 'node:http';
 import { URL } from 'node:url';
 import { randomUUID } from 'node:crypto';
 
-const PORT = Number(process.env.MOCK_SERVER_PORT || 3001);
+const parsePort = (rawPort) => {
+  const parsed = Number(rawPort);
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 65535) {
+    throw new Error(`[mock-server] invalid MOCK_SERVER_PORT: "${rawPort}" (expected integer 1-65535)`);
+  }
+  return parsed;
+};
+
+const PORT = parsePort(process.env.MOCK_SERVER_PORT || '3001');
+const HOST = process.env.MOCK_SERVER_HOST || '127.0.0.1';
 const MAX_MOCK_DELAY_MS = 5_000;
 const MAX_INJECTED_MOCKS = 100;
 
@@ -402,6 +411,6 @@ const server = http.createServer(async (req, res) => {
   return sendJson(res, 404, { error: `mock route not found: ${method} ${pathname}` });
 });
 
-server.listen(PORT, () => {
-  console.log(`[mock-server] Tencent AI mock API server listening on http://0.0.0.0:${PORT}`);
+server.listen(PORT, HOST, () => {
+  console.log(`[mock-server] Tencent AI mock API server listening on http://${HOST}:${PORT}`);
 });

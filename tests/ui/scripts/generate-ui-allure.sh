@@ -6,7 +6,12 @@ OUT_DIR="tests/ui/artifacts/allure-report"
 PRIMARY_RESULTS="tests/ui/artifacts/allure-results"
 LEGACY_RESULTS="artifacts/allure-results"
 
-if ! command -v allure >/dev/null 2>&1; then
+ALLURE_CMD=()
+if command -v allure >/dev/null 2>&1; then
+  ALLURE_CMD=(allure)
+elif npx --no-install allure --version >/dev/null 2>&1; then
+  ALLURE_CMD=(npx --no-install allure)
+else
   echo "[error] allure cli not available"
   exit 1
 fi
@@ -36,7 +41,7 @@ fi
 rm -rf "$OUT_DIR"
 mkdir -p "$OUT_DIR"
 
-allure generate "$RESULTS_DIR" --clean -o "$OUT_DIR"
+"${ALLURE_CMD[@]}" generate "$RESULTS_DIR" --clean -o "$OUT_DIR"
 
 if [ ! -f "$OUT_DIR/index.html" ]; then
   echo "[error] generated allure report is invalid: missing $OUT_DIR/index.html"
