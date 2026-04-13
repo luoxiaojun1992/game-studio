@@ -53,10 +53,10 @@ test('[UI-003] should toggle autopilot setting', async ({ page }) => {
   await page.getByRole('button', { name: 'Settings' }).click();
   await expect(page.getByText('Autopilot Mode')).toBeVisible();
 
-  const autopilotToggle = page.getByRole('button', { name: /Disabled|Enabled|已关闭|已开启/ });
-  await expect(autopilotToggle).toHaveText(/Disabled|已关闭/);
-  await autopilotToggle.click();
-  await expect(autopilotToggle).toHaveText(/Enabled|已开启/);
+  const autopilotToggleDisabled = page.getByRole('button', { name: /Disabled|已关闭/ });
+  await expect(autopilotToggleDisabled).toBeVisible();
+  await autopilotToggleDisabled.click();
+  await expect(page.getByRole('button', { name: /Enabled|已开启/ })).toBeVisible();
 });
 
 test('[UI-004] should create and switch to a new project', async ({ page }) => {

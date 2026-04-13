@@ -31,6 +31,7 @@ services:
 
   ui-app:
     image: node:20
+    # Override UID/GID via environment variables when local host user differs.
     user: "${UID:-1001}:${GID:-1001}"
     working_dir: /workspace
     command: ["sh", "-c", "npm ci && npm run dev:client -- --host 0.0.0.0 --port 4173"]
@@ -58,9 +59,10 @@ services:
 
   ui-e2e:
     image: mcr.microsoft.com/playwright:v1.59.1-jammy
+    # Override UID/GID via environment variables when local host user differs.
     user: "${UID:-1001}:${GID:-1001}"
     working_dir: /workspace
-    command: ["sh", "-c", "npm run test:ui:ci"]
+    command: ["sh", "-c", "[ -f node_modules/.package-lock.json ] || npm ci --ignore-scripts; npm run test:ui:ci"]
     environment:
       - CI=true
       - UI_BASE_URL=http://ui-app:4173
