@@ -11,7 +11,7 @@ export default defineConfig({
   timeout: 60_000,
   reporter: [
     ['line'],
-    ['allure-playwright', { outputFolder: allureResultsDir, detail: true, suiteTitle: false }],
+    ['allure-playwright', { resultsDir: allureResultsDir, detail: true, suiteTitle: false }],
     ['json', { outputFile: 'artifacts/playwright-report/results.json' }]
   ],
   outputDir: 'artifacts/test-results',

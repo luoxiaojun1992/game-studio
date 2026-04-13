@@ -28,6 +28,7 @@ jobs:
           path: |
             tests/ui/artifacts/allure-report
             tests/ui/artifacts/allure-results
+            artifacts/allure-results
             tests/ui/artifacts/test-results
             tests/ui/artifacts/ui-coverage-summary.json
           if-no-files-found: warn
