@@ -41,7 +41,10 @@ fi
 rm -rf "$OUT_DIR"
 mkdir -p "$OUT_DIR"
 
-"${ALLURE_CMD[@]}" generate "$RESULTS_DIR" --clean -o "$OUT_DIR"
+if ! "${ALLURE_CMD[@]}" generate "$RESULTS_DIR" --clean -o "$OUT_DIR"; then
+  echo "[error] allure report generation failed"
+  exit 1
+fi
 
 if [ ! -f "$OUT_DIR/index.html" ]; then
   echo "[error] generated allure report is invalid: missing $OUT_DIR/index.html"
