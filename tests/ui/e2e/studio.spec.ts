@@ -53,25 +53,22 @@ test('[UI-003] should toggle autopilot setting', async ({ page }) => {
   await page.getByRole('button', { name: 'Settings' }).click();
   await expect(page.getByText('Autopilot Mode')).toBeVisible();
 
-  await page.getByRole('button', { name: /Disabled|已关闭/ }).click();
-  await expect(page.getByText('Autopilot Mode')).toBeVisible();
+  const autopilotToggle = page.getByRole('button', { name: /Disabled|Enabled|已关闭|已开启/ });
+  await expect(autopilotToggle).toHaveText(/Disabled|已关闭/);
+  await autopilotToggle.click();
+  await expect(autopilotToggle).toHaveText(/Enabled|已开启/);
 });
 
 test('[UI-004] should create and switch to a new project', async ({ page }) => {
-  await addMock({
-    method: 'POST',
-    path: '/api/projects',
-    status: 201,
-    body: { project: { id: 'demo-ui', name: 'demo-ui' } }
-  });
-
   await page.addInitScript(() => localStorage.setItem('game_studio_ui_language', 'en-US'));
   await page.goto('/');
 
   await page.getByPlaceholder('New project name').fill('demo-ui');
   const createButton = page.getByRole('button', { name: 'Create' });
   await createButton.click();
-  await expect(createButton).toBeVisible();
+  const projectSelect = page.locator('select').first();
+  await expect(projectSelect.locator('option[value="demo-ui"]')).toHaveCount(1);
+  await expect(projectSelect).toHaveValue('demo-ui');
 });
 
 test('[UI-005] should navigate major tabs', async ({ page }) => {

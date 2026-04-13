@@ -31,15 +31,17 @@ services:
 
   ui-app:
     image: node:20
+    user: "${UID:-1001}:${GID:-1001}"
     working_dir: /workspace
     command: ["sh", "-c", "npm ci && npm run dev:client -- --host 0.0.0.0 --port 4173"]
     environment:
       - VITE_API_BASE=http://ui-mock-server:3001
       - VITE_STAR_OFFICE_UI_URL=http://star-office-ui:19000
       - PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+      - HOME=/tmp
+      - NPM_CONFIG_CACHE=/tmp/.npm
     volumes:
       - ./:/workspace
-      - /workspace/node_modules
     depends_on:
       ui-mock-server:
         condition: service_healthy
@@ -56,16 +58,19 @@ services:
 
   ui-e2e:
     image: mcr.microsoft.com/playwright:v1.59.1-jammy
+    user: "${UID:-1001}:${GID:-1001}"
     working_dir: /workspace
-    command: ["sh", "-c", "npm ci --ignore-scripts && npm run test:ui:ci"]
+    command: ["sh", "-c", "npm run test:ui:ci"]
     environment:
       - CI=true
       - UI_BASE_URL=http://ui-app:4173
       - MOCK_SERVER_ADMIN_URL=http://ui-mock-server:3001
       - UI_COVERAGE_THRESHOLD=90
+      - ALLURE_RESULTS_DIR=tests/ui/artifacts/allure-results
+      - HOME=/tmp
+      - NPM_CONFIG_CACHE=/tmp/.npm
     volumes:
       - ./:/workspace
-      - /workspace/node_modules
     depends_on:
       ui-app:
         condition: service_healthy
