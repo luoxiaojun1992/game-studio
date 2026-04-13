@@ -19,7 +19,7 @@ export default defineConfig({
     baseURL: process.env.UI_BASE_URL || 'http://localhost:4173',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
-    video: 'retain-on-failure'
+    video: process.env.CI ? 'on' : 'retain-on-failure'
   },
   expect: {
     timeout: 10_000

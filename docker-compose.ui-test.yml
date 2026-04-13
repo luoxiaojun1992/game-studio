@@ -70,7 +70,7 @@ services:
       - UI_BASE_URL=http://ui-app:4173
       - MOCK_SERVER_ADMIN_URL=http://ui-mock-server:3001
       - UI_COVERAGE_THRESHOLD=90
-      - ALLURE_RESULTS_DIR=tests/ui/artifacts/allure-results
+      - ALLURE_RESULTS_DIR=artifacts/allure-results
       - HOME=/tmp
       - NPM_CONFIG_CACHE=/tmp/.npm
     volumes:
