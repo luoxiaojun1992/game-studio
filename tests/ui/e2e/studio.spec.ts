@@ -97,7 +97,7 @@ test('[UI-006] should load star-office-ui and keep agent status synced via agent
   expect(engineerFromApi?.state.status).toBe('paused');
   expect(engineerFromApi?.state.isPaused).toBe(true);
 
-  const pickEngineer = (agents: Array<{ agentId: string; name?: string; state: string; authStatus?: string }>) =>
+  const findEngineerAgent = (agents: Array<{ agentId: string; name?: string; state: string; authStatus?: string }>) =>
     agents.find(agent =>
       agent.name === `${currentProjectId}:engineer` ||
       agent.name === 'default:engineer' ||
@@ -110,8 +110,9 @@ test('[UI-006] should load star-office-ui and keep agent status synced via agent
     throw new Error(`failed to get star-office agents: ${finalStarOfficeAgentsResponse.status} ${await finalStarOfficeAgentsResponse.text()}`);
   }
   const finalStarOfficeAgents = await finalStarOfficeAgentsResponse.json() as Array<{ agentId: string; name?: string; state: string; authStatus?: string }>;
-  const engineerFromStarOffice = pickEngineer(finalStarOfficeAgents);
+  const engineerFromStarOffice = findEngineerAgent(finalStarOfficeAgents);
   expect(engineerFromStarOffice).toBeTruthy();
   expect(typeof engineerFromStarOffice?.state).toBe('string');
-  expect(['approved', 'offline']).toContain(engineerFromStarOffice?.authStatus || 'unknown');
+  expect(engineerFromStarOffice?.authStatus).toBeTruthy();
+  expect(['approved', 'offline']).toContain(engineerFromStarOffice!.authStatus!);
 });

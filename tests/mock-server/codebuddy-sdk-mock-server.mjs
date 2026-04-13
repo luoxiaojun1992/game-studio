@@ -12,7 +12,6 @@ const parsePort = (rawPort) => {
 
 const PORT = parsePort(process.env.MOCK_SERVER_PORT || '3001');
 const HOST = process.env.MOCK_SERVER_HOST || '127.0.0.1';
-const MAX_MOCK_DELAY_MS = 5_000;
 const MAX_INJECTED_MOCKS = 100;
 const injectedMocks = [];
 
@@ -71,15 +70,7 @@ const resolveInjectedMock = (method, pathname) => {
   return mock;
 };
 
-const normalizeDelayMs = (value) => {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed) || parsed <= 0) return 0;
-  return Math.min(parsed, MAX_MOCK_DELAY_MS);
-};
-
 const sendInjectedMock = async (res, mock) => {
-  const delayMs = normalizeDelayMs(mock.delayMs);
-  if (delayMs > 0) await new Promise(r => setTimeout(r, delayMs));
   if (mock.sse) {
     const events = Array.isArray(mock.body) ? mock.body : [mock.body ?? {}];
     return sendSse(res, events, mock.status || 200, mock.headers || {});
@@ -140,14 +131,13 @@ const server = http.createServer(async (req, res) => {
         status: Number(body.status || 200),
         body: body.body ?? {},
         headers: typeof body.headers === 'object' && body.headers ? body.headers : {},
-        delayMs: body.delayMs || 0,
         once: !!body.once,
         sse: !!body.sse
       };
       injectedMocks.push(mock);
       return sendJson(res, 201, { mock });
     } catch (error) {
-      return sendJson(res, 400, { error: `invalid mock request body: ${error?.message || 'unknown parse error'}` });
+      return sendJson(res, 400, { error: `failed to parse mock request body: ${error?.message || 'invalid JSON body'}` });
     }
   }
 
