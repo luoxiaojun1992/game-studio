@@ -29,9 +29,9 @@ jobs:
             tests/ui/artifacts/allure-report
             tests/ui/artifacts/allure-results
             artifacts/allure-results
-            artifacts/test-results
+            tests/ui/artifacts/test-results
             tests/ui/artifacts/ui-coverage-summary.json
-            artifacts/playwright-report/results.json
+            tests/ui/artifacts/playwright-report/results.json
           if-no-files-found: warn
 
       - name: Teardown docker compose

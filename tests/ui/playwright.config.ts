@@ -12,9 +12,9 @@ export default defineConfig({
   reporter: [
     ['line'],
     ['allure-playwright', { resultsDir: allureResultsDir, detail: true, suiteTitle: false }],
-    ['json', { outputFile: 'tests/ui/artifacts/playwright-report/results.json' }]
+    ['json', { outputFile: 'artifacts/playwright-report/results.json' }]
   ],
-  outputDir: 'tests/ui/artifacts/test-results',
+  outputDir: 'artifacts/test-results',
   use: {
     baseURL: process.env.UI_BASE_URL || 'http://localhost:4173',
     trace: 'retain-on-failure',
