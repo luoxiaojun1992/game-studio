@@ -65,13 +65,14 @@ services:
     # Override UID/GID via environment variables when local host user differs.
     user: "${UID:-1001}:${GID:-1001}"
     working_dir: /workspace
-    command: ["sh", "-c", "[ -f node_modules/.package-lock.json ] || npm ci --ignore-scripts; npm run test:ui:ci"]
+    command: ["sh", "-c", "[ -f node_modules/.package-lock.json ] || npm ci; npm run test:ui:ci"]
     environment:
       - CI=true
       - UI_BASE_URL=http://ui-app:4173
       - MOCK_SERVER_ADMIN_URL=http://ui-mock-server:3001
       - UI_COVERAGE_THRESHOLD=90
       - ALLURE_RESULTS_DIR=tests/ui/artifacts/allure-results
+      - PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
       - HOME=/tmp
       - NPM_CONFIG_CACHE=/tmp/.npm
     volumes:
