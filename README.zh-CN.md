@@ -189,7 +189,8 @@ docker compose -f docker-compose.ui-test.yml up --build --abort-on-container-exi
 npm run mock:server
 
 # 终端 2：启动前端并指向 mock server
-VITE_API_BASE=http://localhost:3001 npm run dev:client -- --host 0.0.0.0 --port 4173
+# 如未单独启动 Star-Office-UI，请显式将其指向 mock server 提供的 /star-office-ui
+VITE_API_BASE=http://localhost:3001 VITE_STAR_OFFICE_UI_URL=http://localhost:3001/star-office-ui npm run dev:client -- --host 0.0.0.0 --port 4173
 
 # 终端 3：执行 UI 测试 + 覆盖率 + allure 产物
 npm run test:ui:ci
