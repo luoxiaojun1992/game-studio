@@ -2,26 +2,6 @@ import { test, expect } from '@playwright/test';
 
 const mockAdminBase = process.env.MOCK_SERVER_ADMIN_URL || 'http://localhost:3001';
 
-const addMock = async (route: {
-  method?: string;
-  path: string;
-  status?: number;
-  headers?: Record<string, string>;
-  body?: unknown;
-  delayMs?: number;
-  once?: boolean;
-  sse?: boolean;
-}) => {
-  const response = await fetch(`${mockAdminBase}/__admin/mocks`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(route)
-  });
-  if (!response.ok) {
-    throw new Error(`failed to add mock: ${response.status} ${await response.text()}`);
-  }
-};
-
 test.beforeEach(async () => {
   const response = await fetch(`${mockAdminBase}/__admin/reset`, { method: 'POST' });
   if (!response.ok) {

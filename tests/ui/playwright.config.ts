@@ -1,5 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const allureResultsDir = process.env.ALLURE_RESULTS_DIR || 'artifacts/allure-results';
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: false,
@@ -9,7 +11,7 @@ export default defineConfig({
   timeout: 60_000,
   reporter: [
     ['line'],
-    ['allure-playwright', { outputFolder: 'artifacts/allure-results', detail: true, suiteTitle: false }],
+    ['allure-playwright', { outputFolder: allureResultsDir, detail: true, suiteTitle: false }],
     ['json', { outputFile: 'artifacts/playwright-report/results.json' }]
   ],
   outputDir: 'artifacts/test-results',
