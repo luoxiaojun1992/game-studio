@@ -13,7 +13,7 @@
     "start": "node dist-server/server/index.js",
     "mock:server": "node tests/mock-server/tencent-ai-mock-server.mjs",
     "test:ui": "playwright test -c tests/ui/playwright.config.ts",
-    "test:ui:coverage": "node tests/ui/scripts/check-ui-coverage.mjs tests/ui/artifacts/playwright-report/results.json tests/ui/coverage/cases.json",
+    "test:ui:coverage": "node tests/ui/scripts/check-ui-coverage.mjs artifacts/playwright-report/results.json tests/ui/coverage/cases.json",
     "test:ui:allure": "bash tests/ui/scripts/generate-ui-allure.sh",
     "test:ui:ci": "bash tests/ui/scripts/test-ui-ci.sh"
   },
