@@ -16,19 +16,38 @@ services:
       retries: 5
       start_period: 5s
 
+  star-office-ui:
+    build:
+      context: ./star-office-ui
+      dockerfile: Dockerfile
+    environment:
+      - STAR_BACKEND_PORT=19000
+      - STAR_BACKEND_HOST=0.0.0.0
+      - STAR_BACKEND_URL=http://0.0.0.0:19000
+      - STAR_STATIC_PATH=/app/dist
+      - STAR_LOG_LEVEL=info
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:19000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
   ui-app:
     image: node:20
     working_dir: /workspace
     command: ["sh", "-c", "npm ci && npm run dev:client -- --host 0.0.0.0 --port 4173"]
     environment:
       - VITE_API_BASE=http://ui-mock-server:3001
-      - VITE_STAR_OFFICE_UI_URL=http://ui-mock-server:3001/star-office-ui
+      - VITE_STAR_OFFICE_UI_URL=http://star-office-ui:19000
       - PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
     volumes:
       - ./:/workspace
       - /workspace/node_modules
     depends_on:
       ui-mock-server:
+        condition: service_healthy
+      star-office-ui:
         condition: service_healthy
     ports:
       - "4173:4173"
@@ -55,4 +74,6 @@ services:
       ui-app:
         condition: service_healthy
       ui-mock-server:
+        condition: service_healthy
+      star-office-ui:
         condition: service_healthy
