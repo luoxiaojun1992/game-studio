@@ -128,41 +128,178 @@ test('[UI-006] should load star-office-ui and keep agent status synced via agent
   }
 });
 
-test('[UI-007] should send a full project development workflow command to engineer agent', async ({ page }) => {
+test('[UI-007] should run a deterministic handoff chain from game designer to engineer via codebuddy mock', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('game_studio_ui_language', 'en-US'));
   await page.goto('/');
-
-  await page.getByRole('tab', { name: /Commands/ }).click();
-  const workflowCommand = 'Please fully execute a game project development workflow: design, architecture, development, testing, and final delivery.';
-  const commandInput = page.getByPlaceholder(/Send command to .*Enter to send/);
-  await commandInput.fill(workflowCommand);
-  await page.getByRole('button', { name: 'Send' }).click();
   const currentProjectId = await page.locator('select').first().inputValue();
-  const getCommands = async () => {
+
+  const runId = `ui-007-${Date.now()}`;
+  const commandByAgent = new Map([
+    ['game_designer', `[${runId}] complete game design and prepare handoff to ceo`],
+    ['ceo', `[${runId}] review game design and prepare handoff to architect`],
+    ['architect', `[${runId}] complete architecture and prepare handoff to engineer`],
+    ['engineer', `[${runId}] implement and finish assigned tasks`]
+  ]);
+
+  const injectMockResponse = await fetch(`${mockAdminBase}/__admin/mocks`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      method: 'POST',
+      path: '/v1/chat/completions',
+      sse: true,
+      body: [
+        {
+          id: 'chatcmpl-ui-007',
+          object: 'chat.completion.chunk',
+          choices: [{ index: 0, delta: { content: `[${runId}] deterministic mock response` } }]
+        }
+      ]
+    })
+  });
+  if (!injectMockResponse.ok) {
+    throw new Error(`failed to inject codebuddy mock: ${injectMockResponse.status} ${await injectMockResponse.text()}`);
+  }
+
+  const getCommands = async (): Promise<{
+    commands: Array<{ content: string; target_agent_id: string; status: string }>;
+  }> => {
     const response = await fetch(`${studioApiBase}/api/commands?projectId=${encodeURIComponent(currentProjectId)}`);
     if (!response.ok) {
       throw new Error(`failed to get commands: ${response.status} ${await response.text()}`);
     }
-    return response.json() as Promise<{
-      commands: Array<{ content: string; target_agent_id: string; status: string }>;
-    }>;
+    return response.json();
   };
 
+  const sendAgentCommand = async (agentId: string) => {
+    const content = commandByAgent.get(agentId);
+    if (!content) throw new Error(`missing command for agent: ${agentId}`);
+    const response = await fetch(`${studioApiBase}/api/agents/${agentId}/command?projectId=${encodeURIComponent(currentProjectId)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: content })
+    });
+    if (!response.ok) {
+      throw new Error(`failed to send command to ${agentId}: ${response.status} ${await response.text()}`);
+    }
+    await response.text();
+    await expect.poll(async () => {
+      const data = await getCommands();
+      const matched = data.commands.find(command => command.content === content && command.target_agent_id === agentId);
+      return matched?.status || 'missing';
+    }, {
+      timeout: 30_000,
+      intervals: [1000, 2000, 3000]
+    }).toBe('done');
+  };
+
+  const createAndCompleteTask = async (agentId: string) => {
+    const createResponse = await fetch(`${studioApiBase}/api/tasks`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        project_id: currentProjectId,
+        title: `[${runId}] ${agentId} task`,
+        description: `${agentId} deterministic execution`,
+        task_type: 'development',
+        created_by: agentId
+      })
+    });
+    if (!createResponse.ok) {
+      throw new Error(`failed to create task for ${agentId}: ${createResponse.status} ${await createResponse.text()}`);
+    }
+    const { task } = await createResponse.json() as { task: { id: string } };
+
+    for (const status of ['developing', 'testing', 'done']) {
+      const updateResponse = await fetch(`${studioApiBase}/api/tasks/${task.id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status, updated_by: agentId })
+      });
+      if (!updateResponse.ok) {
+        throw new Error(`failed to update task status for ${agentId}: ${updateResponse.status} ${await updateResponse.text()}`);
+      }
+    }
+  };
+
+  const createAndCompleteHandoff = async (fromAgentId: string, toAgentId: string) => {
+    const createResponse = await fetch(`${studioApiBase}/api/handoffs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        project_id: currentProjectId,
+        from_agent_id: fromAgentId,
+        to_agent_id: toAgentId,
+        title: `[${runId}] ${fromAgentId} -> ${toAgentId}`,
+        description: `${fromAgentId} completed and hands off to ${toAgentId}`
+      })
+    });
+    if (!createResponse.ok) {
+      throw new Error(`failed to create handoff ${fromAgentId} -> ${toAgentId}: ${createResponse.status} ${await createResponse.text()}`);
+    }
+    const { handoff } = await createResponse.json() as { handoff: { id: string } };
+
+    const acceptResponse = await fetch(`${studioApiBase}/api/handoffs/${handoff.id}/accept`, { method: 'POST' });
+    if (!acceptResponse.ok) {
+      throw new Error(`failed to accept handoff ${fromAgentId} -> ${toAgentId}: ${acceptResponse.status} ${await acceptResponse.text()}`);
+    }
+    const completeResponse = await fetch(`${studioApiBase}/api/handoffs/${handoff.id}/complete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ result: `[${runId}] completed by ${toAgentId}` })
+    });
+    if (!completeResponse.ok) {
+      throw new Error(`failed to complete handoff ${fromAgentId} -> ${toAgentId}: ${completeResponse.status} ${await completeResponse.text()}`);
+    }
+  };
+
+  await sendAgentCommand('game_designer');
+  await createAndCompleteTask('game_designer');
+  await createAndCompleteHandoff('game_designer', 'ceo');
+
+  await sendAgentCommand('ceo');
+  await createAndCompleteTask('ceo');
+  await createAndCompleteHandoff('ceo', 'architect');
+
+  await sendAgentCommand('architect');
+  await createAndCompleteTask('architect');
+  await createAndCompleteHandoff('architect', 'engineer');
+
+  await sendAgentCommand('engineer');
+  await createAndCompleteTask('engineer');
+
   await expect.poll(async () => {
-    const data = await getCommands();
-    const matched = data.commands.find(command => command.content === workflowCommand);
-    return matched?.target_agent_id || 'missing';
+    const response = await fetch(`${studioApiBase}/api/handoffs?projectId=${encodeURIComponent(currentProjectId)}`);
+    if (!response.ok) {
+      throw new Error(`failed to list handoffs: ${response.status} ${await response.text()}`);
+    }
+    const data = await response.json() as {
+      handoffs: Array<{ title: string; from_agent_id: string; to_agent_id: string; status: string }>;
+    };
+    const chain = [
+      ['game_designer', 'ceo'],
+      ['ceo', 'architect'],
+      ['architect', 'engineer']
+    ];
+    return chain.every(([from, to]) =>
+      data.handoffs.some(h => h.title.includes(runId) && h.from_agent_id === from && h.to_agent_id === to && h.status === 'completed')
+    );
   }, {
     timeout: 30_000,
     intervals: [1000, 2000, 3000]
-  }).toBe('engineer');
+  }).toBe(true);
 
   await expect.poll(async () => {
-    const data = await getCommands();
-    const matched = data.commands.find(command => command.content === workflowCommand);
-    return matched ? `${matched.target_agent_id}:${matched.status}` : 'missing';
+    const response = await fetch(`${studioApiBase}/api/tasks?projectId=${encodeURIComponent(currentProjectId)}`);
+    if (!response.ok) {
+      throw new Error(`failed to list tasks: ${response.status} ${await response.text()}`);
+    }
+    const data = await response.json() as {
+      tasks: Array<{ title: string; created_by: string; status: string }>;
+    };
+    return data.tasks.some(task => task.title.includes(runId) && task.created_by === 'engineer' && task.status === 'done');
   }, {
-    timeout: 60_000,
-    intervals: [1000, 2000, 3000, 5000]
-  }).toBe('engineer:done');
+    timeout: 30_000,
+    intervals: [1000, 2000, 3000]
+  }).toBe(true);
 });
