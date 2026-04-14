@@ -37,14 +37,14 @@ test('[UI-002] should switch language to chinese', async ({ page }) => {
 
   await page.getByRole('button', { name: '中文' }).click();
 
-  await expect(page.getByRole('button', { name: '团队总览' })).toBeVisible();
+  await expect(page.getByRole('tab', { name: /团队总览/ })).toBeVisible();
 });
 
 test('[UI-003] should toggle autopilot setting', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('game_studio_ui_language', 'en-US'));
   await page.goto('/');
 
-  await page.getByRole('button', { name: 'Settings' }).click();
+  await page.getByRole('tab', { name: /Settings/ }).click();
   await expect(page.getByText('Autopilot Mode')).toBeVisible();
 
   const autopilotToggleDisabled = page.getByRole('button', { name: /Disabled|已关闭/ });
@@ -71,9 +71,9 @@ test('[UI-005] should navigate major tabs', async ({ page }) => {
   await page.goto('/');
 
   for (const tab of ['Team Building', 'Proposals', 'Task Board', 'Handoffs', 'Settings', 'Games', 'Logs', 'Commands']) {
-    const tabButton = page.getByRole('button', { name: tab });
+    const tabButton = page.getByRole('tab', { name: tab });
     await tabButton.click();
-    await expect(tabButton).toHaveAttribute('aria-pressed', 'true');
+    await expect(tabButton).toHaveAttribute('aria-selected', 'true');
   }
 });
 
@@ -81,7 +81,7 @@ test('[UI-006] should load star-office-ui and keep agent status synced via agent
   await page.addInitScript(() => localStorage.setItem('game_studio_ui_language', 'en-US'));
   await page.goto('/');
 
-  await page.getByRole('button', { name: 'Studio' }).click();
+  await page.getByRole('tab', { name: /Studio/ }).click();
   await expect(page.locator('iframe[title="Star-Office-UI"]')).toBeVisible();
   await expect(page.getByText('Star-Office-UI failed to load.')).toHaveCount(0);
 
