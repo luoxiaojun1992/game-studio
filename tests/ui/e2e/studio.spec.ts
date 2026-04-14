@@ -127,3 +127,27 @@ test('[UI-006] should load star-office-ui and keep agent status synced via agent
     expect(typeof sampleAgent.state).toBe('string');
   }
 });
+
+test('[UI-007] should send a full project development workflow command to engineer agent', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('game_studio_ui_language', 'en-US'));
+  await page.goto('/');
+
+  await page.getByRole('tab', { name: /Commands/ }).click();
+  const workflowCommand = 'Please fully execute a game project development workflow: design, architecture, development, testing, and final delivery.';
+  const commandInput = page.getByPlaceholder(/Send command to .*Enter to send/);
+  await commandInput.fill(workflowCommand);
+  await page.getByRole('button', { name: 'Send' }).click();
+
+  await expect.poll(async () => {
+    const currentProjectId = await page.locator('select').first().inputValue();
+    const response = await fetch(`${studioApiBase}/api/commands?projectId=${encodeURIComponent(currentProjectId)}`);
+    if (!response.ok) {
+      throw new Error(`failed to get commands: ${response.status} ${await response.text()}`);
+    }
+    const data = await response.json() as {
+      commands: Array<{ content: string; target_agent_id: string; status: string }>;
+    };
+    const matched = data.commands.find(command => command.content === workflowCommand);
+    return matched ? `${matched.target_agent_id}:${matched.status}` : 'missing';
+  }).toBe('engineer:done');
+});
