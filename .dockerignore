@@ -35,6 +35,8 @@ logs
 coverage
 *.test.ts
 *.spec.ts
+tests/ui/artifacts
+!tests/ui/**/*.spec.ts
 
 # Git
 .git

@@ -526,11 +526,18 @@ export default function StudioPage() {
       )}
 
       
-      <nav className="shrink-0 flex items-center gap-1 px-6 py-2 bg-gray-900/50 border-b border-gray-800">
+      <nav
+        aria-label="Studio sections"
+        role="tablist"
+        className="shrink-0 flex items-center gap-1 px-6 py-2 bg-gray-900/50 border-b border-gray-800"
+      >
         {TABS.map(tab => (
           <button
             key={tab.key}
+            type="button"
+            role="tab"
             onClick={() => setActiveTab(tab.key)}
+            aria-selected={activeTab === tab.key}
             className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
               activeTab === tab.key
                 ? 'bg-blue-600 text-white'

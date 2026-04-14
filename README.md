@@ -172,3 +172,33 @@ See [DEVELOPMENT.md](./docs/DEVELOPMENT.md).
 ## Architecture Documentation
 
 See [ARCHITECTURE.md](./docs/ARCHITECTURE.md).
+
+
+## UI Testing
+
+```bash
+# Recommended: run complete UI tests with docker compose
+mkdir -p tests/ui/artifacts
+docker compose -f docker-compose.ui-test.yml up --build --abort-on-container-exit --exit-code-from ui-e2e
+```
+
+- Playwright videos/traces and reports are written to `tests/ui/artifacts/`.
+- UI test coverage summary is generated at `tests/ui/artifacts/ui-coverage-summary.json` with a required threshold of 90%.
+- Manual local run (requires separate terminals):
+
+```bash
+# Install dependencies once before starting services/tests
+npm ci
+
+# Terminal 1: start CodeBuddy SDK mock server
+npm run mock:server
+
+# Terminal 2: start Studio backend (real /api/*), but route CodeBuddy SDK traffic to the mock server
+CODEBUDDY_ENDPOINT=http://localhost:3001 CODEBUDDY_API_KEY=mock-codebuddy-key STAR_OFFICE_UI_URL=http://127.0.0.1:19000 npm run server
+
+# Terminal 3: start UI app and point it to the real Studio backend
+VITE_API_BASE=http://localhost:3000 VITE_STAR_OFFICE_UI_URL=http://127.0.0.1:19000 npm run dev:client -- --host 0.0.0.0 --port 4173
+
+# Terminal 4: run UI tests + coverage + allure generation
+STUDIO_API_BASE=http://localhost:3000 STAR_OFFICE_API_BASE=http://localhost:19000 CODEBUDDY_MOCK_ADMIN_URL=http://localhost:3001 npm run test:ui:ci
+```
