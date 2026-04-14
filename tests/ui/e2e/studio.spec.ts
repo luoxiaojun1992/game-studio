@@ -119,6 +119,7 @@ test('[UI-006] should load star-office-ui and keep agent status synced via agent
     expect(engineerFromStarOffice.authStatus).toBeTruthy();
     expect(['approved', 'offline']).toContain(engineerFromStarOffice.authStatus!);
   } else {
+    // Fallback validation for transient registration lag while still checking /agents API schema.
     expect(finalStarOfficeAgents.length).toBeGreaterThan(0);
     const sampleAgent = finalStarOfficeAgents[0];
     expect(typeof sampleAgent.agentId).toBe('string');
