@@ -177,8 +177,6 @@ test('[UI-007] should run a deterministic handoff chain from game designer to en
     intervals: [1000, 2000, 3000]
   }).toBe(true);
 
-  const currentProjectId = testProjectId;
-
   const commandByAgent = new Map([
     ['game_designer', `[${runId}] complete game design and prepare handoff to ceo`],
     ['ceo', `[${runId}] review game design and prepare handoff to architect`],
@@ -209,7 +207,7 @@ test('[UI-007] should run a deterministic handoff chain from game designer to en
   const getCommands = async (): Promise<{
     commands: Array<{ content: string; target_agent_id: string; status: string }>;
   }> => {
-    const response = await fetch(`${studioApiBase}/api/commands?projectId=${encodeURIComponent(currentProjectId)}`);
+    const response = await fetch(`${studioApiBase}/api/commands?projectId=${encodeURIComponent(testProjectId)}`);
     if (!response.ok) {
       throw new Error(`failed to get commands: ${response.status} ${await response.text()}`);
     }
@@ -219,7 +217,7 @@ test('[UI-007] should run a deterministic handoff chain from game designer to en
   const sendAgentCommand = async (agentId: string) => {
     const content = commandByAgent.get(agentId);
     if (!content) throw new Error(`missing command for agent: ${agentId}`);
-    const response = await fetch(`${studioApiBase}/api/agents/${agentId}/command?projectId=${encodeURIComponent(currentProjectId)}`, {
+    const response = await fetch(`${studioApiBase}/api/agents/${agentId}/command?projectId=${encodeURIComponent(testProjectId)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: content })
@@ -245,7 +243,7 @@ test('[UI-007] should run a deterministic handoff chain from game designer to en
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        project_id: currentProjectId,
+        project_id: testProjectId,
         title: `[${runId}] ${agentId} task`,
         description: `${agentId} deterministic execution`,
         task_type: 'development',
@@ -274,7 +272,7 @@ test('[UI-007] should run a deterministic handoff chain from game designer to en
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        project_id: currentProjectId,
+        project_id: testProjectId,
         from_agent_id: fromAgentId,
         to_agent_id: toAgentId,
         title: `[${runId}] ${fromAgentId} -> ${toAgentId}`,
@@ -316,7 +314,7 @@ test('[UI-007] should run a deterministic handoff chain from game designer to en
   await createAndCompleteTask('engineer');
 
   await expect.poll(async () => {
-    const response = await fetch(`${studioApiBase}/api/handoffs?projectId=${encodeURIComponent(currentProjectId)}`);
+    const response = await fetch(`${studioApiBase}/api/handoffs?projectId=${encodeURIComponent(testProjectId)}`);
     if (!response.ok) {
       throw new Error(`failed to list handoffs: ${response.status} ${await response.text()}`);
     }
@@ -337,7 +335,7 @@ test('[UI-007] should run a deterministic handoff chain from game designer to en
   }).toBe(true);
 
   await expect.poll(async () => {
-    const response = await fetch(`${studioApiBase}/api/tasks?projectId=${encodeURIComponent(currentProjectId)}`);
+    const response = await fetch(`${studioApiBase}/api/tasks?projectId=${encodeURIComponent(testProjectId)}`);
     if (!response.ok) {
       throw new Error(`failed to list tasks: ${response.status} ${await response.text()}`);
     }
