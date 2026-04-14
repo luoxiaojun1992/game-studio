@@ -120,5 +120,9 @@ test('[UI-006] should load star-office-ui and keep agent status synced via agent
     expect(['approved', 'offline']).toContain(engineerFromStarOffice.authStatus!);
   } else {
     expect(finalStarOfficeAgents.length).toBeGreaterThan(0);
+    const sampleAgent = finalStarOfficeAgents[0];
+    expect(typeof sampleAgent.agentId).toBe('string');
+    expect(sampleAgent.agentId.length).toBeGreaterThan(0);
+    expect(typeof sampleAgent.state).toBe('string');
   }
 });
