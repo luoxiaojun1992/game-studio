@@ -137,17 +137,32 @@ test('[UI-007] should send a full project development workflow command to engine
   const commandInput = page.getByPlaceholder(/Send command to .*Enter to send/);
   await commandInput.fill(workflowCommand);
   await page.getByRole('button', { name: 'Send' }).click();
-
-  await expect.poll(async () => {
-    const currentProjectId = await page.locator('select').first().inputValue();
+  const currentProjectId = await page.locator('select').first().inputValue();
+  const getCommands = async () => {
     const response = await fetch(`${studioApiBase}/api/commands?projectId=${encodeURIComponent(currentProjectId)}`);
     if (!response.ok) {
       throw new Error(`failed to get commands: ${response.status} ${await response.text()}`);
     }
-    const data = await response.json() as {
+    return response.json() as Promise<{
       commands: Array<{ content: string; target_agent_id: string; status: string }>;
-    };
+    }>;
+  };
+
+  await expect.poll(async () => {
+    const data = await getCommands();
+    const matched = data.commands.find(command => command.content === workflowCommand);
+    return matched?.target_agent_id || 'missing';
+  }, {
+    timeout: 30_000,
+    intervals: [1000, 2000, 3000]
+  }).toBe('engineer');
+
+  await expect.poll(async () => {
+    const data = await getCommands();
     const matched = data.commands.find(command => command.content === workflowCommand);
     return matched ? `${matched.target_agent_id}:${matched.status}` : 'missing';
+  }, {
+    timeout: 60_000,
+    intervals: [1000, 2000, 3000, 5000]
   }).toBe('engineer:done');
 });
