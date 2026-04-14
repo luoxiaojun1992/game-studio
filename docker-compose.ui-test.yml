@@ -18,24 +18,24 @@ services:
       start_period: 5s
 
   studio-backend:
-    image: node:20
-    working_dir: /workspace
-    command: ["sh", "-c", "npm ci && npm run server"]
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+      target: builder
+    working_dir: /app
+    command: ["npm", "run", "server"]
     environment:
       - PORT=3000
       - CODEBUDDY_API_KEY=mock-codebuddy-key
       - CODEBUDDY_ENDPOINT=http://codebuddy-sdk-mock:3001
-      - STAR_OFFICE_UI_URL=http://star-office-ui:19000
-      - HOME=/tmp
-      - NPM_CONFIG_CACHE=/tmp/.npm
-    volumes:
-      - ./:/workspace
-      - studio-backend-node-modules:/workspace/node_modules
+      - STAR_OFFICE_UI_URL=http://starofficeui:19000
     depends_on:
       codebuddy-sdk-mock:
         condition: service_healthy
       star-office-ui:
         condition: service_healthy
+    links:
+      - star-office-ui
     ports:
       - "3000:3000"
     healthcheck:
@@ -52,6 +52,10 @@ services:
     environment:
       - STAR_BACKEND_PORT=19000
       - STAR_OFFICE_MAX_CONCURRENT=100
+    networks:
+      default:
+        aliases:
+          - starofficeui
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:19000/health"]
       interval: 30s
@@ -60,29 +64,21 @@ services:
       start_period: 10s
 
   ui-app:
-    image: node:20
-    # Override UID/GID via exported HOST_UID/HOST_GID variables when local host user differs
-    # (for example: HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose ...).
-    user: "${HOST_UID:-1001}:${HOST_GID:-1001}"
-    working_dir: /workspace
-    command: ["sh", "-c", "npm run dev:client -- --host 0.0.0.0 --port 4173"]
-    environment:
-      - VITE_API_BASE=http://studio-backend:3000
-      - VITE_STAR_OFFICE_UI_URL=http://star-office-ui:19000
-      - PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
-      - HOME=/tmp
-      - NPM_CONFIG_CACHE=/tmp/.npm
-    volumes:
-      - ./:/workspace
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        VITE_API_BASE: http://studio-backend:3000
+        VITE_STAR_OFFICE_UI_URL: http://star-office-ui:19000
     depends_on:
       studio-backend:
         condition: service_healthy
       star-office-ui:
         condition: service_healthy
     ports:
-      - "4173:4173"
+      - "4173:80"
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://localhost:4173').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1 || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -99,7 +95,7 @@ services:
     command: ["sh", "-c", "npm run test:ui:ci"]
     environment:
       - CI=true
-      - UI_BASE_URL=http://ui-app:4173
+      - UI_BASE_URL=http://ui-app
       - STUDIO_API_BASE=http://studio-backend:3000
       - STAR_OFFICE_API_BASE=http://star-office-ui:19000
       - CODEBUDDY_MOCK_ADMIN_URL=http://codebuddy-sdk-mock:3001
@@ -119,6 +115,3 @@ services:
         condition: service_healthy
       star-office-ui:
         condition: service_healthy
-
-volumes:
-  studio-backend-node-modules:

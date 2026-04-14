@@ -12,6 +12,12 @@ RUN npm ci
 # 复制源代码
 COPY . .
 
+# Build-time Vite env
+ARG VITE_API_BASE=http://localhost:3000
+ARG VITE_STAR_OFFICE_UI_URL=http://127.0.0.1:19000
+ENV VITE_API_BASE=${VITE_API_BASE}
+ENV VITE_STAR_OFFICE_UI_URL=${VITE_STAR_OFFICE_UI_URL}
+
 # 构建前端
 RUN npm run build
 
