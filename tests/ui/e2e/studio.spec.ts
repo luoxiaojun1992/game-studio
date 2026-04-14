@@ -133,7 +133,7 @@ test('[UI-007] should run a deterministic handoff chain from game designer to en
   await page.goto('/');
   const currentProjectId = await page.locator('select').first().inputValue();
 
-  const runId = `ui-007-${globalThis.crypto?.randomUUID?.() ?? Date.now().toString(36)}`;
+  const runId = `ui-007-${globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`}`;
   const commandByAgent = new Map([
     ['game_designer', `[${runId}] complete game design and prepare handoff to ceo`],
     ['ceo', `[${runId}] review game design and prepare handoff to architect`],
