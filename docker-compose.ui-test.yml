@@ -87,6 +87,7 @@ services:
       context: .
       dockerfile: tests/ui/Dockerfile.e2e
     working_dir: /workspace
+    user: "${UID:-1000}:${GID:-1000}"
     command: ["sh", "-c", "npm run test:ui:ci"]
     environment:
       - UI_BASE_URL=http://ui-app
