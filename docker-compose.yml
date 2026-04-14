@@ -35,6 +35,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.frontend
+      args:
+        VITE_API_BASE: ${VITE_API_BASE:-http://studio-backend:3000}
+        VITE_STAR_OFFICE_UI_URL: ${VITE_STAR_OFFICE_UI_URL:-http://star-office-ui:19000}
     container_name: game-studio-frontend
     ports:
       - "${STUDIO_FRONTEND_PORT:-5173}:80"
