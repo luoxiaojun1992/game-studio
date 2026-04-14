@@ -1,6 +1,9 @@
 import { test, expect } from '@playwright/test';
 
-const mockAdminBase = process.env.MOCK_SERVER_ADMIN_URL || 'http://localhost:3001';
+const mockAdminBase =
+  process.env.CODEBUDDY_MOCK_ADMIN_URL ||
+  process.env.MOCK_SERVER_ADMIN_URL ||
+  'http://localhost:3001';
 const studioApiBase = process.env.STUDIO_API_BASE || 'http://localhost:3000';
 const starOfficeApiBase = process.env.STAR_OFFICE_API_BASE || 'http://localhost:19000';
 

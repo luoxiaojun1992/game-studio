@@ -199,5 +199,5 @@ CODEBUDDY_ENDPOINT=http://localhost:3001 CODEBUDDY_API_KEY=mock-codebuddy-key ST
 VITE_API_BASE=http://localhost:3000 VITE_STAR_OFFICE_UI_URL=http://127.0.0.1:19000 npm run dev:client -- --host 0.0.0.0 --port 4173
 
 # Terminal 4: run UI tests + coverage + allure generation
-STUDIO_API_BASE=http://localhost:3000 STAR_OFFICE_API_BASE=http://localhost:19000 MOCK_SERVER_ADMIN_URL=http://localhost:3001 npm run test:ui:ci
+STUDIO_API_BASE=http://localhost:3000 STAR_OFFICE_API_BASE=http://localhost:19000 CODEBUDDY_MOCK_ADMIN_URL=http://localhost:3001 npm run test:ui:ci
 ```

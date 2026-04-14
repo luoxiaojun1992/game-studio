@@ -1,5 +1,5 @@
 services:
-  ui-mock-server:
+  codebuddy-sdk-mock:
     image: node:20
     working_dir: /workspace
     command: ["node", "tests/mock-server/codebuddy-sdk-mock-server.mjs"]
@@ -24,7 +24,7 @@ services:
     environment:
       - PORT=3000
       - CODEBUDDY_API_KEY=mock-codebuddy-key
-      - CODEBUDDY_ENDPOINT=http://ui-mock-server:3001
+      - CODEBUDDY_ENDPOINT=http://codebuddy-sdk-mock:3001
       - STAR_OFFICE_UI_URL=http://star-office-ui:19000
       - HOME=/tmp
       - NPM_CONFIG_CACHE=/tmp/.npm
@@ -32,7 +32,7 @@ services:
       - ./:/workspace
       - studio-backend-node-modules:/workspace/node_modules
     depends_on:
-      ui-mock-server:
+      codebuddy-sdk-mock:
         condition: service_healthy
       star-office-ui:
         condition: service_healthy
@@ -102,7 +102,7 @@ services:
       - UI_BASE_URL=http://ui-app:4173
       - STUDIO_API_BASE=http://studio-backend:3000
       - STAR_OFFICE_API_BASE=http://star-office-ui:19000
-      - MOCK_SERVER_ADMIN_URL=http://ui-mock-server:3001
+      - CODEBUDDY_MOCK_ADMIN_URL=http://codebuddy-sdk-mock:3001
       - UI_COVERAGE_THRESHOLD=90
       - ALLURE_RESULTS_DIR=tests/ui/artifacts/allure-results
       - PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
@@ -115,7 +115,7 @@ services:
         condition: service_healthy
       studio-backend:
         condition: service_healthy
-      ui-mock-server:
+      codebuddy-sdk-mock:
         condition: service_healthy
       star-office-ui:
         condition: service_healthy
