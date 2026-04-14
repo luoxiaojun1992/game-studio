@@ -133,7 +133,7 @@ test('[UI-007] should run a deterministic handoff chain from game designer to en
   await page.goto('/');
   const currentProjectId = await page.locator('select').first().inputValue();
 
-  const runId = `ui-007-${Date.now()}`;
+  const runId = `ui-007-${globalThis.crypto?.randomUUID?.() ?? Date.now().toString(36)}`;
   const commandByAgent = new Map([
     ['game_designer', `[${runId}] complete game design and prepare handoff to ceo`],
     ['ceo', `[${runId}] review game design and prepare handoff to architect`],
@@ -193,6 +193,8 @@ test('[UI-007] should run a deterministic handoff chain from game designer to en
     }).toBe('done');
   };
 
+  const taskStatusFlow: Array<'developing' | 'testing' | 'done'> = ['developing', 'testing', 'done'];
+
   const createAndCompleteTask = async (agentId: string) => {
     const createResponse = await fetch(`${studioApiBase}/api/tasks`, {
       method: 'POST',
@@ -210,7 +212,7 @@ test('[UI-007] should run a deterministic handoff chain from game designer to en
     }
     const { task } = await createResponse.json() as { task: { id: string } };
 
-    for (const status of ['developing', 'testing', 'done']) {
+    for (const status of taskStatusFlow) {
       const updateResponse = await fetch(`${studioApiBase}/api/tasks/${task.id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
