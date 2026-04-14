@@ -89,7 +89,6 @@ services:
     working_dir: /workspace
     command: ["sh", "-c", "npm run test:ui:ci"]
     environment:
-      - CI=true
       - UI_BASE_URL=http://ui-app
       - STUDIO_API_BASE=http://studio-backend:3000
       - STAR_OFFICE_API_BASE=http://star-office-ui:19000
