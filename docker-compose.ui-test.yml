@@ -34,8 +34,6 @@ services:
         condition: service_healthy
       star-office-ui:
         condition: service_healthy
-    links:
-      - star-office-ui
     ports:
       - "3000:3000"
     healthcheck:
