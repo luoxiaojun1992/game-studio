@@ -87,7 +87,7 @@ services:
       context: .
       dockerfile: tests/ui/Dockerfile.e2e
     working_dir: /workspace
-    command: ["sh", "-c", "mkdir -p tests/ui/artifacts && npm run test:ui:ci"]
+    command: ["sh", "-c", "npm run test:ui:ci"]
     environment:
       - CI=true
       - UI_BASE_URL=http://ui-app
@@ -96,7 +96,6 @@ services:
       - CODEBUDDY_MOCK_ADMIN_URL=http://codebuddy-sdk-mock:3001
       - UI_COVERAGE_THRESHOLD=90
       - ALLURE_RESULTS_DIR=tests/ui/artifacts/allure-results
-      - PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
       - HOME=/tmp
       - NPM_CONFIG_CACHE=/tmp/.npm
     volumes:

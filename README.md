@@ -178,6 +178,7 @@ See [ARCHITECTURE.md](./docs/ARCHITECTURE.md).
 
 ```bash
 # Recommended: run complete UI tests with docker compose
+mkdir -p tests/ui/artifacts
 docker compose -f docker-compose.ui-test.yml up --build --abort-on-container-exit --exit-code-from ui-e2e
 ```
 

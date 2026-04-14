@@ -8,7 +8,6 @@ RUN apt-get update \
 WORKDIR /workspace
 
 COPY package*.json ./
-ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 RUN npm ci
 
 COPY . .
