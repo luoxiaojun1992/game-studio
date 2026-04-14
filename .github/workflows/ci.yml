@@ -17,13 +17,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install dependencies
-        run: npm ci
-
       - name: Run UI tests in docker compose
         run: |
-          export HOST_UID="$(id -u)"
-          export HOST_GID="$(id -g)"
           docker compose -f docker-compose.ui-test.yml up --build --abort-on-container-exit --exit-code-from ui-e2e
 
       - name: Upload Allure report artifact
@@ -43,6 +38,4 @@ jobs:
       - name: Teardown docker compose
         if: always()
         run: |
-          export HOST_UID="$(id -u)"
-          export HOST_GID="$(id -g)"
           docker compose -f docker-compose.ui-test.yml down -v

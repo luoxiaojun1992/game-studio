@@ -86,11 +86,8 @@ services:
     build:
       context: .
       dockerfile: tests/ui/Dockerfile.e2e
-    # Override UID/GID via exported HOST_UID/HOST_GID variables when local host user differs
-    # (for example: HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose ...).
-    user: "${HOST_UID:-1001}:${HOST_GID:-1001}"
     working_dir: /workspace
-    command: ["sh", "-c", "npm run test:ui:ci"]
+    command: ["sh", "-c", "mkdir -p tests/ui/artifacts && npm run test:ui:ci"]
     environment:
       - CI=true
       - UI_BASE_URL=http://ui-app
@@ -103,7 +100,7 @@ services:
       - HOME=/tmp
       - NPM_CONFIG_CACHE=/tmp/.npm
     volumes:
-      - ./:/workspace
+      - ./tests/ui/artifacts:/workspace/tests/ui/artifacts
     depends_on:
       ui-app:
         condition: service_healthy
