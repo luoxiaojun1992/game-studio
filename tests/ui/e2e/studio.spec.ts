@@ -133,18 +133,18 @@ test('[UI-007] should run a deterministic handoff chain from game designer to en
   await page.goto('/');
 
   const runId = `ui-007-${globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`}`;
-  const currentProjectId = runId;
+  const testProjectId = runId;
 
   const createProjectResponse = await fetch(`${studioApiBase}/api/projects`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id: currentProjectId, name: currentProjectId })
+    body: JSON.stringify({ id: testProjectId, name: testProjectId })
   });
   if (!createProjectResponse.ok && createProjectResponse.status !== 409) {
     throw new Error(`failed to create project for UI-007: ${createProjectResponse.status} ${await createProjectResponse.text()}`);
   }
 
-  const disableAutopilotResponse = await fetch(`${studioApiBase}/api/projects/${encodeURIComponent(currentProjectId)}/settings`, {
+  const disableAutopilotResponse = await fetch(`${studioApiBase}/api/projects/${encodeURIComponent(testProjectId)}/settings`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ autopilot_enabled: false })
@@ -156,14 +156,14 @@ test('[UI-007] should run a deterministic handoff chain from game designer to en
   const switchProjectResponse = await fetch(`${studioApiBase}/api/projects/switch`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ toProjectId: currentProjectId })
+    body: JSON.stringify({ toProjectId: testProjectId })
   });
   if (!switchProjectResponse.ok) {
     throw new Error(`failed to switch project for UI-007: ${switchProjectResponse.status} ${await switchProjectResponse.text()}`);
   }
 
   await expect.poll(async () => {
-    const response = await fetch(`${studioApiBase}/api/agents?projectId=${encodeURIComponent(currentProjectId)}`);
+    const response = await fetch(`${studioApiBase}/api/agents?projectId=${encodeURIComponent(testProjectId)}`);
     if (!response.ok) return false;
     const data = await response.json() as {
       agents: Array<{ id: string; state: { isPaused: boolean; status: string } }>;
@@ -176,6 +176,8 @@ test('[UI-007] should run a deterministic handoff chain from game designer to en
     timeout: 30_000,
     intervals: [1000, 2000, 3000]
   }).toBe(true);
+
+  const currentProjectId = testProjectId;
 
   const commandByAgent = new Map([
     ['game_designer', `[${runId}] complete game design and prepare handoff to ceo`],
