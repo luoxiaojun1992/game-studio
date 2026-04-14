@@ -7,9 +7,9 @@ const allureResultsDir = process.env.ALLURE_RESULTS_DIR || path.join(uiArtifacts
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: false,
-  forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 1 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  forbidOnly: true,
+  retries: 1,
+  workers: 1,
   timeout: 60_000,
   reporter: [
     ['line'],
@@ -21,7 +21,7 @@ export default defineConfig({
     baseURL: process.env.UI_BASE_URL || 'http://localhost:4173',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
-    video: process.env.CI ? 'on' : 'retain-on-failure'
+    video: 'on'
   },
   expect: {
     timeout: 10_000
