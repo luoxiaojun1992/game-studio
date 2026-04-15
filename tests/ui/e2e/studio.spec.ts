@@ -6,6 +6,7 @@ const mockAdminBase =
   'http://localhost:3001';
 const studioApiBase = process.env.STUDIO_API_BASE || 'http://localhost:3000';
 const starOfficeApiBase = process.env.STAR_OFFICE_API_BASE || 'http://localhost:19000';
+const longChainTestTimeoutMs = 180_000;
 
 test.beforeEach(async () => {
   const resetMockResponse = await fetch(`${mockAdminBase}/__admin/reset`, { method: 'POST' });
@@ -129,7 +130,7 @@ test('[UI-006] should load star-office-ui and keep agent status synced via agent
 });
 
 test('[UI-007] should run a deterministic handoff chain from game designer to engineer via codebuddy mock', async ({ page }) => {
-  test.setTimeout(180_000);
+  test.setTimeout(longChainTestTimeoutMs);
   await page.addInitScript(() => localStorage.setItem('game_studio_ui_language', 'en-US'));
   await page.goto('/');
 
