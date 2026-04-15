@@ -189,26 +189,24 @@ test('[UI-007] should run a deterministic handoff chain from game designer to en
     ['engineer', `[${runId}] implement and finish assigned tasks`]
   ]);
 
-  for (const mockPath of ['/chat/completions', '/v1/chat/completions']) {
-    const injectMockResponse = await fetch(`${mockAdminBase}/__admin/mocks`, {
+  const injectMockResponse = await fetch(`${mockAdminBase}/__admin/mocks`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        method: 'POST',
-        path: mockPath,
-        sse: true,
-        body: [
-          {
-            id: 'chatcmpl-ui-007',
-            object: 'chat.completion.chunk',
-            choices: [{ index: 0, delta: { content: `[${runId}] deterministic mock response` } }]
-          }
-        ]
-      })
-    });
-    if (!injectMockResponse.ok) {
-      throw new Error(`failed to inject codebuddy mock for path ${mockPath}: ${injectMockResponse.status} ${await injectMockResponse.text()}`);
-    }
+      path: '/chat/completions',
+      sse: true,
+      body: [
+        {
+          id: 'chatcmpl-ui-007',
+          object: 'chat.completion.chunk',
+          choices: [{ index: 0, delta: { content: `[${runId}] deterministic mock response` } }]
+        }
+      ]
+    })
+  });
+  if (!injectMockResponse.ok) {
+    throw new Error(`failed to inject codebuddy mock: ${injectMockResponse.status} ${await injectMockResponse.text()}`);
   }
 
   const getCommands = async (): Promise<{

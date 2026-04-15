@@ -14,6 +14,7 @@ const PORT = parsePort(process.env.MOCK_SERVER_PORT || '3001');
 const HOST = process.env.MOCK_SERVER_HOST || '127.0.0.1';
 const MAX_INJECTED_MOCKS = 100;
 const injectedMocks = [];
+const CHAT_COMPLETION_PATHS = new Set(['/chat/completions', '/v1/chat/completions']);
 
 const withCors = (headers = {}) => ({
   'Access-Control-Allow-Origin': '*',
@@ -62,8 +63,15 @@ const readBody = (req) => new Promise((resolve, reject) => {
   req.on('error', reject);
 });
 
+const normalizeInjectedMockPath = (pathname) => (
+  CHAT_COMPLETION_PATHS.has(pathname) ? '/chat/completions' : pathname
+);
+
 const resolveInjectedMock = (method, pathname) => {
-  const idx = injectedMocks.findIndex(mock => mock.method === method && mock.path === pathname);
+  const normalizedPathname = normalizeInjectedMockPath(pathname);
+  const idx = injectedMocks.findIndex(mock => (
+    mock.method === method && normalizeInjectedMockPath(mock.path) === normalizedPathname
+  ));
   if (idx < 0) return null;
   const mock = injectedMocks[idx];
   if (mock.once) injectedMocks.splice(idx, 1);
