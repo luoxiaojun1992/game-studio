@@ -229,10 +229,20 @@ test('[UI-007] should run a deterministic handoff chain from game designer to en
     if (!response.ok) {
       throw new Error(`failed to send command to ${agentId}: ${response.status} ${await response.text()}`);
     }
-    // Command endpoint streams SSE; cancel local body consumption and rely on /api/commands polling for terminal status.
-    if (response.body) {
-      await response.body.cancel();
-    }
+    // Command endpoint streams SSE; keep consuming the stream to avoid disconnect-induced server-side failures.
+    const streamDrainPromise = (async () => {
+      if (!response.body) return;
+      const reader = response.body.getReader();
+      try {
+        while (true) {
+          const { done } = await reader.read();
+          if (done) break;
+        }
+      } finally {
+        reader.releaseLock();
+      }
+    })();
+
     await expect.poll(async () => {
       const data = await getCommands();
       const matched = data.commands.find(command => command.content === content && command.target_agent_id === agentId);
@@ -241,6 +251,7 @@ test('[UI-007] should run a deterministic handoff chain from game designer to en
       timeout: 30_000,
       intervals: [1000, 2000, 3000]
     }).toBe('done');
+    await streamDrainPromise;
   };
 
   const taskStatusFlow: Array<'developing' | 'testing' | 'done'> = ['developing', 'testing', 'done'];
