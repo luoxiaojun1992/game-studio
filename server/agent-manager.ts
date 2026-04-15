@@ -8,7 +8,7 @@ import * as db from './db.js';
 import { sseBroadcaster } from './sse-broadcaster.js';
 import { createStudioToolsServer, getMemorySummaryForPrompt } from './tools.js';
 
-const CODEBUDDY_ENDPOINT = process.env.CODEBUDDY_ENDPOINT?.trim() || process.env.CODEBUDDY_BASE_URL?.trim() || undefined;
+const CODEBUDDY_BASE_URL = process.env.CODEBUDDY_BASE_URL?.trim() || undefined;
 
 export type AgentStatus = 'idle' | 'working' | 'paused' | 'error';
 
@@ -547,7 +547,7 @@ class AgentManager extends EventEmitter {
           mcpServers: {
             'studio-tools': studioToolsServer
           },
-          ...(CODEBUDDY_ENDPOINT ? { endpoint: CODEBUDDY_ENDPOINT } : {}),
+          ...(CODEBUDDY_BASE_URL ? { endpoint: CODEBUDDY_BASE_URL } : {}),
           ...(sdkSessionId ? { resume: sdkSessionId } : {})
         }
       });
