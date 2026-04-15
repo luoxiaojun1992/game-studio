@@ -155,13 +155,15 @@ test('[UI-007] should run a deterministic handoff chain from game designer to en
     throw new Error(`failed to disable autopilot for UI-007 project: ${disableAutopilotResponse.status} ${await disableAutopilotResponse.text()}`);
   }
 
-  const switchProjectResponse = await fetch(`${studioApiBase}/api/projects/switch`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ toProjectId: testProjectId })
-  });
-  if (!switchProjectResponse.ok) {
-    throw new Error(`failed to switch project for UI-007: ${switchProjectResponse.status} ${await switchProjectResponse.text()}`);
+  const deterministicChainAgents = ['game_designer', 'ceo', 'architect', 'engineer'] as const;
+
+  for (const agentId of deterministicChainAgents) {
+    const resumeResponse = await fetch(`${studioApiBase}/api/agents/${agentId}/resume?projectId=${encodeURIComponent(testProjectId)}`, {
+      method: 'POST'
+    });
+    if (!resumeResponse.ok) {
+      throw new Error(`failed to resume ${agentId} for UI-007: ${resumeResponse.status} ${await resumeResponse.text()}`);
+    }
   }
 
   await expect.poll(async () => {
@@ -170,8 +172,7 @@ test('[UI-007] should run a deterministic handoff chain from game designer to en
     const data = await response.json() as {
       agents: Array<{ id: string; state: { isPaused: boolean; status: string } }>;
     };
-    // Commands endpoint already serializes per-agent execution; preflight only needs agents to be available and resumable.
-    return ['game_designer', 'ceo', 'architect', 'engineer'].every(agentId => {
+    return deterministicChainAgents.every(agentId => {
       const matched = data.agents.find(agent => agent.id === agentId);
       return !!matched && matched.state.isPaused === false;
     });
@@ -192,7 +193,7 @@ test('[UI-007] should run a deterministic handoff chain from game designer to en
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       method: 'POST',
-      path: '/v1/chat/completions',
+      path: '/chat/completions',
       sse: true,
       body: [
         {
@@ -228,7 +229,7 @@ test('[UI-007] should run a deterministic handoff chain from game designer to en
     if (!response.ok) {
       throw new Error(`failed to send command to ${agentId}: ${response.status} ${await response.text()}`);
     }
-    await response.text();
+    await response.body?.cancel();
     await expect.poll(async () => {
       const data = await getCommands();
       const matched = data.commands.find(command => command.content === content && command.target_agent_id === agentId);

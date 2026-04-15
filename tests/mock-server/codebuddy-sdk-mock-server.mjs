@@ -153,7 +153,7 @@ const server = http.createServer(async (req, res) => {
     });
   }
 
-  if (pathname === '/v1/chat/completions' && method === 'POST') {
+  if ((pathname === '/v1/chat/completions' || pathname === '/chat/completions') && method === 'POST') {
     const body = await readBody(req).catch(() => ({}));
     const content = body?.stream ? 'mock-stream' : 'mock-response';
     if (body?.stream) {
