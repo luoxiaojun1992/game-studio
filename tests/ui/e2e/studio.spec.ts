@@ -146,10 +146,11 @@ test('[UI-007] should run a deterministic handoff chain from game designer to en
     throw new Error(`failed to create project for UI-007: ${createProjectResponse.status} ${await createProjectResponse.text()}`);
   }
 
+  const ui007AutopilotEnabled = false;
   const disableAutopilotResponse = await fetch(`${studioApiBase}/api/projects/${encodeURIComponent(testProjectId)}/settings`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ autopilot_enabled: false })
+    body: JSON.stringify({ autopilot_enabled: ui007AutopilotEnabled })
   });
   if (!disableAutopilotResponse.ok) {
     throw new Error(`failed to disable autopilot for UI-007 project: ${disableAutopilotResponse.status} ${await disableAutopilotResponse.text()}`);
@@ -188,24 +189,26 @@ test('[UI-007] should run a deterministic handoff chain from game designer to en
     ['engineer', `[${runId}] implement and finish assigned tasks`]
   ]);
 
-  const injectMockResponse = await fetch(`${mockAdminBase}/__admin/mocks`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
+  for (const mockPath of ['/chat/completions', '/v1/chat/completions']) {
+    const injectMockResponse = await fetch(`${mockAdminBase}/__admin/mocks`, {
       method: 'POST',
-      path: '/chat/completions',
-      sse: true,
-      body: [
-        {
-          id: 'chatcmpl-ui-007',
-          object: 'chat.completion.chunk',
-          choices: [{ index: 0, delta: { content: `[${runId}] deterministic mock response` } }]
-        }
-      ]
-    })
-  });
-  if (!injectMockResponse.ok) {
-    throw new Error(`failed to inject codebuddy mock: ${injectMockResponse.status} ${await injectMockResponse.text()}`);
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        method: 'POST',
+        path: mockPath,
+        sse: true,
+        body: [
+          {
+            id: 'chatcmpl-ui-007',
+            object: 'chat.completion.chunk',
+            choices: [{ index: 0, delta: { content: `[${runId}] deterministic mock response` } }]
+          }
+        ]
+      })
+    });
+    if (!injectMockResponse.ok) {
+      throw new Error(`failed to inject codebuddy mock for path ${mockPath}: ${injectMockResponse.status} ${await injectMockResponse.text()}`);
+    }
   }
 
   const getCommands = async (): Promise<{
@@ -305,6 +308,12 @@ test('[UI-007] should run a deterministic handoff chain from game designer to en
     const acceptResponse = await fetch(`${studioApiBase}/api/handoffs/${handoff.id}/accept`, { method: 'POST' });
     if (!acceptResponse.ok) {
       throw new Error(`failed to accept handoff ${fromAgentId} -> ${toAgentId}: ${acceptResponse.status} ${await acceptResponse.text()}`);
+    }
+    if (!ui007AutopilotEnabled) {
+      const confirmResponse = await fetch(`${studioApiBase}/api/handoffs/${handoff.id}/confirm`, { method: 'POST' });
+      if (!confirmResponse.ok) {
+        throw new Error(`failed to confirm handoff ${fromAgentId} -> ${toAgentId}: ${confirmResponse.status} ${await confirmResponse.text()}`);
+      }
     }
     const completeResponse = await fetch(`${studioApiBase}/api/handoffs/${handoff.id}/complete`, {
       method: 'POST',
