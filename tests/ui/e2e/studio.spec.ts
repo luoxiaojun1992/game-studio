@@ -158,7 +158,7 @@ test('[UI-007] should run a deterministic handoff chain from game designer to en
   const deterministicChainAgents = ['game_designer', 'ceo', 'architect', 'engineer'] as const;
 
   for (const agentId of deterministicChainAgents) {
-    const resumeResponse = await fetch(`${studioApiBase}/api/agents/${agentId}/resume?projectId=${encodeURIComponent(testProjectId)}`, {
+    const resumeResponse = await fetch(`${studioApiBase}/api/agents/${encodeURIComponent(agentId)}/resume?projectId=${encodeURIComponent(testProjectId)}`, {
       method: 'POST'
     });
     if (!resumeResponse.ok) {
@@ -221,7 +221,7 @@ test('[UI-007] should run a deterministic handoff chain from game designer to en
   const sendAgentCommand = async (agentId: string) => {
     const content = commandByAgent.get(agentId);
     if (!content) throw new Error(`missing command for agent: ${agentId}`);
-    const response = await fetch(`${studioApiBase}/api/agents/${agentId}/command?projectId=${encodeURIComponent(testProjectId)}`, {
+    const response = await fetch(`${studioApiBase}/api/agents/${encodeURIComponent(agentId)}/command?projectId=${encodeURIComponent(testProjectId)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: content })
