@@ -189,7 +189,7 @@ test('[UI-007] should run a deterministic handoff chain from game designer to en
     ['engineer', `[${runId}] implement and finish assigned tasks`]
   ]);
 
-  const injectDeterministicChatMockResponse = await fetch(`${mockAdminBase}/__admin/mocks`, {
+  const mockInjectionResponse = await fetch(`${mockAdminBase}/__admin/mocks`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -205,8 +205,8 @@ test('[UI-007] should run a deterministic handoff chain from game designer to en
       ]
     })
   });
-  if (!injectDeterministicChatMockResponse.ok) {
-    throw new Error(`failed to inject deterministic mock response for UI-007: ${injectDeterministicChatMockResponse.status} ${await injectDeterministicChatMockResponse.text()}`);
+  if (!mockInjectionResponse.ok) {
+    throw new Error(`failed to inject deterministic mock response for UI-007: ${mockInjectionResponse.status} ${await mockInjectionResponse.text()}`);
   }
 
   const getCommands = async (): Promise<{
