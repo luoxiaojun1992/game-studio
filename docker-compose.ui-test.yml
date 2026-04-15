@@ -10,6 +10,7 @@ services:
       - ./:/workspace
     networks:
       default:
+        # Use a stable mock IP so SDK base URL avoids transient Docker DNS lookup failures in CI.
         ipv4_address: 172.29.0.10
     ports:
       - "3001:3001"

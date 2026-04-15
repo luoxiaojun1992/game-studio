@@ -155,9 +155,9 @@ test('[UI-007] should run a deterministic handoff chain from game designer to en
     throw new Error(`failed to disable autopilot for UI-007 project: ${disableAutopilotResponse.status} ${await disableAutopilotResponse.text()}`);
   }
 
-  const agentsToResume = ['game_designer', 'ceo', 'architect', 'engineer'] as const;
+  const targetAgentIds = ['game_designer', 'ceo', 'architect', 'engineer'] as const;
 
-  for (const agentId of agentsToResume) {
+  for (const agentId of targetAgentIds) {
     const resumeResponse = await fetch(`${studioApiBase}/api/agents/${encodeURIComponent(agentId)}/resume?projectId=${encodeURIComponent(testProjectId)}`, {
       method: 'POST'
     });
@@ -172,7 +172,7 @@ test('[UI-007] should run a deterministic handoff chain from game designer to en
     const data = await response.json() as {
       agents: Array<{ id: string; state: { isPaused: boolean; status: string } }>;
     };
-    return agentsToResume.every(agentId => {
+    return targetAgentIds.every(agentId => {
       const matched = data.agents.find(agent => agent.id === agentId);
       return !!matched && matched.state.isPaused === false;
     });
