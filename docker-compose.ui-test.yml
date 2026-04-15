@@ -27,7 +27,7 @@ services:
     environment:
       - PORT=3000
       - CODEBUDDY_API_KEY=mock-codebuddy-key
-      # CODEBUDDY_BASE_URL is consumed by CodeBuddy CLI internals and server-side SDK endpoint fallback.
+      # CODEBUDDY_BASE_URL is the primary endpoint configuration the backend reads in this setup, and is also consumed by CodeBuddy CLI internals.
       - CODEBUDDY_BASE_URL=http://codebuddy-sdk-mock:3001
       - STAR_OFFICE_UI_URL=http://starofficeui:19000
     depends_on:
