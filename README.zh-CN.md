@@ -193,7 +193,7 @@ npm ci
 npm run mock:server
 
 # 终端 2：启动 Studio 后端（真实 /api/*），并将 CodeBuddy SDK 请求指向 mock server
-CODEBUDDY_ENDPOINT=http://localhost:3001 CODEBUDDY_API_KEY=mock-codebuddy-key STAR_OFFICE_UI_URL=http://127.0.0.1:19000 npm run server
+CODEBUDDY_BASE_URL=http://localhost:3001 CODEBUDDY_API_KEY=mock-codebuddy-key STAR_OFFICE_UI_URL=http://127.0.0.1:19000 npm run server
 
 # 终端 3：启动前端并指向真实 Studio 后端
 VITE_API_BASE=http://localhost:3000 VITE_STAR_OFFICE_UI_URL=http://127.0.0.1:19000 npm run dev:client -- --host 0.0.0.0 --port 4173
