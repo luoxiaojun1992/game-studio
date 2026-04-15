@@ -8,10 +8,6 @@ services:
       - MOCK_SERVER_HOST=0.0.0.0
     volumes:
       - ./:/workspace
-    networks:
-      default:
-        # Use a stable mock IP so SDK base URL avoids transient Docker DNS lookup failures in CI.
-        ipv4_address: 172.29.0.10
     ports:
       - "3001:3001"
     healthcheck:
@@ -32,7 +28,7 @@ services:
       - PORT=3000
       - CODEBUDDY_API_KEY=mock-codebuddy-key
       # CODEBUDDY_BASE_URL is consumed by CodeBuddy CLI internals and server-side SDK endpoint fallback.
-      - CODEBUDDY_BASE_URL=http://172.29.0.10:3001
+      - CODEBUDDY_BASE_URL=http://codebuddy-sdk-mock:3001
       - STAR_OFFICE_UI_URL=http://starofficeui:19000
     depends_on:
       codebuddy-sdk-mock:
@@ -98,7 +94,7 @@ services:
       - UI_BASE_URL=http://ui-app
       - STUDIO_API_BASE=http://studio-backend:3000
       - STAR_OFFICE_API_BASE=http://star-office-ui:19000
-      - CODEBUDDY_MOCK_ADMIN_URL=http://172.29.0.10:3001
+      - CODEBUDDY_MOCK_ADMIN_URL=http://codebuddy-sdk-mock:3001
       - UI_COVERAGE_THRESHOLD=90
       - ALLURE_RESULTS_DIR=tests/ui/artifacts/allure-results
       - HOME=/tmp
@@ -114,8 +110,3 @@ services:
         condition: service_healthy
       star-office-ui:
         condition: service_healthy
-networks:
-  default:
-    ipam:
-      config:
-        - subnet: 172.29.0.0/16
