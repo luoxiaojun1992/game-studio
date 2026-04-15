@@ -229,7 +229,9 @@ test('[UI-007] should run a deterministic handoff chain from game designer to en
     if (!response.ok) {
       throw new Error(`failed to send command to ${agentId}: ${response.status} ${await response.text()}`);
     }
-    await response.body?.cancel();
+    if (response.body) {
+      await response.body.cancel();
+    }
     await expect.poll(async () => {
       const data = await getCommands();
       const matched = data.commands.find(command => command.content === content && command.target_agent_id === agentId);
