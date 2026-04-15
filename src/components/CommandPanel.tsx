@@ -465,26 +465,31 @@ function getQuickCommands(agentId: AgentRole, isZh: boolean): string[] {
         'Create a complete design plan for a casual mobile game',
         'Design a 2048-style number puzzle game',
         'Create a design document for Snake game',
+        'Prepare a handoff to the CEO for proposal review, including context, goals, and acceptance criteria',
       ],
       biz_designer: [
         'Design a business model for a casual game',
         'Analyze competitors and draft a monetization plan',
         'Create a launch and operations plan',
+        'Prepare a handoff to the CEO for business review, including context, goals, and acceptance criteria',
       ],
       ceo: [
         'Review the latest game design proposal',
         'Review both game and business proposals together',
         'Provide product direction suggestions',
+        'Prepare a handoff to the Architect with approved direction, scope, and technical requirements',
       ],
       architect: [
         'Design the technical architecture for the game',
         'Review the engineer technical plan',
         'Define coding standards',
+        'Prepare a handoff to the Engineer with architecture decisions, constraints, and implementation checklist',
       ],
       engineer: [
         'Build a Snake game from the proposal (single HTML file)',
         'Build a 2048 number puzzle game',
         'Write a testing plan for an existing game',
+        'Prepare a handoff to the Business Designer with implementation status, risks, and verification points',
       ],
     };
     return enCmds[agentId] || [];
@@ -494,26 +499,31 @@ function getQuickCommands(agentId: AgentRole, isZh: boolean): string[] {
       '请为一款休闲手机游戏制作完整策划案',
       '设计一个2048风格的数字消除游戏',
       '为贪吃蛇游戏制作策划案',
+      '请向 CEO 发起交接用于方案评审，包含背景、目标与验收标准',
     ],
     biz_designer: [
       '为休闲游戏设计商业模式',
       '分析竞品并制定盈利方案',
       '制定游戏上线运营计划',
+      '请向 CEO 发起交接用于商业评审，包含背景、目标与验收标准',
     ],
     ceo: [
       '评审最新的游戏策划案',
       '综合评审游戏和商业方案',
       '给出产品方向建议',
+      '请向架构师发起交接，明确已批准方向、范围和技术要求',
     ],
     architect: [
       '设计游戏的技术架构方案',
       '评审软件工程师的技术方案',
       '制定编码规范',
+      '请向软件工程师发起交接，包含架构决策、约束条件与实现清单',
     ],
     engineer: [
       '根据策划案开发一个贪吃蛇游戏（单文件HTML）',
       '开发一个2048数字消除游戏',
       '为已有游戏编写测试方案',
+      '请向商业策划发起交接，说明实现进度、风险与验收要点',
     ],
   };
   return cmds[agentId] || [];
