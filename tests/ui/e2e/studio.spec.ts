@@ -170,6 +170,7 @@ test('[UI-007] should run a deterministic handoff chain from game designer to en
     const data = await response.json() as {
       agents: Array<{ id: string; state: { isPaused: boolean; status: string } }>;
     };
+    // Commands endpoint already serializes per-agent execution; preflight only needs agents to be available and resumable.
     return ['game_designer', 'ceo', 'architect', 'engineer'].every(agentId => {
       const matched = data.agents.find(agent => agent.id === agentId);
       return !!matched && matched.state.isPaused === false;
