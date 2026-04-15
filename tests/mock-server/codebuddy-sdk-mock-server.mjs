@@ -14,7 +14,6 @@ const PORT = parsePort(process.env.MOCK_SERVER_PORT || '3001');
 const HOST = process.env.MOCK_SERVER_HOST || '127.0.0.1';
 const MAX_INJECTED_MOCKS = 100;
 const injectedMocks = [];
-const CHAT_COMPLETION_PATHS = new Set(['/chat/completions', '/v1/chat/completions']);
 
 const withCors = (headers = {}) => ({
   'Access-Control-Allow-Origin': '*',
@@ -63,14 +62,9 @@ const readBody = (req) => new Promise((resolve, reject) => {
   req.on('error', reject);
 });
 
-const normalizeInjectedMockPath = (pathname) => (
-  CHAT_COMPLETION_PATHS.has(pathname) ? '/chat/completions' : pathname
-);
-
 const resolveInjectedMock = (method, pathname) => {
-  const normalizedPathname = normalizeInjectedMockPath(pathname);
   const idx = injectedMocks.findIndex(mock => (
-    mock.method === method && normalizeInjectedMockPath(mock.path) === normalizedPathname
+    mock.method === method && mock.path === pathname
   ));
   if (idx < 0) return null;
   const mock = injectedMocks[idx];
@@ -161,7 +155,7 @@ const server = http.createServer(async (req, res) => {
     });
   }
 
-  if ((pathname === '/v1/chat/completions' || pathname === '/chat/completions') && method === 'POST') {
+  if (pathname === '/chat/completions' && method === 'POST') {
     const body = await readBody(req).catch(() => ({}));
     const content = body?.stream ? 'mock-stream' : 'mock-response';
     if (body?.stream) {
