@@ -15,7 +15,7 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const CODEBUDDY_ENDPOINT = process.env.CODEBUDDY_ENDPOINT?.trim() || undefined;
+const CODEBUDDY_ENDPOINT = process.env.CODEBUDDY_ENDPOINT?.trim() || process.env.CODEBUDDY_BASE_URL?.trim() || undefined;
 const DEFAULT_PROJECT_ID = 'default';
 const PROJECT_ID_PATTERN = db.PROJECT_ID_PATTERN;
 const MAX_PROJECT_ID_LENGTH = db.MAX_PROJECT_ID_LENGTH;
