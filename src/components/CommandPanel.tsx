@@ -489,7 +489,7 @@ function getQuickCommands(agentId: AgentRole, isZh: boolean): string[] {
         'Build a Snake game from the proposal (single HTML file)',
         'Build a 2048 number puzzle game',
         'Write a testing plan for an existing game',
-        'Prepare a handoff to the Game Designer with implementation status, risks, and verification points',
+        'Prepare a handoff to the Business Designer with implementation status, risks, and verification points',
       ],
     };
     return enCmds[agentId] || [];
@@ -523,7 +523,7 @@ function getQuickCommands(agentId: AgentRole, isZh: boolean): string[] {
       '根据策划案开发一个贪吃蛇游戏（单文件HTML）',
       '开发一个2048数字消除游戏',
       '为已有游戏编写测试方案',
-      '请向游戏策划发起交接，说明实现进度、风险与验收要点',
+      '请向商业策划发起交接，说明实现进度、风险与验收要点',
     ],
   };
   return cmds[agentId] || [];
