@@ -155,9 +155,9 @@ test('[UI-007] should run a deterministic handoff chain from game designer to en
     throw new Error(`failed to disable autopilot for UI-007 project: ${disableAutopilotResponse.status} ${await disableAutopilotResponse.text()}`);
   }
 
-  const deterministicChainAgents = ['game_designer', 'ceo', 'architect', 'engineer'] as const;
+  const agentsToResume = ['game_designer', 'ceo', 'architect', 'engineer'] as const;
 
-  for (const agentId of deterministicChainAgents) {
+  for (const agentId of agentsToResume) {
     const resumeResponse = await fetch(`${studioApiBase}/api/agents/${encodeURIComponent(agentId)}/resume?projectId=${encodeURIComponent(testProjectId)}`, {
       method: 'POST'
     });
@@ -172,7 +172,7 @@ test('[UI-007] should run a deterministic handoff chain from game designer to en
     const data = await response.json() as {
       agents: Array<{ id: string; state: { isPaused: boolean; status: string } }>;
     };
-    return deterministicChainAgents.every(agentId => {
+    return agentsToResume.every(agentId => {
       const matched = data.agents.find(agent => agent.id === agentId);
       return !!matched && matched.state.isPaused === false;
     });
@@ -229,6 +229,7 @@ test('[UI-007] should run a deterministic handoff chain from game designer to en
     if (!response.ok) {
       throw new Error(`failed to send command to ${agentId}: ${response.status} ${await response.text()}`);
     }
+    // Command endpoint streams SSE; cancel local body consumption and rely on /api/commands polling for terminal status.
     if (response.body) {
       await response.body.cancel();
     }
