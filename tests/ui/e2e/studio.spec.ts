@@ -189,6 +189,26 @@ test('[UI-007] should run a deterministic handoff chain from game designer to en
     ['engineer', `[${runId}] implement and finish assigned tasks`]
   ]);
 
+  const injectDeterministicChatMockResponse = await fetch(`${mockAdminBase}/__admin/mocks`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      method: 'POST',
+      path: '/chat/completions',
+      sse: true,
+      body: [
+        {
+          id: 'chatcmpl-ui-007',
+          object: 'chat.completion.chunk',
+          choices: [{ index: 0, delta: { content: `[${runId}] deterministic mock response` } }]
+        }
+      ]
+    })
+  });
+  if (!injectDeterministicChatMockResponse.ok) {
+    throw new Error(`failed to inject deterministic mock response for UI-007: ${injectDeterministicChatMockResponse.status} ${await injectDeterministicChatMockResponse.text()}`);
+  }
+
   const getCommands = async (): Promise<{
     commands: Array<{ content: string; target_agent_id: string; status: string }>;
   }> => {
