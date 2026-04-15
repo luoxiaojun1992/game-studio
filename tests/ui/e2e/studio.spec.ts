@@ -146,7 +146,7 @@ test('[UI-007] should run a deterministic handoff chain from game designer to en
     throw new Error(`failed to create project for UI-007: ${createProjectResponse.status} ${await createProjectResponse.text()}`);
   }
 
-  const ui007AutopilotEnabled = false;
+  const ui007AutopilotEnabled = process.env.UI007_AUTOPILOT_ENABLED === 'true';
   const disableAutopilotResponse = await fetch(`${studioApiBase}/api/projects/${encodeURIComponent(testProjectId)}/settings`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
