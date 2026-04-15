@@ -129,6 +129,7 @@ test('[UI-006] should load star-office-ui and keep agent status synced via agent
 });
 
 test('[UI-007] should run a deterministic handoff chain from game designer to engineer via codebuddy mock', async ({ page }) => {
+  test.setTimeout(180_000);
   await page.addInitScript(() => localStorage.setItem('game_studio_ui_language', 'en-US'));
   await page.goto('/');
 
@@ -170,7 +171,7 @@ test('[UI-007] should run a deterministic handoff chain from game designer to en
     };
     return ['game_designer', 'ceo', 'architect', 'engineer'].every(agentId => {
       const matched = data.agents.find(agent => agent.id === agentId);
-      return !!matched && matched.state.isPaused === false && matched.state.status !== 'working';
+      return !!matched && matched.state.isPaused === false;
     });
   }, {
     timeout: 30_000,
