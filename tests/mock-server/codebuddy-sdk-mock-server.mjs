@@ -86,8 +86,8 @@ const sendInjectedMock = async (res, mock) => {
   return sendJson(res, mock.status || 200, mock.body ?? {}, mock.headers || {});
 };
 
-const buildMcpTools = (availableToolNames = []) => MCP_TOOL_DEFS.map((tool) => {
-  const toolName = availableToolNames.find((name) =>
+const buildMcpTools = (availableTools = []) => MCP_TOOL_DEFS.map((tool) => {
+  const toolName = availableTools.find((name) =>
     name === tool.name ||
     name.endsWith(`__${tool.name}`)
   ) || tool.name;
@@ -101,7 +101,11 @@ const buildMcpTools = (availableToolNames = []) => MCP_TOOL_DEFS.map((tool) => {
 const listToolNamesFromRequest = (body) => (
   Array.isArray(body?.tools)
     ? body.tools
-      .map((tool) => tool?.function?.name)
+      .map((tool) => {
+        if (typeof tool?.function?.name === 'string') return tool.function.name;
+        if (typeof tool?.name === 'string') return tool.name;
+        return null;
+      })
       .filter((name) => typeof name === 'string')
     : []
 );
