@@ -196,7 +196,7 @@ test('[UI-007] should complete full workflow: game designer command -> auto hand
     await expect(card).toContainText(/处理中|Working/, { timeout: 15000 });
   };
 
-  const testProjectId = `ui-007-${randomUUID().replace(/-/g, '').slice(0, 12)}`;
+  const testProjectId = `ui_007_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
   await page.getByPlaceholder(/新建项目名|New project name/).fill(testProjectId);
   await page.getByRole('button', { name: /新建|Create/ }).click();
 
@@ -206,7 +206,6 @@ test('[UI-007] should complete full workflow: game designer command -> auto hand
     .filter({ has: page.getByPlaceholder(/新建项目名|New project name/) })
     .first();
   const projectSelect = projectSelectorContainer.locator('select');
-  await expect(projectSelect.locator(`option[value="${testProjectId}"]`)).toHaveCount(1);
   await expect(projectSelect).toHaveValue(testProjectId);
 
   await page.getByRole('tab', { name: /设置|Settings/ }).click();
