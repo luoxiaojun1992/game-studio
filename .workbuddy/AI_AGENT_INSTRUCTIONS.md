@@ -190,4 +190,3 @@ test: add xxx test case
 ## 联系方式
 
 - 项目仓库：https://github.com/luoxiaojun1992/game-studio
-- 工作记忆：`/Users/luoxiaojun/WorkBuddy/20260402130250/.workbuddy/memory/`
