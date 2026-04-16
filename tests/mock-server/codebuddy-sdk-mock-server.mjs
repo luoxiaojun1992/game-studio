@@ -14,6 +14,13 @@ const PORT = parsePort(process.env.MOCK_SERVER_PORT || '3001');
 const HOST = process.env.MOCK_SERVER_HOST || '127.0.0.1';
 const MAX_INJECTED_MOCKS = 100;
 const injectedMocks = [];
+const MCP_SERVER_NAME = 'studio-tools';
+const MCP_TOOL_DEFS = [
+  { name: 'create_handoff', description: 'Create agent handoff task' },
+  { name: 'submit_proposal', description: 'Submit proposal document' },
+  { name: 'submit_game', description: 'Submit game build result' },
+  { name: 'save_memory', description: 'Save long-term memory' }
+];
 
 const withCors = (headers = {}) => ({
   'Access-Control-Allow-Origin': '*',
@@ -77,6 +84,31 @@ const sendInjectedMock = async (res, mock) => {
   }
   return sendJson(res, mock.status || 200, mock.body ?? {}, mock.headers || {});
 };
+
+const buildMcpTools = (names = []) => MCP_TOOL_DEFS.map((tool) => {
+  const toolName = names.find((name) =>
+    name === tool.name ||
+    name.endsWith(`__${tool.name}`)
+  ) || tool.name;
+  return {
+    name: toolName,
+    description: tool.description,
+    input_schema: { type: 'object', properties: {} }
+  };
+});
+
+const listToolNamesFromRequest = (body) => (
+  Array.isArray(body?.tools)
+    ? body.tools
+      .map((tool) => tool?.function?.name)
+      .filter((name) => typeof name === 'string')
+    : []
+);
+
+const resolveToolName = (toolName, availableTools) => (
+  availableTools.find((name) => name === toolName || name.endsWith(`__${toolName}`))
+  || toolName
+);
 
 const server = http.createServer(async (req, res) => {
   const method = req.method || 'GET';
@@ -189,9 +221,35 @@ const server = http.createServer(async (req, res) => {
     });
   }
 
+  if ((pathname === '/mcp/servers' || pathname === '/v1/mcp/servers') && method === 'GET') {
+    return sendJson(res, 200, {
+      servers: [{
+        id: MCP_SERVER_NAME,
+        name: MCP_SERVER_NAME,
+        status: 'connected',
+        tools: buildMcpTools()
+      }]
+    });
+  }
+
+  if ((pathname === '/mcp/servers/tools' || pathname === '/v1/mcp/servers/tools') && method === 'GET') {
+    return sendJson(res, 200, {
+      server: MCP_SERVER_NAME,
+      tools: buildMcpTools()
+    });
+  }
+
+  if ((/^\/(?:v1\/)?mcp\/servers\/[^/]+\/tools$/).test(pathname) && method === 'GET') {
+    return sendJson(res, 200, {
+      server: MCP_SERVER_NAME,
+      tools: buildMcpTools()
+    });
+  }
+
   if (pathname === '/chat/completions' && method === 'POST') {
     const body = await readBody(req).catch(() => ({}));
     const stream = body?.stream;
+    const availableTools = listToolNamesFromRequest(body);
     const messages = body?.messages || [];
     const lastMessage = messages[messages.length - 1];
     const prompt = lastMessage?.content || '';
@@ -230,7 +288,7 @@ const server = http.createServer(async (req, res) => {
           id: 'call_mock_proposal_' + randomUUID().slice(0, 8),
           type: 'function',
           function: {
-            name: 'submit_proposal',
+            name: resolveToolName('submit_proposal', availableTools),
             arguments: JSON.stringify({
               type: 'game_design',
               title: '测试游戏策划案',
@@ -243,7 +301,7 @@ const server = http.createServer(async (req, res) => {
           id: 'call_mock_game_' + randomUUID().slice(0, 8),
           type: 'function',
           function: {
-            name: 'submit_game',
+            name: resolveToolName('submit_game', availableTools),
             arguments: JSON.stringify({
               name: '测试游戏',
               html: '<html><body><h1>测试游戏</h1></body></html>'
@@ -255,7 +313,7 @@ const server = http.createServer(async (req, res) => {
           id: 'call_mock_memory_' + randomUUID().slice(0, 8),
           type: 'function',
           function: {
-            name: 'save_memory',
+            name: resolveToolName('save_memory', availableTools),
             arguments: JSON.stringify({
               category: 'general',
               content: '测试记忆内容',
@@ -270,7 +328,7 @@ const server = http.createServer(async (req, res) => {
           id: 'call_mock_handoff_' + randomUUID().slice(0, 8),
           type: 'function',
           function: {
-            name: 'create_handoff',
+            name: resolveToolName('create_handoff', availableTools),
             arguments: JSON.stringify({
               to_agent_id: targetAgent,
               title: `${agentRole} 任务完成交接`,
