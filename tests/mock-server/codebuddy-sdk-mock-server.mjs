@@ -14,6 +14,7 @@ const PORT = parsePort(process.env.MOCK_SERVER_PORT || '3001');
 const HOST = process.env.MOCK_SERVER_HOST || '127.0.0.1';
 const MAX_INJECTED_MOCKS = 100;
 const injectedMocks = [];
+const MCP_SERVER_TOOLS_PATH_RE = /^\/(?:v1\/)?mcp\/servers\/[^/]+\/tools$/;
 const MCP_SERVER_NAME = 'studio-tools';
 const MCP_TOOL_DEFS = [
   { name: 'create_handoff', description: 'Create agent handoff task' },
@@ -85,8 +86,8 @@ const sendInjectedMock = async (res, mock) => {
   return sendJson(res, mock.status || 200, mock.body ?? {}, mock.headers || {});
 };
 
-const buildMcpTools = (names = []) => MCP_TOOL_DEFS.map((tool) => {
-  const toolName = names.find((name) =>
+const buildMcpTools = (availableToolNames = []) => MCP_TOOL_DEFS.map((tool) => {
+  const toolName = availableToolNames.find((name) =>
     name === tool.name ||
     name.endsWith(`__${tool.name}`)
   ) || tool.name;
@@ -239,7 +240,7 @@ const server = http.createServer(async (req, res) => {
     });
   }
 
-  if ((/^\/(?:v1\/)?mcp\/servers\/[^/]+\/tools$/).test(pathname) && method === 'GET') {
+  if (MCP_SERVER_TOOLS_PATH_RE.test(pathname) && method === 'GET') {
     return sendJson(res, 200, {
       server: MCP_SERVER_NAME,
       tools: buildMcpTools()
