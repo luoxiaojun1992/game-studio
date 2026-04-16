@@ -229,6 +229,21 @@ test('[UI-007] should complete full workflow: game designer command -> auto hand
     }
   };
 
+  const ensureProjectSelectedWithFallback = async (projectId: string) => {
+    const projectSelect = page.getByTestId('project-select');
+    try {
+      await expect(projectSelect).toHaveValue(projectId, { timeout: 15_000 });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const selectedValue = await projectSelect.inputValue().catch(() => '');
+      debugLog('project-select-not-updated', { message, selectedValue, projectId });
+      await switchProjectViaApi(projectId);
+      await page.reload();
+      await expect(projectSelect).toHaveValue(projectId, { timeout: 15_000 });
+    }
+    return projectSelect;
+  };
+
   await page.addInitScript(() => localStorage.setItem('game_studio_ui_language', 'zh-CN'));
   await page.goto('/');
   debugLog('page-loaded');
@@ -284,17 +299,7 @@ test('[UI-007] should complete full workflow: game designer command -> auto hand
     debugLog('project-created-via-api-fallback', { testProjectId });
   }
 
-  const projectSelect = page.getByTestId('project-select');
-  try {
-    await expect(projectSelect).toHaveValue(testProjectId, { timeout: 15_000 });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    const selectedValue = await projectSelect.inputValue().catch(() => '');
-    debugLog('project-select-not-updated', { message, selectedValue, testProjectId });
-    await switchProjectViaApi(testProjectId);
-    await page.reload();
-    await expect(projectSelect).toHaveValue(testProjectId, { timeout: 15_000 });
-  }
+  const projectSelect = await ensureProjectSelectedWithFallback(testProjectId);
   debugLog('project-selected', { selected: await projectSelect.inputValue() });
 
   await page.getByRole('tab', { name: /设置|Settings/ }).click();
