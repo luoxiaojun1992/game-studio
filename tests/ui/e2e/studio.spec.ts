@@ -230,15 +230,16 @@ test('[UI-007] should complete full workflow: game designer command -> auto hand
   };
 
   const ensureProjectSelectedWithFallback = async (projectId: string) => {
-    const projectSelect = page.getByTestId('project-select');
+    let projectSelect = page.getByTestId('project-select');
     try {
       await expect(projectSelect).toHaveValue(projectId, { timeout: 15_000 });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      const selectedValue = await projectSelect.inputValue().catch(() => '<project-select-error>');
+      const selectedValue = await projectSelect.inputValue().catch(() => '<project-select-value-error>');
       debugLog('project-select-not-updated', { message, selectedValue, projectId });
       await switchProjectViaApi(projectId);
       await page.reload();
+      projectSelect = page.getByTestId('project-select');
       await expect(projectSelect).toHaveValue(projectId, { timeout: 15_000 });
     }
     return projectSelect;
@@ -285,7 +286,7 @@ test('[UI-007] should complete full workflow: game designer command -> auto hand
     debugLog('project-create-clicked', { testProjectId });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    const inputValue = await page.getByTestId('project-name-input').inputValue().catch(() => '<project-input-error>');
+    const inputValue = await page.getByTestId('project-name-input').inputValue().catch(() => '<project-input-value-error>');
     const isCreateDisabled = await createProjectButton.isDisabled().catch(() => false);
     debugLog('project-create-click-failed', {
       message,
