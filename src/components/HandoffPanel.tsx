@@ -335,6 +335,7 @@ export default function HandoffPanel({ agents, projectId }: Props) {
             return (
               <div
                 key={handoff.id}
+                data-testid={`handoff-card-${handoff.id}`}
                 className={`bg-gray-900 rounded-xl border transition-all ${
                   handoff.status === 'pending' ? 'border-yellow-800/50' :
                   handoff.status === 'completed' ? 'border-emerald-800/30' :
@@ -343,6 +344,7 @@ export default function HandoffPanel({ agents, projectId }: Props) {
                 }`}
               >
                 <div
+                  data-testid="handoff-header"
                   className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-gray-800/30"
                   onClick={() => setExpandedId(isExpanded ? null : handoff.id)}
                 >
@@ -427,6 +429,7 @@ export default function HandoffPanel({ agents, projectId }: Props) {
                       {handoff.status === 'pending' && (
                         <>
                           <button
+                            data-testid="handoff-accept-btn"
                             onClick={(e) => { e.stopPropagation(); handleAccept(handoff.id); }}
                             className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium px-4 py-1.5 rounded-lg transition-colors"
                           >
@@ -454,6 +457,7 @@ export default function HandoffPanel({ agents, projectId }: Props) {
                           </div>
                           <div className="flex gap-2">
                             <button
+                              data-testid="handoff-confirm-btn"
                               onClick={(e) => { e.stopPropagation(); handleConfirm(handoff.id); }}
                               disabled={confirmingId === handoff.id}
                               className="bg-green-600 hover:bg-green-500 disabled:bg-green-800 disabled:text-green-400 text-white text-xs font-medium px-4 py-1.5 rounded-lg transition-colors"
@@ -471,6 +475,7 @@ export default function HandoffPanel({ agents, projectId }: Props) {
                       )}
                       {handoff.status === 'working' && (
                         <button
+                          data-testid="handoff-complete-btn"
                           onClick={(e) => { e.stopPropagation(); handleComplete(handoff.id); }}
                           className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium px-4 py-1.5 rounded-lg transition-colors"
                         >

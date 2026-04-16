@@ -155,17 +155,130 @@ const server = http.createServer(async (req, res) => {
 
   if (pathname === '/v1/chat/completions' && method === 'POST') {
     const body = await readBody(req).catch(() => ({}));
-    const content = body?.stream ? 'mock-stream' : 'mock-response';
-    if (body?.stream) {
-      return sendSse(res, [
-        { id: 'chatcmpl-mock', object: 'chat.completion.chunk', choices: [{ index: 0, delta: { content } }] }
-      ]);
+    const stream = body?.stream;
+    const messages = body?.messages || [];
+    const lastMessage = messages[messages.length - 1];
+    const prompt = lastMessage?.content || '';
+
+    // Determine mock response based on prompt content
+    let responseContent = stream ? 'mock-stream' : 'mock-response';
+    let toolCalls = null;
+
+    // Check for tool call triggers in the prompt
+    if (typeof prompt === 'string') {
+      if (prompt.includes('create_handoff') || prompt.includes('交接')) {
+        toolCalls = [{
+          id: 'call_mock_handoff_' + randomUUID().slice(0, 8),
+          type: 'function',
+          function: {
+            name: 'create_handoff',
+            arguments: JSON.stringify({
+              to_agent_id: 'ceo',
+              title: '游戏策划交接：核心玩法设计完成',
+              description: '已完成游戏核心玩法设计，需要CEO评审',
+              priority: 'high'
+            })
+          }
+        }];
+      } else if (prompt.includes('submit_proposal') || prompt.includes('提案')) {
+        toolCalls = [{
+          id: 'call_mock_proposal_' + randomUUID().slice(0, 8),
+          type: 'function',
+          function: {
+            name: 'submit_proposal',
+            arguments: JSON.stringify({
+              type: 'game_design',
+              title: '测试游戏策划案',
+              content: '# 游戏策划案\n\n这是一个测试策划案内容'
+            })
+          }
+        }];
+      } else if (prompt.includes('submit_game') || prompt.includes('提交游戏')) {
+        toolCalls = [{
+          id: 'call_mock_game_' + randomUUID().slice(0, 8),
+          type: 'function',
+          function: {
+            name: 'submit_game',
+            arguments: JSON.stringify({
+              name: '测试游戏',
+              html: '<html><body><h1>测试游戏</h1></body></html>'
+            })
+          }
+        }];
+      } else if (prompt.includes('save_memory') || prompt.includes('记忆')) {
+        toolCalls = [{
+          id: 'call_mock_memory_' + randomUUID().slice(0, 8),
+          type: 'function',
+          function: {
+            name: 'save_memory',
+            arguments: JSON.stringify({
+              category: 'general',
+              content: '测试记忆内容',
+              importance: 'normal'
+            })
+          }
+        }];
+      }
     }
-    return sendJson(res, 200, {
+
+    if (stream) {
+      const events = [];
+      // Send initial assistant message
+      events.push({
+        id: 'chatcmpl-mock',
+        object: 'chat.completion.chunk',
+        choices: [{ index: 0, delta: { role: 'assistant', content: '我来帮您处理这个任务。' } }]
+      });
+
+      // Send tool calls if triggered
+      if (toolCalls) {
+        for (const toolCall of toolCalls) {
+          events.push({
+            id: 'chatcmpl-mock',
+            object: 'chat.completion.chunk',
+            choices: [{
+              index: 0,
+              delta: {
+                tool_calls: [{
+                  index: 0,
+                  id: toolCall.id,
+                  type: toolCall.type,
+                  function: {
+                    name: toolCall.function.name,
+                    arguments: toolCall.function.arguments
+                  }
+                }]
+              }
+            }]
+          });
+        }
+      }
+
+      // Send final content
+      events.push({
+        id: 'chatcmpl-mock',
+        object: 'chat.completion.chunk',
+        choices: [{ index: 0, delta: { content: '\n\n任务已完成。' } }]
+      });
+
+      return sendSse(res, events);
+    }
+
+    // Non-streaming response
+    const response = {
       id: 'chatcmpl-mock',
       object: 'chat.completion',
-      choices: [{ index: 0, message: { role: 'assistant', content }, finish_reason: 'stop' }]
-    });
+      choices: [{
+        index: 0,
+        message: {
+          role: 'assistant',
+          content: toolCalls ? '我来帮您处理这个任务。\n\n任务已完成。' : responseContent,
+          tool_calls: toolCalls
+        },
+        finish_reason: toolCalls ? 'tool_calls' : 'stop'
+      }]
+    };
+    return sendJson(res, 200, response);
   }
 
   return sendJson(res, 404, { error: `mock route not found: ${method} ${pathname}` });
