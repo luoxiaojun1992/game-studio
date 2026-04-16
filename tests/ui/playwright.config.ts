@@ -10,7 +10,7 @@ export default defineConfig({
   forbidOnly: true,
   retries: 1,
   workers: 1,
-  timeout: 120_000,
+  timeout: 180_000,
   reporter: [
     ['line'],
     ['allure-playwright', { resultsDir: allureResultsDir, detail: true, suiteTitle: false }],

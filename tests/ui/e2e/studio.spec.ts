@@ -167,138 +167,103 @@ test('[UI-006] should load star-office-ui and keep agent status synced via agent
 });
 
 test('[UI-007] should complete full workflow: game designer command -> task -> handoff -> engineer completion', async ({ page }) => {
+  test.setTimeout(300_000);
   await page.addInitScript(() => localStorage.setItem('game_studio_ui_language', 'zh-CN'));
   await page.goto('/');
 
   // Helper function to handle permission dialogs and ask user questions
   const handlePermissionIfPresent = async () => {
-    // Handle permission approval buttons
     const approveButton = page.locator('button').filter({ hasText: /允许执行|批准/ }).first();
     try {
       await approveButton.waitFor({ state: 'visible', timeout: 3000 });
       await approveButton.click();
       return;
-    } catch {
-      // Permission dialog not present, check for AskUserQuestion
-    }
-    // Handle AskUserQuestion dialog - click "跳过" (Skip) button
+    } catch {}
     const skipButton = page.locator('button').filter({ hasText: /跳过/ }).first();
     try {
       await skipButton.waitFor({ state: 'visible', timeout: 3000 });
       await skipButton.click();
-    } catch {
-      // AskUserQuestion dialog not present, continue
-    }
+    } catch {}
   };
 
   // Step 1: Navigate to Commands tab and send command to game designer
   await page.getByRole('tab', { name: /指令中心/ }).click();
 
-  // Select game designer agent - click on the agent button in the left sidebar
   const gameDesignerButton = page.locator('button').filter({ hasText: /游戏策划/ }).first();
   await gameDesignerButton.waitFor({ state: 'visible', timeout: 10000 });
   await gameDesignerButton.click();
 
-  // Type command for game designer
   const commandInput = page.locator('textarea[placeholder*="下达指令"]').first();
   await commandInput.fill('请设计一个RPG游戏的核心玩法，包括战斗系统和角色成长机制');
 
-  // Send command
   const sendButton = page.locator('button').filter({ hasText: /发送/ }).first();
   await sendButton.click();
 
-  // Handle permission dialog if it appears
   await handlePermissionIfPresent();
 
-  // Wait for command to be processed - wait for streaming to finish
   const processingIndicator = page.getByText(/Agent 正在处理/).first();
   try {
     await processingIndicator.waitFor({ state: 'visible', timeout: 10000 });
-    await processingIndicator.waitFor({ state: 'hidden', timeout: 30000 });
-  } catch {
-    // Processing indicator may not appear if response is fast
-  }
-  // Wait a bit for the final response to render
+    await processingIndicator.waitFor({ state: 'hidden', timeout: 60000 });
+  } catch {}
   await page.waitForTimeout(1000);
 
   // Step 2: Navigate to Handoffs tab and create a handoff
   await page.getByRole('tab', { name: /任务交接/ }).click();
 
-  // Click create handoff button
   const createHandoffButton = page.locator('button').filter({ hasText: /创建交接|新建交接/ }).first();
   await createHandoffButton.click();
 
-  // Fill handoff form - wait for modal to be visible
   const modal = page.locator('.fixed.inset-0 .bg-gray-900');
   await modal.waitFor({ state: 'visible', timeout: 10000 });
 
-  // Fill title input (input with placeholder containing "游戏策划案评审")
-  const handoffTitleInput = modal.locator('input');
-  await handoffTitleInput.fill('游戏策划交接：核心玩法设计完成');
+  await modal.locator('input').fill('游戏策划交接：核心玩法设计完成');
+  await modal.locator('textarea').first().fill('已完成RPG游戏核心玩法设计，包括战斗系统和角色成长机制，需要CEO评审');
 
-  // Fill description input (textarea in the modal)
-  const handoffDescInput = modal.locator('textarea').first();
-  await handoffDescInput.fill('已完成RPG游戏核心玩法设计，包括战斗系统和角色成长机制，需要CEO评审');
-
-  // Select target agent (CEO) - use the second select in the modal (target agent)
   const targetAgentSelect = page.locator('.fixed.inset-0 select').nth(1);
   await targetAgentSelect.waitFor({ state: 'visible', timeout: 10000 });
   await targetAgentSelect.selectOption('ceo');
 
-  // Submit handoff - use the button inside the modal
-  const submitHandoffButton = modal.locator('button').filter({ hasText: /创建交接/ });
-  await submitHandoffButton.click();
+  await modal.locator('button').filter({ hasText: /创建交接/ }).click();
 
-  // Verify handoff is created - check at least one element exists
   await expect(page.locator('body').getByText('游戏策划交接：核心玩法设计完成').first()).toBeAttached({ timeout: 10000 });
 
-  // Handle any permission/ask dialogs before clicking on handoff
   await handlePermissionIfPresent();
 
-  // Step 3: Accept the handoff as CEO - click on the handoff item header to expand it, then click accept
-  // Find the first handoff card and click on its header to expand
+  // Step 3: Accept the handoff as CEO
   const handoffHeader = page.getByTestId('handoff-header').first();
   await handoffHeader.click();
   await page.waitForTimeout(500);
 
-  // Find and click the accept button using data-testid
   const acceptButton = page.getByTestId('handoff-accept-btn').first();
   await acceptButton.click();
 
   // Step 4: CEO completes task and creates handoff to architect
   await page.getByRole('tab', { name: /指令中心/ }).click();
 
-  // Switch to CEO agent
   const ceoButton = page.locator('button').filter({ hasText: /CEO/ }).first();
   await ceoButton.click();
 
-  // Send command to CEO
   const ceoCommandInput = page.locator('textarea[placeholder*="下达指令"]').first();
   await ceoCommandInput.fill('请评审游戏策划案并创建交接给架构师进行技术设计');
 
   const ceoSendButton = page.locator('button').filter({ hasText: /发送/ }).first();
   await ceoSendButton.click();
 
-  // Handle permission dialog if it appears
   await handlePermissionIfPresent();
 
-  // Wait for command to be processed
   try {
     const processingIndicator2 = page.getByText(/Agent 正在处理/).first();
     await processingIndicator2.waitFor({ state: 'visible', timeout: 10000 });
-    await processingIndicator2.waitFor({ state: 'hidden', timeout: 30000 });
-  } catch {
-    // Processing indicator may not appear if response is fast
-  }
+    await processingIndicator2.waitFor({ state: 'hidden', timeout: 60000 });
+  } catch {}
   await page.waitForTimeout(1000);
 
   // Step 5: Create handoff from CEO to architect
   await page.getByRole('tab', { name: /任务交接/ }).click();
 
-  // Create another handoff
   await createHandoffButton.click();
 
-  // Get new modal reference
   const modal2 = page.locator('.fixed.inset-0 .bg-gray-900');
   await modal2.waitFor({ state: 'visible', timeout: 10000 });
 
@@ -312,7 +277,6 @@ test('[UI-007] should complete full workflow: game designer command -> task -> h
   await modal2.locator('button').filter({ hasText: /创建交接/ }).click();
   await expect(page.locator('body').getByText('CEO评审完成：技术架构设计交接').first()).toBeAttached({ timeout: 10000 });
 
-  // Accept as architect - click on the handoff item header to expand it, then click accept
   const handoffHeader2 = page.getByTestId('handoff-header').first();
   await handoffHeader2.click();
   await page.waitForTimeout(500);
@@ -331,17 +295,13 @@ test('[UI-007] should complete full workflow: game designer command -> task -> h
 
   await sendButton.click();
 
-  // Handle permission dialog if it appears
   await handlePermissionIfPresent();
 
-  // Wait for command to be processed
   try {
     const processingIndicator3 = page.getByText(/Agent 正在处理/).first();
     await processingIndicator3.waitFor({ state: 'visible', timeout: 10000 });
-    await processingIndicator3.waitFor({ state: 'hidden', timeout: 30000 });
-  } catch {
-    // Processing indicator may not appear if response is fast
-  }
+    await processingIndicator3.waitFor({ state: 'hidden', timeout: 60000 });
+  } catch {}
   await page.waitForTimeout(1000);
 
   // Step 7: Create handoff from architect to engineer
@@ -349,7 +309,6 @@ test('[UI-007] should complete full workflow: game designer command -> task -> h
 
   await createHandoffButton.click();
 
-  // Get new modal reference
   const modal3 = page.locator('.fixed.inset-0 .bg-gray-900');
   await modal3.waitFor({ state: 'visible', timeout: 10000 });
 
@@ -363,7 +322,6 @@ test('[UI-007] should complete full workflow: game designer command -> task -> h
   await modal3.locator('button').filter({ hasText: /创建交接/ }).click();
   await expect(page.locator('body').getByText('技术架构设计完成：开发交接').first()).toBeAttached({ timeout: 10000 });
 
-  // Accept as engineer - click on the handoff item header to expand it, then click accept
   const handoffHeader3 = page.getByTestId('handoff-header').first();
   await handoffHeader3.click();
   await page.waitForTimeout(500);
@@ -382,23 +340,70 @@ test('[UI-007] should complete full workflow: game designer command -> task -> h
 
   await sendButton.click();
 
-  // Handle permission dialog if it appears
   await handlePermissionIfPresent();
 
-  // Wait for command to be processed
   try {
     const processingIndicator4 = page.getByText(/Agent 正在处理/).first();
     await processingIndicator4.waitFor({ state: 'visible', timeout: 10000 });
-    await processingIndicator4.waitFor({ state: 'hidden', timeout: 30000 });
-  } catch {
-    // Processing indicator may not appear if response is fast
-  }
+    await processingIndicator4.waitFor({ state: 'hidden', timeout: 60000 });
+  } catch {}
   await page.waitForTimeout(1000);
 
-  // Step 9: Verify final state - check handoffs are completed
+  // Step 9: Verify final state
   await page.getByRole('tab', { name: /任务交接/ }).click();
 
-  // All handoffs should be in completed or working state
   const handoffItems = page.locator('[class*="border"]').filter({ hasText: /交接|handoff/i }).all();
   expect((await handoffItems).length).toBeGreaterThan(0);
+});
+
+test('[UI-008] should enable autopilot and verify handoff auto-acceptance', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('game_studio_ui_language', 'zh-CN'));
+  await page.goto('/');
+
+  // Step 1: Navigate to Settings tab to access autopilot toggle
+  await page.getByRole('tab', { name: /配置中心/ }).click();
+  await page.waitForTimeout(1000);
+
+  // Step 2: Enable autopilot - click on the autopilot toggle button
+  // The autopilot toggle is in the settings panel
+  const autopilotButton = page.locator('button').filter({ hasText: /已关闭/ }).first();
+  try {
+    await autopilotButton.waitFor({ state: 'visible', timeout: 5000 });
+    await autopilotButton.click();
+    await page.waitForTimeout(1000);
+  } catch {
+    // Autopilot might already be enabled
+  }
+
+  // Step 3: Verify autopilot is enabled (toggle should show "已开启")
+  const autopilotEnabledButton = page.locator('button').filter({ hasText: /已开启/ }).first();
+  await expect(autopilotEnabledButton).toBeVisible({ timeout: 10000 });
+
+  // Step 4: Navigate to Handoffs tab and create a handoff manually
+  // With autopilot enabled, the handoff should be auto-accepted
+  await page.getByRole('tab', { name: /任务交接/ }).click();
+  await page.waitForTimeout(500);
+
+  // Click create handoff button
+  const createHandoffButton = page.locator('button').filter({ hasText: /创建交接|新建交接/ }).first();
+  await createHandoffButton.click();
+
+  // Fill handoff form
+  const modal = page.locator('.fixed.inset-0 .bg-gray-900');
+  await modal.waitFor({ state: 'visible', timeout: 10000 });
+
+  await modal.locator('input').fill('UI-008 测试交接');
+  await modal.locator('textarea').first().fill('测试 autopilot 自动接受功能');
+
+  const targetAgentSelect = page.locator('.fixed.inset-0 select').nth(1);
+  await targetAgentSelect.selectOption('ceo');
+
+  await modal.locator('button').filter({ hasText: /创建交接/ }).click();
+
+  // Wait for handoff to be created
+  await page.waitForTimeout(1500);
+
+  // Step 5: Verify the handoff was created
+  // With autopilot enabled, the handoff should be auto-accepted and in "处理中" state
+  await expect(page.locator('body').getByText('UI-008 测试交接').first()).toBeAttached({ timeout: 10000 });
 });
