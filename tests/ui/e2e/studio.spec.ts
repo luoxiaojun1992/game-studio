@@ -193,38 +193,23 @@ test('[UI-007] should complete full workflow: game designer command -> auto hand
     const acceptButton = card.getByTestId('handoff-accept-btn');
     await expect(acceptButton).toBeVisible({ timeout: 10000 });
     await acceptButton.click();
-    await expect(card).toContainText(/已接收|处理中|Accepted|Working/, { timeout: 10000 });
+    await expect(card).toContainText(/处理中|Working/, { timeout: 15000 });
   };
 
-  const testProjectId = `ui_007_${randomUUID().replace(/-/g, '')}`;
-  const createProjectResponse = await fetch(`${studioApiBase}/api/projects`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id: testProjectId, name: testProjectId })
-  });
-  if (!createProjectResponse.ok) {
-    throw new Error(`failed to create test project: ${createProjectResponse.status} ${await createProjectResponse.text()}`);
-  }
+  const testProjectId = `ui-007-${randomUUID().replace(/-/g, '').slice(0, 12)}`;
+  await page.getByPlaceholder(/新建项目名|New project name/).fill(testProjectId);
+  await page.getByRole('button', { name: /新建|Create/ }).click();
 
-  const switchProjectResponse = await fetch(`${studioApiBase}/api/projects/switch`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ fromProjectId: 'default', toProjectId: testProjectId })
-  });
-  if (!switchProjectResponse.ok) {
-    throw new Error(`failed to switch test project: ${switchProjectResponse.status} ${await switchProjectResponse.text()}`);
-  }
+  const projectSelect = page.locator('select').first();
+  await expect(projectSelect.locator(`option[value="${testProjectId}"]`)).toHaveCount(1);
+  await expect(projectSelect).toHaveValue(testProjectId);
 
-  const disableAutopilotResponse = await fetch(`${studioApiBase}/api/projects/${encodeURIComponent(testProjectId)}/settings`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ autopilot_enabled: false })
-  });
-  if (!disableAutopilotResponse.ok) {
-    throw new Error(`failed to disable test project autopilot: ${disableAutopilotResponse.status} ${await disableAutopilotResponse.text()}`);
+  await page.getByRole('tab', { name: /设置|Settings/ }).click();
+  const autopilotEnabledButton = page.getByRole('button', { name: /已开启|Enabled/ });
+  if (await autopilotEnabledButton.count()) {
+    await autopilotEnabledButton.click();
   }
-
-  await page.reload();
+  await expect(page.getByRole('button', { name: /已关闭|Disabled/ })).toBeVisible();
 
   // Step 1: Game designer receives task and automatically creates handoff to CEO
   await page.getByRole('tab', { name: /指令中心/ }).click();
