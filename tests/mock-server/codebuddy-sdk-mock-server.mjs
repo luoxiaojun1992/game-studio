@@ -339,6 +339,13 @@ const server = http.createServer(async (req, res) => {
         choices: [{ index: 0, delta: { content: '\n\n任务已完成。' } }]
       });
 
+      // Send finish_reason
+      events.push({
+        id: 'chatcmpl-mock',
+        object: 'chat.completion.chunk',
+        choices: [{ index: 0, delta: {}, finish_reason: toolCalls ? 'tool_calls' : 'stop' }]
+      });
+
       return sendSse(res, events);
     }
 
