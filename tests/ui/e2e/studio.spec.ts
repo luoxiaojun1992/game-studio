@@ -197,15 +197,10 @@ test('[UI-007] should complete full workflow: game designer command -> auto hand
   };
 
   const testProjectId = `ui_007_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
-  await page.getByPlaceholder(/新建项目名|New project name/).fill(testProjectId);
-  await page.getByRole('button', { name: /新建|Create/ }).click();
+  await page.getByTestId('project-name-input').fill(testProjectId);
+  await page.getByTestId('project-create-btn').click();
 
-  const projectSelectorContainer = page
-    .locator('div')
-    .filter({ has: page.getByText(/项目|Project/) })
-    .filter({ has: page.getByPlaceholder(/新建项目名|New project name/) })
-    .first();
-  const projectSelect = projectSelectorContainer.locator('select');
+  const projectSelect = page.getByTestId('project-select');
   await expect(projectSelect).toHaveValue(testProjectId);
 
   await page.getByRole('tab', { name: /设置|Settings/ }).click();
