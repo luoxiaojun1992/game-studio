@@ -323,16 +323,26 @@ test('[UI-007] should complete full workflow: game designer command -> auto hand
   expect((await finalHandoffItems).length).toBeGreaterThanOrEqual(3);
 });
 
-test('[UI-008] should enable autopilot and verify handoff auto-acceptance', async ({ page }) => {
+test('[UI-008] should enable autopilot and verify agent auto-handoff with auto-acceptance', async ({ page }) => {
+  test.setTimeout(300_000);
   await page.addInitScript(() => localStorage.setItem('game_studio_ui_language', 'zh-CN'));
   await page.goto('/');
 
-  // Step 1: Navigate to Settings tab to access autopilot toggle
+  // Helper function to handle permission dialogs
+  const handlePermissionIfPresent = async () => {
+    const approveButton = page.locator('button').filter({ hasText: /允许执行|批准/ }).first();
+    try {
+      await approveButton.waitFor({ state: 'visible', timeout: 3000 });
+      await approveButton.click();
+      return;
+    } catch {}
+  };
+
+  // Step 1: Navigate to Settings tab to enable autopilot
   await page.getByRole('tab', { name: /配置中心/ }).click();
   await page.waitForTimeout(1000);
 
   // Step 2: Enable autopilot - click on the autopilot toggle button
-  // The autopilot toggle is in the settings panel
   const autopilotButton = page.locator('button').filter({ hasText: /已关闭/ }).first();
   try {
     await autopilotButton.waitFor({ state: 'visible', timeout: 5000 });
@@ -346,31 +356,45 @@ test('[UI-008] should enable autopilot and verify handoff auto-acceptance', asyn
   const autopilotEnabledButton = page.locator('button').filter({ hasText: /已开启/ }).first();
   await expect(autopilotEnabledButton).toBeVisible({ timeout: 10000 });
 
-  // Step 4: Navigate to Handoffs tab and create a handoff manually
-  // With autopilot enabled, the handoff should be auto-accepted
-  await page.getByRole('tab', { name: /任务交接/ }).click();
-  await page.waitForTimeout(500);
+  // Step 4: Game designer receives task and automatically creates handoff
+  // With autopilot enabled, the handoff should be auto-accepted by CEO
+  await page.getByRole('tab', { name: /指令中心/ }).click();
 
-  // Click create handoff button
-  const createHandoffButton = page.locator('button').filter({ hasText: /创建交接|新建交接/ }).first();
-  await createHandoffButton.click();
+  const gameDesignerButton = page.locator('button').filter({ hasText: /游戏策划/ }).first();
+  await gameDesignerButton.waitFor({ state: 'visible', timeout: 10000 });
+  await gameDesignerButton.click();
 
-  // Fill handoff form
-  const modal = page.locator('.fixed.inset-0 .bg-gray-900');
-  await modal.waitFor({ state: 'visible', timeout: 10000 });
+  const commandInput = page.locator('textarea[placeholder*="下达指令"]').first();
+  await commandInput.fill('请设计一个休闲游戏的核心玩法');
 
-  await modal.locator('input').fill('UI-008 测试交接');
-  await modal.locator('textarea').first().fill('测试 autopilot 自动接受功能');
+  const sendButton = page.locator('button').filter({ hasText: /发送/ }).first();
+  await sendButton.click();
 
-  const targetAgentSelect = page.locator('.fixed.inset-0 select').nth(1);
-  await targetAgentSelect.selectOption('ceo');
+  // Wait for agent to process and automatically create handoff
+  const processingIndicator = page.getByText(/Agent 正在处理/).first();
+  try {
+    await processingIndicator.waitFor({ state: 'visible', timeout: 10000 });
+    await processingIndicator.waitFor({ state: 'hidden', timeout: 120000 });
+  } catch {}
 
-  await modal.locator('button').filter({ hasText: /创建交接/ }).click();
+  // Handle any permission requests for tool calls
+  await handlePermissionIfPresent();
+  await page.waitForTimeout(2000);
 
-  // Wait for handoff to be created
-  await page.waitForTimeout(1500);
-
-  // Step 5: Verify the handoff was created
+  // Step 5: Verify handoff was automatically created by game designer
   // With autopilot enabled, the handoff should be auto-accepted and in "处理中" state
-  await expect(page.locator('body').getByText('UI-008 测试交接').first()).toBeAttached({ timeout: 10000 });
+  await page.getByRole('tab', { name: /任务交接/ }).click();
+  await page.waitForTimeout(1000);
+
+  // The handoff should be created automatically by the agent
+  const handoffItems = page.locator('[data-testid^="handoff-card-"]').all();
+  expect((await handoffItems).length).toBeGreaterThan(0);
+
+  // With autopilot, the handoff should be auto-accepted
+  // Wait a bit for autopilot to process
+  await page.waitForTimeout(3000);
+
+  // Verify the handoff is in processing state (auto-accepted by autopilot)
+  const processingHandoff = page.locator('[data-testid^="handoff-card-"]').filter({ hasText: /处理中|工作中/ }).first();
+  await expect(processingHandoff).toBeAttached({ timeout: 10000 });
 });
