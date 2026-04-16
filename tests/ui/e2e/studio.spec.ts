@@ -169,8 +169,37 @@ test('[UI-006] should load star-office-ui and keep agent status synced via agent
 
 test('[UI-007] should complete full workflow: game designer command -> auto handoff -> engineer completion', async ({ page }) => {
   test.setTimeout(300_000);
+  const debugPrefix = '[UI-007][debug]';
+  const debugLog = (step: string, extra?: Record<string, unknown>) => {
+    const payload = extra ? ` ${JSON.stringify(extra)}` : '';
+    console.log(`${debugPrefix} ${new Date().toISOString()} ${step}${payload}`);
+  };
+
+  const dumpHandoffCards = async (stage: string) => {
+    const cards = await page.locator('[data-testid^="handoff-card-"]').allTextContents();
+    debugLog(`handoff-cards:${stage}`, {
+      count: cards.length,
+      cards: cards.map(card => card.replace(/\s+/g, ' ').slice(0, 240))
+    });
+  };
+
+  const waitForProcessingToSettle = async (label: string) => {
+    const processingIndicator = page.getByText(/Agent 正在处理/).first();
+    debugLog(`processing-wait:start:${label}`);
+    try {
+      await processingIndicator.waitFor({ state: 'visible', timeout: 10000 });
+      debugLog(`processing-wait:visible:${label}`);
+      await processingIndicator.waitFor({ state: 'hidden', timeout: 120000 });
+      debugLog(`processing-wait:hidden:${label}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      debugLog(`processing-wait:timeout:${label}`, { message });
+    }
+  };
+
   await page.addInitScript(() => localStorage.setItem('game_studio_ui_language', 'zh-CN'));
   await page.goto('/');
+  debugLog('page-loaded');
 
   // Helper function to handle permission dialogs
   const handlePermissionIfPresent = async () => {
@@ -183,6 +212,7 @@ test('[UI-007] should complete full workflow: game designer command -> auto hand
   };
 
   const acceptPendingHandoffFor = async (handoffFlow: RegExp) => {
+    debugLog('handoff-accept:start', { flow: handoffFlow.source });
     const card = page
       .locator('[data-testid^="handoff-card-"]')
       .filter({ hasText: /待接收|Pending/ })
@@ -194,14 +224,17 @@ test('[UI-007] should complete full workflow: game designer command -> auto hand
     await expect(acceptButton).toBeVisible({ timeout: 10000 });
     await acceptButton.click();
     await expect(card).toContainText(/处理中|Working/, { timeout: 15000 });
+    debugLog('handoff-accept:working', { flow: handoffFlow.source });
   };
 
   const testProjectId = `ui_007_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
   await page.getByTestId('project-name-input').fill(testProjectId);
   await page.getByTestId('project-create-btn').click();
+  debugLog('project-created', { testProjectId });
 
   const projectSelect = page.getByTestId('project-select');
   await expect(projectSelect).toHaveValue(testProjectId);
+  debugLog('project-selected', { selected: await projectSelect.inputValue() });
 
   await page.getByRole('tab', { name: /设置|Settings/ }).click();
   const autopilotEnabledButton = page.getByRole('button', { name: /已开启|Enabled/ });
@@ -223,13 +256,10 @@ test('[UI-007] should complete full workflow: game designer command -> auto hand
 
   const sendButton = page.locator('button').filter({ hasText: /发送/ }).first();
   await sendButton.click();
+  debugLog('command-sent:game-designer');
 
   // Wait for agent to process and automatically create handoff
-  const processingIndicator = page.getByText(/Agent 正在处理/).first();
-  try {
-    await processingIndicator.waitFor({ state: 'visible', timeout: 10000 });
-    await processingIndicator.waitFor({ state: 'hidden', timeout: 120000 });
-  } catch {}
+  await waitForProcessingToSettle('game-designer');
 
   // Handle any permission requests for tool calls
   await handlePermissionIfPresent();
@@ -242,6 +272,7 @@ test('[UI-007] should complete full workflow: game designer command -> auto hand
   // The handoff should be created automatically by the agent (not manually via UI)
   const handoffItems = page.locator('[data-testid^="handoff-card-"]').all();
   expect((await handoffItems).length).toBeGreaterThan(0);
+  await dumpHandoffCards('after-game-designer');
 
   // Accept the handoff as CEO
   await acceptPendingHandoffFor(/游戏策划[\s\S]*CEO|Game Designer[\s\S]*CEO/);
@@ -257,12 +288,9 @@ test('[UI-007] should complete full workflow: game designer command -> auto hand
 
   const ceoSendButton = page.locator('button').filter({ hasText: /发送/ }).first();
   await ceoSendButton.click();
+  debugLog('command-sent:ceo');
 
-  try {
-    const processingIndicator2 = page.getByText(/Agent 正在处理/).first();
-    await processingIndicator2.waitFor({ state: 'visible', timeout: 10000 });
-    await processingIndicator2.waitFor({ state: 'hidden', timeout: 120000 });
-  } catch {}
+  await waitForProcessingToSettle('ceo');
 
   await handlePermissionIfPresent();
   await page.waitForTimeout(2000);
@@ -273,6 +301,7 @@ test('[UI-007] should complete full workflow: game designer command -> auto hand
 
   const handoffItems2 = page.locator('[data-testid^="handoff-card-"]').all();
   expect((await handoffItems2).length).toBeGreaterThanOrEqual(2);
+  await dumpHandoffCards('after-ceo');
 
   // Accept as architect
   await acceptPendingHandoffFor(/CEO[\s\S]*架构师|CEO[\s\S]*Architect/);
@@ -287,12 +316,9 @@ test('[UI-007] should complete full workflow: game designer command -> auto hand
   await architectCommandInput.fill('请设计技术架构');
 
   await sendButton.click();
+  debugLog('command-sent:architect');
 
-  try {
-    const processingIndicator3 = page.getByText(/Agent 正在处理/).first();
-    await processingIndicator3.waitFor({ state: 'visible', timeout: 10000 });
-    await processingIndicator3.waitFor({ state: 'hidden', timeout: 120000 });
-  } catch {}
+  await waitForProcessingToSettle('architect');
 
   await handlePermissionIfPresent();
   await page.waitForTimeout(2000);
@@ -303,6 +329,7 @@ test('[UI-007] should complete full workflow: game designer command -> auto hand
 
   const handoffItems3 = page.locator('[data-testid^="handoff-card-"]').all();
   expect((await handoffItems3).length).toBeGreaterThanOrEqual(3);
+  await dumpHandoffCards('after-architect');
 
   // Accept as engineer
   await acceptPendingHandoffFor(/架构师[\s\S]*软件工程师|Architect[\s\S]*Engineer/);
@@ -317,12 +344,9 @@ test('[UI-007] should complete full workflow: game designer command -> auto hand
   await engineerCommandInput.fill('请完成游戏开发并提交最终成果');
 
   await sendButton.click();
+  debugLog('command-sent:engineer');
 
-  try {
-    const processingIndicator4 = page.getByText(/Agent 正在处理/).first();
-    await processingIndicator4.waitFor({ state: 'visible', timeout: 10000 });
-    await processingIndicator4.waitFor({ state: 'hidden', timeout: 120000 });
-  } catch {}
+  await waitForProcessingToSettle('engineer');
 
   await handlePermissionIfPresent();
   await page.waitForTimeout(2000);
@@ -333,6 +357,7 @@ test('[UI-007] should complete full workflow: game designer command -> auto hand
 
   const finalHandoffItems = page.locator('[data-testid^="handoff-card-"]').all();
   expect((await finalHandoffItems).length).toBeGreaterThanOrEqual(3);
+  await dumpHandoffCards('final');
 });
 
 test('[UI-008] should enable autopilot and verify agent auto-handoff with auto-acceptance', async ({ page }) => {
