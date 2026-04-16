@@ -169,6 +169,9 @@ test('[UI-006] should load star-office-ui and keep agent status synced via agent
 
 test('[UI-007] should complete full workflow: game designer command -> auto handoff -> engineer completion', async ({ page }) => {
   test.setTimeout(300_000);
+  const PROCESSING_VISIBLE_TIMEOUT_MS = 10_000;
+  const PROCESSING_HIDDEN_TIMEOUT_MS = 120_000;
+  const MAX_DEBUG_CARD_TEXT_LENGTH = 240;
   const debugPrefix = '[UI-007][debug]';
   const debugLog = (step: string, extra?: Record<string, unknown>) => {
     const payload = extra ? ` ${JSON.stringify(extra)}` : '';
@@ -179,7 +182,7 @@ test('[UI-007] should complete full workflow: game designer command -> auto hand
     const cards = await page.locator('[data-testid^="handoff-card-"]').allTextContents();
     debugLog(`handoff-cards:${stage}`, {
       count: cards.length,
-      cards: cards.map(card => card.replace(/\s+/g, ' ').slice(0, 240))
+      cards: cards.map(card => card.replace(/\s+/g, ' ').slice(0, MAX_DEBUG_CARD_TEXT_LENGTH))
     });
   };
 
@@ -187,9 +190,9 @@ test('[UI-007] should complete full workflow: game designer command -> auto hand
     const processingIndicator = page.getByText(/Agent 正在处理/).first();
     debugLog(`processing-wait:start:${label}`);
     try {
-      await processingIndicator.waitFor({ state: 'visible', timeout: 10000 });
+      await processingIndicator.waitFor({ state: 'visible', timeout: PROCESSING_VISIBLE_TIMEOUT_MS });
       debugLog(`processing-wait:visible:${label}`);
-      await processingIndicator.waitFor({ state: 'hidden', timeout: 120000 });
+      await processingIndicator.waitFor({ state: 'hidden', timeout: PROCESSING_HIDDEN_TIMEOUT_MS });
       debugLog(`processing-wait:hidden:${label}`);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
