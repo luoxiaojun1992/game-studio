@@ -88,9 +88,9 @@ const sendInjectedMock = async (res, mock) => {
 
 const buildMcpTools = () => MCP_TOOL_DEFS.map((tool) => ({
   name: tool.name,
-    description: tool.description,
-    input_schema: { type: 'object', properties: {} }
-  }));
+  description: tool.description,
+  input_schema: { type: 'object', properties: {} }
+}));
 
 const listToolNamesFromRequest = (body) => (
   Array.isArray(body?.tools)
