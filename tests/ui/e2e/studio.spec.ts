@@ -211,7 +211,7 @@ test('[UI-007] should complete full workflow: game designer command -> auto hand
   await page.getByRole('tab', { name: /设置|Settings/ }).click();
   const autopilotEnabledButton = page.getByRole('button', { name: /已开启|Enabled/ });
   const autopilotDisabledButton = page.getByRole('button', { name: /已关闭|Disabled/ });
-  if (await autopilotEnabledButton.isVisible().catch(() => false)) {
+  if (await autopilotEnabledButton.count()) {
     await autopilotEnabledButton.click();
   }
   await expect(autopilotDisabledButton).toBeVisible();
