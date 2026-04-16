@@ -14,13 +14,13 @@ const PORT = parsePort(process.env.MOCK_SERVER_PORT || '3001');
 const HOST = process.env.MOCK_SERVER_HOST || '127.0.0.1';
 const MAX_INJECTED_MOCKS = 100;
 const injectedMocks = [];
-const MCP_SERVER_TOOLS_PATH_RE = /^\/(?:v1\/)?mcp\/servers\/[^/]+\/tools$/;
+const MCP_SERVER_TOOLS_PATH_REGEX = /^\/(?:v1\/)?mcp\/servers\/[^/]+\/tools$/;
 const MCP_SERVER_NAME = 'studio-tools';
 const MCP_TOOL_DEFS = [
-  { name: 'create_handoff', description: 'Create agent handoff task' },
-  { name: 'submit_proposal', description: 'Submit proposal document' },
-  { name: 'submit_game', description: 'Submit game build result' },
-  { name: 'save_memory', description: 'Save long-term memory' }
+  { name: 'create_handoff', description: 'Create agent handoff task', input_schema: { type: 'object', properties: {} } },
+  { name: 'submit_proposal', description: 'Submit proposal document', input_schema: { type: 'object', properties: {} } },
+  { name: 'submit_game', description: 'Submit game build result', input_schema: { type: 'object', properties: {} } },
+  { name: 'save_memory', description: 'Save long-term memory', input_schema: { type: 'object', properties: {} } }
 ];
 
 const withCors = (headers = {}) => ({
@@ -89,7 +89,7 @@ const sendInjectedMock = async (res, mock) => {
 const buildMcpTools = () => MCP_TOOL_DEFS.map((tool) => ({
   name: tool.name,
   description: tool.description,
-  input_schema: { type: 'object', properties: {} }
+  input_schema: tool.input_schema
 }));
 
 const listToolNamesFromRequest = (body) => (
@@ -104,6 +104,7 @@ const listToolNamesFromRequest = (body) => (
     : []
 );
 
+// Tool names from MCP may be prefixed as mcp__<server>__<tool>; keep compatibility with both forms.
 const resolveToolName = (toolName, availableTools) => (
   availableTools.find((name) => name === toolName || name.endsWith(`__${toolName}`))
   || toolName
@@ -231,7 +232,7 @@ const server = http.createServer(async (req, res) => {
     });
   }
 
-  if (MCP_SERVER_TOOLS_PATH_RE.test(pathname) && method === 'GET') {
+  if (MCP_SERVER_TOOLS_PATH_REGEX.test(pathname) && method === 'GET') {
     return sendJson(res, 200, {
       server: MCP_SERVER_NAME,
       tools: buildMcpTools()
