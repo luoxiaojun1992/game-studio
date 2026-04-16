@@ -220,9 +220,12 @@ const server = http.createServer(async (req, res) => {
     };
     const targetAgent = handoffTargets[agentRole] || 'ceo';
 
+    // Extract text content from prompt (handle both string and array formats)
+    const promptText = typeof prompt === 'string' ? prompt :
+      Array.isArray(prompt) ? prompt.map(p => typeof p === 'string' ? p : (p?.text || '')).join(' ') : String(prompt || '');
+
     // Check for specific tool call triggers in the prompt first
-    if (typeof prompt === 'string') {
-      if (prompt.includes('submit_proposal') || prompt.includes('提案')) {
+    if (promptText.includes('submit_proposal') || promptText.includes('提案')) {
         toolCalls = [{
           id: 'call_mock_proposal_' + randomUUID().slice(0, 8),
           type: 'function',
@@ -235,7 +238,7 @@ const server = http.createServer(async (req, res) => {
             })
           }
         }];
-      } else if (prompt.includes('submit_game') || prompt.includes('提交游戏')) {
+      } else if (promptText.includes('submit_game') || promptText.includes('提交游戏')) {
         toolCalls = [{
           id: 'call_mock_game_' + randomUUID().slice(0, 8),
           type: 'function',
@@ -247,7 +250,7 @@ const server = http.createServer(async (req, res) => {
             })
           }
         }];
-      } else if (prompt.includes('save_memory') || prompt.includes('记忆')) {
+      } else if (promptText.includes('save_memory') || promptText.includes('记忆')) {
         toolCalls = [{
           id: 'call_mock_memory_' + randomUUID().slice(0, 8),
           type: 'function',
@@ -277,7 +280,6 @@ const server = http.createServer(async (req, res) => {
           }
         }];
       }
-    }
 
     if (stream) {
       const events = [];
