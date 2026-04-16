@@ -281,16 +281,18 @@ const server = http.createServer(async (req, res) => {
 
     if (stream) {
       const events = [];
-      // Send initial assistant message
+      // Send initial assistant message with role
       events.push({
         id: 'chatcmpl-mock',
         object: 'chat.completion.chunk',
         choices: [{ index: 0, delta: { role: 'assistant', content: '我来帮您处理这个任务。' } }]
       });
 
-      // Send tool calls if triggered
+      // Send tool calls if triggered - use proper OpenAI streaming format
       if (toolCalls) {
-        for (const toolCall of toolCalls) {
+        for (let i = 0; i < toolCalls.length; i++) {
+          const toolCall = toolCalls[i];
+          // First chunk: tool_calls array with index
           events.push({
             id: 'chatcmpl-mock',
             object: 'chat.completion.chunk',
@@ -298,11 +300,27 @@ const server = http.createServer(async (req, res) => {
               index: 0,
               delta: {
                 tool_calls: [{
-                  index: 0,
+                  index: i,
                   id: toolCall.id,
                   type: toolCall.type,
                   function: {
                     name: toolCall.function.name,
+                    arguments: ''
+                  }
+                }]
+              }
+            }]
+          });
+          // Second chunk: arguments
+          events.push({
+            id: 'chatcmpl-mock',
+            object: 'chat.completion.chunk',
+            choices: [{
+              index: 0,
+              delta: {
+                tool_calls: [{
+                  index: i,
+                  function: {
                     arguments: toolCall.function.arguments
                   }
                 }]
@@ -317,6 +335,13 @@ const server = http.createServer(async (req, res) => {
         id: 'chatcmpl-mock',
         object: 'chat.completion.chunk',
         choices: [{ index: 0, delta: { content: '\n\n任务已完成。' } }]
+      });
+
+      // Send finish_reason
+      events.push({
+        id: 'chatcmpl-mock',
+        object: 'chat.completion.chunk',
+        choices: [{ index: 0, delta: {}, finish_reason: toolCalls ? 'tool_calls' : 'stop' }]
       });
 
       return sendSse(res, events);
