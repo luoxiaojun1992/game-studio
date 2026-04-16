@@ -200,16 +200,23 @@ test('[UI-007] should complete full workflow: game designer command -> auto hand
   await page.getByPlaceholder(/新建项目名|New project name/).fill(testProjectId);
   await page.getByRole('button', { name: /新建|Create/ }).click();
 
-  const projectSelect = page.locator('select').first();
+  const projectSelectorContainer = page
+    .locator('div')
+    .filter({ has: page.getByText(/项目|Project/) })
+    .filter({ has: page.getByPlaceholder(/新建项目名|New project name/) })
+    .first();
+  const projectSelect = projectSelectorContainer.locator('select');
   await expect(projectSelect.locator(`option[value="${testProjectId}"]`)).toHaveCount(1);
   await expect(projectSelect).toHaveValue(testProjectId);
 
   await page.getByRole('tab', { name: /设置|Settings/ }).click();
   const autopilotEnabledButton = page.getByRole('button', { name: /已开启|Enabled/ });
-  if (await autopilotEnabledButton.count()) {
+  const autopilotDisabledButton = page.getByRole('button', { name: /已关闭|Disabled/ });
+  await expect(autopilotEnabledButton.or(autopilotDisabledButton)).toBeVisible();
+  if (await autopilotEnabledButton.isVisible()) {
     await autopilotEnabledButton.click();
   }
-  await expect(page.getByRole('button', { name: /已关闭|Disabled/ })).toBeVisible();
+  await expect(autopilotDisabledButton).toBeVisible();
 
   // Step 1: Game designer receives task and automatically creates handoff to CEO
   await page.getByRole('tab', { name: /指令中心/ }).click();
