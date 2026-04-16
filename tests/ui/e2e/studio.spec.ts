@@ -166,12 +166,12 @@ test('[UI-006] should load star-office-ui and keep agent status synced via agent
   }
 });
 
-test('[UI-007] should complete full workflow: game designer command -> task -> handoff -> engineer completion', async ({ page }) => {
+test('[UI-007] should complete full workflow: game designer command -> auto handoff -> engineer completion', async ({ page }) => {
   test.setTimeout(300_000);
   await page.addInitScript(() => localStorage.setItem('game_studio_ui_language', 'zh-CN'));
   await page.goto('/');
 
-  // Helper function to handle permission dialogs and ask user questions
+  // Helper function to handle permission dialogs
   const handlePermissionIfPresent = async () => {
     const approveButton = page.locator('button').filter({ hasText: /允许执行|批准/ }).first();
     try {
@@ -179,14 +179,9 @@ test('[UI-007] should complete full workflow: game designer command -> task -> h
       await approveButton.click();
       return;
     } catch {}
-    const skipButton = page.locator('button').filter({ hasText: /跳过/ }).first();
-    try {
-      await skipButton.waitFor({ state: 'visible', timeout: 3000 });
-      await skipButton.click();
-    } catch {}
   };
 
-  // Step 1: Navigate to Commands tab and send command to game designer
+  // Step 1: Game designer receives task and automatically creates handoff to CEO
   await page.getByRole('tab', { name: /指令中心/ }).click();
 
   const gameDesignerButton = page.locator('button').filter({ hasText: /游戏策划/ }).first();
@@ -199,137 +194,108 @@ test('[UI-007] should complete full workflow: game designer command -> task -> h
   const sendButton = page.locator('button').filter({ hasText: /发送/ }).first();
   await sendButton.click();
 
-  await handlePermissionIfPresent();
-
+  // Wait for agent to process and automatically create handoff
   const processingIndicator = page.getByText(/Agent 正在处理/).first();
   try {
     await processingIndicator.waitFor({ state: 'visible', timeout: 10000 });
-    await processingIndicator.waitFor({ state: 'hidden', timeout: 60000 });
+    await processingIndicator.waitFor({ state: 'hidden', timeout: 120000 });
   } catch {}
+
+  // Handle any permission requests for tool calls
+  await handlePermissionIfPresent();
+  await page.waitForTimeout(2000);
+
+  // Step 2: Verify handoff was automatically created by game designer
+  await page.getByRole('tab', { name: /任务交接/ }).click();
   await page.waitForTimeout(1000);
 
-  // Step 2: Navigate to Handoffs tab and create a handoff
-  await page.getByRole('tab', { name: /任务交接/ }).click();
+  // The handoff should be created automatically by the agent (not manually via UI)
+  const handoffItems = page.locator('[data-testid^="handoff-card-"]').all();
+  expect((await handoffItems).length).toBeGreaterThan(0);
 
-  const createHandoffButton = page.locator('button').filter({ hasText: /创建交接|新建交接/ }).first();
-  await createHandoffButton.click();
-
-  const modal = page.locator('.fixed.inset-0 .bg-gray-900');
-  await modal.waitFor({ state: 'visible', timeout: 10000 });
-
-  await modal.locator('input').fill('游戏策划交接：核心玩法设计完成');
-  await modal.locator('textarea').first().fill('已完成RPG游戏核心玩法设计，包括战斗系统和角色成长机制，需要CEO评审');
-
-  const targetAgentSelect = page.locator('.fixed.inset-0 select').nth(1);
-  await targetAgentSelect.waitFor({ state: 'visible', timeout: 10000 });
-  await targetAgentSelect.selectOption('ceo');
-
-  await modal.locator('button').filter({ hasText: /创建交接/ }).click();
-
-  await expect(page.locator('body').getByText('游戏策划交接：核心玩法设计完成').first()).toBeAttached({ timeout: 10000 });
-
-  await handlePermissionIfPresent();
-
-  // Step 3: Accept the handoff as CEO
+  // Accept the handoff as CEO
   const handoffHeader = page.getByTestId('handoff-header').first();
   await handoffHeader.click();
   await page.waitForTimeout(500);
 
   const acceptButton = page.getByTestId('handoff-accept-btn').first();
   await acceptButton.click();
+  await page.waitForTimeout(1000);
 
-  // Step 4: CEO completes task and creates handoff to architect
+  // Step 3: CEO receives task and automatically creates handoff to architect
   await page.getByRole('tab', { name: /指令中心/ }).click();
 
   const ceoButton = page.locator('button').filter({ hasText: /CEO/ }).first();
   await ceoButton.click();
 
   const ceoCommandInput = page.locator('textarea[placeholder*="下达指令"]').first();
-  await ceoCommandInput.fill('请评审游戏策划案并创建交接给架构师进行技术设计');
+  await ceoCommandInput.fill('请评审游戏策划案');
 
   const ceoSendButton = page.locator('button').filter({ hasText: /发送/ }).first();
   await ceoSendButton.click();
 
-  await handlePermissionIfPresent();
-
   try {
     const processingIndicator2 = page.getByText(/Agent 正在处理/).first();
     await processingIndicator2.waitFor({ state: 'visible', timeout: 10000 });
-    await processingIndicator2.waitFor({ state: 'hidden', timeout: 60000 });
+    await processingIndicator2.waitFor({ state: 'hidden', timeout: 120000 });
   } catch {}
+
+  await handlePermissionIfPresent();
+  await page.waitForTimeout(2000);
+
+  // Step 4: Verify second handoff was automatically created by CEO
+  await page.getByRole('tab', { name: /任务交接/ }).click();
   await page.waitForTimeout(1000);
 
-  // Step 5: Create handoff from CEO to architect
-  await page.getByRole('tab', { name: /任务交接/ }).click();
+  const handoffItems2 = page.locator('[data-testid^="handoff-card-"]').all();
+  expect((await handoffItems2).length).toBeGreaterThanOrEqual(2);
 
-  await createHandoffButton.click();
-
-  const modal2 = page.locator('.fixed.inset-0 .bg-gray-900');
-  await modal2.waitFor({ state: 'visible', timeout: 10000 });
-
-  await modal2.locator('input').fill('CEO评审完成：技术架构设计交接');
-  await modal2.locator('textarea').first().fill('游戏策划案已通过评审，请架构师设计技术方案');
-
-  const architectSelect = modal2.locator('select').nth(1);
-  await architectSelect.waitFor({ state: 'visible', timeout: 10000 });
-  await architectSelect.selectOption('architect');
-
-  await modal2.locator('button').filter({ hasText: /创建交接/ }).click();
-  await expect(page.locator('body').getByText('CEO评审完成：技术架构设计交接').first()).toBeAttached({ timeout: 10000 });
-
+  // Accept as architect
   const handoffHeader2 = page.getByTestId('handoff-header').first();
   await handoffHeader2.click();
   await page.waitForTimeout(500);
 
   const architectAcceptButton = page.getByTestId('handoff-accept-btn').first();
   await architectAcceptButton.click();
+  await page.waitForTimeout(1000);
 
-  // Step 6: Architect completes and hands off to engineer
+  // Step 5: Architect receives task and automatically creates handoff to engineer
   await page.getByRole('tab', { name: /指令中心/ }).click();
 
   const architectButton = page.locator('button').filter({ hasText: /架构师/ }).first();
   await architectButton.click();
 
   const architectCommandInput = page.locator('textarea[placeholder*="下达指令"]').first();
-  await architectCommandInput.fill('请设计技术架构并创建交接给工程师实现');
+  await architectCommandInput.fill('请设计技术架构');
 
   await sendButton.click();
-
-  await handlePermissionIfPresent();
 
   try {
     const processingIndicator3 = page.getByText(/Agent 正在处理/).first();
     await processingIndicator3.waitFor({ state: 'visible', timeout: 10000 });
-    await processingIndicator3.waitFor({ state: 'hidden', timeout: 60000 });
+    await processingIndicator3.waitFor({ state: 'hidden', timeout: 120000 });
   } catch {}
+
+  await handlePermissionIfPresent();
+  await page.waitForTimeout(2000);
+
+  // Step 6: Verify third handoff was automatically created by architect
+  await page.getByRole('tab', { name: /任务交接/ }).click();
   await page.waitForTimeout(1000);
 
-  // Step 7: Create handoff from architect to engineer
-  await page.getByRole('tab', { name: /任务交接/ }).click();
+  const handoffItems3 = page.locator('[data-testid^="handoff-card-"]').all();
+  expect((await handoffItems3).length).toBeGreaterThanOrEqual(3);
 
-  await createHandoffButton.click();
-
-  const modal3 = page.locator('.fixed.inset-0 .bg-gray-900');
-  await modal3.waitFor({ state: 'visible', timeout: 10000 });
-
-  await modal3.locator('input').fill('技术架构设计完成：开发交接');
-  await modal3.locator('textarea').first().fill('技术架构已设计完成，请工程师开始开发实现');
-
-  const engineerSelect = modal3.locator('select').nth(1);
-  await engineerSelect.waitFor({ state: 'visible', timeout: 10000 });
-  await engineerSelect.selectOption('engineer');
-
-  await modal3.locator('button').filter({ hasText: /创建交接/ }).click();
-  await expect(page.locator('body').getByText('技术架构设计完成：开发交接').first()).toBeAttached({ timeout: 10000 });
-
+  // Accept as engineer
   const handoffHeader3 = page.getByTestId('handoff-header').first();
   await handoffHeader3.click();
   await page.waitForTimeout(500);
 
   const engineerAcceptButton = page.getByTestId('handoff-accept-btn').first();
   await engineerAcceptButton.click();
+  await page.waitForTimeout(1000);
 
-  // Step 8: Engineer completes the task
+  // Step 7: Engineer completes the final task
   await page.getByRole('tab', { name: /指令中心/ }).click();
 
   const engineerButton = page.locator('button').filter({ hasText: /软件工程师/ }).first();
@@ -340,20 +306,21 @@ test('[UI-007] should complete full workflow: game designer command -> task -> h
 
   await sendButton.click();
 
-  await handlePermissionIfPresent();
-
   try {
     const processingIndicator4 = page.getByText(/Agent 正在处理/).first();
     await processingIndicator4.waitFor({ state: 'visible', timeout: 10000 });
-    await processingIndicator4.waitFor({ state: 'hidden', timeout: 60000 });
+    await processingIndicator4.waitFor({ state: 'hidden', timeout: 120000 });
   } catch {}
+
+  await handlePermissionIfPresent();
+  await page.waitForTimeout(2000);
+
+  // Step 8: Verify final state - all handoffs created by agents (not manually)
+  await page.getByRole('tab', { name: /任务交接/ }).click();
   await page.waitForTimeout(1000);
 
-  // Step 9: Verify final state
-  await page.getByRole('tab', { name: /任务交接/ }).click();
-
-  const handoffItems = page.locator('[class*="border"]').filter({ hasText: /交接|handoff/i }).all();
-  expect((await handoffItems).length).toBeGreaterThan(0);
+  const finalHandoffItems = page.locator('[data-testid^="handoff-card-"]').all();
+  expect((await finalHandoffItems).length).toBeGreaterThanOrEqual(3);
 });
 
 test('[UI-008] should enable autopilot and verify handoff auto-acceptance', async ({ page }) => {

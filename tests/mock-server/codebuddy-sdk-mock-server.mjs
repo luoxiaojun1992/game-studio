@@ -195,28 +195,34 @@ const server = http.createServer(async (req, res) => {
     const messages = body?.messages || [];
     const lastMessage = messages[messages.length - 1];
     const prompt = lastMessage?.content || '';
+    const systemPrompt = messages.find(m => m.role === 'system')?.content || '';
+
+    // Determine agent role from system prompt
+    let agentRole = 'unknown';
+    if (systemPrompt.includes('游戏策划')) agentRole = 'game_designer';
+    else if (systemPrompt.includes('软件工程师')) agentRole = 'engineer';
+    else if (systemPrompt.includes('架构师')) agentRole = 'architect';
+    else if (systemPrompt.includes('CEO')) agentRole = 'ceo';
+    else if (systemPrompt.includes('商业策划')) agentRole = 'biz_designer';
 
     // Determine mock response based on prompt content
     let responseContent = stream ? 'mock-stream' : 'mock-response';
     let toolCalls = null;
 
-    // Check for tool call triggers in the prompt
+    // Default: always return create_handoff for task completion simulation
+    // This allows the agent to automatically create handoffs without manual UI interaction
+    const handoffTargets = {
+      game_designer: 'ceo',
+      ceo: 'architect',
+      architect: 'engineer',
+      engineer: 'biz_designer',
+      biz_designer: 'ceo'
+    };
+    const targetAgent = handoffTargets[agentRole] || 'ceo';
+
+    // Check for specific tool call triggers in the prompt first
     if (typeof prompt === 'string') {
-      if (prompt.includes('create_handoff') || prompt.includes('交接')) {
-        toolCalls = [{
-          id: 'call_mock_handoff_' + randomUUID().slice(0, 8),
-          type: 'function',
-          function: {
-            name: 'create_handoff',
-            arguments: JSON.stringify({
-              to_agent_id: 'ceo',
-              title: '游戏策划交接：核心玩法设计完成',
-              description: '已完成游戏核心玩法设计，需要CEO评审',
-              priority: 'high'
-            })
-          }
-        }];
-      } else if (prompt.includes('submit_proposal') || prompt.includes('提案')) {
+      if (prompt.includes('submit_proposal') || prompt.includes('提案')) {
         toolCalls = [{
           id: 'call_mock_proposal_' + randomUUID().slice(0, 8),
           type: 'function',
@@ -251,6 +257,22 @@ const server = http.createServer(async (req, res) => {
               category: 'general',
               content: '测试记忆内容',
               importance: 'normal'
+            })
+          }
+        }];
+      } else {
+        // Default behavior: return create_handoff to simulate task completion
+        // This ensures agents automatically create handoffs without manual UI interaction
+        toolCalls = [{
+          id: 'call_mock_handoff_' + randomUUID().slice(0, 8),
+          type: 'function',
+          function: {
+            name: 'create_handoff',
+            arguments: JSON.stringify({
+              to_agent_id: targetAgent,
+              title: `${agentRole} 任务完成交接`,
+              description: `任务已完成，移交给 ${targetAgent} 继续处理`,
+              priority: 'high'
             })
           }
         }];
