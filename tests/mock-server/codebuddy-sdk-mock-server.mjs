@@ -83,6 +83,9 @@ const server = http.createServer(async (req, res) => {
   const parsedUrl = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
   const pathname = parsedUrl.pathname;
 
+  // Log all incoming requests for debugging
+  console.log(`[codebuddy-mock] ${method} ${pathname}`);
+
   if (method === 'OPTIONS') {
     res.writeHead(200, withCors());
     res.end();
@@ -91,6 +94,39 @@ const server = http.createServer(async (req, res) => {
 
   if (pathname === '/api/health' && method === 'GET') {
     return sendJson(res, 200, { status: 'ok', service: 'codebuddy-sdk-mock' });
+  }
+
+  // Handle authentication endpoints - return mock success
+  if ((pathname === '/v1/auth/verify' || pathname === '/auth/verify') && method === 'POST') {
+    return sendJson(res, 200, { 
+      success: true, 
+      user: { 
+        id: 'mock-user-id', 
+        name: 'Mock User',
+        email: 'mock@example.com'
+      }
+    });
+  }
+
+  // Handle token refresh
+  if ((pathname === '/v1/auth/refresh' || pathname === '/auth/refresh') && method === 'POST') {
+    return sendJson(res, 200, { 
+      access_token: 'mock-access-token',
+      refresh_token: 'mock-refresh-token',
+      expires_in: 3600
+    });
+  }
+
+  // Handle account info
+  if ((pathname === '/v1/account' || pathname === '/account') && method === 'GET') {
+    return sendJson(res, 200, { 
+      userId: 'mock-user-id',
+      userName: 'Mock User',
+      userNickname: 'Mock',
+      token: 'mock-token',
+      enterpriseId: 'mock-enterprise',
+      enterprise: 'Mock Enterprise'
+    });
   }
 
   if (pathname === '/__admin/reset' && method === 'POST') {
@@ -144,7 +180,7 @@ const server = http.createServer(async (req, res) => {
   const injected = resolveInjectedMock(method, pathname);
   if (injected) return sendInjectedMock(res, injected);
 
-  if (pathname === '/v1/models' && method === 'GET') {
+  if (pathname === '/models' && method === 'GET') {
     return sendJson(res, 200, {
       object: 'list',
       data: [
@@ -153,7 +189,7 @@ const server = http.createServer(async (req, res) => {
     });
   }
 
-  if (pathname === '/v1/chat/completions' && method === 'POST') {
+  if (pathname === '/chat/completions' && method === 'POST') {
     const body = await readBody(req).catch(() => ({}));
     const stream = body?.stream;
     const messages = body?.messages || [];
@@ -281,9 +317,25 @@ const server = http.createServer(async (req, res) => {
     return sendJson(res, 200, response);
   }
 
+  // Log unhandled requests for debugging
+  console.log(`[codebuddy-mock] Unhandled request: ${method} ${pathname}`);
+  console.log(`[codebuddy-mock] Headers:`, JSON.stringify(req.headers));
+  
+  // For unhandled routes, return 200 with empty success response for auth-related paths
+  // to prevent 401 errors from breaking the CLI flow
+  if (pathname.includes('auth') || pathname.includes('login') || pathname.includes('token')) {
+    return sendJson(res, 200, { success: true, mock: true });
+  }
+  
   return sendJson(res, 404, { error: `mock route not found: ${method} ${pathname}` });
 });
 
 server.listen(PORT, HOST, () => {
   console.log(`[codebuddy-mock] SDK mock API server listening on http://${HOST}:${PORT}`);
+  console.log(`[codebuddy-mock] Available endpoints:`);
+  console.log(`  - GET  /api/health`);
+  console.log(`  - GET  /models`);
+  console.log(`  - POST /chat/completions`);
+  console.log(`  - POST /__admin/mocks`);
+  console.log(`  - POST /__admin/reset`);
 });

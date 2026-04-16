@@ -194,7 +194,7 @@ npm ci
 npm run mock:server
 
 # Terminal 2: start Studio backend (real /api/*), but route CodeBuddy SDK traffic to the mock server
-CODEBUDDY_ENDPOINT=http://localhost:3001 CODEBUDDY_API_KEY=mock-codebuddy-key STAR_OFFICE_UI_URL=http://127.0.0.1:19000 npm run server
+CODEBUDDY_BASE_URL=http://localhost:3001 CODEBUDDY_API_KEY=mock-codebuddy-key STAR_OFFICE_UI_URL=http://127.0.0.1:19000 npm run server
 
 # Terminal 3: start UI app and point it to the real Studio backend
 VITE_API_BASE=http://localhost:3000 VITE_STAR_OFFICE_UI_URL=http://127.0.0.1:19000 npm run dev:client -- --host 0.0.0.0 --port 4173
