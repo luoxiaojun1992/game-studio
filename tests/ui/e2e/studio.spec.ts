@@ -174,7 +174,14 @@ test('[UI-007] should complete full workflow: game designer command -> auto hand
   const MAX_DEBUG_CARD_TEXT_LENGTH = 240;
   const debugPrefix = '[UI-007][debug]';
   const debugLog = (step: string, extra?: Record<string, unknown>) => {
-    const payload = extra ? ` ${JSON.stringify(extra)}` : '';
+    let payload = '';
+    if (extra) {
+      try {
+        payload = ` ${JSON.stringify(extra)}`;
+      } catch {
+        payload = ` ${String(extra)}`;
+      }
+    }
     console.log(`${debugPrefix} ${new Date().toISOString()} ${step}${payload}`);
   };
 
