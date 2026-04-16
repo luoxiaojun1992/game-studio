@@ -231,13 +231,6 @@ const server = http.createServer(async (req, res) => {
     });
   }
 
-  if ((pathname === '/mcp/servers/tools' || pathname === '/v1/mcp/servers/tools') && method === 'GET') {
-    return sendJson(res, 200, {
-      server: MCP_SERVER_NAME,
-      tools: buildMcpTools()
-    });
-  }
-
   if (MCP_SERVER_TOOLS_PATH_RE.test(pathname) && method === 'GET') {
     return sendJson(res, 200, {
       server: MCP_SERVER_NAME,
