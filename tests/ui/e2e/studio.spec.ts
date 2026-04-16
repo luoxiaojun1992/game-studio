@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { randomUUID } from 'node:crypto';
 
 const mockAdminBase =
   process.env.CODEBUDDY_MOCK_ADMIN_URL ||
@@ -181,6 +182,50 @@ test('[UI-007] should complete full workflow: game designer command -> auto hand
     } catch {}
   };
 
+  const acceptPendingHandoffFor = async (handoffFlow: RegExp) => {
+    const card = page
+      .locator('[data-testid^="handoff-card-"]')
+      .filter({ hasText: /待接收|Pending/ })
+      .filter({ hasText: handoffFlow })
+      .first();
+    await expect(card).toBeVisible({ timeout: 10000 });
+    await card.getByTestId('handoff-header').click();
+    const acceptButton = card.getByTestId('handoff-accept-btn');
+    await expect(acceptButton).toBeVisible({ timeout: 10000 });
+    await acceptButton.click();
+    await expect(card).toContainText(/已接收|处理中|Accepted|Working/, { timeout: 10000 });
+  };
+
+  const testProjectId = `ui_007_${randomUUID().replace(/-/g, '')}`;
+  const createProjectResponse = await fetch(`${studioApiBase}/api/projects`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id: testProjectId, name: testProjectId })
+  });
+  if (!createProjectResponse.ok) {
+    throw new Error(`failed to create test project: ${createProjectResponse.status} ${await createProjectResponse.text()}`);
+  }
+
+  const switchProjectResponse = await fetch(`${studioApiBase}/api/projects/switch`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fromProjectId: 'default', toProjectId: testProjectId })
+  });
+  if (!switchProjectResponse.ok) {
+    throw new Error(`failed to switch test project: ${switchProjectResponse.status} ${await switchProjectResponse.text()}`);
+  }
+
+  const disableAutopilotResponse = await fetch(`${studioApiBase}/api/projects/${encodeURIComponent(testProjectId)}/settings`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ autopilot_enabled: false })
+  });
+  if (!disableAutopilotResponse.ok) {
+    throw new Error(`failed to disable test project autopilot: ${disableAutopilotResponse.status} ${await disableAutopilotResponse.text()}`);
+  }
+
+  await page.reload();
+
   // Step 1: Game designer receives task and automatically creates handoff to CEO
   await page.getByRole('tab', { name: /指令中心/ }).click();
 
@@ -214,13 +259,7 @@ test('[UI-007] should complete full workflow: game designer command -> auto hand
   expect((await handoffItems).length).toBeGreaterThan(0);
 
   // Accept the handoff as CEO
-  const handoffHeader = page.getByTestId('handoff-header').first();
-  await handoffHeader.click();
-  await page.waitForTimeout(500);
-
-  const acceptButton = page.getByTestId('handoff-accept-btn').first();
-  await acceptButton.click();
-  await page.waitForTimeout(1000);
+  await acceptPendingHandoffFor(/游戏策划[\s\S]*CEO|Game Designer[\s\S]*CEO/);
 
   // Step 3: CEO receives task and automatically creates handoff to architect
   await page.getByRole('tab', { name: /指令中心/ }).click();
@@ -251,13 +290,7 @@ test('[UI-007] should complete full workflow: game designer command -> auto hand
   expect((await handoffItems2).length).toBeGreaterThanOrEqual(2);
 
   // Accept as architect
-  const handoffHeader2 = page.getByTestId('handoff-header').first();
-  await handoffHeader2.click();
-  await page.waitForTimeout(500);
-
-  const architectAcceptButton = page.getByTestId('handoff-accept-btn').first();
-  await architectAcceptButton.click();
-  await page.waitForTimeout(1000);
+  await acceptPendingHandoffFor(/CEO[\s\S]*架构师|CEO[\s\S]*Architect/);
 
   // Step 5: Architect receives task and automatically creates handoff to engineer
   await page.getByRole('tab', { name: /指令中心/ }).click();
@@ -287,13 +320,7 @@ test('[UI-007] should complete full workflow: game designer command -> auto hand
   expect((await handoffItems3).length).toBeGreaterThanOrEqual(3);
 
   // Accept as engineer
-  const handoffHeader3 = page.getByTestId('handoff-header').first();
-  await handoffHeader3.click();
-  await page.waitForTimeout(500);
-
-  const engineerAcceptButton = page.getByTestId('handoff-accept-btn').first();
-  await engineerAcceptButton.click();
-  await page.waitForTimeout(1000);
+  await acceptPendingHandoffFor(/架构师[\s\S]*软件工程师|Architect[\s\S]*Engineer/);
 
   // Step 7: Engineer completes the final task
   await page.getByRole('tab', { name: /指令中心/ }).click();
