@@ -29,6 +29,13 @@
 - **教训**：optional + default 的参数，mock 必须显式传值
 - **SSE reconnect bug**：`if (connectedRef.current) return;` 在 selectedProjectId 变化后阻止重连
 
+## UI-007/008 测试结构
+- `runFullWorkflowTest(page, opts)` 共享函数，接收 `WorkflowOptions: { testId, autopilot, gameName }`
+- UI-007: `autopilot=false`，手动模式（循环内 accept+confirm），handoff mock ×2 per agent
+- UI-008: `autopilot=true`，自动驾驶模式（后端自动处理交接），handoff mock ×1 per agent
+- `tryAcceptHandoff` / `tryConfirmHandoff` 仅在 `!opts.autopilot` 时执行
+- gameName 断言使用 `new RegExp(opts.gameName)` 动态匹配
+
 ## Docker 测试经验
 - `docker compose -f docker-compose.ui-test.yml up --build -d` 启动完整测试环境
 - 服务顺序：codebuddy-sdk-mock → star-office-ui → studio-backend → ui-app → ui-e2e

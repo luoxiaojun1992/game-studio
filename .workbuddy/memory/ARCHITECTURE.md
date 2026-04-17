@@ -30,3 +30,11 @@
 
 ## canUseTool 放行规则
 - `mcp__studio-tools__*` 工具自动放行（无需权限检查）
+
+## DB 初始化注意事项
+- `MAX_PROJECT_ID_LENGTH` 等常量必须放在文件顶部，在任何函数调用之前完成初始化
+- 曾因初始化顺序错误导致 db 初始化失败
+
+## Agent Session 隔离
+- Agent 会话通过 URL 路由参数 `agentId` 区分
+- 每个 Agent 有独立的 session，状态互不影响

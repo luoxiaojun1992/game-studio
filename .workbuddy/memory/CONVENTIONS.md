@@ -19,6 +19,13 @@
 - 切换项目时自动加载对应项目的保存 Agent
 - 两个修改点: `StudioPage.tsx`（`getCommandAgentKey()`）+ `CommandPanel.tsx`（`onAgentChange` 回调）
 
+## 交接默认行为
+- `auto_handoff_enabled` 表默认值应为 1（交接无需人工确认，自动放行）
+
+## 工程师任务同步规则
+- 工程师同时持有"开发"和"测试"两种任务状态，两者必须同步更新
+- systemPrompt 中有强制规则要求双任务状态同步
+
 ## project_id 架构原则
 - LLM 不会主动输出 `project_id` 参数，所有工具必须内部自行获取
 - `createStudioToolsServer(projectId, ...)` 在创建时注入 `scopedProjectId`

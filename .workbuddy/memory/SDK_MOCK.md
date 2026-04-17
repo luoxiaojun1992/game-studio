@@ -19,6 +19,12 @@
 - team_builder 的 systemPrompt 包含"团队建设"或"Team Building"关键字
 - team_builder 的 handoffTargets 为空数组（不做交接）
 
+## SSE Streaming 要求
+- Mock Server 返回 SSE stream 时，tool_calls 必须拆成多个 chunk 发送
+- 每个 tool_call 一个独立 chunk（包含 `index`、`function.name`、`function.arguments`）
+- 最后一个 chunk 必须包含 `finish_reason: 'tool_calls'`
+- 不可在单个 chunk 中发送完整 tool_calls，否则 CLI 无法正确解析
+
 ## LANGUAGE_ADAPTATION 前缀内容
 - 位于 `server/agents.ts` 的 `LANGUAGE_ADAPTATION` 常量
 - 包含语言适配规则，要求 Agent 跟随用户指令语言回复
