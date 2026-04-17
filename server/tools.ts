@@ -157,7 +157,6 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           priority: z.enum(db.HANDOFF_PRIORITIES).optional().default('normal').describe('任务优先级')
         },
         async ({ to_agent_id, title, description, context, priority }) => {
-          console.log(`[create_handoff] called with agentId=${agentId} scopedProjectId=${scopedProjectId} to_agent_id=${to_agent_id} title=${title}`);
           const allowedTargets = ALLOWED_HANDOFF_TARGETS[agentId] || [];
           if (!allowedTargets.includes(to_agent_id)) {
             throw new Error(`交接目标不合法：${agentId} 仅可移交给 ${allowedTargets.join(' / ') || '无'}`);
@@ -366,7 +365,6 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           content: requiredTextSchema('content').describe('提案的完整内容（Markdown 格式）')
         },
         async ({ type, title, content }) => {
-          console.log(`[submit_proposal] called with agentId=${agentId} scopedProjectId=${scopedProjectId} type=${type} title=${title}`);
           if (type === 'game_design') {
             validateAgentPermission(['game_designer'], '提交游戏策划案');
           } else if (type === 'biz_design') {
