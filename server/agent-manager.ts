@@ -541,11 +541,14 @@ class AgentManager extends EventEmitter {
           additionalDirectories: [process.cwd()],
           model,
           maxTurns: 15,
-           systemPrompt: this.buildSystemPrompt(scopedProjectId, agentId),
+          systemPrompt: this.buildSystemPrompt(scopedProjectId, agentId),
           permissionMode: 'default',
           canUseTool,
           mcpServers: {
             'studio-tools': studioToolsServer
+          },
+          env: {
+            CODEBUDDY_CUSTOM_HEADERS: `X-Project-Id: ${scopedProjectId}\nX-Agent-Role: ${agentId}`
           },
           ...(CODEBUDDY_BASE_URL ? { endpoint: CODEBUDDY_BASE_URL } : {}),
           ...(sdkSessionId ? { resume: sdkSessionId } : {})
@@ -722,8 +725,10 @@ class AgentManager extends EventEmitter {
     }
     db.respondToPermissionRequest(requestId, behavior, message, updatedInput);
     if (behavior === 'allow') {
+      console.log(`[permission] ALLOWED requestId=${requestId} toolName=${pending.toolName} agentId=${pending.agentId} projectId=${pending.projectId}`);
       pending.resolve({ behavior: 'allow', updatedInput: updatedInput || pending.input });
     } else {
+      console.log(`[permission] DENIED requestId=${requestId} toolName=${pending.toolName}`);
       pending.resolve({ behavior: 'deny', message: message || '用户拒绝了此操作' });
     }
     return true;

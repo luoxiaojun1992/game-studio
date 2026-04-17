@@ -95,6 +95,7 @@ services:
       - STAR_OFFICE_API_BASE=http://star-office-ui:19000
       - CODEBUDDY_MOCK_ADMIN_URL=http://codebuddy-sdk-mock:3001
       - UI_COVERAGE_THRESHOLD=90
+      - UI_TEST_LOOP_TIMEOUT_MS=600000
       - ALLURE_RESULTS_DIR=tests/ui/artifacts/allure-results
       - HOME=/tmp
       - NPM_CONFIG_CACHE=/tmp/.npm

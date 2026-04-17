@@ -12,21 +12,68 @@ const parsePort = (rawPort) => {
 
 const PORT = parsePort(process.env.MOCK_SERVER_PORT || '3001');
 const HOST = process.env.MOCK_SERVER_HOST || '127.0.0.1';
-const MAX_INJECTED_MOCKS = 100;
-const injectedMocks = [];
-const MCP_SERVER_TOOLS_PATH_REGEX = /^\/(?:v1\/)?mcp\/servers\/[^/]+\/tools$/;
-const MCP_SERVER_NAME = 'studio-tools';
-const MCP_TOOL_DEFS = [
-  { name: 'create_handoff', description: 'Create agent handoff task', input_schema: { type: 'object', properties: {} } },
-  { name: 'submit_proposal', description: 'Submit proposal document', input_schema: { type: 'object', properties: {} } },
-  { name: 'submit_game', description: 'Submit game build result', input_schema: { type: 'object', properties: {} } },
-  { name: 'save_memory', description: 'Save long-term memory', input_schema: { type: 'object', properties: {} } }
-];
 
+// ─── Per-agent Expectation Queues ───
+// Key: "${projectId}:${agentRole}"  (e.g. "ui007_xxx:engineer")
+// Value: array of expectation objects
+// This enables precise routing per-agent, eliminating FIFO cross-agent interference.
+const expectationQueues = new Map();
+
+/**
+ * Parse identity from HTTP headers injected by agent-manager (per-request env).
+ * Node.js HTTP headers are lowercased by default.
+ */
+const parseIdentity = (req) => {
+  const projectId = (req.headers['x-project-id'] || '').trim();
+  const agentRole = (req.headers['x-agent-role'] || '').trim();
+  return { projectId, agentRole };
+};
+
+/**
+ * Get or create the queue for a specific (projectId, agentRole).
+ * Also tracks per-agent call index (how many requests this agent has made).
+ */
+const getQueue = (projectId, agentRole) => {
+  const key = `${projectId}:${agentRole}`;
+  if (!expectationQueues.has(key)) {
+    expectationQueues.set(key, {
+      expectations: [],   // ordered array of {id, matcher, response}
+      callIndex: 0         // how many requests this agent has made
+    });
+  }
+  return expectationQueues.get(key);
+};
+
+/**
+ * Match and consume the next expectation for a given (projectId, agentRole).
+ * Returns the matched response object or null.
+ *
+ * Matching strategy:
+ * 1. Look at the front of the agent's queue
+ * 2. If it has a custom matcher, check it (for future extension)
+ * 3. Otherwise, always match (FIFO)
+ * 4. Consume and return
+ *
+ * If no expectations are queued for this agent → return null (default plain text)
+ */
+const matchExpectation = (projectId, agentRole) => {
+  const queue = getQueue(projectId, agentRole);
+  if (queue.expectations.length === 0) {
+    // No expectations for this agent — this is fine, e.g. unexpected background calls
+    return null;
+  }
+
+  const exp = queue.expectations.shift();
+  queue.callIndex++;
+  console.error(`[mock-debug] ${projectId}:${agentRole} consumed exp #${queue.callIndex}, remaining=${queue.expectations.length} for this agent`);
+  return exp.response;
+};
+
+// ─── CORS helpers ───
 const withCors = (headers = {}) => ({
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+  'Access-Control-Allow-Headers': 'Content-Type,Authorization,X-Project-Id,X-Agent-Role',
   ...headers
 });
 
@@ -70,28 +117,7 @@ const readBody = (req) => new Promise((resolve, reject) => {
   req.on('error', reject);
 });
 
-const resolveInjectedMock = (method, pathname) => {
-  const idx = injectedMocks.findIndex(mock => mock.method === method && mock.path === pathname);
-  if (idx < 0) return null;
-  const mock = injectedMocks[idx];
-  if (mock.once) injectedMocks.splice(idx, 1);
-  return mock;
-};
-
-const sendInjectedMock = async (res, mock) => {
-  if (mock.sse) {
-    const events = Array.isArray(mock.body) ? mock.body : [mock.body ?? {}];
-    return sendSse(res, events, mock.status || 200, mock.headers || {});
-  }
-  return sendJson(res, mock.status || 200, mock.body ?? {}, mock.headers || {});
-};
-
-const buildMcpTools = () => MCP_TOOL_DEFS.map((tool) => ({
-  name: tool.name,
-  description: tool.description,
-  input_schema: tool.input_schema
-}));
-
+// ─── Tool name resolution ───
 const listToolNamesFromRequest = (body) => (
   Array.isArray(body?.tools)
     ? body.tools
@@ -104,18 +130,69 @@ const listToolNamesFromRequest = (body) => (
     : []
 );
 
-// Tool names from MCP may be prefixed as mcp__<server>__<tool>; keep compatibility with both forms.
 const resolveToolName = (toolName, availableTools) => (
   availableTools.find((name) => name === toolName || name.endsWith(`__${toolName}`))
   || toolName
 );
 
+// ─── Response builders ───
+const buildToolCallResponse = (toolName, toolArgs, availableTools, stream) => {
+  const callId = `call_mock_${toolName}_${randomUUID().slice(0, 8)}`;
+  const resolvedName = resolveToolName(toolName, availableTools);
+  const argsJson = typeof toolArgs === 'string' ? toolArgs : JSON.stringify(toolArgs || {});
+
+  if (stream) {
+    const events = [
+      { id: 'chatcmpl-mock', object: 'chat.completion.chunk', choices: [{ index: 0, delta: { role: 'assistant', content: '' } }] },
+      {
+        id: 'chatcmpl-mock', object: 'chat.completion.chunk', choices: [{
+          index: 0,
+          delta: { tool_calls: [{ index: 0, id: callId, type: 'function', function: { name: resolvedName, arguments: '' } }] }
+        }]
+      },
+      {
+        id: 'chatcmpl-mock', object: 'chat.completion.chunk', choices: [{
+          index: 0,
+          delta: { tool_calls: [{ index: 0, function: { arguments: argsJson } }] }
+        }]
+      },
+      { id: 'chatcmpl-mock', object: 'chat.completion.chunk', choices: [{ index: 0, delta: { content: '\n' } }] },
+      { id: 'chatcmpl-mock', object: 'chat.completion.chunk', choices: [{ index: 0, delta: {}, finish_reason: 'tool_calls' }] },
+    ];
+    return events;
+  }
+
+  return {
+    id: 'chatcmpl-mock',
+    object: 'chat.completion',
+    choices: [{
+      index: 0,
+      message: { role: 'assistant', content: '', tool_calls: [{ id: callId, type: 'function', function: { name: resolvedName, arguments: argsJson } }] },
+      finish_reason: 'tool_calls'
+    }]
+  };
+};
+
+const buildTextResponse = (text, stream) => {
+  if (stream) {
+    return [
+      { id: 'chatcmpl-mock', object: 'chat.completion.chunk', choices: [{ index: 0, delta: { role: 'assistant', content: text } }] },
+      { id: 'chatcmpl-mock', object: 'chat.completion.chunk', choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] },
+    ];
+  }
+  return {
+    id: 'chatcmpl-mock',
+    object: 'chat.completion',
+    choices: [{ index: 0, message: { role: 'assistant', content: text }, finish_reason: 'stop' }]
+  };
+};
+
+// ─── HTTP Server ───
 const server = http.createServer(async (req, res) => {
   const method = req.method || 'GET';
   const parsedUrl = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
   const pathname = parsedUrl.pathname;
 
-  // Log all incoming requests for debugging
   console.log(`[codebuddy-mock] ${method} ${pathname}`);
 
   if (method === 'OPTIONS') {
@@ -124,317 +201,143 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // ─── Health check ───
   if (pathname === '/api/health' && method === 'GET') {
     return sendJson(res, 200, { status: 'ok', service: 'codebuddy-sdk-mock' });
   }
 
-  // Handle authentication endpoints - return mock success
+  // ─── Auth stubs ───
   if ((pathname === '/v1/auth/verify' || pathname === '/auth/verify') && method === 'POST') {
-    return sendJson(res, 200, { 
-      success: true, 
-      user: { 
-        id: 'mock-user-id', 
-        name: 'Mock User',
-        email: 'mock@example.com'
-      }
-    });
+    return sendJson(res, 200, { success: true, user: { id: 'mock-user-id', name: 'Mock User', email: 'mock@example.com' } });
   }
-
-  // Handle token refresh
   if ((pathname === '/v1/auth/refresh' || pathname === '/auth/refresh') && method === 'POST') {
-    return sendJson(res, 200, { 
-      access_token: 'mock-access-token',
-      refresh_token: 'mock-refresh-token',
-      expires_in: 3600
-    });
+    return sendJson(res, 200, { access_token: 'mock-access-token', refresh_token: 'mock-refresh-token', expires_in: 3600 });
   }
-
-  // Handle account info
   if ((pathname === '/v1/account' || pathname === '/account') && method === 'GET') {
-    return sendJson(res, 200, { 
-      userId: 'mock-user-id',
-      userName: 'Mock User',
-      userNickname: 'Mock',
-      token: 'mock-token',
-      enterpriseId: 'mock-enterprise',
-      enterprise: 'Mock Enterprise'
-    });
+    return sendJson(res, 200, { userId: 'mock-user-id', userName: 'Mock User', token: 'mock-token' });
   }
 
+  // ─── Admin: Reset all state ───
   if (pathname === '/__admin/reset' && method === 'POST') {
-    injectedMocks.splice(0, injectedMocks.length);
+    expectationQueues.clear();
     return sendJson(res, 200, { success: true });
   }
 
-  if (pathname === '/__admin/mocks' && method === 'GET') {
-    return sendJson(res, 200, { mocks: injectedMocks });
+  // ─── Admin: List all queues ───
+  if (pathname === '/__admin/expectations' && method === 'GET') {
+    const summary = {};
+    for (const [key, val] of expectationQueues.entries()) {
+      summary[key] = { remaining: val.expectations.length, callIndex: val.callIndex };
+    }
+    return sendJson(res, 200, { queues: summary });
   }
 
-  if (pathname === '/__admin/mocks' && method === 'DELETE') {
-    injectedMocks.splice(0, injectedMocks.length);
-    return sendJson(res, 200, { success: true });
-  }
-
-  if (pathname.startsWith('/__admin/mocks/') && method === 'DELETE') {
-    const id = pathname.replace('/__admin/mocks/', '');
-    const idx = injectedMocks.findIndex(item => item.id === id);
-    if (idx < 0) return sendJson(res, 404, { error: 'mock not found' });
-    injectedMocks.splice(idx, 1);
-    return sendJson(res, 200, { success: true });
-  }
-
-  if (pathname === '/__admin/mocks' && method === 'POST') {
+  // ─── Expectation API: Test-driven mock control ───
+  // POST /mock/expect — register an expectation for a specific (projectId, agentRole)
+  // The test sets what the mock should return for a given agent BEFORE triggering it.
+  if (pathname === '/mock/expect' && method === 'POST') {
     try {
       const body = await readBody(req);
-      if (!body || typeof body.path !== 'string') {
-        return sendJson(res, 400, { error: 'path is required' });
+      const { projectId, agentRole, matcher, response } = body || {};
+
+      if (!response || typeof response !== 'object') {
+        return sendJson(res, 400, { error: 'response object is required' });
       }
-      if (injectedMocks.length >= MAX_INJECTED_MOCKS) {
-        return sendJson(res, 400, { error: `mock limit exceeded (${MAX_INJECTED_MOCKS})` });
+      if (!projectId || !agentRole) {
+        return sendJson(res, 400, { error: 'projectId and agentRole are required' });
       }
-      const mock = {
+
+      const key = `${projectId}:${agentRole}`;
+      const queue = getQueue(projectId, agentRole);
+      const expectation = {
         id: randomUUID(),
-        method: String(body.method || 'GET').toUpperCase(),
-        path: body.path,
-        status: Number(body.status || 200),
-        body: body.body ?? {},
-        headers: typeof body.headers === 'object' && body.headers ? body.headers : {},
-        once: !!body.once,
-        sse: !!body.sse
+        matcher: matcher || {},      // optional matching criteria (reserved)
+        response                     // the response to return when this agent calls
       };
-      injectedMocks.push(mock);
-      return sendJson(res, 201, { mock });
+      queue.expectations.push(expectation);
+
+      console.error(`[mock-debug] queued for ${key}: id=${expectation.id}, queue_depth=${queue.expectations.length}`);
+      return sendJson(res, 201, { expectation: { id: expectation.id, queueSize: queue.expectations.length, agent: key } });
     } catch (error) {
-      return sendJson(res, 400, { error: `failed to parse mock request body: ${error?.message || 'invalid JSON body'}` });
+      return sendJson(res, 400, { error: `failed to parse expectation: ${error?.message}` });
     }
   }
 
-  const injected = resolveInjectedMock(method, pathname);
-  if (injected) return sendInjectedMock(res, injected);
-
+  // ─── Models list ───
   if (pathname === '/models' && method === 'GET') {
-    return sendJson(res, 200, {
-      object: 'list',
-      data: [
-        { id: 'codebuddy-mock', object: 'model', owned_by: 'mock' }
-      ]
-    });
+    return sendJson(res, 200, { object: 'list', data: [{ id: 'codebuddy-mock', object: 'model', owned_by: 'mock' }] });
   }
 
-  if ((pathname === '/mcp/servers' || pathname === '/v1/mcp/servers') && method === 'GET') {
-    return sendJson(res, 200, {
-      servers: [{
-        id: MCP_SERVER_NAME,
-        name: MCP_SERVER_NAME,
-        status: 'connected',
-        tools: buildMcpTools()
-      }]
-    });
-  }
-
-  if (MCP_SERVER_TOOLS_PATH_REGEX.test(pathname) && method === 'GET') {
-    return sendJson(res, 200, {
-      server: MCP_SERVER_NAME,
-      tools: buildMcpTools()
-    });
-  }
-
+  // ─── Chat completions (core mock endpoint) ───
   if (pathname === '/chat/completions' && method === 'POST') {
     const body = await readBody(req).catch(() => ({}));
-    const stream = body?.stream;
+    const stream = !!body?.stream;
     const availableTools = listToolNamesFromRequest(body);
-    const messages = body?.messages || [];
-    const lastMessage = messages[messages.length - 1];
-    const prompt = lastMessage?.content || '';
-    const systemPrompt = messages.find(m => m.role === 'system')?.content || '';
 
-    // Determine agent role from system prompt
-    let agentRole = 'unknown';
-    if (systemPrompt.includes('游戏策划')) agentRole = 'game_designer';
-    else if (systemPrompt.includes('软件工程师')) agentRole = 'engineer';
-    else if (systemPrompt.includes('架构师')) agentRole = 'architect';
-    else if (systemPrompt.includes('CEO')) agentRole = 'ceo';
-    else if (systemPrompt.includes('商业策划')) agentRole = 'biz_designer';
+    // Extract identity from per-request HTTP headers
+    const { projectId, agentRole } = parseIdentity(req);
+    const hasIdentity = !!(projectId && agentRole);
 
-    // Determine mock response based on prompt content
-    let responseContent = stream ? 'mock-stream' : 'mock-response';
-    let toolCalls = null;
+    console.error(`[mock-debug] /chat/completions identity=${projectId || '?'}:${agentRole || '?'} tools=${availableTools.length} hasIdentity=${hasIdentity}`);
 
-    // Default: always return create_handoff for task completion simulation
-    // This allows the agent to automatically create handoffs without manual UI interaction
-    const handoffTargets = {
-      game_designer: 'ceo',
-      ceo: 'architect',
-      architect: 'engineer',
-      engineer: 'biz_designer',
-      biz_designer: null
-    };
-    const targetAgent = handoffTargets[agentRole] ?? null;
+    // Route by (projectId, agentRole) — precise per-agent queue
+    if (hasIdentity) {
+      const expected = matchExpectation(projectId, agentRole);
 
-    // Extract text content from prompt (handle both string and array formats)
-    const promptText = typeof prompt === 'string' ? prompt :
-      Array.isArray(prompt) ? prompt.map(p => typeof p === 'string' ? p : (p?.text || '')).join(' ') : String(prompt || '');
-
-    const isLastMessageTool = lastMessage?.role === 'tool';
-
-    // In tool follow-up requests, return plain text instead of issuing another tool call.
-    if (isLastMessageTool) {
-      toolCalls = null;
-      responseContent = '任务已完成。';
-    } else if (promptText.includes('submit_proposal') || promptText.includes('提案')) {
-        toolCalls = [{
-          id: 'call_mock_proposal_' + randomUUID().slice(0, 8),
-          type: 'function',
-          function: {
-            name: resolveToolName('submit_proposal', availableTools),
-            arguments: JSON.stringify({
-              type: 'game_design',
-              title: '测试游戏策划案',
-              content: '# 游戏策划案\n\n这是一个测试策划案内容'
-            })
+      if (expected) {
+        // Build response from expectation
+        if (expected.toolCalls && Array.isArray(expected.toolCalls)) {
+          if (stream) {
+            const events = [{ id: 'chatcmpl-mock', object: 'chat.completion.chunk', choices: [{ index: 0, delta: { role: 'assistant', content: expected.content || '' } }] }];
+            for (let i = 0; i < expected.toolCalls.length; i++) {
+              const tc = expected.toolCalls[i];
+              const resolvedName = resolveToolName(tc.name, availableTools);
+              const argsJson = typeof tc.arguments === 'string' ? tc.arguments : JSON.stringify(tc.arguments || {});
+              const callId = tc.id || `call_mock_${tc.name}_${randomUUID().slice(0, 8)}`;
+              events.push({ id: 'chatcmpl-mock', object: 'chat.completion.chunk', choices: [{ index: 0, delta: { tool_calls: [{ index: i, id: callId, type: 'function', function: { name: resolvedName, arguments: '' } }] } }] });
+              events.push({ id: 'chatcmpl-mock', object: 'chat.completion.chunk', choices: [{ index: 0, delta: { tool_calls: [{ index: i, function: { arguments: argsJson } }] } }] });
+            }
+            events.push({ id: 'chatcmpl-mock', object: 'chat.completion.chunk', choices: [{ index: 0, delta: { content: expected.content || '\n' } }] });
+            events.push({ id: 'chatcmpl-mock', object: 'chat.completion.chunk', choices: [{ index: 0, delta: {}, finish_reason: 'tool_calls' }] });
+            return sendSse(res, events);
           }
-        }];
-      } else if (promptText.includes('submit_game') || promptText.includes('提交游戏')) {
-        toolCalls = [{
-          id: 'call_mock_game_' + randomUUID().slice(0, 8),
-          type: 'function',
-          function: {
-            name: resolveToolName('submit_game', availableTools),
-            arguments: JSON.stringify({
-              name: '测试游戏',
-              html: '<html><body><h1>测试游戏</h1></body></html>'
-            })
-          }
-        }];
-      } else if (promptText.includes('save_memory') || promptText.includes('记忆')) {
-        toolCalls = [{
-          id: 'call_mock_memory_' + randomUUID().slice(0, 8),
-          type: 'function',
-          function: {
-            name: resolveToolName('save_memory', availableTools),
-            arguments: JSON.stringify({
-              category: 'general',
-              content: '测试记忆内容',
-              importance: 'normal'
-            })
-          }
-        }];
-      } else if (targetAgent) {
-        // Default behavior: return create_handoff to simulate task completion
-        // This ensures agents automatically create handoffs without manual UI interaction
-        toolCalls = [{
-          id: 'call_mock_handoff_' + randomUUID().slice(0, 8),
-          type: 'function',
-          function: {
-            name: resolveToolName('create_handoff', availableTools),
-            arguments: JSON.stringify({
-              to_agent_id: targetAgent,
-              title: `${agentRole} 任务完成交接`,
-              description: `任务已完成，移交给 ${targetAgent} 继续处理`,
-              priority: 'high'
-            })
-          }
-        }];
-      } else {
-        toolCalls = null;
-        responseContent = stream ? 'mock-stream' : '任务已完成，无需继续交接。';
-      }
-
-    if (stream) {
-      const events = [];
-      // Send initial assistant message with role
-      events.push({
-        id: 'chatcmpl-mock',
-        object: 'chat.completion.chunk',
-        choices: [{ index: 0, delta: { role: 'assistant', content: '我来帮您处理这个任务。' } }]
-      });
-
-      // Send tool calls if triggered - use proper OpenAI streaming format
-      if (toolCalls) {
-        for (let i = 0; i < toolCalls.length; i++) {
-          const toolCall = toolCalls[i];
-          // First chunk: tool_calls array with index
-          events.push({
-            id: 'chatcmpl-mock',
-            object: 'chat.completion.chunk',
-            choices: [{
-              index: 0,
-              delta: {
-                tool_calls: [{
-                  index: i,
-                  id: toolCall.id,
-                  type: toolCall.type,
-                  function: {
-                    name: toolCall.function.name,
-                    arguments: ''
-                  }
-                }]
-              }
-            }]
-          });
-          // Second chunk: arguments
-          events.push({
-            id: 'chatcmpl-mock',
-            object: 'chat.completion.chunk',
-            choices: [{
-              index: 0,
-              delta: {
-                tool_calls: [{
-                  index: i,
-                  function: {
-                    arguments: toolCall.function.arguments
-                  }
-                }]
-              }
-            }]
+          const calls = expected.toolCalls.map(tc => ({
+            id: tc.id || `call_mock_${tc.name}_${randomUUID().slice(0, 8)}`,
+            type: 'function',
+            function: { name: resolveToolName(tc.name, availableTools), arguments: typeof tc.arguments === 'string' ? tc.arguments : JSON.stringify(tc.arguments || {}) }
+          }));
+          return sendJson(res, 200, {
+            id: 'chatcmpl-mock', object: 'chat.completion',
+            choices: [{ index: 0, message: { role: 'assistant', content: expected.content || '', tool_calls: calls }, finish_reason: 'tool_calls' }]
           });
         }
+
+        // Plain text response
+        const text = expected.content || (stream ? 'mock-stream' : 'mock-response');
+        if (stream) return sendSse(res, buildTextResponse(text, true));
+        return sendJson(res, 200, buildTextResponse(text, false));
       }
 
-      // Send final content
-      events.push({
-        id: 'chatcmpl-mock',
-        object: 'chat.completion.chunk',
-        choices: [{ index: 0, delta: { content: '\n\n任务已完成。' } }]
-      });
-
-      // Send finish_reason
-      events.push({
-        id: 'chatcmpl-mock',
-        object: 'chat.completion.chunk',
-        choices: [{ index: 0, delta: {}, finish_reason: toolCalls ? 'tool_calls' : 'stop' }]
-      });
-
-      return sendSse(res, events);
+      // Agent has no queued expectations → return default text
+      // This handles unexpected background calls gracefully
+      console.error(`[mock-debug] NO expectation for ${projectId}:${agentRole} → default text`);
+      const defaultContent = '任务已完成。';
+      if (stream) return sendSse(res, buildTextResponse(defaultContent, true));
+      return sendJson(res, 200, buildTextResponse(defaultContent, false));
     }
 
-    // Non-streaming response
-    const response = {
-      id: 'chatcmpl-mock',
-      object: 'chat.completion',
-      choices: [{
-        index: 0,
-        message: {
-          role: 'assistant',
-          content: toolCalls ? '我来帮您处理这个任务。\n\n任务已完成。' : responseContent,
-          tool_calls: toolCalls
-        },
-        finish_reason: toolCalls ? 'tool_calls' : 'stop'
-      }]
-    };
-    return sendJson(res, 200, response);
+    // No identity headers → fallback to plain text (handles legacy/non-agent calls)
+    console.error(`[mock-debug] NO identity headers → returning default text`);
+    const defaultContent = '任务已完成。';
+    if (stream) return sendSse(res, buildTextResponse(defaultContent, true));
+    return sendJson(res, 200, buildTextResponse(defaultContent, false));
   }
 
-  // Log unhandled requests for debugging
-  console.log(`[codebuddy-mock] Unhandled request: ${method} ${pathname}`);
-  console.log(`[codebuddy-mock] Headers:`, JSON.stringify(req.headers));
-  
-  // For unhandled routes, return 200 with empty success response for auth-related paths
-  // to prevent 401 errors from breaking the CLI flow
+  // ─── Fallback for unhandled routes ───
+  console.log(`[codebuddy-mock] Unhandled: ${method} ${pathname}`);
   if (pathname.includes('auth') || pathname.includes('login') || pathname.includes('token')) {
     return sendJson(res, 200, { success: true, mock: true });
   }
-  
   return sendJson(res, 404, { error: `mock route not found: ${method} ${pathname}` });
 });
 
@@ -444,6 +347,7 @@ server.listen(PORT, HOST, () => {
   console.log(`  - GET  /api/health`);
   console.log(`  - GET  /models`);
   console.log(`  - POST /chat/completions`);
-  console.log(`  - POST /__admin/mocks`);
+  console.log(`  - POST /mock/expect       ← per-agent test-driven mock (projectId+agentRole routing)`);
+  console.log(`  - GET  /__admin/expectations`);
   console.log(`  - POST /__admin/reset`);
 });
