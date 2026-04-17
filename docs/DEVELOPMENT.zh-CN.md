@@ -46,11 +46,13 @@ src/
 核心表（`server/db.ts`）：
 
 - `projects`：项目基础信息
+- `project_settings`：项目级配置（含 `autopilot_enabled`）
 - `agent_sessions` / `agent_messages`：Agent 会话与消息
 - `proposals`：提案与审批状态
 - `games`：游戏成品（`html_content`）
 - `logs`：统一日志（系统日志 + Agent 输出日志，通过 `log_type` 区分）
 - `commands`：指令执行记录
+- `permission_requests`：工具权限审批请求与响应记录
 - `handoffs`：任务交接
 - `task_board_tasks`：任务看板（开发/测试）
 - `agent_memories`：长期记忆
@@ -66,7 +68,7 @@ src/
 
 - 系统：`GET /api/health`，`GET /api/models`，`GET /api/check-login`
 - 观测：`GET /api/observe`（SSE）
-- Agent：查询、消息查询/清理、暂停/恢复、发送指令
+- Agent：查询、消息查询/清理、暂停/恢复、发送指令（team_builder 不支持暂停/恢复与手动指令）
 - 提案：创建、查询、评审、用户决策
 - 游戏：提交、查询、预览、状态更新
 - 任务：创建、查询、状态更新
@@ -83,13 +85,13 @@ src/
 
 - `init`
 - `agent_status_changed`
-- `agent_log`
 - `stream_event`（含文本流、权限请求等）
 - `agent_paused` / `agent_resumed`
 - `proposal_created` / `proposal_reviewed` / `proposal_decided`
 - `game_submitted` / `game_updated`
 - `handoff_created` / `handoff_updated`
 - `task_created` / `task_updated`
+- `logs_cleared`
 
 ## 5. Agent 与 MCP 自定义工具
 
@@ -102,6 +104,7 @@ src/
 - `game_designer`
 - `biz_designer`
 - `ceo`
+- `team_builder`
 
 每个角色包含：
 
@@ -119,24 +122,25 @@ src/
 - `update_task_status`
 - `submit_proposal`
 - `submit_game`
+- `get_agent_logs`
+- `get_agents`
 - `get_proposals`
 - `get_pending_handoffs`
+- `get_project_latest_info`（仅 team_builder 可用）
 
 关键约束：
 
 - `update_task_status` 仅接受完整 UUID `task_id`
 - 任务状态流转受限（`todo -> developing -> testing -> done`，含 `blocked` 分支）
 - 交接目标存在角色白名单
+- 交接链路受角色约束：`game_designer -> ceo -> architect -> engineer -> biz_designer`
 
 ### 5.3 Star Office 同步机制（`server/star-office-sync.ts`）
 
-- 服务启动时尝试注册 5 个默认角色 Agent（按 `project_id` 维度管理）
+- 服务启动时尝试注册项目下全部 Agent（含 `team_builder`，按 `project_id` 维度管理）
 - 状态同步支持防抖（`STAR_OFFICE_SYNC_DEBOUNCE_MS`）
 - 包含健康检查与在线状态巡检（`STAR_OFFICE_HEALTH_CHECK_INTERVAL_MS`）
-- 支持显式覆盖端点：
-  - `STAR_OFFICE_SET_STATE_URL`
-  - `STAR_OFFICE_AGENT_PUSH_URL`
-- 若未显式覆盖，默认基于 `STAR_OFFICE_UI_URL` 推导 `/set_state`、`/agent-push`、`/join-agent`、`/health`
+- 默认基于 `STAR_OFFICE_UI_URL` 推导 `/set_state`、`/agent-push`、`/join-agent`、`/agents`、`/health`
 
 ## 6. 前端扩展点
 

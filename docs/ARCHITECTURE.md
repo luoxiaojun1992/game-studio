@@ -63,12 +63,14 @@ Browser (React + Vite)
 - **Games**: HTML artifact submission, listing, and preview
 - **Memories**: long-term memory records scoped by role/project
 - **Logs/Observability**: runtime logs and stream events
+- **Permissions**: tool execution approval lifecycle and response callbacks
 
 ## 5. Data and Storage
 
 - Primary persistence: SQLite (`data/studio.db`)
 - Main tables include:
   - `projects`
+  - `project_settings`
   - `agent_sessions`, `agent_messages`
   - `proposals`
   - `task_board_tasks`
@@ -77,6 +79,7 @@ Browser (React + Vite)
   - `agent_memories`
   - `logs`
   - `commands`
+  - `permission_requests`
 - Game/proposal artifacts are written under `output/{project_id}/...`
 - Data and outputs are isolated by `project_id`
 
@@ -99,7 +102,7 @@ Browser (React + Vite)
 - Frontend embeds Star-Office-UI in an isolated panel
 - Backend performs server-side sync with Star-Office endpoints
 - Supports debounced sync and health monitoring
-- URL endpoints can be derived from `STAR_OFFICE_UI_URL` or overridden by explicit environment variables
+- Endpoints are derived from `STAR_OFFICE_UI_URL` (`/set_state`, `/agent-push`, `/join-agent`, `/agents`, `/health`)
 
 ## 8. Security and Isolation Considerations
 

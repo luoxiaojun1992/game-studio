@@ -6,7 +6,7 @@
 
 ## 功能概览
 
-- 多角色 Agent 团队（工程师、架构师、游戏策划、商业策划、CEO）
+- 多角色 Agent 团队（工程师、架构师、游戏策划、商业策划、CEO、团队建设）
 - 指令中心（向指定 Agent 下达任务，SSE 流式回传）
 - Studio 联动（内嵌 Star-Office-UI，状态双向同步）
 - 任务看板（开发/测试任务拆分与状态流转）
@@ -96,11 +96,12 @@ npm run server
 | 变量名 | 默认值 | 说明 |
 |---|---|---|
 | `PORT` | 3000 | 后端服务监听端口 |
+| `CODEBUDDY_BASE_URL` | 空 | 可选 SDK 端点覆盖（如本地 mock server） |
+| `CODEBUDDY_API_KEY` | 空 | 模型调用 API Key |
+| `CODEBUDDY_AUTH_TOKEN` | 空 | 运行时鉴权 Token（可替代 API Key） |
 | `VITE_API_BASE` | `http://localhost:3000` | 前端 API 基地址 |
 | `VITE_STAR_OFFICE_UI_URL` | `http://127.0.0.1:19000` | 前端 Studio 页签嵌入地址 |
 | `STAR_OFFICE_UI_URL` | `http://127.0.0.1:19000` | 后端同步服务基础地址 |
-| `STAR_OFFICE_SET_STATE_URL` | 由 `STAR_OFFICE_UI_URL` 推导 | 覆盖状态同步端点 |
-| `STAR_OFFICE_AGENT_PUSH_URL` | 由 `STAR_OFFICE_UI_URL` 推导 | 覆盖 Agent 推送端点 |
 | `STAR_OFFICE_JOIN_KEY` | `ocj_example_team_01` | Agent 注册密钥 |
 | `STAR_OFFICE_SYNC_DEBOUNCE_MS` | 300 | 状态同步防抖时间（毫秒） |
 | `STAR_OFFICE_HEALTH_CHECK_INTERVAL_MS` | 10000 | Star Office 健康检查周期（毫秒） |

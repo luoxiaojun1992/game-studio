@@ -63,12 +63,14 @@ Game Dev Studio 是一个多 Agent 游戏研发工作台，包含：
 - **产物（Games）**：HTML 成品提交、列表与预览
 - **记忆（Memories）**：按角色/项目组织的长期记忆
 - **观测（Logs/Events）**：运行日志与事件流
+- **权限（Permissions）**：工具执行审批流与回调响应
 
 ## 5. 数据与存储
 
 - 主存储：SQLite（`data/studio.db`）
 - 主要表包括：
   - `projects`
+  - `project_settings`
   - `agent_sessions`、`agent_messages`
   - `proposals`
   - `task_board_tasks`
@@ -77,6 +79,7 @@ Game Dev Studio 是一个多 Agent 游戏研发工作台，包含：
   - `agent_memories`
   - `logs`
   - `commands`
+  - `permission_requests`
 - 提案/游戏产物写入 `output/{project_id}/...`
 - 数据与产物按 `project_id` 隔离
 
@@ -99,7 +102,7 @@ Game Dev Studio 是一个多 Agent 游戏研发工作台，包含：
 - 前端通过独立面板内嵌 Star-Office-UI
 - 后端负责与 Star-Office 端点进行服务端同步
 - 支持防抖同步与健康巡检
-- 端点可由 `STAR_OFFICE_UI_URL` 推导，或通过环境变量显式覆盖
+- 端点基于 `STAR_OFFICE_UI_URL` 推导（`/set_state`、`/agent-push`、`/join-agent`、`/agents`、`/health`）
 
 ## 8. 安全与隔离要点
 
