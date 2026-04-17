@@ -7,7 +7,7 @@ A multi-agent game development workspace built on the CodeBuddy Agent SDK, provi
 
 ## Feature Overview
 
-- Multi-role agent team (Engineer, Architect, Game Designer, Business Designer, CEO)
+- Multi-role agent team (Engineer, Architect, Game Designer, Business Designer, CEO, Team Building)
 - Command center (assign tasks to specific agents with SSE streaming responses)
 - Studio integration (embedded Star-Office-UI with two-way state sync)
 - Task board (development/testing task breakdown and status flow)
@@ -97,11 +97,12 @@ npm run server
 | Variable | Default | Description |
 |---|---|---|
 | `PORT` | 3000 | Backend service port |
+| `CODEBUDDY_BASE_URL` | empty | Optional SDK endpoint override (e.g. for local mock server) |
+| `CODEBUDDY_API_KEY` | empty | API key for model calls |
+| `CODEBUDDY_AUTH_TOKEN` | empty | Runtime auth token (alternative to API key) |
 | `VITE_API_BASE` | `http://localhost:3000` | Frontend API base URL |
 | `VITE_STAR_OFFICE_UI_URL` | `http://127.0.0.1:19000` | Embedded Studio URL in frontend tab |
 | `STAR_OFFICE_UI_URL` | `http://127.0.0.1:19000` | Backend sync service base URL |
-| `STAR_OFFICE_SET_STATE_URL` | Derived from `STAR_OFFICE_UI_URL` | Override state sync endpoint |
-| `STAR_OFFICE_AGENT_PUSH_URL` | Derived from `STAR_OFFICE_UI_URL` | Override agent push endpoint |
 | `STAR_OFFICE_JOIN_KEY` | `ocj_example_team_01` | Agent registration key |
 | `STAR_OFFICE_SYNC_DEBOUNCE_MS` | 300 | State sync debounce interval (ms) |
 | `STAR_OFFICE_HEALTH_CHECK_INTERVAL_MS` | 10000 | Star Office health check interval (ms) |

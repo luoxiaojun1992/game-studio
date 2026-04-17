@@ -47,11 +47,13 @@ src/
 Core tables (`server/db.ts`):
 
 - `projects`: project metadata
+- `project_settings`: project-level configuration (including `autopilot_enabled`)
 - `agent_sessions` / `agent_messages`: agent sessions and messages
 - `proposals`: proposals and approval states
 - `games`: game artifacts (`html_content`)
 - `logs`: unified logs (system + agent output, distinguished by `log_type`)
 - `commands`: command execution records
+- `permission_requests`: tool permission requests and responses
 - `handoffs`: task handoffs
 - `task_board_tasks`: task board entries (development/testing)
 - `agent_memories`: long-term memory
@@ -67,7 +69,7 @@ Recommendations:
 
 - System: `GET /api/health`, `GET /api/models`, `GET /api/check-login`
 - Observability: `GET /api/observe` (SSE)
-- Agents: query, message query/clear, pause/resume, command send
+- Agents: query, message query/clear, pause/resume, command send (team_builder cannot pause/resume or receive manual commands)
 - Proposals: create, query, review, user decision
 - Games: submit, query, preview, status update
 - Tasks: create, query, status update
@@ -84,13 +86,13 @@ Key events:
 
 - `init`
 - `agent_status_changed`
-- `agent_log`
 - `stream_event` (including text stream and permission requests)
 - `agent_paused` / `agent_resumed`
 - `proposal_created` / `proposal_reviewed` / `proposal_decided`
 - `game_submitted` / `game_updated`
 - `handoff_created` / `handoff_updated`
 - `task_created` / `task_updated`
+- `logs_cleared`
 
 ## 5. Agents and MCP Custom Tools
 
@@ -103,6 +105,7 @@ Defined in `server/agents.ts`:
 - `game_designer`
 - `biz_designer`
 - `ceo`
+- `team_builder`
 
 Each role includes:
 
@@ -120,24 +123,25 @@ Each role includes:
 - `update_task_status`
 - `submit_proposal`
 - `submit_game`
+- `get_agent_logs`
+- `get_agents`
 - `get_proposals`
 - `get_pending_handoffs`
+- `get_project_latest_info` (team_builder only)
 
 Key constraints:
 
 - `update_task_status` only accepts full UUID `task_id`
 - Task state transitions are constrained (`todo -> developing -> testing -> done`, including `blocked` branch)
 - Handoff targets are role-whitelisted
+- Handoff chain is role-constrained: `game_designer -> ceo -> architect -> engineer -> biz_designer`
 
 ### 5.3 Star Office Sync Mechanism (`server/star-office-sync.ts`)
 
-- Registers five default role agents at startup (managed by `project_id`)
+- Registers all project agents at startup (including `team_builder`, managed by `project_id`)
 - Supports debounced state sync (`STAR_OFFICE_SYNC_DEBOUNCE_MS`)
 - Includes health checks and online status polling (`STAR_OFFICE_HEALTH_CHECK_INTERVAL_MS`)
-- Supports explicit endpoint overrides:
-  - `STAR_OFFICE_SET_STATE_URL`
-  - `STAR_OFFICE_AGENT_PUSH_URL`
-- If not overridden, defaults are derived from `STAR_OFFICE_UI_URL` for `/set_state`, `/agent-push`, `/join-agent`, `/health`
+- Derives endpoint URLs from `STAR_OFFICE_UI_URL` for `/set_state`, `/agent-push`, `/join-agent`, `/agents`, `/health`
 
 ## 6. Frontend Extension Points
 

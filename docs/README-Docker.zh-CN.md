@@ -92,8 +92,13 @@ docker volume inspect game-dev-studio_studio-data
 | `STUDIO_BACKEND_PORT` | 3000 | Studio 后端服务端口 |
 | `STUDIO_FRONTEND_PORT` | 5173 | Studio 前端服务端口 |
 | `STAR_OFFICE_PORT` | 19000 | Star Office UI 服务端口 |
+| `CODEBUDDY_API_KEY` | 空 | CodeBuddy SDK 鉴权密钥 |
+| `VITE_API_BASE` | `http://studio-backend:3000` | 前端构建时 API 基地址 |
+| `VITE_STAR_OFFICE_UI_URL` | `http://star-office-ui:19000` | 前端构建时 Star Office 地址 |
 | `STAR_OFFICE_JOIN_KEY` | ocj_example_team_01 | Agent 注册密钥 |
 | `STAR_OFFICE_MAX_CONCURRENT` | 5 | 每个密钥最大并发 Agent 数 |
+| `STAR_OFFICE_SECRET` | `your-secret-key-here-min-24-chars` | Star Office 后端密钥 |
+| `ASSET_DRAWER_PASS` | `secure-pass-1234` | Star Office 资源面板密码 |
 
 ## Star Office 并发配置
 
@@ -116,7 +121,7 @@ STAR_OFFICE_MAX_CONCURRENT=10
 }
 ```
 
-一个 key 的 `maxConcurrent` 设置决定了可以同时注册多少个 Agent。例如 `maxConcurrent=5` 可以支持 5 个 Agent（engineer, architect, game_designer, biz_designer, ceo）。
+一个 key 的 `maxConcurrent` 设置决定了可以同时注册多少个 Agent。当前项目包含 6 个 Agent（`engineer`、`architect`、`game_designer`、`biz_designer`、`ceo`、`team_builder`），建议将 `STAR_OFFICE_MAX_CONCURRENT` 设为至少 `6` 以确保全部注册。
 
 如果需要更复杂的配置，可以挂载自定义的 `join-keys.json`：
 
