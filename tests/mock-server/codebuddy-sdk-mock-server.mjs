@@ -267,16 +267,21 @@ const server = http.createServer(async (req, res) => {
       ceo: 'architect',
       architect: 'engineer',
       engineer: 'biz_designer',
-      biz_designer: 'ceo'
+      biz_designer: null
     };
-    const targetAgent = handoffTargets[agentRole] || 'ceo';
+    const targetAgent = handoffTargets[agentRole] ?? null;
 
     // Extract text content from prompt (handle both string and array formats)
     const promptText = typeof prompt === 'string' ? prompt :
       Array.isArray(prompt) ? prompt.map(p => typeof p === 'string' ? p : (p?.text || '')).join(' ') : String(prompt || '');
 
-    // Check for specific tool call triggers in the prompt first
-    if (promptText.includes('submit_proposal') || promptText.includes('提案')) {
+    const isLastMessageTool = lastMessage?.role === 'tool';
+
+    // In tool follow-up requests, return plain text instead of issuing another tool call.
+    if (isLastMessageTool) {
+      toolCalls = null;
+      responseContent = '任务已完成。';
+    } else if (promptText.includes('submit_proposal') || promptText.includes('提案')) {
         toolCalls = [{
           id: 'call_mock_proposal_' + randomUUID().slice(0, 8),
           type: 'function',
@@ -314,7 +319,7 @@ const server = http.createServer(async (req, res) => {
             })
           }
         }];
-      } else {
+      } else if (targetAgent) {
         // Default behavior: return create_handoff to simulate task completion
         // This ensures agents automatically create handoffs without manual UI interaction
         toolCalls = [{
@@ -330,6 +335,9 @@ const server = http.createServer(async (req, res) => {
             })
           }
         }];
+      } else {
+        toolCalls = null;
+        responseContent = stream ? 'mock-stream' : '任务已完成，无需继续交接。';
       }
 
     if (stream) {
