@@ -22,7 +22,8 @@ Game Dev Studio 是一个基于 CodeBuddy Agent SDK 的多 Agent 游戏研发工
 ### 1. 项目隔离
 - 所有数据按 `project_id` 隔离
 - Agent 状态、记忆、日志、任务看板都绑定到具体项目
-- 默认项目 ID 为 `'default'`
+- **project_id 由 `createStudioToolsServer(projectId, ...)` 在创建时注入 `scopedProjectId`**，工具内部直接使用，不依赖 LLM 输出参数
+- 真实场景 LLM 不会主动输出 `project_id`，所有工具统一内部获取
 
 ### 2. Agent 角色定义
 ```typescript
@@ -40,7 +41,7 @@ export const AGENT_IDS = ['engineer', 'architect', 'game_designer', 'biz_designe
 ### 3. SDK Custom Tools 架构
 - 使用 `createSdkMcpServer` + `tool()` 注册自定义工具
 - 工具通过 `mcpServers` 参数传给 `query()`
-- 工具名前缀为 `mcp__studio_tools__`
+- 工具名前缀为 `mcp__studio-tools__`（连字符）
 - 记忆通过 `getMemorySummaryForPrompt()` 注入 systemPrompt
 
 ### 4. 关键文件位置
@@ -93,6 +94,12 @@ STAR_OFFICE_UI_URL=http://127.0.0.1:19000  # Star-Office-UI 地址
    - 表结构变更需考虑数据迁移
    - 新增字段需提供默认值
 
+### ⚠️ 工作红线（强制遵守）
+- **禁止 workaround**：任何修改必须基于正确的根因分析，逻辑正确是底线
+- 遇到问题必须先定位根因，再修复，不能猜测或碰运气
+- **不允许为了"让测试通过"而放宽断言、加 fallback、或绕过正常流程**
+- **zod optional + default**：mock 必须显式传值，否则会悄悄取默认值导致跨项目数据丢失
+
 ### ✅ 可以安全修改的内容
 
 1. **UI 组件** (`src/components/`)
@@ -111,15 +118,24 @@ STAR_OFFICE_UI_URL=http://127.0.0.1:19000  # Star-Office-UI 地址
 
 ### UI E2E 测试
 ```bash
-# 运行测试
+# 构建并运行测试（带 proxy）
+export https_proxy=http://127.0.0.1:7890 http_proxy=http://127.0.0.1:7890 all_proxy=socks5://127.0.0.1:7890
+docker compose -f docker-compose.ui-test.yml up --build -d
+
+# 查看测试日志
+docker compose -f docker-compose.ui-test.yml logs ui-e2e
+
+# 仅运行测试（不构建）
+docker compose -f docker-compose.ui-test.yml run --rm ui-e2e
+
+# 本地运行测试
 npm run test:ui
-
-# 带覆盖率检查
-npm run test:ui:coverage
-
-# Docker 环境测试
-docker-compose -f docker-compose.ui-test.yml up ui-e2e
 ```
+
+**E2E 调试关键原则**：
+- **选择器不匹配** → 前端加 `data-testid` → 测试用属性选
+- **gameCount=0**：mock 缺 project_id 导致 zod 取默认值 'default'，工具内部应直接用 scopedProjectId
+- **SSE reconnect bug**：`connectedRef.current` 阻止切换项目后重连
 
 ### Mock Server
 - 路径：`/chat/completions` (不是 `/v1/chat/completions`)
@@ -130,7 +146,7 @@ docker-compose -f docker-compose.ui-test.yml up ui-e2e
 
 ### 添加新工具
 1. 在 `server/tools.ts` 中使用 `tool()` 定义
-2. 添加 zod schema 参数验证
+2. 添加 zod schema 参数验证（**注意：project_id 应内部使用 scopedProjectId，不作为工具参数**）
 3. 在 `agents.ts` 的 `TOOLS_OVERVIEW` 中描述工具用途
 4. 如需自动授权，在 `agent-manager.ts` 的 `CAN_AUTO_ALLOW` 中添加
 
@@ -162,12 +178,12 @@ curl http://localhost:3001/__admin/mocks
 - 查看 mock server 日志确认请求路径
 
 ### 工具调用失败
-- 检查工具名前缀是否为 `mcp__studio_tools__`
-- 检查参数是否符合 zod schema
+- 检查工具名前缀是否为 `mcp__studio-tools__`（连字符）
+- 检查参数是否符合 zod schema（特别注意：工具不接收 project_id 参数）
 - 查看 `agent-manager.ts` 中的权限配置
 
 ### 数据未持久化
-- 检查 `project_id` 是否正确传递
+- 检查工具是否正确使用 `scopedProjectId`（不应依赖 LLM 传参）
 - 检查数据库文件权限
 - 查看 `db.ts` 中的错误处理
 
@@ -190,3 +206,15 @@ test: add xxx test case
 ## 联系方式
 
 - 项目仓库：https://github.com/luoxiaojun1992/game-studio
+
+## 经验文档索引
+
+详细调试经验、历史踩坑记录见 `.workbuddy/memory/` 目录：
+
+| 文档 | 内容 |
+|------|------|
+| `.workbuddy/memory/INDEX.md` | 经验快速索引 |
+| `.workbuddy/memory/E2E_TESTING.md` | UI-007/008 调试经验、选择器原则 |
+| `.workbuddy/memory/SDK_MOCK.md` | Mock Server 架构、Agent systemPrompt |
+| `.workbuddy/memory/CONVENTIONS.md` | 工作红线、Bug 修复记录 |
+| `.workbuddy/memory/ARCHITECTURE.md` | 项目架构、关键文件 |
