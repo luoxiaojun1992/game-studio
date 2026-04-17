@@ -209,12 +209,12 @@ test: add xxx test case
 
 ## 经验文档索引
 
-详细调试经验、历史踩坑记录见 `.workbuddy/memory/` 目录：
+详细调试经验、历史踩坑记录见 `./memory/` 目录：
 
 | 文档 | 内容 |
 |------|------|
-| `.workbuddy/memory/INDEX.md` | 经验快速索引 |
-| `.workbuddy/memory/E2E_TESTING.md` | UI-007/008 调试经验、选择器原则 |
-| `.workbuddy/memory/SDK_MOCK.md` | Mock Server 架构、Agent systemPrompt |
-| `.workbuddy/memory/CONVENTIONS.md` | 工作红线、Bug 修复记录 |
-| `.workbuddy/memory/ARCHITECTURE.md` | 项目架构、关键文件 |
+| `./memory/INDEX.md` | 经验快速索引 |
+| `./memory/E2E_TESTING.md` | UI-007/008 调试经验、选择器原则 |
+| `./memory/SDK_MOCK.md` | Mock Server 架构、Agent systemPrompt |
+| `./memory/CONVENTIONS.md` | 工作红线、Bug 修复记录 |
+| `./memory/ARCHITECTURE.md` | 项目架构、关键文件 |
