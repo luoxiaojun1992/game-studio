@@ -12,16 +12,18 @@ export default function GameList({ games, selectedId, onSelect }: Props) {
   const { l, locale } = useI18n();
 
   return (
-    <div className="bg-gray-900 rounded-xl border border-gray-800 h-full flex flex-col">
+    <div data-testid="game-list" className="bg-gray-900 rounded-xl border border-gray-800 h-full flex flex-col">
       <div className="px-4 py-3 border-b border-gray-800 flex items-center justify-between">
         <h3 className="font-semibold text-gray-200 text-sm">{l('游戏成品', 'Games')}</h3>
         <span className="text-xs text-gray-500">{games.length} {l('个', 'items')}</span>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-2 space-y-1">
+      <div data-testid="game-list-items" className="flex-1 overflow-y-auto p-2 space-y-1">
         {games.map(game => (
           <div
             key={game.id}
+            data-testid={`game-card-${game.id}`}
+            data-game-name={game.name}
             onClick={() => onSelect(game)}
             className={`rounded-lg p-3 cursor-pointer transition-all border ${
               game.id === selectedId

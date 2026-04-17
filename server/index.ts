@@ -15,7 +15,7 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const CODEBUDDY_ENDPOINT = process.env.CODEBUDDY_ENDPOINT?.trim() || undefined;
+const CODEBUDDY_BASE_URL = process.env.CODEBUDDY_BASE_URL?.trim() || undefined;
 const DEFAULT_PROJECT_ID = 'default';
 const PROJECT_ID_PATTERN = db.PROJECT_ID_PATTERN;
 const MAX_PROJECT_ID_LENGTH = db.MAX_PROJECT_ID_LENGTH;
@@ -150,7 +150,7 @@ app.get('/api/health', (req, res) => {
 // Lists supported foundation models from the SDK runtime.
 app.get('/api/models', async (req, res) => {
   try {
-    const q = new Query('', CODEBUDDY_ENDPOINT ? { endpoint: CODEBUDDY_ENDPOINT } : {});
+    const q = new Query('', CODEBUDDY_BASE_URL ? { endpoint: CODEBUDDY_BASE_URL } : {});
     const models = await q.supportedModels();
     res.json({ models: models || [] });
   } catch (error: any) {
@@ -198,7 +198,7 @@ app.get('/api/check-login', async (req, res) => {
     let needsLogin = false;
     const result = await unstable_v2_authenticate({
       environment: 'external',
-      ...(CODEBUDDY_ENDPOINT ? { endpoint: CODEBUDDY_ENDPOINT } : {}),
+      ...(CODEBUDDY_BASE_URL ? { endpoint: CODEBUDDY_BASE_URL } : {}),
       onAuthUrl: async () => { needsLogin = true; }
     });
     if (!needsLogin && result?.userinfo) {

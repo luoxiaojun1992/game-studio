@@ -110,6 +110,7 @@ export default function HandoffPanel({ agents, projectId }: Props) {
 
   const handleAccept = async (id: string) => {
     await api.acceptHandoff(id);
+    setExpandedId(id); // Keep card expanded after accept so confirm button stays visible
     loadHandoffs();
   };
 
@@ -336,6 +337,9 @@ export default function HandoffPanel({ agents, projectId }: Props) {
               <div
                 key={handoff.id}
                 data-testid={`handoff-card-${handoff.id}`}
+                data-agent-from={handoff.from_agent_id}
+                data-agent-to={handoff.to_agent_id}
+                data-handoff-status={handoff.status}
                 className={`bg-gray-900 rounded-xl border transition-all ${
                   handoff.status === 'pending' ? 'border-yellow-800/50' :
                   handoff.status === 'completed' ? 'border-emerald-800/30' :
@@ -385,7 +389,26 @@ export default function HandoffPanel({ agents, projectId }: Props) {
                   <span className={`text-gray-500 transition-transform shrink-0 ${isExpanded ? 'rotate-180' : ''}`}>▼</span>
                 </div>
 
-                
+                {/* Accepted state: always show confirm action bar (no need to expand) */}
+                {handoff.status === 'accepted' && (
+                  <div className="border-t border-gray-800 px-4 py-3">
+                    <div className="flex items-center gap-2 mb-2 p-2 bg-blue-900/20 border border-blue-700/40 rounded-lg">
+                      <span className="text-blue-300 text-sm">⚠️</span>
+                      <span className="text-blue-300 text-xs">{l('任务已接收，请确认后开始执行。目标 Agent（', 'Task accepted. Confirm to start execution. Target Agent (')}{getAgentName(agents, handoff.to_agent_id, isZh)}{l('）将收到任务指令。', ') will receive the task command.')}</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        data-testid="handoff-confirm-btn"
+                        onClick={(e) => { e.stopPropagation(); handleConfirm(handoff.id); }}
+                        disabled={confirmingId === handoff.id}
+                        className="bg-green-600 hover:bg-green-500 disabled:bg-green-800 disabled:text-green-400 text-white text-xs font-medium px-4 py-1.5 rounded-lg transition-colors"
+                      >
+                        ✅ {confirmingId === handoff.id ? l('正在执行...', 'Running...') : l('确认执行', 'Confirm Execution')}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {isExpanded && (
                   <div className="border-t border-gray-800 px-4 py-3 space-y-3">
                     <div>
@@ -448,30 +471,6 @@ export default function HandoffPanel({ agents, projectId }: Props) {
                             {l('取消', 'Cancel')}
                           </button>
                         </>
-                      )}
-                      {handoff.status === 'accepted' && (
-                        <div className="w-full">
-                          <div className="flex items-center gap-2 mb-2 p-2 bg-blue-900/20 border border-blue-700/40 rounded-lg">
-                            <span className="text-blue-300 text-sm">⚠️</span>
-                            <span className="text-blue-300 text-xs">{l('任务已接收，请确认后开始执行。目标 Agent（', 'Task accepted. Confirm to start execution. Target Agent (')}{getAgentName(agents, handoff.to_agent_id, isZh)}{l('）将收到任务指令。', ') will receive the task command.')}</span>
-                          </div>
-                          <div className="flex gap-2">
-                            <button
-                              data-testid="handoff-confirm-btn"
-                              onClick={(e) => { e.stopPropagation(); handleConfirm(handoff.id); }}
-                              disabled={confirmingId === handoff.id}
-                              className="bg-green-600 hover:bg-green-500 disabled:bg-green-800 disabled:text-green-400 text-white text-xs font-medium px-4 py-1.5 rounded-lg transition-colors"
-                            >
-                              ✅ {confirmingId === handoff.id ? l('正在执行...', 'Running...') : l('确认执行', 'Confirm Execution')}
-                            </button>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleReject(handoff.id); }}
-                              className="bg-red-700 hover:bg-red-600 text-white text-xs font-medium px-4 py-1.5 rounded-lg transition-colors"
-                            >
-                              {l('❌ 拒绝', '❌ Reject')}
-                            </button>
-                          </div>
-                        </div>
                       )}
                       {handoff.status === 'working' && (
                         <button

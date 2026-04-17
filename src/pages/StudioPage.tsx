@@ -216,15 +216,16 @@ export default function StudioPage() {
   }, [selectedProjectId]);
 
   const connectSSE = useCallback(() => {
-    if (connectedRef.current) return;
-    connectedRef.current = true;
-
+    // Always close existing connection before creating a new one
+    // (prevents stale SSE on project switch — connectedRef only guards onerror retry)
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
+      eventSourceRef.current = null;
     }
 
     const es = new EventSource(api.observeUrl(selectedProjectId));
     eventSourceRef.current = es;
+    connectedRef.current = true;
 
     es.onopen = () => setConnected(true);
     es.onerror = () => {
@@ -426,6 +427,7 @@ export default function StudioPage() {
           <div className="flex items-center gap-2 text-xs">
             <span className="text-gray-400">{l('项目', 'Project')}</span>
             <select
+              data-testid="project-select"
               value={selectedProjectId}
               onChange={e => setSelectedProjectId(e.target.value)}
               className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-gray-200"
@@ -435,12 +437,14 @@ export default function StudioPage() {
               ))}
             </select>
             <input
+              data-testid="project-name-input"
               value={newProjectName}
               onChange={e => setNewProjectName(e.target.value)}
               placeholder={l('新建项目名', 'New project name')}
               className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-gray-200 w-28"
             />
             <button
+              data-testid="project-create-btn"
               onClick={handleCreateProject}
               disabled={!newProjectName.trim() || creatingProject}
               className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded px-2 py-1"
@@ -470,7 +474,7 @@ export default function StudioPage() {
               const singleSelect = !(perm.input?.multiSelect);
 
               return (
-                <div key={perm.requestId} className={`rounded-lg px-4 py-2.5 border ${isAskUser ? 'bg-blue-900/40 border-blue-700/50' : 'bg-orange-900/40 border-orange-700/50'}`}>
+                <div key={perm.requestId} data-testid="permission-card" className={`rounded-lg px-4 py-2.5 border ${isAskUser ? 'bg-blue-900/40 border-blue-700/50' : 'bg-orange-900/40 border-orange-700/50'}`}>
                   <div className="flex items-center gap-2 mb-1.5">
                     <span className="text-orange-300 font-medium">{getAgentEmoji(perm.agentId)} {perm.agentId}</span>
                     <span className="text-gray-500">→</span>
@@ -504,12 +508,14 @@ export default function StudioPage() {
                       )}
                       <div className="flex gap-2">
                         <button
+                          data-testid="permission-allow-btn"
                           onClick={() => handlePermissionResponse(perm.requestId, 'allow')}
                           className="bg-green-600 hover:bg-green-500 text-white rounded px-3 py-1 text-xs font-medium transition-colors"
                         >
                           {l('✅ 允许执行', '✅ Allow')}
                         </button>
                         <button
+                          data-testid="permission-deny-btn"
                           onClick={() => handlePermissionResponse(perm.requestId, 'deny')}
                           className="bg-red-700 hover:bg-red-600 text-white rounded px-3 py-1 text-xs font-medium transition-colors"
                         >
@@ -536,6 +542,7 @@ export default function StudioPage() {
             key={tab.key}
             type="button"
             role="tab"
+            data-testid={`tab-${tab.key}`}
             onClick={() => setActiveTab(tab.key)}
             aria-selected={activeTab === tab.key}
             className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
