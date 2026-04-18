@@ -11,7 +11,7 @@
 
 ## 关键工程决策记录
 - **2026-04-02**: 修复 6 个 Bug（历史记录丢失、产出持久化失败等），确立 project_id 内部 scoped 原则
-- **2026-04-18**: E2E 9/9 全通过，完成三层架构一致性审查；确立事件循环测试模式为 UI-007/008 共享标准模式
+- **2026-04-18**: 新增 UI-009 提案创建测试，补全 E2E 测试与 data-testid 对照文档
 - **Docker proxy 规则**：host 端构建时带 proxy，容器运行时不传 proxy，`~/.docker/config.json` 用完必须清理 proxies 字段
 - **Mock 数据契约**：测试 toolCalls.arguments 必须与 tools.ts zod schema 完全匹配，schema 变更后同步检查 mock 数据
 
