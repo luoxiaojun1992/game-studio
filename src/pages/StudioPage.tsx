@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Agent, AgentRole, AgentState, Proposal, Game, LogEntry, SSEEvent, TabKey, PermissionRequest, Handoff, TaskBoardTask, ProjectInfo, ProjectSettings } from '../types';
+import { Agent, AgentRole, AgentState, Proposal, ProposalType, Game, LogEntry, SSEEvent, TabKey, PermissionRequest, Handoff, TaskBoardTask, ProjectInfo, ProjectSettings } from '../types';
 import { api } from '../config';
 import AgentCard from '../components/AgentCard';
 import ProposalList from '../components/ProposalList';
@@ -83,6 +83,12 @@ export default function StudioPage() {
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
   const [pendingPermissions, setPendingPermissions] = useState<PermissionRequest[]>([]);
   const [connected, setConnected] = useState(false);
+  const [showCreateProposalDialog, setShowCreateProposalDialog] = useState(false);
+  const [proposalFormType, setProposalFormType] = useState<ProposalType>('game_design');
+  const [proposalFormTitle, setProposalFormTitle] = useState('');
+  const [proposalFormContent, setProposalFormContent] = useState('');
+  const [proposalFormAuthorAgentId, setProposalFormAuthorAgentId] = useState<AgentRole>('game_designer');
+  const [submittingProposal, setSubmittingProposal] = useState(false);
   const eventSourceRef = useRef<EventSource | null>(null);
   const connectedRef = useRef(false);
 
@@ -343,6 +349,26 @@ export default function StudioPage() {
   const handleDecideProposal = async (proposalId: string, decision: 'approved' | 'rejected', comment: string) => {
     await api.decideProposal(proposalId, decision, comment);
     setSelectedProposal(null);
+  };
+  const handleCreateProposal = async () => {
+    if (!proposalFormTitle.trim() || !proposalFormContent.trim()) return;
+    setSubmittingProposal(true);
+    try {
+      await api.createProposal({
+        project_id: selectedProjectId,
+        type: proposalFormType,
+        title: proposalFormTitle.trim(),
+        content: proposalFormContent.trim(),
+        author_agent_id: proposalFormAuthorAgentId,
+      });
+      setShowCreateProposalDialog(false);
+      setProposalFormTitle('');
+      setProposalFormContent('');
+      // 提案列表将通过 SSE 事件自动更新
+    } catch (e) {
+      console.error('创建提案失败:', e);
+    }
+    setSubmittingProposal(false);
   };
   const handlePreviewGame = (game: Game) => {
     setSelectedGame(game);
@@ -642,30 +668,151 @@ export default function StudioPage() {
         )}
 
         {activeTab === 'proposals' && (
-          <div className="flex gap-4 h-full">
-            <div className="w-80 shrink-0">
-              <ProposalList
-                proposals={proposals}
-                selectedId={selectedProposal?.id}
-                onSelect={setSelectedProposal}
-              />
+          <div className="flex flex-col h-full">
+            {/* 标题栏 */}
+            <div className="shrink-0 flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <h2 className="text-lg font-bold text-white">📋 {l('策划案', 'Proposals')}</h2>
+                <span className="bg-gray-800 text-gray-300 border border-gray-700 text-xs px-2 py-0.5 rounded-full">
+                  {proposals.length} {l('份', 'items')}
+                </span>
+                {pendingProposals.length > 0 && (
+                  <span className="bg-blue-500/20 text-blue-300 border border-blue-600/40 text-xs px-2 py-0.5 rounded-full">
+                    {pendingProposals.length} {l('个待审批', 'pending')}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  data-testid="create-proposal-btn"
+                  onClick={() => setShowCreateProposalDialog(true)}
+                  className="bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                >
+                  {l('+ 创建提案', '+ New Proposal')}
+                </button>
+              </div>
             </div>
-            <div className="flex-1">
-              {selectedProposal ? (
-                <ProposalDetail
-                  proposal={selectedProposal}
-                  onDecide={handleDecideProposal}
-                  onClose={() => setSelectedProposal(null)}
+
+            {/* 内容区域 */}
+            <div className="flex-1 flex gap-4">
+              <div className="w-80 shrink-0">
+                <ProposalList
+                  proposals={proposals}
+                  selectedId={selectedProposal?.id}
+                  onSelect={setSelectedProposal}
                 />
-              ) : (
-                <div className="flex items-center justify-center h-64 text-gray-500">
-                  <div className="text-center">
-                    <div className="text-4xl mb-2">📋</div>
-                     <p>{l('选择一个提案查看详情', 'Select a proposal to view details')}</p>
+              </div>
+              <div className="flex-1">
+                {selectedProposal ? (
+                  <ProposalDetail
+                    proposal={selectedProposal}
+                    onDecide={handleDecideProposal}
+                    onClose={() => setSelectedProposal(null)}
+                  />
+                ) : (
+                  <div className="flex items-center justify-center h-64 text-gray-500">
+                    <div className="text-center">
+                      <div className="text-4xl mb-2">📋</div>
+                      <p>{l('选择一个提案查看详情', 'Select a proposal to view details')}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 创建提案对话框 */}
+            {showCreateProposalDialog && (
+              <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+                <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-lg mx-4 shadow-2xl">
+                  <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800">
+                    <h3 className="text-lg font-bold text-white">📋 {l('创建新提案', 'Create New Proposal')}</h3>
+                    <button
+                      onClick={() => setShowCreateProposalDialog(false)}
+                      className="text-gray-500 hover:text-gray-300 text-xl"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <div className="px-6 py-4 space-y-4">
+                    {/* 提案类型 */}
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1.5 font-medium">{l('提案类型', 'Proposal Type')}</label>
+                      <select
+                        data-testid="proposal-type-select"
+                        value={proposalFormType}
+                        onChange={e => setProposalFormType(e.target.value as ProposalType)}
+                        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
+                      >
+                        <option value="game_design">🎮 {l('游戏策划', 'Game Design')}</option>
+                        <option value="biz_design">💼 {l('商业策划', 'Business Design')}</option>
+                        <option value="tech_arch">🏗️ {l('技术架构', 'Technical Architecture')}</option>
+                        <option value="tech_impl">👨‍💻 {l('技术方案', 'Technical Implementation')}</option>
+                        <option value="ceo_review">👔 {l('CEO评审', 'CEO Review')}</option>
+                      </select>
+                    </div>
+
+                    {/* 作者 Agent */}
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1.5 font-medium">{l('作者 Agent', 'Author Agent')}</label>
+                      <select
+                        data-testid="proposal-author-select"
+                        value={proposalFormAuthorAgentId}
+                        onChange={e => setProposalFormAuthorAgentId(e.target.value as AgentRole)}
+                        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
+                      >
+                        {agents.filter(a => a.id !== 'team_builder').map(agent => (
+                          <option key={agent.id} value={agent.id}>{agent.emoji} {agent.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* 提案标题 */}
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1.5 font-medium">{l('提案标题', 'Proposal Title')} *</label>
+                      <input
+                        data-testid="proposal-title-input"
+                        value={proposalFormTitle}
+                        onChange={e => setProposalFormTitle(e.target.value)}
+                        placeholder={l('例如：休闲游戏策划案', 'e.g. Casual Game Design Proposal')}
+                        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500"
+                      />
+                    </div>
+
+                    {/* 提案内容 */}
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1.5 font-medium">{l('提案内容', 'Proposal Content')} *</label>
+                      <textarea
+                        data-testid="proposal-content-textarea"
+                        value={proposalFormContent}
+                        onChange={e => setProposalFormContent(e.target.value)}
+                        placeholder={l('详细描述提案内容，支持 Markdown 格式...', 'Describe the proposal in detail, Markdown supported...')}
+                        rows={6}
+                        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 resize-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* 对话框底部按钮 */}
+                  <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-800">
+                    <button
+                      onClick={() => setShowCreateProposalDialog(false)}
+                      className="bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium px-5 py-2 rounded-lg transition-colors"
+                    >
+                      {l('取消', 'Cancel')}
+                    </button>
+                    <button
+                      data-testid="proposal-submit-btn"
+                      onClick={handleCreateProposal}
+                      disabled={!proposalFormTitle.trim() || !proposalFormContent.trim() || submittingProposal}
+                      className="bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors"
+                    >
+                      {submittingProposal ? l('创建中...', 'Creating...') : l('创建提案', 'Create Proposal')}
+                    </button>
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         )}
 

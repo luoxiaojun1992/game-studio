@@ -41,4 +41,60 @@
 - 服务顺序：codebuddy-sdk-mock → star-office-ui → studio-backend → ui-app → ui-e2e
 - `~/.docker/config.json` 的 `proxies.default` 配置会被 Docker 构建过程读取
 - 代理关闭后必须删除 proxies 字段，否则 Alpine CDN 构建失败
-- 正确流程：构建时带 proxy，运行时去掉 proxy
+- 正确流程：构建时 host 带 proxy 环境变量（仅用于 npm install），容器运行时不传 proxy
+
+## 事件循环测试架构（UI-007/008 共享）
+- **核心模式**：`runFullWorkflowTest()` — 目标状态驱动的事件循环，UI-007/008 共用
+- **循环体 5 步**：check permission → accept handoff → confirm handoff → count cards → count games
+- **退出条件**：`cardCount >= 3 && gameCount >= 1`
+- **非阻塞设计**：每步 try/catch + 短 timeout，单次失败不中断循环
+- **autopilot 区分**：manual 模式循环内执行 accept/confirm；autopilot 模式跳过步骤 2
+- **超时机制**：`UI_TEST_LOOP_TIMEOUT_MS` 环境变量控制（默认 600s）
+
+### Mock 队列编排策略
+- **预队列所有 mock**：在发送指令前一次性排队所有 agent 响应
+- **链路**：game_designer→ceo→architect→engineer，engineer 最后执行 submit_proposal + submit_game + save_memory + text
+- **per-agent 路由**：mock server 通过 HTTP headers 中的 `(projectId, agentRole)` 路由到独立队列，无 FIFO 跨 agent 干扰
+
+## UI-009 提案创建测试
+- **手动提案流程**：切换策划案 tab → 点击创建按钮 → 填写表单（type/author/title/content）→ 提交
+- **data-testid 链路**：`create-proposal-btn` → `proposal-type-select` → `proposal-author-select` → `proposal-title-input` → `proposal-content-textarea` → `proposal-submit-btn`
+- **断言策略**：提交后按钮 disabled + 对话框关闭 + 列表数量增加 + 标题文本可见
+
+## data-testid 完整对照表（21 个，覆盖率 100%）
+
+| testid | 所在组件 | 用途 |
+|:---|:---|:---|
+| `project-name-input` | StudioPage | 项目名输入框 |
+| `project-create-btn` | StudioPage | 创建项目按钮 |
+| `project-select` | StudioPage | 项目选择器 |
+| `tab-*` | StudioPage | Tab 导航（动态生成 `tab-${tab.key}`） |
+| `permission-card` | StudioPage | 权限请求卡片 |
+| `permission-allow-btn` / `permission-deny-btn` | StudioPage | 权限允许/拒绝 |
+| `create-proposal-btn` | StudioPage | 创建提案按钮 |
+| `proposal-type-select` | StudioPage | 提案类型选择 |
+| `proposal-author-select` | StudioPage | 提案作者选择 |
+| `proposal-title-input` | StudioPage | 提案标题输入 |
+| `proposal-content-textarea` | StudioPage | 提案内容文本区 |
+| `proposal-submit-btn` | StudioPage | 提交提案确认按钮 |
+| `handoff-card-*` | HandoffPanel | 交接卡片（ID 后缀） |
+| `handoff-header` | HandoffPanel | 交接卡片头部（展开/折叠） |
+| `handoff-accept-btn` | HandoffPanel | 接受交接按钮 |
+| `handoff-confirm-btn` | HandoffPanel | 确认交接按钮 |
+| `handoff-complete-btn` | HandoffPanel | 完成交接按钮（测试未用） |
+| `proposal-item-*` | ProposalList | 提案列表项（ID 后缀） |
+| `game-card-*` | GameList | 游戏卡片（ID 后缀） |
+
+## 测试矩阵总览（9 个用例）
+
+| 用例 ID | 类别 | 是否需要 Mock | 核心验证 |
+|:---|:---|:---:|:---|
+| UI-001 | 页面加载 | 否 | 标题 + 团队总览可见 |
+| UI-002 | 语言切换 | 否 | 中英文切换 |
+| UI-003 | 自动驾驶 | 否 | Toggle 开关 |
+| UI-004 | 项目管理 | 否 | 创建 + 切换项目 |
+| UI-005 | Tab 导航 | 否 | 8 个 Tab 全部可点击 |
+| UI-006 | Star-Office 集成 | 否 | iframe 加载 + Agent 状态同步 |
+| UI-007 | 完整工作流（手动） | ✅ | 3 handoffs + 1 game |
+| UI-008 | 完整工作流（自动） | ✅ | 同上 + autopilot |
+| UI-009 | 手动创建提案 | ✅ | 表单填写 + SSE 更新 |
