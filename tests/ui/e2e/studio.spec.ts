@@ -482,3 +482,40 @@ test('[UI-008] should complete full workflow with autopilot and auto-handoff', a
     gameName: '休闲游戏',
   });
 });
+
+test('[UI-009] should manually create a proposal via UI', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('game_studio_ui_language', 'zh-CN'));
+  await page.goto('/');
+
+  // 切换到提案标签页
+  await page.getByRole('tab', { name: /策划案/ }).click();
+  await expect(page.getByRole('heading', { name: /策划案/ })).toBeVisible();
+
+  // 记录初始提案数量
+  const initialCount = await page.locator('[data-testid^="proposal-item-"]').count();
+
+  // 点击创建提案按钮
+  await page.getByTestId('create-proposal-btn').click();
+  await expect(page.getByTestId('proposal-type-select')).toBeVisible();
+
+  // 填写表单
+  await page.getByTestId('proposal-type-select').selectOption('tech_arch');
+  await page.getByTestId('proposal-author-select').selectOption('architect');
+  await page.getByTestId('proposal-title-input').fill('测试技术架构提案');
+  await page.getByTestId('proposal-content-textarea').fill('这是一个通过 UI 手动创建的测试提案。');
+
+  // 提交表单
+  await page.getByTestId('proposal-submit-btn').click();
+  await expect(page.getByTestId('proposal-submit-btn')).toBeDisabled(); // 提交期间禁用
+  await expect(page.getByTestId('proposal-type-select')).not.toBeVisible(); // 对话框应关闭
+
+  // 等待提案列表更新（通过 SSE 事件）
+  await page.waitForTimeout(1000);
+
+  // 验证提案数量增加
+  const finalCount = await page.locator('[data-testid^="proposal-item-"]').count();
+  expect(finalCount).toBeGreaterThan(initialCount);
+
+  // 验证新提案出现在列表中（通过标题）
+  await expect(page.getByText('测试技术架构提案')).toBeVisible();
+});
