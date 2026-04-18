@@ -48,6 +48,7 @@ Game Dev Studio 是一个多 Agent 游戏研发工作台，包含：
 - `index.ts`：API 入口、SSE 入口、路由装配、静态产物服务
 - `agent-manager.ts`：Agent 生命周期、指令分发、流式事件
 - `tools.ts`：MCP 自定义工具定义与角色约束
+- `lint/`：可扩展 Lint 框架（LintRunner、可插拔检查器、零外部依赖）
 - `agents.ts`：角色定义、提示词、交接约束
 - `db.ts`：SQLite 表结构、迁移、读写逻辑
 - `sse-broadcaster.ts`：SSE 客户端管理与事件广播
@@ -61,6 +62,7 @@ Game Dev Studio 是一个多 Agent 游戏研发工作台，包含：
 - **任务（Tasks）**：开发/测试任务拆分与状态流转
 - **交接（Handoffs）**：跨角色任务移交与确认执行
 - **产物（Games）**：HTML 成品提交、列表与预览
+- **静态分析（Lint/Quality）**：可扩展静态检查框架，支持 HTML 结构、JS 安全等可插拔检查器
 - **记忆（Memories）**：按角色/项目组织的长期记忆
 - **观测（Logs/Events）**：运行日志与事件流
 - **权限（Permissions）**：工具执行审批流与回调响应
