@@ -25,3 +25,26 @@
 - 受影响工具: `split_dev_test_tasks`、`get_tasks`、`submit_proposal`、`submit_game`
 - 与 `create_handoff`、`get_logs`、`get_proposals`、`get_pending_handoffs` 保持一致
 - `enforceProject` 已成死代码，已删除
+
+## Mock 数据契约对齐（测试 ↔ 工具层）
+- 测试中 `setMockExpectation` 的 `toolCalls.arguments` 必须与 `tools.ts` 中 zod schema 完全匹配
+- `submit_game` 的 `html_content` 有最小长度限制（`MIN_GAME_HTML_LENGTH`），mock 值必须足够长
+- `submit_proposal` 的 `type` 必须是 `db.PROPOSAL_TYPES` 枚举值之一
+- **经验**：工具 schema 变更后，同步检查测试 mock 数据，否则运行时报 zod 校验错误
+
+## 被纠正的错误做法汇总
+
+| 错误做法 | 正确做法 | 影响 |
+|:---|:---|:---|
+| mock `submit_game` 不传 project_id | 通过 setMockExpectation 的 projectId 参数隐式传递（工具内部自动使用 scopedProjectId） | 避免 game 写入 default 项目导致 SSE channel 不匹配 |
+| 用 class/文本选择器定位 DOM 元素 | 统一使用 `data-testid` 属性 + `getByTestId()` | DOM 结构变化不断言 |
+| 逐步等待固定时间（waitForTimeout 链式调用） | 目标状态驱动的事件循环 + 非阻塞轮询 | 测试更稳定、更快 |
+| UI-007/008 各写独立测试逻辑 | 抽取 `runFullWorkflowTest()` 共享函数 + WorkflowOptions 参数化 | 消除重复代码，降低维护成本 |
+| 手动模式下在循环外 accept/confirm | 循环体内每轮尝试 tryAcceptAnyPending + tryConfirmAnyAccepted | 适应异步事件到达时序不确定性 |
+
+## Lint Framework 约定
+- **新增检查器必须实现 `LintChecker` 接口**，注册到 `checkers/index.ts` 的 `builtInCheckers` 数组
+- **error = 阻断提交**，**warn = 仅记录日志**，不设 info 级别
+- **checker 内部异常由 LintRunner catch 并降级为 error issue**，不会中断其他 checker 执行
+- **submit_game 是唯一调用点**（tools.ts 权限校验后、db.createGame() 前），API 层和 DB 层不接入 lint
+- **零外部依赖**：检查器使用纯正则/字符串分析，不引入 DOM parser 或 AST 库

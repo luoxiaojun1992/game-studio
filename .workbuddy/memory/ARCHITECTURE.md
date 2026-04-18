@@ -8,6 +8,11 @@
 ## 架构关键点
 - `server/db.ts` - SQLite 所有数据操作
 - `server/tools.ts` - SDK Custom Tools（MCP 自定义工具）
+- `server/lint/` - 可扩展静态检查框架（LintRunner + 可插拔 checker）
+- `server/lint/types.ts` - 核心类型：LintChecker 接口、LintIssue、LintResult
+- `server/lint/index.ts` - LintRunner 运行时 + lintGameContent() 便捷入口
+- `server/lint/checkers/html-structure.ts` - HTML 结构检查器（6 条 error 规则）
+- `server/lint/checkers/js-security.ts` - JS 安全检查器（4 条 warn 规则）
 - `server/agent-manager.ts` - Agent 管理器，通过 mcpServers 注册自定义工具
 - `server/agents.ts` - Agent 定义 + 系统提示词（TOOLS_OVERVIEW）
 - `server/sse-broadcaster.ts` - SSE 广播（解耦循环依赖）
