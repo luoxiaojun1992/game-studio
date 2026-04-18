@@ -150,6 +150,33 @@ game-dev-studio/
 - 每个场景均包含前置条件、操作步骤、预期结果。
 - 依赖 Mock Server 模拟 SDK 行为，确保测试可重复、不依赖外部服务。
 
+##### E2E 测试架构
+- **测试框架**: Playwright + TypeScript
+- **Mock 服务**: `tests/mock-server/codebuddy-sdk-mock-server.mjs`（per-agent 路由队列）
+- **Docker 编排**: `docker-compose.ui-test.yml`（5 个服务）
+- **测试入口**: `tests/ui/e2e/studio.spec.ts`（9 个用例）
+- **核心模式**: `runFullWorkflowTest()` — 目标状态驱动的事件循环，UI-007/008 共用
+- **数据流**: 测试 → Mock Admin API (port 3001) → 预设响应队列 → Agent 调用 /chat/completions → 匹配 (projectId, agentRole) → 返回预设响应
+
+###### Docker 服务依赖图
+```
+codebuddy-sdk-mock (:3001)     ← Mock Server
+       ↓ (health check)
+star-office-ui (:19000)        ← Star Office 前端
+       ↓ (health check)
+studio-backend (:3000)         ← Express API + SSE
+       ↓ (health check)
+ui-app (:4173)                 ← 前端静态文件 (nginx)
+       ↓ (health check)
+ui-e2e                         ← Playwright CI 执行
+```
+
+###### 前端组件 data-testid 架构
+- 所有可交互元素统一使用 `data-testid` 属性
+- 动态 ID 格式：`handoff-card-${id}`、`proposal-item-${id}`、`game-card-${id}`、`tab-${key}`
+- 状态属性：`data-handoff-status`、`data-agent-to`、`data-agent-from`、`data-game-name`
+- 详见 E2E_TESTING.md 完整对照表
+
 #### 9. Mock Server (`tests/mock-server/codebuddy-sdk-mock-server.mjs`)
 - 模拟 `@tencent‑ai/agent‑sdk` 的 `query` 接口，用于 UI 测试。
 - 内置固定的响应逻辑，例如 `submit_game` 返回成功、`create_handoff` 生成交接记录等。
@@ -194,30 +221,3 @@ game-dev-studio/
 5. **完整测试覆盖**：UI E2E 测试模拟真实用户行为，保障核心流程质量。
 6. **国际化**：中英双语 UI，便于不同地区团队使用。
 7. **Star‑Office‑UI 集成**：与腾讯内部办公平台深度联动，提升协作效率。
-
-## E2E 测试架构补充（2026-04-18）
-- **测试框架**: Playwright + TypeScript
-- **Mock 服务**: `tests/mock-server/codebuddy-sdk-mock-server.mjs`（per-agent 路由队列）
-- **Docker 编排**: `docker-compose.ui-test.yml`（5 个服务）
-- **测试入口**: `tests/ui/e2e/studio.spec.ts`（9 个用例）
-- **核心模式**: `runFullWorkflowTest()` — 目标状态驱动的事件循环，UI-007/008 共用
-- **数据流**: 测试 → Mock Admin API (port 3001) → 预设响应队列 → Agent 调用 /chat/completions → 匹配 (projectId, agentRole) → 返回预设响应
-
-### Docker 服务依赖图
-```
-codebuddy-sdk-mock (:3001)     ← Mock Server
-       ↓ (health check)
-star-office-ui (:19000)        ← Star Office 前端
-       ↓ (health check)
-studio-backend (:3000)         ← Express API + SSE
-       ↓ (health check)
-ui-app (:4173)                 ← 前端静态文件 (nginx)
-       ↓ (health check)
-ui-e2e                         ← Playwright CI 执行
-```
-
-### 前端组件 data-testid 架构
-- 所有可交互元素统一使用 `data-testid` 属性
-- 动态 ID 格式：`handoff-card-${id}`、`proposal-item-${id}`、`game-card-${id}`、`tab-${key}`
-- 状态属性：`data-handoff-status`、`data-agent-to`、`data-agent-from`、`data-game-name`
-- 详见 E2E_TESTING.md 完整对照表
