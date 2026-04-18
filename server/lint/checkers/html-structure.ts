@@ -27,8 +27,8 @@ const RE_CHARSET_META = /<meta\s[^>]*charset=["']?utf-8["']?/i;
 /** 提取 body 内容（用于非空检查） */
 const RE_EXTRACT_BODY = /<body[^]*?>([\s\S]*)<\/body>/i;
 
-/** 去除 HTML 标签后的纯文本空白检查 */
-const RE_STRIP_TAGS = /<[^>]+>/g;
+/** 去除尖括号后的纯文本空白检查（避免不完整的多字符净化） */
+const RE_STRIP_TAGS = /[<>]/g;
 const RE_WHITESPACE_ONLY = /^[\s\n\r\t]*$/;
 
 // ====== 检查器定义 ======
