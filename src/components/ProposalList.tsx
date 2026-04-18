@@ -72,6 +72,7 @@ function ProposalItem({ proposal, selected, onClick }: { proposal: Proposal; sel
 
   return (
     <div
+      data-testid={`proposal-item-${proposal.id}`}
       onClick={onClick}
       className={`rounded-lg p-3 cursor-pointer transition-all border ${
         selected

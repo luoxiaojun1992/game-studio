@@ -72,7 +72,7 @@
 | `proposal-author-select` | StudioPage | 提案作者选择 |
 | `proposal-title-input` | StudioPage | 提案标题输入 |
 | `proposal-content-textarea` | StudioPage | 提案内容文本区 |
-| `proposal-submit-btn` | StudioPage | 提案提案确认按钮 |
+| `proposal-submit-btn` | StudioPage | 提交提案确认按钮 |
 | `handoff-card-*` | HandoffPanel | 交接卡片（ID 后缀） |
 | `handoff-header` | HandoffPanel | 交接卡片头部（展开/折叠） |
 | `handoff-accept-btn` | HandoffPanel | 接受交接按钮 |

@@ -5,6 +5,14 @@
 - 不允许为了"让测试通过"而放宽断言、加 fallback、或绕过正常流程
 - 遇到问题必须先定位根因，再修复，不能猜测或碰运气
 
+## 6 个 Bug 修复记录
+1. CommandPanel 历史记录丢失
+2. 产出持久化失败
+3. 交接确认流程缺失
+4. 清除聊天功能无效
+5. 长期记忆未生效
+6. 产出目录配置错误
+
 ## Agent 选择状态持久化
 - 状态集中管理：`StudioPage.commandTargetAgent` 作为单一数据源
 - localStorage key 格式: `commandPanel_lastAgent_${projectId}`
