@@ -14,6 +14,7 @@
 - 项目设置（自动交接开关）
 - 提案管理（创建、评审、人工决策）
 - 游戏成品管理（HTML 成品提交、预览、版本状态）
+- 静态分析（可扩展 Lint 框架，支持 HTML 结构、JS 安全等可插拔检查器）
 - Agent 长期记忆（保存/查询/清理）
 - 项目隔离（按 `project_id` 隔离数据与观测流）
 
@@ -118,6 +119,7 @@ game-studio/
 │   ├── index.ts            # API 与 SSE 入口
 │   ├── agent-manager.ts    # Agent 生命周期与消息分发
 │   ├── tools.ts            # MCP 自定义工具
+│   ├── lint/               # 可扩展 Lint 框架（LintRunner + 检查器）
 │   ├── agents.ts           # 团队角色定义与系统提示词
 │   ├── star-office-sync.ts # Star-Office-UI 同步服务
 │   └── db.ts               # SQLite 表结构与数据访问

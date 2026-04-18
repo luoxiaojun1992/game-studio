@@ -14,6 +14,7 @@ This guide is based on the current repository implementation and focuses on real
 - AI orchestration: `agent-manager.ts` + `tools.ts` + Agent SDK
 - Studio integration: `star-office-sync.ts` (agent registration, state sync, health checks)
 - Data layer: SQLite (`server/db.ts`)
+- Static analysis: extensible Lint framework (`server/lint/`)
 - Real-time observability: SSE (`/api/observe` + `sse-broadcaster.ts`)
 
 ### 1.2 Key Design Principles
@@ -30,6 +31,7 @@ server/
   index.ts               # REST API + SSE + static artifact hosting
   agent-manager.ts       # Agent states, message sending, permission requests
   tools.ts               # MCP custom tool definitions and permission rules
+  lint/                  # Extensible Lint framework (LintRunner, pluggable checkers)
   agents.ts              # Role definitions, system prompts, tool usage constraints
   star-office-sync.ts    # Star-Office-UI registration and state sync
   db.ts                  # Table creation, migration, query, and write logic
@@ -174,6 +176,16 @@ Built-in tabs already include `pixel_studio` (`StarOfficeStudio.tsx`). Reuse thi
 2. Add role permission checks when needed
 3. Broadcast SSE events when UI real-time updates are required
 4. Update tool guidance in `server/agents.ts`
+
+### 7.3 Add a New Lint Checker
+
+The lint framework uses a **pluggable registration architecture** (`server/lint/`):
+
+1. Create a new file in `server/lint/checkers/*.ts`
+2. Implement the `LintChecker` interface (id, name, description, `check()` method)
+3. Register it in `server/lint/checkers/index.ts` (add to `builtInCheckers` array)
+4. Built-in checkers: `html-structure` (6 error rules) + `js-security` (4 warn rules)
+5. Error-level issues **block** `submit_game`; warn-level issues are logged only
 
 ## 8. Local Development and Build
 

@@ -11,6 +11,7 @@
 | [SDK_MOCK.md](./SDK_MOCK.md) | Mock Server 架构、Agent systemPrompt、LANGUAGE_ADAPTATION |
 | [STAROFFICE.md](./STAROFFICE.md) | Star-Office-UI 集成、状态映射 |
 | [CONVENTIONS.md](./CONVENTIONS.md) | 工作红线、Bug 修复记录、Agent 状态持久化 |
+| [LINT.md](./LINT.md) | 可扩展 Lint Framework 架构、LintRunner、内置检查器、扩展指南 |
 
 ## 快速参考
 

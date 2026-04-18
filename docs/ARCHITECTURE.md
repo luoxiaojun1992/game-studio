@@ -48,6 +48,7 @@ Browser (React + Vite)
 - `index.ts`: API entry, SSE endpoint, route wiring, static output serving
 - `agent-manager.ts`: agent lifecycle, command dispatch, stream events
 - `tools.ts`: MCP custom tool definitions and role constraints
+- `lint/`: extensible lint framework (LintRunner, pluggable checkers, zero external dependencies)
 - `agents.ts`: role declarations, prompts, and handoff constraints
 - `db.ts`: SQLite schema, migrations, read/write operations
 - `sse-broadcaster.ts`: SSE client management and event broadcast
@@ -61,6 +62,7 @@ Browser (React + Vite)
 - **Tasks**: development/testing decomposition and status transitions
 - **Handoffs**: cross-role ownership transfer and confirmation flow
 - **Games**: HTML artifact submission, listing, and preview
+- **Lint/Quality**: extensible static analysis framework with pluggable checkers (HTML structure, JS security, etc.)
 - **Memories**: long-term memory records scoped by role/project
 - **Logs/Observability**: runtime logs and stream events
 - **Permissions**: tool execution approval lifecycle and response callbacks

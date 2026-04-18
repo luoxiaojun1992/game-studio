@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import * as db from './db.js';
 import { AGENT_IDS, AgentRole, getAllAgents } from './agents.js';
 import { sseBroadcaster } from './sse-broadcaster.js';
+import { lintGameContent } from './lint/index.js';
 
 /**
  */
@@ -438,6 +439,18 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         },
         async ({ name, html_content, description, version, proposal_id }) => {
           validateAgentPermission(['engineer'], '提交游戏成品');
+
+          // Lint 检查：在写入 DB 前对游戏 HTML 进行静态质量检查
+          const lintResult = lintGameContent(html_content, { fileName: `${name}.html`, projectId: scopedProjectId });
+          if (!lintResult.passed) {
+            return {
+              content: [{ type: 'text' as const, text: `提交游戏失败：\n${lintResult.summary}` }]
+            };
+          }
+          if (lintResult.warnings.length > 0) {
+            log(agentId, '提交游戏-lint', `警告: ${lintResult.warnings.map(w => w.message).join('; ')}`, 'warn');
+          }
+
           const now = new Date().toISOString();
           let game: db.DbGame;
           try {

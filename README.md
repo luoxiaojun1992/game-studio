@@ -15,6 +15,7 @@ A multi-agent game development workspace built on the CodeBuddy Agent SDK, provi
 - Project settings (auto-handoff toggle)
 - Proposal management (create, review, and human decision)
 - Game artifact management (submit HTML artifacts, preview, and version status)
+- Static analysis (extensible lint framework with pluggable checkers for HTML structure, JS security, etc.)
 - Long-term agent memory (save/query/clear)
 - Project isolation (data and observability streams isolated by `project_id`)
 
@@ -119,6 +120,7 @@ game-studio/
 │   ├── index.ts            # API and SSE entry
 │   ├── agent-manager.ts    # Agent lifecycle and message dispatch
 │   ├── tools.ts            # MCP custom tools
+│   ├── lint/               # Extensible lint framework (LintRunner + checkers)
 │   ├── agents.ts           # Team role definitions and system prompts
 │   ├── star-office-sync.ts # Star-Office-UI sync service
 │   └── db.ts               # SQLite schema and data access

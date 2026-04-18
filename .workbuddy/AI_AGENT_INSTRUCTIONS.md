@@ -52,6 +52,7 @@ export const AGENT_IDS = ['engineer', 'architect', 'game_designer', 'biz_designe
 | Agent 定义 | `server/agents.ts` |
 | 自定义工具 | `server/tools.ts` |
 | 数据库操作 | `server/db.ts` |
+| Lint 框架 | `server/lint/`（LintRunner + 可插拔检查器） |
 | SSE 广播 | `server/sse-broadcaster.ts` |
 | Express 路由 | `server/index.ts` |
 
@@ -118,8 +119,6 @@ STAR_OFFICE_UI_URL=http://127.0.0.1:19000  # Star-Office-UI 地址
 
 ### UI E2E 测试
 ```bash
-# 构建并运行测试（带 proxy）
-export https_proxy=http://127.0.0.1:7890 http_proxy=http://127.0.0.1:7890 all_proxy=socks5://127.0.0.1:7890
 docker compose -f docker-compose.ui-test.yml up --build -d
 
 # 查看测试日志
@@ -149,6 +148,12 @@ npm run test:ui
 2. 添加 zod schema 参数验证（**注意：project_id 应内部使用 scopedProjectId，不作为工具参数**）
 3. 在 `agents.ts` 的 `TOOLS_OVERVIEW` 中描述工具用途
 4. 如需自动授权，在 `agent-manager.ts` 的 `CAN_AUTO_ALLOW` 中添加
+
+### 添加新 Lint 检查器
+1. 在 `server/lint/checkers/` 下新建文件，实现 `LintChecker` 接口（来自 `types.ts`）
+2. 在 `server/lint/checkers/index.ts` 的 `builtInCheckers` 数组中注册
+3. **tools.ts、index.ts、types.ts 不需要任何修改**
+4. 详见 [LINT.md](./memory/LINT.md) 扩展指南
 
 ### 添加新 Agent
 1. 在 `AGENT_IDS` 中添加 ID
@@ -218,3 +223,4 @@ test: add xxx test case
 | `./memory/SDK_MOCK.md` | Mock Server 架构、Agent systemPrompt |
 | `./memory/CONVENTIONS.md` | 工作红线、Bug 修复记录 |
 | `./memory/ARCHITECTURE.md` | 项目架构、关键文件 |
+| `./memory/LINT.md` | 可扩展 Lint Framework 架构、检查器、扩展指南 |

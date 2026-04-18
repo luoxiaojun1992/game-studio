@@ -13,6 +13,7 @@
 - AI 编排：`agent-manager.ts` + `tools.ts` + Agent SDK
 - Studio 联动：`star-office-sync.ts`（Agent 注册、状态同步、健康巡检）
 - 数据层：SQLite（`server/db.ts`）
+- 静态分析：可扩展 Lint 框架（`server/lint/`）
 - 实时观测：SSE（`/api/observe` + `sse-broadcaster.ts`）
 
 ### 1.2 关键设计
@@ -29,6 +30,7 @@ server/
   index.ts               # REST API + SSE + 静态产物服务
   agent-manager.ts       # Agent 状态、消息发送、权限请求
   tools.ts               # MCP 自定义工具定义与权限规则
+  lint/                  # 可扩展 Lint 框架（LintRunner、可插拔检查器）
   agents.ts              # 角色定义、系统提示词、工具使用约束
   star-office-sync.ts    # Star-Office-UI 注册与状态同步
   db.ts                  # 建表、迁移、查询与写入
@@ -173,6 +175,16 @@ src/
 2. 必要时加入角色权限校验
 3. 需要 UI 实时更新时广播 SSE 事件
 4. 在 `server/agents.ts` 的工具说明中补充新工具用途
+
+### 7.3 新增 Lint 检查器
+
+Lint 框架采用**可插拔注册式架构**（`server/lint/`）：
+
+1. 在 `server/lint/checkers/*.ts` 创建新文件
+2. 实现 `LintChecker` 接口（id、name、description、`check()` 方法）
+3. 在 `server/lint/checkers/index.ts` 注册（加入 `builtInCheckers` 数组）
+4. 内置检查器：`html-structure`（6 条 error 规则）+ `js-security`（4 条 warn 规则）
+5. error 级别 issue **阻断** `submit_game`，warn 级别仅记录日志
 
 ## 8. 本地开发与构建
 

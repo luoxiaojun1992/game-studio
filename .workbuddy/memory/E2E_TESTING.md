@@ -39,10 +39,6 @@
 ## Docker 测试经验
 - `docker compose -f docker-compose.ui-test.yml up --build -d` 启动完整测试环境
 - 服务顺序：codebuddy-sdk-mock → star-office-ui → studio-backend → ui-app → ui-e2e
-- `~/.docker/config.json` 的 `proxies.default` 配置会被 Docker 构建过程读取
-- 代理关闭后必须删除 proxies 字段，否则 Alpine CDN 构建失败
-- 正确流程：构建时 host 带 proxy 环境变量（仅用于 npm install），容器运行时不传 proxy
-
 ## 事件循环测试架构（UI-007/008 共享）
 - **核心模式**：`runFullWorkflowTest()` — 目标状态驱动的事件循环，UI-007/008 共用
 - **循环体 5 步**：check permission → accept handoff → confirm handoff → count cards → count games
@@ -98,3 +94,10 @@
 | UI-007 | 完整工作流（手动） | ✅ | 3 handoffs + 1 game |
 | UI-008 | 完整工作流（自动） | ✅ | 同上 + autopilot |
 | UI-009 | 手动创建提案 | ✅ | 表单填写 + SSE 更新 |
+
+## Lint Framework 集成验证
+
+- `submit_game` 调用链路：权限校验 → **lintGameContent()** → db.createGame()
+- Mock HTML 内容已包含完整 DOCTYPE/html/head/body 骨架 + utf-8 charset，**天然通过 html-structure 全部 6 条规则**
+- Mock HTML 不含 eval/innerHTML 等调用，**天然通过 js-security 全部 4 条规则**
+- E2E 9/9 全通过 = lint 拦截点未误拦正常提交
