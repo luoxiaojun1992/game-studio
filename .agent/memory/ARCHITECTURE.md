@@ -203,7 +203,7 @@ ui-e2e                         ← Playwright CI 执行
    - 任务看板：`todo → developing → testing → done`（允许 `blocked` 分支）。
    - 提案评审：`pending_review → under_review → approved/rejected`（用户可覆盖决策）。
 
-### 指令中心、Agent 切换与状态保存（2026-04 研究结论）
+### 指令中心、Agent 切换与状态保存
 
 #### 1) 指令中心当前目标 Agent 的前端切换链路
 - 总览页（`StudioPage` 的 `overview` Tab）点击 `AgentCard` 的「发送指令」会执行 `setCommandTargetAgent(agent.id)` 并切到 `commands` Tab（`src/pages/StudioPage.tsx`）。
