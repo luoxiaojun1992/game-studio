@@ -8,5 +8,5 @@
 1. 先阅读公共文档：
    - [AI_AGENT_COMMON_INSTRUCTIONS.md](../.agent/AI_AGENT_COMMON_INSTRUCTIONS.md)
 2. 如需历史经验，查看 WorkBuddy 记忆索引：
-   - [INDEX.md](../.workbuddy/memory/INDEX.md)
+   - [INDEX.md](../.agent/memory/INDEX.md)
 3. 本文件仅保留入口与索引，不重复维护公共规范正文。
