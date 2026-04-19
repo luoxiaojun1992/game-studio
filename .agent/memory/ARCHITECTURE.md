@@ -206,7 +206,7 @@ ui-e2e                         ← Playwright CI 执行
 ### 指令中心、Agent 切换与状态保存（2026-04 研究结论）
 
 #### 1) 指令中心当前目标 Agent 的前端切换链路
-- 总览页点击 AgentCard 的「发送指令」会执行 `setCommandTargetAgent(agent.id)` 并切到 `commands` Tab（`src/pages/StudioPage.tsx`）。
+- 总览页（`StudioPage` 的 `overview` Tab）点击 `AgentCard` 的「发送指令」会执行 `setCommandTargetAgent(agent.id)` 并切到 `commands` Tab（`src/pages/StudioPage.tsx`）。
 - `CommandPanel` 通过 `selectedAgentId` 接收外部指定 Agent；若变化则同步内部 `selectedAgent` 并写入 localStorage。
 - 用户在 CommandPanel 左侧手动切换 Agent 时，`onAgentChange` 回传给 `StudioPage`，形成双向同步。
 

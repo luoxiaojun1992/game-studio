@@ -19,6 +19,10 @@
 - 切换项目时会按项目键自动恢复保存的 Agent；无效值会回退到可指令 Agent 默认值
 - `team_builder` 会被过滤，不作为指令中心可选目标 Agent
 - 关键实现位置：`src/pages/StudioPage.tsx`、`src/components/CommandPanel.tsx`
+- 同步方向说明：
+  - `StudioPage -> CommandPanel`：从总览卡片“发送指令”跳转或项目切换恢复时，通过 `selectedAgentId` 驱动 CommandPanel 切换并写回 localStorage。
+  - `CommandPanel -> StudioPage`：用户在指令中心左侧切换 Agent 时，通过 `onAgentChange` 回传更新 `commandTargetAgent`。
+  - 冲突处理：以“最后一次用户触发的切换”生效；项目切换时会先按新项目 localStorage 重置目标 Agent。
 
 ## 交接默认行为
 - `auto_handoff_enabled` 表默认值应为 1（交接无需人工确认，自动放行）
