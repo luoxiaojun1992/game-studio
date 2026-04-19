@@ -22,8 +22,8 @@
 - `team_builder` 会被过滤，不作为指令中心可选目标 Agent
 - 关键实现位置：`src/pages/StudioPage.tsx`、`src/components/CommandPanel.tsx`
 - 同步方向说明：
-  - `StudioPage -> CommandPanel`：从总览卡片“发送指令”跳转或项目切换恢复时，通过 `selectedAgentId` 驱动 CommandPanel 切换并写回 localStorage。
-  - `CommandPanel -> StudioPage`：用户在指令中心左侧切换 Agent 时，通过 `onAgentChange` 回传更新 `commandTargetAgent`。
+  - `StudioPage -> CommandPanel`：从总览卡片“发送指令”跳转或项目切换恢复时，通过 `selectedAgentId` 驱动 CommandPanel 同步并写回 localStorage。
+  - `CommandPanel -> StudioPage`：用户在指令中心左侧切换 Agent 时，通过 `onAgentChange` 回传同步 `commandTargetAgent`。
   - 冲突处理：
     - 若两路几乎同时发生，最终以“最后一次状态写入”为准（React 状态 + localStorage 都遵循最后写入覆盖）
     - 项目切换属于更高优先级上下文切换，会先重载新项目存储并覆盖旧项目选择
