@@ -144,6 +144,8 @@ npm run test:ui
 
 ## 常见任务指南
 
+> 下面提到的文档路径均按“仓库根目录”理解（非当前文件目录）。
+
 ### 添加新工具
 1. 在 `server/tools.ts` 中使用 `tool()` 定义
 2. 添加 zod schema 参数验证（**注意：project_id 应内部使用 scopedProjectId，不作为工具参数**）
@@ -210,6 +212,8 @@ test: add xxx test case
 ```
 
 ## 经验文档索引
+
+> 下列路径均为仓库根目录相对路径。
 
 详细调试经验、历史踩坑记录见仓库内 `.workbuddy/memory/` 目录：
 
