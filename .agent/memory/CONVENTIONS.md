@@ -14,10 +14,11 @@
 6. 产出目录配置错误
 
 ## Agent 选择状态持久化
-- 状态集中管理：`StudioPage.commandTargetAgent` 作为单一数据源
+- 状态在 `StudioPage.commandTargetAgent`（跨面板目标）与 `CommandPanel.selectedAgent`（面板内选中）之间双向同步
 - localStorage key 格式: `commandPanel_lastAgent_${projectId}`
-- 切换项目时自动加载对应项目的保存 Agent
-- 两个修改点: `StudioPage.tsx`（`getCommandAgentKey()`）+ `CommandPanel.tsx`（`onAgentChange` 回调）
+- 切换项目时会按项目键自动恢复保存的 Agent；无效值会回退到可指令 Agent 默认值
+- `team_builder` 会被过滤，不作为指令中心可选目标 Agent
+- 关键实现位置：`src/pages/StudioPage.tsx`、`src/components/CommandPanel.tsx`
 
 ## 交接默认行为
 - `auto_handoff_enabled` 表默认值应为 1（交接无需人工确认，自动放行）
