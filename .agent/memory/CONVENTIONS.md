@@ -14,10 +14,19 @@
 6. 产出目录配置错误
 
 ## Agent 选择状态持久化
-- 状态集中管理：`StudioPage.commandTargetAgent` 作为单一数据源
+- 状态在 `StudioPage.commandTargetAgent` 与 `CommandPanel.selectedAgent` 之间采用“双向协同（两条单向更新链路）”
+- `StudioPage.commandTargetAgent` = 跨面板目标（页面级“全局当前指令目标 Agent”），用于总览卡片跳转到指令中心时透传
+- `CommandPanel.selectedAgent` = 指令中心面板内当前选中 Agent
 - localStorage key 格式: `commandPanel_lastAgent_${projectId}`
-- 切换项目时自动加载对应项目的保存 Agent
-- 两个修改点: `StudioPage.tsx`（`getCommandAgentKey()`）+ `CommandPanel.tsx`（`onAgentChange` 回调）
+- 切换项目时会按项目键自动恢复保存的 Agent；无效值会回退到可指令 Agent 默认值
+- `team_builder` 会被过滤，不作为指令中心可选目标 Agent（其职责是系统触发的总结/记忆沉淀）
+- 关键实现位置：`src/pages/StudioPage.tsx`、`src/components/CommandPanel.tsx`
+- 同步方向说明：
+  - `StudioPage -> CommandPanel`：从总览卡片“发送指令”跳转或项目切换恢复时，通过 `selectedAgentId` 驱动 CommandPanel 同步并写回 localStorage。
+  - `CommandPanel -> StudioPage`：用户在指令中心左侧切换 Agent 时，通过 `onAgentChange` 回传同步 `commandTargetAgent`。
+  - 冲突处理：
+    - 若两路几乎同时发生，最终以“最后一次状态写入”为准（React 状态 + localStorage 都遵循最后写入覆盖）
+    - 项目切换属于更高优先级上下文切换，会先重载新项目存储并覆盖旧项目选择
 
 ## 交接默认行为
 - `auto_handoff_enabled` 表默认值应为 1（交接无需人工确认，自动放行）

@@ -203,6 +203,36 @@ ui-e2e                         ← Playwright CI 执行
    - 任务看板：`todo → developing → testing → done`（允许 `blocked` 分支）。
    - 提案评审：`pending_review → under_review → approved/rejected`（用户可覆盖决策）。
 
+### 指令中心、Agent 切换与状态保存
+
+#### 1) 指令中心当前目标 Agent 的前端切换链路
+- 总览页（`StudioPage` 的 `overview` Tab）点击 `AgentCard` 的「发送指令」会执行 `setCommandTargetAgent(agent.id)` 并切到 `commands` Tab（`src/pages/StudioPage.tsx`）。
+- `CommandPanel` 通过 `selectedAgentId` 接收外部指定 Agent；若变化则同步内部 `selectedAgent` 并写入 localStorage。
+- 用户在 CommandPanel 左侧手动切换 Agent 时，`onAgentChange` 回传给 `StudioPage`，形成双向同步。
+
+#### 2) 指令中心“当前 Agent”持久化（UI 层）
+- 持久化介质是浏览器 localStorage，键名按项目隔离：`commandPanel_lastAgent_${projectId}`。
+- `StudioPage` 在 `agents/selectedProjectId` 变化时读取该键，恢复 `commandTargetAgent`。
+- `CommandPanel` 初始化时优先读取该键；无有效值时回退到：
+  1. 当前处于 `working` 的可指令 Agent；
+  2. 第一个可指令 Agent；
+  3. `game_designer`（兜底）。
+- `team_builder` 不允许作为指令目标；若命中无效或被过滤，会自动回退并覆盖存储值。
+- 原因： 该角色定位为“会话后总结 / 记忆沉淀”后台 Agent（由系统触发），不承载人工下达日常执行指令。
+
+#### 3) Agent 运行状态持久化（后端层）
+- 后端真实状态由 `AgentManager` 按项目维护（`agentStatesByProject`），并通过 `updateAgentState` 持久化到 `agent_sessions` 表。
+- `sendMessage` 执行前将状态置为 `working` 并写入 `current_task`；结束后置回 `idle`；异常置为 `error`；暂停/恢复写入 `paused/idle`。
+- 进程初始化或首次访问项目时，`ensureProjectState` 会从 `agent_sessions` 恢复状态：
+  - DB 中若是 `working`，会回正为 `idle`（避免重启后卡在“工作中”假状态）。
+  - `paused` 会恢复为暂停态并写入 `pausedAgentsByProject`。
+- `lastMessage` 属于内存态，当前不落库； 服务重启后该字段会丢失。 持久化主要覆盖 `status/current_task/sdk_session_id/updated_at`， 不影响可恢复状态（status/current_task/paused）和历史消息查询（`agent_messages`）。
+
+#### 4) 项目切换与状态边界
+- 前端项目切换通过 `api.switchProject(fromProjectId, toProjectId)` 调用 `/api/projects/switch`，该接口主要驱动 Star Office 同步。
+- 指令中心当前 Agent 的“记忆”是前端 localStorage 行为（按项目键隔离），不是服务端 `/api/projects/switch` 写库行为。
+- Agent 运行状态与消息历史的服务端隔离依赖 `project_id`（`agent_sessions`、`agent_messages`、`logs` 等）。
+
 ### 测试策略
 
 - **单元测试**：集中于数据库函数与工具逻辑（目前较少，可补充）。
