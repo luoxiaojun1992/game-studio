@@ -1,5 +1,5 @@
 @startuml
-title Game Dev Studio 游戏开发主流程（手动交接 / 不使用 autopilot）
+title Game Dev Studio 游戏开发主流程（手动交接/不使用 autopilot）
 
 start
 
