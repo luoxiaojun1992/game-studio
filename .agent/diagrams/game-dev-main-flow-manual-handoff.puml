@@ -1,0 +1,132 @@
+@startuml
+title Game Dev Studio 游戏开发主流程（手动交接/不使用 autopilot）
+
+start
+
+:用户向商业策划下达指令;
+note right
+  代码位置:
+  - src/components/CommandPanel.tsx:128-168 (sendCommand)
+  - src/components/CommandPanel.tsx:504-509 (商业策划快捷指令)
+  - server/index.ts:273-333 (/api/agents/:agentId/command)
+  - server/db.ts:729-747 (createCommand)
+end note
+
+:Agent Manager 驱动 biz_designer 执行任务;
+note right
+  代码位置:
+  - server/agent-manager.ts:362-445 (sendMessage, createStudioToolsServer)
+  - server/agent-manager.ts:537-556 (query + mcpServers)
+  - server/tools.ts:49-85 (createStudioToolsServer)
+end note
+
+:biz_designer 提交商业策划案 submit_proposal(type=biz_design);
+note right
+  代码位置:
+  - server/agents.ts:325-335 (商业策划提交后等待审批约束)
+  - server/tools.ts:359-404 (submit_proposal)
+  - server/db.ts:531-568 (createProposal)
+  - server/db.ts:1256-1275 (saveProposalToFile)
+end note
+
+:biz_designer 创建交接给 CEO(create_handoff);
+note right
+  代码位置:
+  - server/tools.ts:72-79 (允许交接关系)
+  - server/tools.ts:145-207 (create_handoff)
+  - server/db.ts:821-866 (createHandoff)
+  - server/index.ts:577-614 (/api/handoffs, pending)
+end note
+
+:管理者手动接收并确认 CEO 交接;
+note right
+  代码位置:
+  - src/components/HandoffPanel.tsx:111-130 (accept/confirm)
+  - src/components/HandoffPanel.tsx:392-410 (已接收后确认执行按钮)
+  - server/index.ts:615-655 (/api/handoffs/:id/accept)
+  - server/index.ts:656-684 (/api/handoffs/:id/confirm)
+end note
+
+:CEO 评审并提交评审结论 submit_proposal(type=ceo_review);
+note right
+  代码位置:
+  - server/agents.ts:374-383 (CEO 提交评审并等待用户确认)
+  - server/tools.ts:359-404 (submit_proposal)
+  - server/db.ts:570-597 (updateProposal)
+end note
+
+:用户对提案做最终审批 (/api/proposals/:id/decide);
+note right
+  代码位置:
+  - server/index.ts:996-1028 (/api/proposals/:id/decide)
+  - server/db.ts:570-597 (updateProposal)
+  - server/db.ts:1256-1275 (saveProposalToFile)
+end note
+
+if (用户审批通过?) then (通过)
+  :CEO 创建交接给 architect;
+  note right
+    代码位置:
+    - server/agents.ts:379-385 (CEO 交接目标约束)
+    - server/tools.ts:72-79,145-207 (create_handoff)
+  end note
+
+  :管理者手动接收并确认 architect 交接;
+  note right
+    代码位置:
+    - src/components/HandoffPanel.tsx:111-130,392-410
+    - server/index.ts:615-684
+  end note
+
+  :architect 提交技术架构方案 submit_proposal(type=tech_arch);
+  note right
+    代码位置:
+    - server/agents.ts:218-227 (架构方案先提审再交接)
+    - server/tools.ts:359-404 (submit_proposal)
+  end note
+
+  :architect 创建交接给 engineer;
+  note right
+    代码位置:
+    - server/agents.ts:223-229 (架构师交接目标)
+    - server/tools.ts:72-79,145-207 (create_handoff)
+  end note
+
+  :管理者手动接收并确认 engineer 交接;
+  note right
+    代码位置:
+    - src/components/HandoffPanel.tsx:111-130,392-410
+    - server/index.ts:615-684
+  end note
+
+  :engineer 执行开发/测试看板流转;
+  note right
+    代码位置:
+    - server/agents.ts:152-160 (开发/测试状态同步要求)
+    - server/tools.ts:210-273 (split_dev_test_tasks)
+    - server/tools.ts:275-357 (update_task_status)
+  end note
+
+  :engineer 提交游戏成品 submit_game;
+  note right
+    代码位置:
+    - server/agents.ts:173-179 (必须先 submit_game)
+    - server/tools.ts:407-482 (submit_game)
+    - server/db.ts:608-654 (createGame)
+    - server/db.ts:1279-1292 (saveGameToFile)
+    - server/index.ts:450-471 (/api/games, /api/games/:id/preview)
+  end note
+
+  stop
+else (驳回/重审)
+  :返回 biz_designer/相关角色修改提案后重新提交流程;
+  note right
+    代码位置:
+    - server/index.ts:996-1028 (decide)
+    - server/index.ts:348-378 (review)
+    - server/tools.ts:359-404 (submit_proposal)
+  end note
+  stop
+endif
+
+@enduml
