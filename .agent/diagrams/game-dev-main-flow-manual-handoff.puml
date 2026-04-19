@@ -20,7 +20,7 @@ note right
   - server/tools.ts:49-85 (createStudioToolsServer)
 end note
 
-if (autopilot_enabled == false?) then (是)
+if (已关闭 autopilot?) then (是)
   :biz_designer 提交商业策划案 submit_proposal(type=biz_design);
   note right
     代码位置:
