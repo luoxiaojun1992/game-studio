@@ -1,14 +1,14 @@
 # Game Dev Studio - WorkBuddy Instructions (Index Only)
 
 > 按仓库约定，公共 instruction 已抽取到：
-> `../.agent/AI_AGENT_COMMON_INSTRUCTIONS.md`
+> `.agent/AI_AGENT_COMMON_INSTRUCTIONS.md`（仓库根目录相对路径）
 
 ## WorkBuddy 入口指引（必要信息）
 
 1. 优先阅读公共文档：
    - [AI_AGENT_COMMON_INSTRUCTIONS.md](../.agent/AI_AGENT_COMMON_INSTRUCTIONS.md)
 2. WorkBuddy 经验与历史记录索引：
-   - [./memory/INDEX.md](./memory/INDEX.md)
+   - [INDEX.md](./memory/INDEX.md)
 3. 仅在需要 WorkBuddy 专属上下文时，再进入 `./memory/` 下细分文档。
 
 ## 目标
