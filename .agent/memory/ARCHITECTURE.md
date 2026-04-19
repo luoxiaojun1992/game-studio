@@ -217,8 +217,7 @@ ui-e2e                         ← Playwright CI 执行
   1. 当前处于 `working` 的可指令 Agent；
   2. 第一个可指令 Agent；
   3. `game_designer`（兜底）。
-- `team_builder` 不允许作为指令目标；若命中无效或被过滤，会自动回退并覆盖存储值。
-- `team_builder` 不允许作为指令目标，原因是该角色定位为“会话后总结/记忆沉淀”后台 Agent（由系统触发），不承载人工下达日常执行指令。
+- `team_builder` 不允许作为指令目标；若命中无效或被过滤，会自动回退并覆盖存储值。原因是该角色定位为“会话后总结/记忆沉淀”后台 Agent（由系统触发），不承载人工下达日常执行指令。
 
 #### 3) Agent 运行状态持久化（后端层）
 - 后端真实状态由 `AgentManager` 按项目维护（`agentStatesByProject`），并通过 `updateAgentState` 持久化到 `agent_sessions` 表。
