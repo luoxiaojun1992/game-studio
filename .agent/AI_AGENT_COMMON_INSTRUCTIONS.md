@@ -211,7 +211,7 @@ test: add xxx test case
 
 ## 经验文档索引
 
-详细调试经验、历史踩坑记录见 `/home/runner/work/game-studio/game-studio/.workbuddy/memory/` 目录：
+详细调试经验、历史踩坑记录见仓库内 `.workbuddy/memory/` 目录：
 
 | 文档 | 内容 |
 |------|------|

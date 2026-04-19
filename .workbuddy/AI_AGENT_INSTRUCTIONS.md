@@ -1,7 +1,7 @@
 # Game Dev Studio - WorkBuddy Instructions (Index Only)
 
 > 按仓库约定，公共 instruction 已抽取到：
-> `/home/runner/work/game-studio/game-studio/.agent/AI_AGENT_COMMON_INSTRUCTIONS.md`
+> `../.agent/AI_AGENT_COMMON_INSTRUCTIONS.md`
 
 ## WorkBuddy 入口指引（必要信息）
 

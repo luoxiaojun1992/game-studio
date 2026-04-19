@@ -1,7 +1,7 @@
 # Game Dev Studio - Copilot Instructions (Index Only)
 
 > 公共 instruction 唯一真源：
-> `/home/runner/work/game-studio/game-studio/.agent/AI_AGENT_COMMON_INSTRUCTIONS.md`
+> `../.agent/AI_AGENT_COMMON_INSTRUCTIONS.md`
 
 ## Copilot 必要指引
 
