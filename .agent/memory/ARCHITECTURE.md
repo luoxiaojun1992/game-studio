@@ -218,6 +218,7 @@ ui-e2e                         ← Playwright CI 执行
   2. 第一个可指令 Agent；
   3. `game_designer`（兜底）。
 - `team_builder` 不允许作为指令目标；若命中无效或被过滤，会自动回退并覆盖存储值。
+- `team_builder` 不允许作为指令目标，原因是该角色定位为“会话后总结/记忆沉淀”后台 Agent（由系统触发），不承载人工下达日常执行指令。
 
 #### 3) Agent 运行状态持久化（后端层）
 - 后端真实状态由 `AgentManager` 按项目维护（`agentStatesByProject`），并通过 `updateAgentState` 持久化到 `agent_sessions` 表。
@@ -226,6 +227,7 @@ ui-e2e                         ← Playwright CI 执行
   - DB 中若是 `working`，会回正为 `idle`（避免重启后卡在“工作中”假状态）。
   - `paused` 会恢复为暂停态并写入 `pausedAgentsByProject`。
 - 注意：`lastMessage` 属于内存态，当前不落库；持久化主要覆盖 `status/current_task/sdk_session_id/updated_at`。
+- 含义：服务重启后 `lastMessage` 会丢失，但不影响可恢复状态（status/current_task/paused）和历史消息查询（`agent_messages`）。
 
 #### 4) 项目切换与状态边界
 - 前端项目切换通过 `api.switchProject(fromProjectId, toProjectId)` 调用 `/api/projects/switch`，该接口主要驱动 Star Office 同步。

@@ -14,7 +14,7 @@
 6. 产出目录配置错误
 
 ## Agent 选择状态持久化
-- 状态在 `StudioPage.commandTargetAgent`（跨面板目标）与 `CommandPanel.selectedAgent`（面板内选中）之间双向同步
+- 状态在 `StudioPage.commandTargetAgent`（跨面板目标：页面级“全局当前指令目标 Agent”，用于总览卡片跳转到指令中心时透传）与 `CommandPanel.selectedAgent`（面板内选中）之间双向同步
 - localStorage key 格式: `commandPanel_lastAgent_${projectId}`
 - 切换项目时会按项目键自动恢复保存的 Agent；无效值会回退到可指令 Agent 默认值
 - `team_builder` 会被过滤，不作为指令中心可选目标 Agent
@@ -22,7 +22,7 @@
 - 同步方向说明：
   - `StudioPage -> CommandPanel`：从总览卡片“发送指令”跳转或项目切换恢复时，通过 `selectedAgentId` 驱动 CommandPanel 切换并写回 localStorage。
   - `CommandPanel -> StudioPage`：用户在指令中心左侧切换 Agent 时，通过 `onAgentChange` 回传更新 `commandTargetAgent`。
-  - 冲突处理：以“最后一次用户触发的切换”生效；项目切换时会先按新项目 localStorage 重置目标 Agent。
+  - 冲突处理：若两路几乎同时发生，最终以“最后一次状态写入”为准（React 状态 + localStorage 都遵循最后写入覆盖）；项目切换属于更高优先级上下文切换，会先重载新项目存储并覆盖旧项目选择。
 
 ## 交接默认行为
 - `auto_handoff_enabled` 表默认值应为 1（交接无需人工确认，自动放行）
