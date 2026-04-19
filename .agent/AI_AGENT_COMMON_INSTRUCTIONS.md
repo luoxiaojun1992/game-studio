@@ -156,7 +156,7 @@ npm run test:ui
 1. 在 `server/lint/checkers/` 下新建文件，实现 `LintChecker` 接口（来自 `types.ts`）
 2. 在 `server/lint/checkers/index.ts` 的 `builtInCheckers` 数组中注册
 3. **tools.ts、index.ts、types.ts 不需要任何修改**
-4. 详见 `./.workbuddy/memory/LINT.md` 扩展指南
+4. 详见 `.workbuddy/memory/LINT.md` 扩展指南
 
 ### 添加新 Agent
 1. 在 `AGENT_IDS` 中添加 ID
@@ -215,13 +215,13 @@ test: add xxx test case
 
 > 下列路径均为仓库根目录相对路径。
 
-详细调试经验、历史踩坑记录见仓库内 `./.workbuddy/memory/` 目录：
+详细调试经验、历史踩坑记录见仓库内 `.workbuddy/memory/` 目录：
 
 | 文档 | 内容 |
 |------|------|
-| `./.workbuddy/memory/INDEX.md` | 经验快速索引 |
-| `./.workbuddy/memory/E2E_TESTING.md` | UI-007/008 调试经验、选择器原则 |
-| `./.workbuddy/memory/SDK_MOCK.md` | Mock Server 架构、Agent systemPrompt |
-| `./.workbuddy/memory/CONVENTIONS.md` | 工作红线、Bug 修复记录 |
-| `./.workbuddy/memory/ARCHITECTURE.md` | 项目架构、关键文件 |
-| `./.workbuddy/memory/LINT.md` | 可扩展 Lint Framework 架构、检查器、扩展指南 |
+| `.workbuddy/memory/INDEX.md` | 经验快速索引 |
+| `.workbuddy/memory/E2E_TESTING.md` | UI-007/008 调试经验、选择器原则 |
+| `.workbuddy/memory/SDK_MOCK.md` | Mock Server 架构、Agent systemPrompt |
+| `.workbuddy/memory/CONVENTIONS.md` | 工作红线、Bug 修复记录 |
+| `.workbuddy/memory/ARCHITECTURE.md` | 项目架构、关键文件 |
+| `.workbuddy/memory/LINT.md` | 可扩展 Lint Framework 架构、检查器、扩展指南 |
