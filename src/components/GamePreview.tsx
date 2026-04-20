@@ -30,6 +30,7 @@ export default function GamePreview({ game, onClose }: Props) {
   const { l, isZh } = useI18n();
   const [fullGame, setFullGame] = useState<Game | null>(null);
   const [loading, setLoading] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -40,6 +41,24 @@ export default function GamePreview({ game, onClose }: Props) {
   }, [game.id]);
 
   const previewUrl = api.getGamePreviewUrl(game.id);
+
+  const handleDownloadFile = async () => {
+    if (!fullGame?.fileStorageId || downloading) return;
+    setDownloading(true);
+    try {
+      const res = await fetch(`/api/file-storage/${game.fileStorageId}/download`);
+      if (res.ok) {
+        const data = await res.json() as { downloadUrl: string };
+        window.open(data.downloadUrl, '_blank');
+      } else {
+        alert(l('获取下载链接失败', 'Failed to get download URL'));
+      }
+    } catch {
+      alert(l('获取下载链接失败', 'Failed to get download URL'));
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   return (
     <div className="bg-gray-900 rounded-xl border border-gray-800 flex flex-col h-full">
@@ -52,6 +71,15 @@ export default function GamePreview({ game, onClose }: Props) {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {fullGame?.fileStorageId && (
+            <button
+              onClick={handleDownloadFile}
+              disabled={downloading}
+              className="text-xs bg-blue-600/20 hover:bg-blue-600/40 border border-blue-600/40 text-blue-300 rounded-lg px-3 py-1.5 transition-all disabled:opacity-50"
+            >
+              {downloading ? l('下载中...', 'Downloading...') : l('📦 下载文件', '📦 Download File')}
+            </button>
+          )}
           <a
             href={previewUrl}
             target="_blank"

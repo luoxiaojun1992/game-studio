@@ -1,6 +1,29 @@
 version: '3.8'
 
 services:
+  # MinIO 对象存储服务
+  minio:
+    image: minio/minio:latest
+    container_name: game-studio-minio
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minioadmin}
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio-data:/data
+    networks:
+      - game-studio-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
   # Game Dev Studio 后端服务
   studio-backend:
     build:
@@ -17,11 +40,19 @@ services:
       - STAR_OFFICE_SYNC_DEBOUNCE_MS=300
       - STAR_OFFICE_HEALTH_CHECK_INTERVAL_MS=10000
       - STAR_OFFICE_JOIN_KEY=${STAR_OFFICE_JOIN_KEY:-ocj_example_team_01}
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
+      - MINIO_USE_SSL=false
+      - MINIO_BUCKET=game-files
     volumes:
       - studio-data:/app/data
       - studio-output:/app/output
     networks:
       - game-studio-network
+    depends_on:
+      minio:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/api/agents"]
       interval: 30s
@@ -86,6 +117,8 @@ volumes:
   studio-output:
     driver: local
   star-office-data:
+    driver: local
+  minio-data:
     driver: local
 
 networks:

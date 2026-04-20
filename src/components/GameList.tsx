@@ -32,7 +32,14 @@ export default function GameList({ games, selectedId, onSelect }: Props) {
             }`}
           >
             <div className="flex items-center justify-between mb-1">
-              <span className="text-xs text-gray-500">v{game.version}</span>
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-gray-500">v{game.version}</span>
+                {game.fileStorageId && (
+                  <span className="text-xs px-1 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-600/40" title={l('有打包文件', 'Has packaged file')}>
+                    📦
+                  </span>
+                )}
+              </div>
               <span className={`text-xs px-1.5 py-0.5 rounded border ${
                 game.status === 'published'
                   ? 'bg-green-500/20 text-green-300 border-green-600/40'

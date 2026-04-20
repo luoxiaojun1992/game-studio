@@ -9,6 +9,7 @@ import { getAllAgents, AgentRole } from './agents.js';
 import { sseBroadcaster } from './sse-broadcaster.js';
 import { starOfficeSyncService } from './star-office-sync.js';
 import { StreamEvent } from './agent-manager.js';
+import fileStorageRouter from './file-storage.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -454,14 +455,15 @@ app.get('/api/games', (req, res) => {
   const games = db.getAllGames().filter(g => g.project_id === project).map(g => ({
     ...g,
     html_content: undefined,
-    hasContent: !!g.html_content
+    hasContent: !!g.html_content,
+    fileStorageId: g.file_storage_id || null
   }));
   res.json({ games });
 });
 app.get('/api/games/:id', (req, res) => {
   const game = db.getGame(req.params.id);
   if (!game) return res.status(404).json({ error: '游戏不存在' });
-  res.json({ game });
+  res.json({ game: { ...game, fileStorageId: game.file_storage_id || null } });
 });
 app.get('/api/games/:id/preview', (req, res) => {
   const game = db.getGame(req.params.id);
@@ -482,7 +484,7 @@ app.patch('/api/games/:id', (req, res) => {
 
   const game = db.getGame(id);
   if (!game) return res.status(500).json({ error: '游戏更新后读取失败' });
-  sseBroadcaster.broadcast({ type: 'game_updated', game: { ...game, html_content: undefined } }, game.project_id);
+  sseBroadcaster.broadcast({ type: 'game_updated', game: { ...game, html_content: undefined, fileStorageId: game.file_storage_id || null } }, game.project_id);
   res.json({ success: true, game: { ...game, html_content: undefined } });
 });
 
@@ -942,6 +944,10 @@ app.delete('/api/agents/:agentId/memories', (req, res) => {
 
 // Static publishing of generated output artifacts (HTML previews, etc.).
 db.ensureOutputDir();
+
+// FileStorage API（MinIO 对象管理）
+app.use('/api/file-storage', fileStorageRouter);
+
 app.use('/output', express.static(path.join(__dirname, '..', 'output'), {
   setHeaders: (res, filePath) => {
     if (filePath.endsWith('.html')) {
@@ -1029,18 +1035,19 @@ app.post('/api/proposals/:id/decide', (req, res) => {
 
 // Game submission API.
 app.post('/api/games', (req, res) => {
-  const { project_id, name, description, html_content, proposal_id, author_agent_id, version } = req.body;
+  const { project_id, name, description, html_content, proposal_id, author_agent_id, version, file_storage_id } = req.body;
   const missing: string[] = [];
   if (!name) missing.push('name');
-  if (!html_content) missing.push('html_content');
   if (!author_agent_id) missing.push('author_agent_id');
+  // html_content 和 file_storage_id 二选一（都为空时 html_content 报错）
+  const hasHtmlContent = typeof html_content === 'string' && html_content.length > 0;
+  const hasFileStorage = typeof file_storage_id === 'string' && file_storage_id.length > 0;
+  if (!hasHtmlContent && !hasFileStorage) missing.push('html_content 或 file_storage_id');
   if (missing.length > 0) {
     return res.status(400).json({ error: `缺少必要字段：${missing.join(', ')}` });
   }
   const nameValidation = validateRequiredTextInput(name, 'name');
   if (!nameValidation.ok) return res.status(400).json({ error: nameValidation.error });
-  const htmlValidation = validateRequiredTextInput(html_content, 'html_content');
-  if (!htmlValidation.ok) return res.status(400).json({ error: htmlValidation.error });
   const projectValidation = validateProjectIdInput(project_id, 'project_id');
   if (!projectValidation.ok) return res.status(400).json({ error: projectValidation.error });
   const gameAuthorValidation = validateAgentIdInput(author_agent_id, 'author_agent_id');
@@ -1051,19 +1058,41 @@ app.post('/api/games', (req, res) => {
   if (version !== undefined && version !== null && typeof version !== 'string') {
     return res.status(400).json({ error: 'version 必须是字符串' });
   }
+  if (file_storage_id !== undefined && file_storage_id !== null && typeof file_storage_id !== 'string') {
+    return res.status(400).json({ error: 'file_storage_id 必须是字符串' });
+  }
+
+  const originalHtmlContent = typeof html_content === 'string' ? html_content : '';
+  // html_content 存在时校验长度
+  if (hasHtmlContent && originalHtmlContent.length < MIN_GAME_HTML_LENGTH) {
+    return res.status(400).json({ error: `html_content 长度不能少于 ${MIN_GAME_HTML_LENGTH}` });
+  }
+  // file_storage_id 存在时校验格式
+  if (hasFileStorage) {
+    const fileStorageIdValidation = validateOptionalTextInput(file_storage_id, 'file_storage_id');
+    if (!fileStorageIdValidation.ok) return res.status(400).json({ error: fileStorageIdValidation.error });
+    // 校验 file_storage_id 对应记录存在
+    const fileStorageRecord = db.getFileStorage(file_storage_id);
+    if (!fileStorageRecord) {
+      return res.status(400).json({ error: `file_storage_id 不存在: ${file_storage_id}` });
+    }
+    // 校验 file_storage_id 属于同一个 project
+    if (fileStorageRecord.project_id !== projectValidation.projectId) {
+      return res.status(400).json({ error: 'file_storage_id 不属于当前项目' });
+    }
+  }
+
   const normalizedVersion = typeof version === 'string' ? version.trim() : undefined;
   const proposalIdValidation = validateOptionalTextInput(proposal_id, 'proposal_id');
   if (!proposalIdValidation.ok) return res.status(400).json({ error: proposalIdValidation.error });
   const descriptionValidation = validateOptionalTextInput(description, 'description');
   if (!descriptionValidation.ok) return res.status(400).json({ error: descriptionValidation.error });
+  const fileStorageIdValidation = hasFileStorage ? validateOptionalTextInput(file_storage_id, 'file_storage_id') : { ok: true, text: null };
+  if (!fileStorageIdValidation.ok) return res.status(400).json({ error: fileStorageIdValidation.error });
   const normalizedProposalId = proposalIdValidation.text;
   const normalizedName = nameValidation.text;
-  const originalHtmlContent = typeof html_content === 'string' ? html_content : '';
   if (normalizedName.length > MAX_GAME_NAME_LENGTH) {
     return res.status(400).json({ error: `name 长度不能超过 ${MAX_GAME_NAME_LENGTH}` });
-  }
-  if (originalHtmlContent.length < MIN_GAME_HTML_LENGTH) {
-    return res.status(400).json({ error: `html_content 长度不能少于 ${MIN_GAME_HTML_LENGTH}` });
   }
   if (normalizedVersion && normalizedVersion.length > MAX_GAME_VERSION_LENGTH) {
     return res.status(400).json({ error: `version 长度不能超过 ${MAX_GAME_VERSION_LENGTH}` });
@@ -1076,11 +1105,12 @@ app.post('/api/games', (req, res) => {
       project_id: projectValidation.projectId,
       name: normalizedName,
       description: descriptionValidation.text,
-      html_content: originalHtmlContent,
+      html_content: originalHtmlContent || 'FILE_ONLY',
       proposal_id: normalizedProposalId,
       version: normalizedVersion || '1.0.0',
       status: 'draft',
       author_agent_id: gameAuthorValidation.agentId,
+      file_storage_id: fileStorageIdValidation.text,
       created_at: now,
       updated_at: now
     });
@@ -1088,10 +1118,10 @@ app.post('/api/games', (req, res) => {
     return res.status(400).json({ error: error?.message || '游戏参数不合法' });
   }
   db.ensureProject(game.project_id);
-  const filePath = db.saveGameToFile(game);
+  const filePath = hasHtmlContent ? db.saveGameToFile(game) : null;
 
-  sseBroadcaster.broadcast({ type: 'game_submitted', game: { ...game, html_content: undefined, hasContent: true }, filePath }, game.project_id);
-  agentManager.addLog(game.project_id, gameAuthorValidation.agentId, '提交游戏', `游戏: ${game.name} v${game.version}${filePath ? ` → 已保存到 ${path.basename(filePath)}` : ''}`, 'success');
+  sseBroadcaster.broadcast({ type: 'game_submitted', game: { ...game, html_content: undefined, hasContent: hasHtmlContent, fileStorageId: game.file_storage_id }, filePath }, game.project_id);
+  agentManager.addLog(game.project_id, gameAuthorValidation.agentId, '提交游戏', `游戏: ${game.name} v${game.version}${filePath ? ` → 已保存到 ${path.basename(filePath)}` : ''}${hasFileStorage ? ' [文件模式]' : ''}`, 'success');
 
   res.json({ game: { ...game, html_content: undefined }, filePath });
 });
