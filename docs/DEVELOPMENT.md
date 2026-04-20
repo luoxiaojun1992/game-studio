@@ -52,7 +52,8 @@ Core tables (`server/db.ts`):
 - `project_settings`: project-level configuration (including `autopilot_enabled`)
 - `agent_sessions` / `agent_messages`: agent sessions and messages
 - `proposals`: proposals and approval states
-- `games`: game artifacts (`html_content`)
+- `games`: game artifacts (`html_content` or `file_storage_id`)
+- `file_storages`: packaged artifact metadata for MinIO objects
 - `logs`: unified logs (system + agent output, distinguished by `log_type`)
 - `commands`: command execution records
 - `permission_requests`: tool permission requests and responses
@@ -137,6 +138,7 @@ Key constraints:
 - Task state transitions are constrained (`todo -> developing -> testing -> done`, including `blocked` branch)
 - Handoff targets are role-whitelisted
 - Handoff chain is role-constrained: `game_designer -> ceo -> architect -> engineer -> biz_designer`
+- `submit_game` supports two input modes: `html_content` or `file_path` (resolved under `output/{project_id}` only)
 
 ### 5.3 Star Office Sync Mechanism (`server/star-office-sync.ts`)
 
@@ -186,6 +188,7 @@ The lint framework uses a **pluggable registration architecture** (`server/lint/
 3. Register it in `server/lint/checkers/index.ts` (add to `builtInCheckers` array)
 4. Built-in checkers: `html-structure` (6 error rules) + `js-security` (4 warn rules)
 5. Error-level issues **block** `submit_game`; warn-level issues are logged only
+6. HTML mode checks `html_content`; ZIP mode checks every HTML file inside the package and stops on the first error
 
 ## 8. Local Development and Build
 

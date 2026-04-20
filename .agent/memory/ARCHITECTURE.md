@@ -29,7 +29,7 @@
 - 不再需要 curl hack（之前通过 Bash+curl 调 localhost API）
 - 记忆通过 `getMemorySummaryForPrompt()` 注入 systemPrompt
 - zod 依赖用于定义工具的参数 schema
-- 6 个内置工具: `save_memory`, `get_memories`, `create_handoff`, `submit_proposal`, `submit_game`, `get_proposals`, `get_pending_handoffs`
+- 内置工具覆盖记忆、任务拆分、任务看板、交接、提案、游戏提交、日志查询等核心流程（以 `server/tools.ts` 为准）
 - project_id 全部内部使用 scopedProjectId，不依赖外部参数输入
 
 ## Agent 角色
@@ -108,16 +108,17 @@ game-dev-studio/
 - 提供原子化的增删改查函数，以及文件导出功能（`saveProposalToFile`、`saveGameToFile`）。
 
 #### 3. 工具定义 (`server/tools.ts`)
-- 通过 `createSdkMcpServer` 创建 MCP Server，暴露 6 个自定义工具：
+- 通过 `createSdkMcpServer` 创建 MCP Server，暴露覆盖完整工作流的自定义工具：
   - `save_memory`：保存长期记忆（分类、重要性、关联任务）。
   - `get_memories`：获取指定 Agent 的记忆。
   - `create_handoff`：创建任务交接（来源、目标、标题、描述、上下文、优先级）。
   - `submit_proposal`：提交提案（类型、标题、内容、作者）。
-  - `submit_game`：提交游戏（名称、描述、HTML 内容、版本、提案 ID）。
+  - `submit_game`：支持双模式提交游戏（`html_content` 或 `file_path`，文件模式会打包 ZIP 并上传 MinIO）。
   - `get_proposals`：获取当前项目的提案列表。
   - `get_pending_handoffs`：获取待处理的交接任务。
 - **项目隔离**：每个工具内部通过 `scopedProjectId` 自动绑定当前项目，不再依赖 LLM 输出 `project_id` 参数。
 - **权限检查**：部分工具（如 `submit_proposal`）会验证调用 Agent 的角色是否允许执行该操作。
+- **产物存储**：文件模式通过 `file_storage_id` 关联 `file_storages` 元数据并提供下载能力。
 
 #### 4. Agent 管理器 (`server/agent-manager.ts`)
 - 维护每个项目中每个 Agent 的运行时状态（idle、working、paused、error）。

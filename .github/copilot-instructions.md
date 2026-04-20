@@ -9,4 +9,5 @@
    - [AI_AGENT_COMMON_INSTRUCTIONS.md](../.agent/AI_AGENT_COMMON_INSTRUCTIONS.md)
 2. 如需历史经验，查看 WorkBuddy 记忆索引：
    - [INDEX.md](../.agent/memory/INDEX.md)
+   - 产物提交双模式（HTML/ZIP）与存储链路可查看 [ARCHITECTURE.md](../.agent/memory/ARCHITECTURE.md) 与 [LINT.md](../.agent/memory/LINT.md)
 3. 本文件仅保留入口与索引，不重复维护公共规范正文。
