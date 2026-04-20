@@ -166,3 +166,68 @@ function buildSummary(errors: LintIssue[], warnings: LintIssue[]): string {
 
   return lines.join('\n') || '✅ lint 检查通过';
 }
+
+/**
+ * 对 ZIP 包内的所有 HTML 文件执行 lint 检查
+ * 遍历所有 .html/.htm 文件，发现第一个 error 时立即返回
+ *
+ * @param zipBuffer ZIP 文件内容 Buffer
+ * @param context 可选上下文信息
+ * @returns lint 检查结果
+ */
+export async function lintZipBuffer(zipBuffer: Buffer, context?: LintContext): Promise<LintResult> {
+  const { default: unzipper } = await import('unzipper');
+
+  const zip = await unzipper.Open.buffer(zipBuffer);
+  const htmlFiles = zip.files.filter(f =>
+    !f.dir && /\.(html?|htm)$/i.test(f.path)
+  );
+
+  if (htmlFiles.length === 0) {
+    return {
+      passed: true,
+      issues: [],
+      errors: [],
+      warnings: [],
+      summary: '✅ lint 检查通过（ZIP 内无 HTML 文件）',
+    };
+  }
+
+  const runner = createLintRunner();
+  runner.registerAll(builtInCheckers);
+
+  // 按文件逐一检查，发现第一个 error 即停
+  for (const file of htmlFiles) {
+    const content = await file.buffer();
+    const text = content.toString('utf-8');
+    const result = runner.run(text, { ...context, fileName: file.path });
+
+    if (!result.passed) {
+      // 第一个 error 文件，直接返回
+      return {
+        passed: false,
+        issues: result.issues,
+        errors: result.errors,
+        warnings: result.warnings,
+        summary: result.summary.replace('❌', `❌ [${file.path}] `),
+      };
+    }
+
+    // 无 error 但有 warning，继续检查下一个文件
+    if (result.warnings.length > 0) {
+      // 累积 warning，但不阻断
+      for (const w of result.warnings) {
+        w.message = `[${file.path}] ${w.message}`;
+      }
+    }
+  }
+
+  // 所有文件均通过
+  return {
+    passed: true,
+    issues: [],
+    errors: [],
+    warnings: [],
+    summary: '✅ lint 检查通过',
+  };
+}

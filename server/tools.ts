@@ -13,6 +13,7 @@ import {
   uploadBuffer,
   getPresignedDownloadUrl
 } from './file-storage.js';
+import { lintZipBuffer } from './lint/index.js';
 
 /**
  */
@@ -516,6 +517,18 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
               const objectKey = `games/${zipName}`;
               const fileSize = fsModule.statSync(zipTempPath).size;
               const fileBuffer = fsModule.readFileSync(zipTempPath);
+
+              // lint 检查：ZIP 内每个 HTML 逐一检查，遇第一个 error 即阻断
+              const zipLintResult = await lintZipBuffer(fileBuffer, { projectId: scopedProjectId });
+              if (!zipLintResult.passed) {
+                try { fsModule.unlinkSync(zipTempPath); } catch { /* ignore */ }
+                return {
+                  content: [{ type: 'text' as const, text: `提交游戏失败：\n${zipLintResult.summary}` }]
+                };
+              }
+              if (zipLintResult.warnings.length > 0) {
+                log(agentId, '提交游戏-lint', `警告: ${zipLintResult.warnings.map(w => w.message).join('; ')}`, 'warn');
+              }
 
               try {
                 // 创建文件存储记录
