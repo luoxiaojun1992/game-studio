@@ -225,3 +225,4 @@ test: add xxx test case
 | `.agent/memory/CONVENTIONS.md` | 工作红线、Bug 修复记录 |
 | `.agent/memory/ARCHITECTURE.md` | 项目架构、关键文件 |
 | `.agent/memory/LINT.md` | 可扩展 Lint Framework 架构、检查器、扩展指南 |
+| `.agent/memory/REUSABLE_PATTERNS.md` | 可复用代码片段、代码模板、设计模式汇总 |
