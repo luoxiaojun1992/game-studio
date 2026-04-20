@@ -179,7 +179,7 @@ export async function lintZipBuffer(zipBuffer: Buffer, context?: LintContext): P
   const { default: unzipper } = await import('unzipper');
 
   const zip = await unzipper.Open.buffer(zipBuffer);
-  const htmlFiles = zip.files.filter(f =>
+  const htmlFiles = zip.files.filter((f: any) =>
     !f.dir && /\.(html?|htm)$/i.test(f.path)
   );
 

@@ -248,12 +248,17 @@ export async function uploadBuffer(
   await minio.putObject(objectKey, buffer, buffer.length, contentType);
 }
 
-export { minio.getPresignedUploadUrl as getPresignedUploadUrl };
-export { minio.getPresignedDownloadUrl as getPresignedDownloadUrl };
-export { minio.deleteObject as deleteMinioObject };
-export { db.getFileStorage as getFileStorageRecord };
-export { db.getFileStorages as getFileStorageRecords };
-export { db.updateFileStorage as updateFileStorageRecord };
-export { db.deleteFileStorage as deleteFileStorageRecord };
+export {
+  getPresignedUploadUrl,
+  getPresignedDownloadUrl,
+  deleteObject as deleteMinioObject,
+} from './minio-client.js';
+
+export {
+  getFileStorage as getFileStorageRecord,
+  getFileStorages as getFileStorageRecords,
+  updateFileStorage as updateFileStorageRecord,
+  deleteFileStorage as deleteFileStorageRecord,
+} from './db.js';
 
 export default router;

@@ -69,7 +69,7 @@ export async function putObject(
   contentType: string
 ): Promise<void> {
   const client = getClient();
-  await client.putObject(MINIO_BUCKET, objectKey, buffer, size, contentType);
+  await client.putObject(MINIO_BUCKET, objectKey, buffer, size, { contentType });
 }
 
 // 检查对象是否存在

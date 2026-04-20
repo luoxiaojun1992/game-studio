@@ -3,6 +3,7 @@
  */
 import { z } from 'zod';
 import { tool, createSdkMcpServer, type SdkMcpServerResult } from '@tencent-ai/agent-sdk';
+import type { Stats } from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import * as db from './db.js';
 import { AGENT_IDS, AgentRole, getAllAgents } from './agents.js';
@@ -408,6 +409,8 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
             content: [{ type: 'text' as const, text: `提案已提交 (ID: ${proposal.id.slice(0, 8)})，等待审批。` }]
           };
         }
+      ),
+
       tool(
         'submit_game',
         '提交一个完成的游戏成品。支持两种模式：1) 单文件 HTML 模式（传入 html_content）；2) 文件打包模式（传入 file_path）。文件打包模式下，游戏文件夹会被压缩为 ZIP 并上传到 MinIO 存储。',
@@ -481,7 +484,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
             }
 
             // 检查路径是否存在
-            let stat: fsModule.Stats;
+            let stat: Stats;
             try {
               stat = fsModule.statSync(targetPath);
             } catch {

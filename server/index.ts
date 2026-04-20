@@ -1088,7 +1088,8 @@ app.post('/api/games', (req, res) => {
   const descriptionValidation = validateOptionalTextInput(description, 'description');
   if (!descriptionValidation.ok) return res.status(400).json({ error: descriptionValidation.error });
   const fileStorageIdValidation = hasFileStorage ? validateOptionalTextInput(file_storage_id, 'file_storage_id') : { ok: true, text: null };
-  if (!fileStorageIdValidation.ok) return res.status(400).json({ error: fileStorageIdValidation.error });
+  const fileStorageIdError = 'error' in fileStorageIdValidation ? fileStorageIdValidation.error : null;
+  if (!fileStorageIdValidation.ok) return res.status(400).json({ error: fileStorageIdError });
   const normalizedProposalId = proposalIdValidation.text;
   const normalizedName = nameValidation.text;
   if (normalizedName.length > MAX_GAME_NAME_LENGTH) {
