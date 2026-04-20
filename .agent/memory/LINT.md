@@ -24,11 +24,12 @@ server/lint/
 ```
 submit_game (tools.ts)
   → validateAgentPermission()
-  → lintGameContent(htmlContent, { fileName })    ← 新增拦截点
+  → HTML 模式: lintGameContent(htmlContent, { fileName })
+  → ZIP 模式: lintZipBuffer(zipBuffer, { projectId })   ← ZIP 内 HTML 逐一检查，首个 error 立即阻断
   │   ├─ passed=true  → 继续执行 db.createGame()
   │   └─ passed=false → return { content: error text }  // 直接返回，不写 DB
-  → db.createGame()
-  → db.saveGameToFile()
+  → db.createGame()（ZIP 模式写入 file_storage_id）
+  → HTML 模式落盘 output；ZIP 模式上传 MinIO
 ```
 
 ### 核心接口

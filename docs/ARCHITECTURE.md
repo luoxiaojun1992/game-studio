@@ -48,6 +48,8 @@ Browser (React + Vite)
 - `index.ts`: API entry, SSE endpoint, route wiring, static output serving
 - `agent-manager.ts`: agent lifecycle, command dispatch, stream events
 - `tools.ts`: MCP custom tool definitions and role constraints
+- `file-storage.ts`: shared file storage APIs/internal upload helpers
+- `minio-client.ts`: MinIO object operations and presigned URL helpers
 - `lint/`: extensible lint framework (LintRunner, pluggable checkers, zero external dependencies)
 - `agents.ts`: role declarations, prompts, and handoff constraints
 - `db.ts`: SQLite schema, migrations, read/write operations
@@ -61,7 +63,7 @@ Browser (React + Vite)
 - **Proposals**: creation, review workflow, decision states
 - **Tasks**: development/testing decomposition and status transitions
 - **Handoffs**: cross-role ownership transfer and confirmation flow
-- **Games**: HTML artifact submission, listing, and preview
+- **Games**: HTML artifact submission or packaged artifact submission, listing, preview, and file download
 - **Lint/Quality**: extensible static analysis framework with pluggable checkers (HTML structure, JS security, etc.)
 - **Memories**: long-term memory records scoped by role/project
 - **Logs/Observability**: runtime logs and stream events
@@ -78,11 +80,13 @@ Browser (React + Vite)
   - `task_board_tasks`
   - `handoffs`
   - `games`
+  - `file_storages`
   - `agent_memories`
   - `logs`
   - `commands`
   - `permission_requests`
-- Game/proposal artifacts are written under `output/{project_id}/...`
+- Proposal artifacts and HTML-mode game artifacts are written under `output/{project_id}/...`
+- Packaged game artifacts are uploaded to MinIO and linked through `games.file_storage_id`
 - Data and outputs are isolated by `project_id`
 
 ## 6. Communication Model

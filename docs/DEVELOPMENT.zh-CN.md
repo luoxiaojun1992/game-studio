@@ -51,7 +51,8 @@ src/
 - `project_settings`：项目级配置（含 `autopilot_enabled`）
 - `agent_sessions` / `agent_messages`：Agent 会话与消息
 - `proposals`：提案与审批状态
-- `games`：游戏成品（`html_content`）
+- `games`：游戏成品（`html_content` 或 `file_storage_id`）
+- `file_storages`：打包产物在 MinIO 的元数据
 - `logs`：统一日志（系统日志 + Agent 输出日志，通过 `log_type` 区分）
 - `commands`：指令执行记录
 - `permission_requests`：工具权限审批请求与响应记录
@@ -136,6 +137,7 @@ src/
 - 任务状态流转受限（`todo -> developing -> testing -> done`，含 `blocked` 分支）
 - 交接目标存在角色白名单
 - 交接链路受角色约束：`game_designer -> ceo -> architect -> engineer -> biz_designer`
+- `submit_game` 支持两种输入：`html_content` 或 `file_path`（仅允许 `output/{project_id}` 目录内路径）
 
 ### 5.3 Star Office 同步机制（`server/star-office-sync.ts`）
 
@@ -185,6 +187,7 @@ Lint 框架采用**可插拔注册式架构**（`server/lint/`）：
 3. 在 `server/lint/checkers/index.ts` 注册（加入 `builtInCheckers` 数组）
 4. 内置检查器：`html-structure`（6 条 error 规则）+ `js-security`（4 条 warn 规则）
 5. error 级别 issue **阻断** `submit_game`，warn 级别仅记录日志
+6. HTML 模式检查 `html_content`；ZIP 模式会逐个检查包内 HTML，遇到首个 error 即阻断
 
 ## 8. 本地开发与构建
 

@@ -9,6 +9,7 @@
    - [AI_AGENT_COMMON_INSTRUCTIONS.md](../.agent/AI_AGENT_COMMON_INSTRUCTIONS.md)
 2. WorkBuddy 经验与历史记录索引：
    - [INDEX.md](../.agent/memory/INDEX.md)
+   - 产物提交双模式（HTML/ZIP）与存储链路可查看 [ARCHITECTURE.md](../.agent/memory/ARCHITECTURE.md) 与 [LINT.md](../.agent/memory/LINT.md)
 3. 仅在需要 WorkBuddy 专属上下文时，再进入 `../.agent/memory/` 下细分文档。
 
 ## 目标

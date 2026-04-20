@@ -20,6 +20,7 @@
 - 所有 project_id 内部通过 `scopedProjectId` 获取，工具不接收外部参数
 - MCP 工具执行是进程内通信，Mock Server 只返回 tool_calls
 - 6 个 Agent 中 team_builder 需特别检测（易与 CEO 混淆）
+- `submit_game` 支持 HTML 与文件打包双模式；文件模式会上传 MinIO 并回写 `file_storage_id`
 
 ### E2E 测试关键
 - 选择器不匹配 → 前端加 `data-testid` → 测试用属性选

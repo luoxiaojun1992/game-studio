@@ -53,6 +53,7 @@ export const AGENT_IDS = ['engineer', 'architect', 'game_designer', 'biz_designe
 | Agent 定义 | `server/agents.ts` |
 | 自定义工具 | `server/tools.ts` |
 | 数据库操作 | `server/db.ts` |
+| 文件存储 | `server/file-storage.ts`、`server/minio-client.ts` |
 | Lint 框架 | `server/lint/`（LintRunner + 可插拔检查器） |
 | SSE 广播 | `server/sse-broadcaster.ts` |
 | Express 路由 | `server/index.ts` |

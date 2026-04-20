@@ -13,8 +13,8 @@
 - 任务交接（跨角色移交、确认执行、完成回传）
 - 项目设置（自动交接开关）
 - 提案管理（创建、评审、人工决策）
-- 游戏成品管理（HTML 成品提交、预览、版本状态）
-- 静态分析（可扩展 Lint 框架，支持 HTML 结构、JS 安全等可插拔检查器）
+- 游戏成品管理（支持 HTML 成品或打包文件提交、预览下载、版本状态）
+- 静态分析（可扩展 Lint 框架，支持 HTML 结构、JS 安全等可插拔检查器，覆盖 HTML 模式与 ZIP 模式）
 - Agent 长期记忆（保存/查询/清理）
 - 项目隔离（按 `project_id` 隔离数据与观测流）
 
@@ -153,6 +153,7 @@ game-studio/
 - Agent：`/agents` `/agents/:agentId/messages` `/agents/:agentId/command` `/agents/:agentId/pause` `/agents/:agentId/resume`
 - 提案：`/proposals` `/proposals/:id` `/proposals`(POST) `/proposals/:id/review` `/proposals/:id/decide`
 - 游戏：`/games` `/games/:id` `/games`(POST) `/games/:id/preview` `/games/:id`(PATCH)
+- 文件存储：`/file-storage` `/file-storage/:id` `/file-storage/:id/download`
 - 项目：`/projects`(GET/POST) `/projects/switch`(POST) `/projects/:id/settings`(GET/PATCH)
 - 交接：`/handoffs` `/handoffs/pending` `/handoffs/:id/(accept|confirm|complete|reject|cancel)`
 - 任务：`/tasks` `/tasks/:id/status`
@@ -165,6 +166,8 @@ game-studio/
 
 - 支持多项目隔离（`project_id`）。
 - 提案与游戏提交时会同步写入 `output/{project_id}/...` 目录。
+- `submit_game` 支持双模式：HTML 内容模式（`html_content`）与打包文件模式（`file_path` -> ZIP -> `file_storage_id`）。
+- 打包模式会将 ZIP 上传至 MinIO，并在 `file_storages` 表记录元数据。
 - `/output` 提供静态访问（HTML 以 `text/html; charset=utf-8` 返回）。
 
 ## 二次开发

@@ -14,8 +14,8 @@ A multi-agent game development workspace built on the CodeBuddy Agent SDK, provi
 - Task handoff (cross-role transfer, acceptance, execution confirmation, completion callback)
 - Project settings (auto-handoff toggle)
 - Proposal management (create, review, and human decision)
-- Game artifact management (submit HTML artifacts, preview, and version status)
-- Static analysis (extensible lint framework with pluggable checkers for HTML structure, JS security, etc.)
+- Game artifact management (submit HTML artifacts or packaged files, preview, download, and version status)
+- Static analysis (extensible lint framework with pluggable checkers for HTML structure/JS security, supports HTML mode and ZIP package mode)
 - Long-term agent memory (save/query/clear)
 - Project isolation (data and observability streams isolated by `project_id`)
 
@@ -154,6 +154,7 @@ Main endpoints (prefix `/api`):
 - Agents: `/agents` `/agents/:agentId/messages` `/agents/:agentId/command` `/agents/:agentId/pause` `/agents/:agentId/resume`
 - Proposals: `/proposals` `/proposals/:id` `/proposals`(POST) `/proposals/:id/review` `/proposals/:id/decide`
 - Games: `/games` `/games/:id` `/games`(POST) `/games/:id/preview` `/games/:id`(PATCH)
+- File storage: `/file-storage` `/file-storage/:id` `/file-storage/:id/download`
 - Projects: `/projects`(GET/POST) `/projects/switch`(POST) `/projects/:id/settings`(GET/PATCH)
 - Handoffs: `/handoffs` `/handoffs/pending` `/handoffs/:id/(accept|confirm|complete|reject|cancel)`
 - Tasks: `/tasks` `/tasks/:id/status`
@@ -166,6 +167,8 @@ Main endpoints (prefix `/api`):
 
 - Supports multi-project isolation via `project_id`.
 - Proposal/game submissions are also written to `output/{project_id}/...`.
+- `submit_game` supports two modes: HTML content mode (`html_content`) and packaged file mode (`file_path` -> ZIP -> `file_storage_id`).
+- Packaged mode stores ZIP assets in MinIO and keeps metadata in `file_storages`.
 - `/output` is served as static content (HTML returned with `text/html; charset=utf-8`).
 
 ## Extension Development
