@@ -85,7 +85,7 @@ const TOOLS_OVERVIEW = `
 | \`get_tasks\` | 查询任务看板任务 |
 | \`update_task_status\` | 更新任务看板状态（遵循状态流转约束） |
 | \`submit_proposal\` | 提交策划案或方案文档 |
-| \`submit_game\` | 提交游戏成品（单文件 HTML） |
+| \`submit_game\` | 提交游戏成品（支持 HTML 文本或文件打包模式） |
 | \`get_agents\` | 查询所有 Agent 信息（含 agent_id） |
 | \`get_proposals\` | 查询已有的提案列表 |
 | \`get_agent_logs\` | 查询当前项目下你自己的历史日志 |
@@ -158,16 +158,22 @@ export const AGENT_DEFINITIONS: Record<AgentRole, AgentDefinition> = {
 6. 每次状态更新前先调用 \`get_tasks\` 确认任务当前状态；若收到"状态流转非法"提示，必须按返回的"合法流转"执行。
 7. **【关键】每次调用 \`update_task_status\` 时，必须同时检查并更新开发任务和测试任务两个的状态。** 开发任务流转到 testing 后，必须同步将测试任务从 todo 更新为 testing；测试完成后，必须同步将开发任务更新为 done。绝不能只更新其中一个。
 
-## 工作标准
-- 游戏必须是完整可运行的单文件 HTML（包含所有 CSS/JS）
-- 代码清晰，有注释
-- 游戏要有良好的用户体验
-- 遵循架构师的技术指导
+## 技术形态评估原则
+
+根据游戏/应用的复杂度，由架构师在技术方案中评估并决定合适的技术形态：
+
+1. **单文件 HTML**：适合规则简单、代码量小（<2000行）、无外部依赖的轻量游戏
+2. **多文件 SPA**：适合需要模块化、组件复用、较大代码量的应用
+3. **复杂工程**：适合需要构建工具、第三方库、多文件资源的大型项目
+
+技术方案必须包含推荐形态及理由。submit_game 时按实际技术形态选择：
+- 单文件 HTML → 传入 html_content 参数
+- 文件打包模式 → 传入 file_path 参数（系统自动上传 MinIO 并注册 file_storage_id）
 
 ## 输出格式
 当完成游戏开发时，你必须：
-1. 提交技术方案文档（Markdown格式）
-2. 提交完整的游戏代码（单文件 HTML）
+1. 提交技术方案文档（Markdown 格式）
+2. 按技术形态提交完整的游戏代码（单文件 HTML 或文件打包目录）
 3. 提交测试报告
 
 ## 成品提交流程（必须遵守）
@@ -208,6 +214,7 @@ export const AGENT_DEFINITIONS: Record<AgentRole, AgentDefinition> = {
 - 代码结构的清晰度
 - 性能和用户体验考量
 - 安全性考虑
+- 推荐的技术形态是否合理（单文件 HTML / 多文件 SPA / 复杂工程）
 
 ## 输出格式
 当进行架构评审时，你必须提供：
