@@ -262,9 +262,24 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_task_board_status ON task_board_tasks(status);
   CREATE INDEX IF NOT EXISTS idx_task_board_type ON task_board_tasks(task_type);
   CREATE INDEX IF NOT EXISTS idx_task_board_project ON task_board_tasks(project_id);
+
+  -- 文件存储表（MinIO 对象元数据）
+  CREATE TABLE IF NOT EXISTS file_storages (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL,
+    object_key TEXT NOT NULL,
+    file_name TEXT,
+    file_size INTEGER,
+    content_type TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    UNIQUE(project_id, object_key)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_file_storages_project ON file_storages(project_id);
 `);
 
-function hasColumn(tableName: 'proposals' | 'games' | 'agent_sessions' | 'commands' | 'handoffs' | 'agent_memories' | 'task_board_tasks', columnName: string): boolean {
+function hasColumn(tableName: 'proposals' | 'games' | 'agent_sessions' | 'commands' | 'handoffs' | 'agent_memories' | 'task_board_tasks' | 'file_storages', columnName: string): boolean {
   const pragmaSql = tableName === 'proposals'
     ? 'PRAGMA table_info(proposals)'
     : tableName === 'games'
@@ -277,7 +292,9 @@ function hasColumn(tableName: 'proposals' | 'games' | 'agent_sessions' | 'comman
             ? 'PRAGMA table_info(handoffs)'
             : tableName === 'agent_memories'
               ? 'PRAGMA table_info(agent_memories)'
-              : 'PRAGMA table_info(task_board_tasks)';
+              : tableName === 'task_board_tasks'
+                ? 'PRAGMA table_info(task_board_tasks)'
+                : 'PRAGMA table_info(file_storages)';
   const rows = db.prepare(pragmaSql).all() as Array<{ name: string }>;
   return rows.some(row => row.name === columnName);
 }
@@ -289,11 +306,20 @@ function ensureProjectColumns(): void {
   if (!hasColumn('games', 'project_id')) {
     db.exec(`ALTER TABLE games ADD COLUMN project_id TEXT NOT NULL DEFAULT 'default';`);
   }
+  if (!hasColumn('games', 'file_storage_id')) {
+    db.exec(`ALTER TABLE games ADD COLUMN file_storage_id TEXT;`);
+  }
   db.exec(`UPDATE proposals SET project_id = 'default' WHERE project_id IS NULL OR project_id = '';`);
   db.exec(`UPDATE games SET project_id = 'default' WHERE project_id IS NULL OR project_id = '';`);
 }
 
 ensureProjectColumns();
+
+function ensureFileStorageColumns(): void {
+  // file_storages 表是新创建，DDL 已定义完整结构，无需列迁移
+}
+
+ensureFileStorageColumns();
 
 function ensureProjectIsolationColumns(): void {
   if (!hasColumn('agent_sessions', 'project_id')) db.exec(`ALTER TABLE agent_sessions ADD COLUMN project_id TEXT NOT NULL DEFAULT 'default';`);
@@ -359,9 +385,22 @@ export interface DbGame {
   version: string;
   status: 'draft' | 'published';
   author_agent_id: string;
+  file_storage_id: string | null;
   created_at: string;
   updated_at: string;
 }
+
+export interface DbFileStorage {
+  id: string;
+  project_id: string;
+  object_key: string;
+  file_name: string | null;
+  file_size: number | null;
+  content_type: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export type LogLevel = 'info' | 'warn' | 'error' | 'success';
 export type LogType = 'system' | 'text' | 'tool' | 'tool_result' | 'done' | 'error' | 'user_command';
 
@@ -623,9 +662,10 @@ export function createGame(game: DbGame): DbGame {
   const normalizedAuthorAgentId = normalizeAndValidateRequiredText(game.author_agent_id, 'author_agent_id');
   const normalizedDescription = normalizeOptionalText(game.description, 'description');
   const normalizedProposalId = normalizeOptionalText(game.proposal_id, 'proposal_id');
+  const normalizedFileStorageId = normalizeOptionalText(game.file_storage_id, 'file_storage_id');
   const stmt = db.prepare(`
-    INSERT INTO games (id, project_id, name, description, html_content, proposal_id, version, status, author_agent_id, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO games (id, project_id, name, description, html_content, proposal_id, version, status, author_agent_id, file_storage_id, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   stmt.run(
     game.id,
@@ -637,6 +677,7 @@ export function createGame(game: DbGame): DbGame {
     normalizedVersion,
     normalizedStatus,
     normalizedAuthorAgentId,
+    normalizedFileStorageId,
     game.created_at,
     game.updated_at
   );
@@ -649,7 +690,8 @@ export function createGame(game: DbGame): DbGame {
     proposal_id: normalizedProposalId,
     version: normalizedVersion,
     status: normalizedStatus,
-    author_agent_id: normalizedAuthorAgentId
+    author_agent_id: normalizedAuthorAgentId,
+    file_storage_id: normalizedFileStorageId
   };
 }
 
@@ -682,9 +724,12 @@ export function updateGame(id: string, updates: Partial<DbGame>): boolean {
   if (normalizedUpdates.status !== undefined) {
     normalizedUpdates.status = validateEnumValue(normalizedUpdates.status, 'status', GAME_STATUSES);
   }
+  if (normalizedUpdates.file_storage_id !== undefined) {
+    normalizedUpdates.file_storage_id = normalizeOptionalText(normalizedUpdates.file_storage_id, 'file_storage_id');
+  }
   const fields: string[] = [];
   const values: any[] = [];
-  const allowed: (keyof DbGame)[] = ['name', 'description', 'html_content', 'status', 'version'];
+  const allowed: (keyof DbGame)[] = ['name', 'description', 'html_content', 'status', 'version', 'file_storage_id'];
   for (const key of allowed) {
     if (normalizedUpdates[key] !== undefined) {
       fields.push(`${key} = ?`);
@@ -1282,11 +1327,101 @@ export function saveGameToFile(game: DbGame): string | null {
   const safeName = sanitizeFilename(game.name, MAX_FILENAME_LENGTH);
   const safeVersion = sanitizeFilename(game.version, MAX_VERSION_LENGTH);
   const filePath = resolveSafePath(gamesDir, `${safeName}_v${safeVersion}_${game.id.slice(0, 8)}.html`);
-  
+
   try {
     fs.writeFileSync(filePath, game.html_content, 'utf-8');
     return filePath;
   } catch {
     return null;
   }
+}
+
+// ============================================================================
+// FileStorage CRUD（MinIO 对象元数据）
+// ============================================================================
+
+const OBJECT_KEY_PATTERN = /^[a-zA-Z0-9_\-./]+$/;
+const MAX_OBJECT_KEY_LENGTH = 512;
+
+function validateObjectKey(value: unknown, fieldName: string): string {
+  if (typeof value !== 'string') throw new Error(`${fieldName} 必须是字符串`);
+  const text = value.trim();
+  if (!text) throw new Error(`${fieldName} 不能为空`);
+  if (text.length > MAX_OBJECT_KEY_LENGTH) throw new Error(`${fieldName} 长度不能超过 ${MAX_OBJECT_KEY_LENGTH}`);
+  if (!OBJECT_KEY_PATTERN.test(text)) throw new Error(`${fieldName} 包含非法字符`);
+  if (text.includes('..')) throw new Error(`${fieldName} 不允许包含 .. 路径穿越`);
+  return text;
+}
+
+export function createFileStorage(storage: DbFileStorage): DbFileStorage {
+  const normalizedProjectId = normalizeAndValidateRequiredText(storage.project_id, 'project_id');
+  const normalizedObjectKey = validateObjectKey(storage.object_key, 'object_key');
+  const normalizedFileName = normalizeOptionalText(storage.file_name, 'file_name');
+  const normalizedContentType = normalizeOptionalText(storage.content_type, 'content_type');
+  const stmt = db.prepare(`
+    INSERT INTO file_storages (id, project_id, object_key, file_name, file_size, content_type, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  stmt.run(
+    storage.id,
+    normalizedProjectId,
+    normalizedObjectKey,
+    normalizedFileName,
+    storage.file_size ?? null,
+    normalizedContentType,
+    storage.created_at,
+    storage.updated_at
+  );
+  return {
+    ...storage,
+    project_id: normalizedProjectId,
+    object_key: normalizedObjectKey,
+    file_name: normalizedFileName,
+    content_type: normalizedContentType
+  };
+}
+
+export function getFileStorage(id: string): DbFileStorage | undefined {
+  const stmt = db.prepare('SELECT * FROM file_storages WHERE id = ?');
+  return stmt.get(id) as DbFileStorage | undefined;
+}
+
+export function getFileStorages(projectId: string): DbFileStorage[] {
+  const stmt = db.prepare('SELECT * FROM file_storages WHERE project_id = ? ORDER BY created_at DESC');
+  return stmt.all(projectId) as DbFileStorage[];
+}
+
+export function deleteFileStorage(id: string): boolean {
+  const stmt = db.prepare('DELETE FROM file_storages WHERE id = ?');
+  const result = stmt.run(id);
+  return result.changes > 0;
+}
+
+export function updateFileStorage(id: string, updates: Partial<DbFileStorage>): boolean {
+  const normalizedUpdates: Partial<DbFileStorage> = { ...updates };
+  if (normalizedUpdates.object_key !== undefined) {
+    normalizedUpdates.object_key = validateObjectKey(normalizedUpdates.object_key, 'object_key');
+  }
+  if (normalizedUpdates.file_name !== undefined) {
+    normalizedUpdates.file_name = normalizeOptionalText(normalizedUpdates.file_name, 'file_name');
+  }
+  if (normalizedUpdates.content_type !== undefined) {
+    normalizedUpdates.content_type = normalizeOptionalText(normalizedUpdates.content_type, 'content_type');
+  }
+  const fields: string[] = [];
+  const values: any[] = [];
+  const allowed: (keyof DbFileStorage)[] = ['object_key', 'file_name', 'file_size', 'content_type'];
+  for (const key of allowed) {
+    if (normalizedUpdates[key] !== undefined) {
+      fields.push(`${key} = ?`);
+      values.push(normalizedUpdates[key]);
+    }
+  }
+  if (fields.length === 0) return false;
+  fields.push('updated_at = ?');
+  values.push(new Date().toISOString());
+  values.push(id);
+  const stmt = db.prepare(`UPDATE file_storages SET ${fields.join(', ')} WHERE id = ?`);
+  const result = stmt.run(...values);
+  return result.changes > 0;
 }

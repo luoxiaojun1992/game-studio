@@ -3,11 +3,18 @@
  */
 import { z } from 'zod';
 import { tool, createSdkMcpServer, type SdkMcpServerResult } from '@tencent-ai/agent-sdk';
+import type { Stats } from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import * as db from './db.js';
 import { AGENT_IDS, AgentRole, getAllAgents } from './agents.js';
 import { sseBroadcaster } from './sse-broadcaster.js';
 import { lintGameContent } from './lint/index.js';
+import {
+  createFileStorageRecord,
+  uploadBuffer,
+  getPresignedDownloadUrl
+} from './file-storage.js';
+import { lintZipBuffer } from './lint/index.js';
 
 /**
  */
@@ -403,9 +410,10 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           };
         }
       ),
+
       tool(
         'submit_game',
-        '提交一个完成的游戏成品（单文件 HTML）。游戏将被保存到数据库和产出目录中。',
+        '提交一个完成的游戏成品。支持两种模式：1) 单文件 HTML 模式（传入 html_content）；2) 文件打包模式（传入 file_path）。文件打包模式下，游戏文件夹会被压缩为 ZIP 并上传到 MinIO 存储。',
         {
           name: z.string().max(db.MAX_FILENAME_LENGTH, `name 长度不能超过 ${db.MAX_FILENAME_LENGTH}`).transform((value, ctx) => {
             try {
@@ -422,7 +430,8 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
               ctx.addIssue({ code: 'custom', message: error?.message || 'html_content 验证失败' });
               return z.NEVER;
             }
-          }).describe('完整的游戏 HTML 代码（必须是包含所有 CSS/JS 的单文件 HTML）'),
+          }).describe('完整的游戏 HTML 代码（必须是包含所有 CSS/JS 的单文件 HTML）。与 file_path 二选一，不能同时为空。'),
+          file_path: z.string().optional().describe('游戏产出文件/文件夹路径（相对于 output/{project_id}）。与 html_content 二选一，不能同时为空。例如：games/my-game 或 games/my-game/index.html'),
           description: z.string().optional().describe('游戏简介'),
           version: z.preprocess(
             (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
@@ -437,9 +446,155 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           ).describe('版本号'),
           proposal_id: z.string().optional().describe('关联的策划案 ID（如果有）')
         },
-        async ({ name, html_content, description, version, proposal_id }) => {
+        async ({ name, html_content, file_path, description, version, proposal_id }) => {
           validateAgentPermission(['engineer'], '提交游戏成品');
 
+          const hasHtmlContent = typeof html_content === 'string' && html_content.length >= db.MIN_GAME_HTML_LENGTH;
+          const hasFilePath = typeof file_path === 'string' && file_path.trim().length > 0;
+
+          if (!hasHtmlContent && !hasFilePath) {
+            return {
+              content: [{ type: 'text' as const, text: '提交游戏失败：html_content 或 file_path 至少需要提供一个。' }]
+            };
+          }
+
+          let fileStorageId: string | null = null;
+
+          // ========== 文件打包模式 ==========
+          if (hasFilePath) {
+            // 路径校验：只允许 output/{project_id} 下的路径
+            const { execSync } = await import('child_process');
+            const pathModule = await import('path');
+            const fsModule = await import('fs');
+
+            const outputDir = pathModule.resolve(pathModule.join(__dirname, '..', 'output', scopedProjectId));
+            let targetPath: string;
+            try {
+              targetPath = pathModule.resolve(outputDir, file_path);
+              // 检查路径是否在 output/{project_id} 下
+              if (!targetPath.startsWith(outputDir + pathModule.sep) && targetPath !== outputDir) {
+                return {
+                  content: [{ type: 'text' as const, text: `提交游戏失败：file_path 只能在 output/${scopedProjectId} 目录下。` }]
+                };
+              }
+            } catch (error: any) {
+              return {
+                content: [{ type: 'text' as const, text: `提交游戏失败：无效的 file_path。` }]
+              };
+            }
+
+            // 检查路径是否存在
+            let stat: Stats;
+            try {
+              stat = fsModule.statSync(targetPath);
+            } catch {
+              return {
+                content: [{ type: 'text' as const, text: `提交游戏失败：file_path 不存在。` }]
+              };
+            }
+
+            // 创建临时 ZIP 文件
+            const zipId = uuidv4();
+            const zipName = `${scopedProjectId}_${zipId}.zip`;
+            const zipTempPath = pathModule.join('/tmp', zipName);
+
+            try {
+              // 切换到 output/{project_id} 目录执行 zip，保留相对路径
+              const parentDir = stat.isDirectory() ? outputDir : pathModule.dirname(targetPath);
+              const entryName = stat.isDirectory() ? file_path : file_path;
+
+              // 使用 -j 保留相对路径打包
+              const zipCmd = stat.isDirectory()
+                ? `cd ${parentDir} && zip -r ${zipTempPath} ${entryName}`
+                : `cd ${parentDir} && zip ${zipTempPath} ${entryName}`;
+
+              execSync(zipCmd, { stdio: 'pipe' });
+
+              if (!fsModule.existsSync(zipTempPath)) {
+                return {
+                  content: [{ type: 'text' as const, text: '提交游戏失败：ZIP 打包失败。' }]
+                };
+              }
+
+              // 直接调用内部函数上传文件到 MinIO
+              const objectKey = `games/${zipName}`;
+              const fileSize = fsModule.statSync(zipTempPath).size;
+              const fileBuffer = fsModule.readFileSync(zipTempPath);
+
+              // lint 检查：ZIP 内每个 HTML 逐一检查，遇第一个 error 即阻断
+              const zipLintResult = await lintZipBuffer(fileBuffer, { projectId: scopedProjectId });
+              if (!zipLintResult.passed) {
+                try { fsModule.unlinkSync(zipTempPath); } catch { /* ignore */ }
+                return {
+                  content: [{ type: 'text' as const, text: `提交游戏失败：\n${zipLintResult.summary}` }]
+                };
+              }
+              if (zipLintResult.warnings.length > 0) {
+                log(agentId, '提交游戏-lint', `警告: ${zipLintResult.warnings.map(w => w.message).join('; ')}`, 'warn');
+              }
+
+              try {
+                // 创建文件存储记录
+                const { storage } = await createFileStorageRecord({
+                  project_id: scopedProjectId,
+                  object_key: objectKey,
+                  file_name: zipName,
+                  file_size: fileSize,
+                  content_type: 'application/zip'
+                });
+                fileStorageId = storage.id;
+
+                // 直接上传到 MinIO
+                await uploadBuffer(fileBuffer, objectKey, 'application/zip');
+
+              } catch (error: any) {
+                return {
+                  content: [{ type: 'text' as const, text: `提交游戏失败：文件上传异常 ${error?.message || String(error)}` }]
+                };
+              } finally {
+                // 清理临时文件
+                try { fsModule.unlinkSync(zipTempPath); } catch { /* ignore */ }
+              }
+
+            } catch (error: any) {
+              try { fsModule.unlinkSync(zipTempPath); } catch { /* ignore */ }
+              return {
+                content: [{ type: 'text' as const, text: `提交游戏失败：ZIP 打包失败 ${error?.message || String(error)}` }]
+              };
+            }
+
+            // 创建游戏记录（使用 placeholder html_content）
+            const now = new Date().toISOString();
+            let game: db.DbGame;
+            try {
+              game = db.createGame({
+                id: uuidv4(),
+                project_id: scopedProjectId,
+                name,
+                description: description || null,
+                html_content: 'FILE_ONLY',
+                proposal_id: proposal_id || null,
+                version: version || '1.0.0',
+                status: 'draft',
+                author_agent_id: agentId,
+                file_storage_id: fileStorageId,
+                created_at: now,
+                updated_at: now
+              });
+            } catch (error: any) {
+              return {
+                content: [{ type: 'text' as const, text: `提交游戏失败：${error?.message || String(error)}` }]
+              };
+            }
+
+            sseBroadcaster.broadcast({ type: 'game_submitted', game: { ...game, html_content: undefined as any, hasContent: false, fileStorageId }, filePath: null }, scopedProjectId);
+            log(agentId, '提交游戏', `游戏: ${name} v${version || '1.0.0'} [文件模式，ZIP: ${zipName}]`, 'success');
+            return {
+              content: [{ type: 'text' as const, text: `游戏已提交 (ID: ${game.id.slice(0, 8)})，名称: ${name}，版本: ${version || '1.0.0'}，文件已上传到存储。` }]
+            };
+          }
+
+          // ========== HTML 内容模式 ==========
           // Lint 检查：在写入 DB 前对游戏 HTML 进行静态质量检查
           const lintResult = lintGameContent(html_content, { fileName: `${name}.html`, projectId: scopedProjectId });
           if (!lintResult.passed) {
@@ -464,6 +619,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
               version: version || '1.0.0',
               status: 'draft',
               author_agent_id: agentId,
+              file_storage_id: null,
               created_at: now,
               updated_at: now
             });

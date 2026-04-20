@@ -61,6 +61,7 @@ export interface Game {
   version: string;
   status: 'draft' | 'published';
   author_agent_id: string;
+  fileStorageId?: string | null;
   created_at: string;
   updated_at: string;
   hasContent?: boolean;
