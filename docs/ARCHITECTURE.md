@@ -52,7 +52,7 @@ Browser (React + Vite)
 - `minio-client.ts`: MinIO object operations and presigned URL helpers
 - `lint/`: extensible lint framework (LintRunner, pluggable checkers, zero external dependencies)
 - `agents.ts`: role declarations, prompts, and handoff constraints
-- `db.ts`: SQLite schema, migrations, read/write operations
+- `db.ts`: SQLite schema (DDL-first initialization) and read/write operations
 - `sse-broadcaster.ts`: SSE client management and event broadcast
 - `star-office-sync.ts`: Star-Office registration/state sync/health checks
 

@@ -167,6 +167,7 @@ Main endpoints (prefix `/api`):
 
 - Supports multi-project isolation via `project_id`.
 - All MCP custom tool calls must include `project_id`, and backend validates it against current session scope.
+- Database tables are initialized by the `CREATE TABLE` DDL in `server/db.ts`; when changing schema, update DDL first and use migrations only for legacy data backfill.
 - Proposal/game submissions are also written to `output/{project_id}/...`.
 - `submit_game` supports two modes: HTML content mode (`html_content`) and packaged file mode (`file_path` -> ZIP -> `file_storage_id`).
 - `get_games` lists submitted games in the current project (newest first, with basic metadata and mode flags).

@@ -33,7 +33,7 @@ server/
   lint/                  # 可扩展 Lint 框架（LintRunner、可插拔检查器）
   agents.ts              # 角色定义、系统提示词、工具使用约束
   star-office-sync.ts    # Star-Office-UI 注册与状态同步
-  db.ts                  # 建表、迁移、查询与写入
+  db.ts                  # 建表（DDL 优先）、查询与写入
   sse-broadcaster.ts     # SSE 客户端管理与广播
 
 src/
@@ -62,7 +62,8 @@ src/
 
 建议：
 
-- 新增字段时同步补充迁移逻辑（参照 `ensureProjectColumns` / `ensureProjectIsolationColumns`）。
+- 新增或删除字段时，先更新 `server/db.ts` 中 `CREATE TABLE` DDL，保证新库结构正确。
+- 迁移脚本仅在确有历史数据补齐/兼容需求时使用。
 - 对高频查询字段补索引。
 
 ## 4. API 与事件
