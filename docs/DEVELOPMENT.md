@@ -34,7 +34,7 @@ server/
   lint/                  # Extensible Lint framework (LintRunner, pluggable checkers)
   agents.ts              # Role definitions, system prompts, tool usage constraints
   star-office-sync.ts    # Star-Office-UI registration and state sync
-  db.ts                  # Table creation, migration, query, and write logic
+  db.ts                  # Table creation (DDL-first), query, and write logic
   sse-broadcaster.ts     # SSE client management and event broadcast
 
 src/
@@ -63,7 +63,8 @@ Core tables (`server/db.ts`):
 
 Recommendations:
 
-- When adding new fields, also add migration logic (see `ensureProjectColumns` / `ensureProjectIsolationColumns`).
+- When adding or removing fields, update `CREATE TABLE` DDL in `server/db.ts` first so fresh databases are correct.
+- Use migration scripts only for legacy data backfill/compatibility scenarios when truly needed.
 - Add indexes for high-frequency query fields.
 
 ## 4. APIs and Events

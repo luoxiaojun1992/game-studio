@@ -52,7 +52,7 @@ Game Dev Studio 是一个多 Agent 游戏研发工作台，包含：
 - `minio-client.ts`：MinIO 对象操作与预签名 URL 能力
 - `lint/`：可扩展 Lint 框架（LintRunner、可插拔检查器、零外部依赖）
 - `agents.ts`：角色定义、提示词、交接约束
-- `db.ts`：SQLite 表结构、迁移、读写逻辑
+- `db.ts`：SQLite 表结构（DDL 优先初始化）与读写逻辑
 - `sse-broadcaster.ts`：SSE 客户端管理与事件广播
 - `star-office-sync.ts`：Star-Office 注册/同步/健康巡检
 
