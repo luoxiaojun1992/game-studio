@@ -53,6 +53,7 @@
 
 | 错误做法 | 正确做法 | 影响 |
 |:---|:---|:---|
+| 迁移代码（ALTER TABLE）添加列但 DDL 未同步更新 | DDL 中的 CREATE TABLE 必须包含所有列，迁移代码只做兼容旧数据的修补 | 删除迁移后该列丢失，submit_game 等工具静默报错，数据无法持久化 |
 | 推送前未 commit，直接 `git push -u origin branch` | 每次 push 前必须 `git status` 确认改动已 commit | 避免空分支 PR |
 | mock `submit_game` 不传或传错 project_id | 在 `toolCalls.arguments` 显式传入且与当前项目一致的 `project_id` | 避免 zod/作用域校验失败导致工具不执行 |
 | 用 class/文本选择器定位 DOM 元素 | 统一使用 `data-testid` 属性 + `getByTestId()` | DOM 结构变化不断言 |
