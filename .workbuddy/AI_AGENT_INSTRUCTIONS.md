@@ -13,6 +13,7 @@
 3. 仅在需要 WorkBuddy 专属上下文时，再进入 `../.agent/memory/` 下细分文档。
 4. 工具调用已统一要求必填 `project_id`，并与当前会话作用域强一致校验；编写 mock/tool_calls 时必须显式传入。
 5. 数据库结构变更采用 DDL 优先策略：先更新 `server/db.ts` 的 `CREATE TABLE` 定义；迁移仅用于历史数据补齐。
+6. Star-Office 同步已切换为多项目持续同步模型；`/api/projects/switch` 不再触发 Agent offline/online 同步切换。
 
 ## 目标
 

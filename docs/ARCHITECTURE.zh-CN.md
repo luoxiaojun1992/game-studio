@@ -58,7 +58,7 @@ Game Dev Studio 是一个多 Agent 游戏研发工作台，包含：
 
 ## 4. 核心业务域
 
-- **项目（Projects）**：项目生命周期、项目切换、项目设置
+- **项目（Projects）**：项目生命周期、项目切换上下文、项目设置
 - **Agent（Agents）**：基于角色的协作与指令执行
 - **提案（Proposals）**：提案创建、评审流转、决策状态
 - **任务（Tasks）**：开发/测试任务拆分与状态流转
@@ -107,8 +107,9 @@ Game Dev Studio 是一个多 Agent 游戏研发工作台，包含：
 
 - 前端通过独立面板内嵌 Star-Office-UI
 - 后端负责与 Star-Office 端点进行服务端同步
-- 支持防抖同步与健康巡检
+- 支持防抖同步、健康巡检与全项目同步
 - 端点基于 `STAR_OFFICE_UI_URL` 推导（`/set_state`、`/agent-push`、`/join-agent`、`/agents`、`/health`）
+- `/api/projects/switch` 不再驱动 Star-Office Agent 同步切换；Agent 同步在多项目场景下持续维护
 
 ## 8. 安全与隔离要点
 
