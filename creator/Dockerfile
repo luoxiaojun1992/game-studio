@@ -18,7 +18,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxkbcommon0 \
     libxxf86vm1 \
     libopengl0 \
-    libasound2 \
+    libasound2t64 \
     libglvnd0 \
     && rm -rf /var/lib/apt/lists/*
 
