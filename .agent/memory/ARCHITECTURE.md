@@ -232,7 +232,7 @@ ui-e2e                         ← Playwright CI 执行
 - `lastMessage` 属于内存态，当前不落库； 服务重启后该字段会丢失。 持久化主要覆盖 `status/current_task/sdk_session_id/updated_at`， 不影响可恢复状态（status/current_task/paused）和历史消息查询（`agent_messages`）。
 
 #### 4) 项目切换与状态边界
-- 前端项目切换通过 `api.switchProject(fromProjectId, toProjectId)` 调用 `/api/projects/switch`，该接口主要驱动 Star Office 同步。
+- 前端项目切换通过 `api.switchProject(fromProjectId, toProjectId)` 调用 `/api/projects/switch`，该接口现在只做轻量上下文切换，不再驱动 Star Office Agent offline/online 同步。
 - 指令中心当前 Agent 的“记忆”是前端 localStorage 行为（按项目键隔离），不是服务端 `/api/projects/switch` 写库行为。
 - Agent 运行状态与消息历史的服务端隔离依赖 `project_id`（`agent_sessions`、`agent_messages`、`logs` 等）。
 

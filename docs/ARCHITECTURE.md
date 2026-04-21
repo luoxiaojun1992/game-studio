@@ -58,7 +58,7 @@ Browser (React + Vite)
 
 ## 4. Core Business Domains
 
-- **Projects**: project lifecycle, current project switching, settings
+- **Projects**: project lifecycle, project switching context, settings
 - **Agents**: role-based collaboration and command execution
 - **Proposals**: creation, review workflow, decision states
 - **Tasks**: development/testing decomposition and status transitions
@@ -107,8 +107,9 @@ Browser (React + Vite)
 
 - Frontend embeds Star-Office-UI in an isolated panel
 - Backend performs server-side sync with Star-Office endpoints
-- Supports debounced sync and health monitoring
+- Supports debounced sync, health monitoring, and all-project synchronization
 - Endpoints are derived from `STAR_OFFICE_UI_URL` (`/set_state`, `/agent-push`, `/join-agent`, `/agents`, `/health`)
+- `/api/projects/switch` no longer drives Star-Office agent sync transitions; agent sync is maintained continuously across projects
 
 ## 8. Security and Isolation Considerations
 

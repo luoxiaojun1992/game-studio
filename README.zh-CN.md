@@ -162,6 +162,8 @@ game-studio/
 - 会话与指令：`/agents/:agentId/messages`(DELETE) `/commands`
 - 权限：`/permission-response`
 
+`/api/projects/switch` 现仅用于轻量的项目上下文切换，不再触发 Star-Office Agent 的 offline/online 状态切换。
+
 ## 项目与数据产出
 
 - 支持多项目隔离（`project_id`）。

@@ -163,6 +163,8 @@ Main endpoints (prefix `/api`):
 - Sessions and commands: `/agents/:agentId/messages`(DELETE) `/commands`
 - Permission: `/permission-response`
 
+`/api/projects/switch` is now a lightweight project-context switch endpoint and no longer triggers Star-Office agent offline/online transitions.
+
 ## Project Data and Artifacts
 
 - Supports multi-project isolation via `project_id`.

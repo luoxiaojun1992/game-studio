@@ -25,6 +25,7 @@ Game Dev Studio 是一个基于 CodeBuddy Agent SDK 的多 Agent 游戏研发工
 - Agent 状态、记忆、日志、任务看板都绑定到具体项目
 - **所有自定义工具调用都必须显式传入 `project_id` 参数**
 - `createStudioToolsServer(projectId, ...)` 仍会注入 `scopedProjectId` 作为安全锚点，工具内部通过 `requireProjectId()` 强制校验输入 `project_id` 与当前会话作用域一致，拒绝跨项目操作
+- Star-Office 同步为多项目持续同步模型，`/api/projects/switch` 不再触发 Agent offline/online 同步切换
 
 ### 2. Agent 角色定义
 ```typescript
