@@ -36,9 +36,9 @@
 - systemPrompt 中有强制规则要求双任务状态同步
 
 ## project_id 架构原则
-- LLM 不会主动输出 `project_id` 参数，所有工具必须内部自行获取
+- 所有工具调用都必须显式传入 `project_id` 参数
 - `createStudioToolsServer(projectId, ...)` 在创建时注入 `scopedProjectId`
-- 工具内部直接使用 scopedProjectId，不接收外部 project_id 参数
+- 工具通过 `requireProjectId` 校验传入值与 scopedProjectId 一致，拒绝跨项目
 - 受影响工具: `split_dev_test_tasks`、`get_tasks`、`submit_proposal`、`submit_game`
 - 与 `create_handoff`、`get_logs`、`get_proposals`、`get_pending_handoffs` 保持一致
 - `enforceProject` 已成死代码，已删除
@@ -53,7 +53,7 @@
 
 | 错误做法 | 正确做法 | 影响 |
 |:---|:---|:---|
-| mock `submit_game` 不传 project_id | 通过 setMockExpectation 的 projectId 参数隐式传递（工具内部自动使用 scopedProjectId） | 避免 game 写入 default 项目导致 SSE channel 不匹配 |
+| mock `submit_game` 不传或传错 project_id | 在 `toolCalls.arguments` 显式传入且与当前项目一致的 `project_id` | 避免 zod/作用域校验失败导致工具不执行 |
 | 用 class/文本选择器定位 DOM 元素 | 统一使用 `data-testid` 属性 + `getByTestId()` | DOM 结构变化不断言 |
 | 逐步等待固定时间（waitForTimeout 链式调用） | 目标状态驱动的事件循环 + 非阻塞轮询 | 测试更稳定、更快 |
 | UI-007/008 各写独立测试逻辑 | 抽取 `runFullWorkflowTest()` 共享函数 + WorkflowOptions 参数化 | 消除重复代码，降低维护成本 |

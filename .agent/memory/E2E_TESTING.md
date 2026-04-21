@@ -23,10 +23,10 @@
 - **force: true 点击**：按钮被遮挡或 actionability check 失败时需要
 
 ## UI-007 Game Count = 0 根因
-- `submit_game` mock 缺 `project_id` 参数，zod 取默认值 `'default'`
-- 工具 schema `project_id: z.string().optional().default('default')`，mock 没传时自动填充
-- 后果：game 创建到 `default` 项目，SSE broadcast 到 `default` channel，前端在 `ui-007_xxx` 项目，永远收不到
-- **教训**：optional + default 的参数，mock 必须显式传值
+- `submit_game`/`create_handoff`/`save_memory` 等 mock 若缺失 `project_id`，会被工具 schema 直接拒绝
+- mock 若传入错误 `project_id`，会被 `requireProjectId` 拒绝（与会话作用域不一致）
+- 后果：工具执行失败，流程中断，目标项目收不到预期变更与 SSE 更新
+- **教训**：所有工具 mock 必须显式传入正确的 `project_id`
 - **SSE reconnect bug**：`if (connectedRef.current) return;` 在 selectedProjectId 变化后阻止重连
 
 ## UI-007/008 测试结构

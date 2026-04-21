@@ -30,7 +30,7 @@
 - 记忆通过 `getMemorySummaryForPrompt()` 注入 systemPrompt
 - zod 依赖用于定义工具的参数 schema
 - 内置工具覆盖记忆、任务拆分、任务看板、交接、提案、游戏提交、日志查询等核心流程（以 `server/tools.ts` 为准）
-- project_id 全部内部使用 scopedProjectId，不依赖外部参数输入
+- 所有工具调用都要求显式传入 project_id，并通过 scopedProjectId 做一致性校验
 
 ## Agent 角色
 - 6 个 Agent: `game_designer`, `architect`, `engineer`, `biz_designer`, `ceo`, `team_builder`
@@ -116,7 +116,7 @@ game-dev-studio/
   - `submit_game`：支持双模式提交游戏（`html_content` 或 `file_path`，文件模式会打包 ZIP 并上传 MinIO）。
   - `get_proposals`：获取当前项目的提案列表。
   - `get_pending_handoffs`：获取待处理的交接任务。
-- **项目隔离**：每个工具内部通过 `scopedProjectId` 自动绑定当前项目，不再依赖 LLM 输出 `project_id` 参数。
+- **项目隔离**：每个工具都要求传 `project_id`，并通过 `requireProjectId` 校验其与 `scopedProjectId` 一致，拒绝跨项目。
 - **权限检查**：部分工具（如 `submit_proposal`）会验证调用 Agent 的角色是否允许执行该操作。
 - **产物存储**：文件模式通过 `file_storage_id` 关联 `file_storages` 元数据并提供下载能力。
 
@@ -194,7 +194,7 @@ ui-e2e                         ← Playwright CI 执行
 2. **Agent 工作流**：
    - 用户通过 CommandPanel 向指定 Agent 发送指令。
    - AgentManager 创建该 Agent 的 SDK 会话，注入工具服务器。
-   - Agent 调用工具（如 `submit_game`），工具内部使用 `scopedProjectId` 写入数据库。
+- Agent 调用工具（如 `submit_game`）时需传 `project_id`，工具校验通过后再按该项目写入数据库。
    - 数据库变更触发 SSE 广播，前端实时更新游戏列表。
 3. **任务交接流**：
    - 源 Agent 调用 `create_handoff` 创建交接记录。

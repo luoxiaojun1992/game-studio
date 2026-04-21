@@ -134,6 +134,7 @@ Each role includes:
 
 Key constraints:
 
+- All tools require a mandatory `project_id` parameter, and handlers validate it against the current session scope (`scopedProjectId`).
 - `update_task_status` only accepts full UUID `task_id`
 - Task state transitions are constrained (`todo -> developing -> testing -> done`, including `blocked` branch)
 - Handoff targets are role-whitelisted
@@ -221,6 +222,7 @@ npm run build
 
 ## 10. Common Notes
 
+- `agent-manager.ts` injects a "current project context" section in system prompt so agents always know active `project_id`
 - When changing task board logic, update both frontend and backend status definitions/flow (`todo -> developing -> testing -> done`, plus `blocked`)
 - When adding events, update `SSEEvent` union type in `src/types.ts`
 - Game preview endpoints return HTML directly; keep content secure and source controlled

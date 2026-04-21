@@ -166,6 +166,7 @@ Main endpoints (prefix `/api`):
 ## Project Data and Artifacts
 
 - Supports multi-project isolation via `project_id`.
+- All MCP custom tool calls must include `project_id`, and backend validates it against current session scope.
 - Proposal/game submissions are also written to `output/{project_id}/...`.
 - `submit_game` supports two modes: HTML content mode (`html_content`) and packaged file mode (`file_path` -> ZIP -> `file_storage_id`).
 - Packaged mode stores ZIP assets in MinIO and keeps metadata in `file_storages`.
