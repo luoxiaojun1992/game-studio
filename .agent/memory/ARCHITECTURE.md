@@ -114,6 +114,8 @@ game-dev-studio/
   - `create_handoff`：创建任务交接（来源、目标、标题、描述、上下文、优先级）。
   - `submit_proposal`：提交提案（类型、标题、内容、作者）。
   - `submit_game`：支持双模式提交游戏（`html_content` 或 `file_path`，文件模式会打包 ZIP 并上传 MinIO）。
+  - `get_games`：按时间倒序获取当前项目游戏列表，返回基础元信息与模式标记。
+  - `get_game_info`：按游戏 ID 获取详情；HTML 模式返回完整 HTML，文件模式返回 MinIO 预签名下载链接。
   - `get_proposals`：获取当前项目的提案列表。
   - `get_pending_handoffs`：获取待处理的交接任务。
 - **项目隔离**：每个工具都要求传 `project_id`，并通过 `requireProjectId` 校验其与 `scopedProjectId` 一致，拒绝跨项目。

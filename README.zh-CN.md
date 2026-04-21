@@ -168,6 +168,8 @@ game-studio/
 - 所有 MCP 自定义工具调用都必须携带 `project_id`，后端会校验其与当前会话作用域一致。
 - 提案与游戏提交时会同步写入 `output/{project_id}/...` 目录。
 - `submit_game` 支持双模式：HTML 内容模式（`html_content`）与打包文件模式（`file_path` -> ZIP -> `file_storage_id`）。
+- `get_games` 可按时间倒序查询当前项目已提交游戏列表（含基础元数据与模式标记）。
+- `get_game_info` 对 HTML 模式返回完整 HTML 内容，对文件模式返回 MinIO 预签名下载链接。
 - 打包模式会将 ZIP 上传至 MinIO，并在 `file_storages` 表记录元数据。
 - `/output` 提供静态访问（HTML 以 `text/html; charset=utf-8` 返回）。
 

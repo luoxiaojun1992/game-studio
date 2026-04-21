@@ -169,6 +169,8 @@ Main endpoints (prefix `/api`):
 - All MCP custom tool calls must include `project_id`, and backend validates it against current session scope.
 - Proposal/game submissions are also written to `output/{project_id}/...`.
 - `submit_game` supports two modes: HTML content mode (`html_content`) and packaged file mode (`file_path` -> ZIP -> `file_storage_id`).
+- `get_games` lists submitted games in the current project (newest first, with basic metadata and mode flags).
+- `get_game_info` returns full HTML content for HTML-mode games, or a MinIO presigned download URL for file-mode games.
 - Packaged mode stores ZIP assets in MinIO and keeps metadata in `file_storages`.
 - `/output` is served as static content (HTML returned with `text/html; charset=utf-8`).
 

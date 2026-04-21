@@ -129,6 +129,8 @@ src/
 - `get_agents`
 - `get_proposals`
 - `get_pending_handoffs`
+- `get_games`
+- `get_game_info`
 - `get_project_latest_info`（仅 team_builder 可用）
 
 关键约束：
@@ -139,6 +141,8 @@ src/
 - 交接目标存在角色白名单
 - 交接链路受角色约束：`game_designer -> ceo -> architect -> engineer -> biz_designer`
 - `submit_game` 支持两种输入：`html_content` 或 `file_path`（仅允许 `output/{project_id}` 目录内路径）
+- `get_games` 按时间倒序返回当前项目游戏列表，支持可选 `limit`（`1..100`）
+- `get_game_info`：HTML 模式返回完整 HTML；文件模式返回 MinIO 预签名下载链接
 
 ### 5.3 Star Office 同步机制（`server/star-office-sync.ts`）
 
