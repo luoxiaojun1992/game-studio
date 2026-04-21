@@ -55,7 +55,20 @@ const toSingleLinePreview = (content: string | null | undefined) =>
  */
 export function createStudioToolsServer(projectId: string, agentId: AgentRole, logFn?: ToolLogFn, onAutoHandoff?: AutoHandoffHook): SdkMcpServerResult {
   const log = logFn || (() => {});
+  // 安全锚点：来自 API 请求的权威 project_id，tool 输入必须匹配此值
   const scopedProjectId = (projectId || 'default').trim() || 'default';
+  // project_id 参数 schema：必填，格式校验
+  const projectIdSchema = z.string()
+    .regex(/^[a-zA-Z0-9_-]+$/, 'project_id 仅支持字母、数字、下划线、短横线')
+    .min(1, 'project_id 不能为空')
+    .max(64, 'project_id 不能超过 64 字符');
+  // project_id 校验函数：确保 tool 输入的 project_id 与 closure 锚点匹配，防止跨项目写入
+  const requireProjectId = (inputProjectId: string): string => {
+    if (inputProjectId !== scopedProjectId) {
+      throw new Error(`project_id 不匹配：传入 ${inputProjectId}，当前会话作用域为 ${scopedProjectId}`);
+    }
+    return inputProjectId;
+  };
   const TASK_STATUS_FLOW: Record<string, string[]> = {
     todo: ['developing', 'blocked'],
     developing: ['testing', 'blocked'],
@@ -94,6 +107,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         'save_memory',
         '保存一条长期记忆。在做出重要决策、获得经验教训、产出成果等关键时刻，你应该主动调用此工具保存信息。',
         {
+          project_id: projectIdSchema.describe('当前项目 ID，必填，用于隔离不同项目的数据'),
           category: z.enum(['general', 'preference', 'decision', 'lesson', 'achievement']).describe(
             '记忆分类：general=通用, preference=用户偏好, decision=重要决策, lesson=经验教训, achievement=成果产出'
           ),
@@ -101,11 +115,12 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           importance: z.enum(['low', 'normal', 'high', 'critical']).optional().default('normal').describe('重要程度'),
           source_task: z.string().optional().describe('关联的任务名称')
         },
-        async ({ category, content, importance, source_task }) => {
+        async ({ project_id, category, content, importance, source_task }) => {
+          const effectiveProjectId = requireProjectId(project_id);
           const now = new Date().toISOString();
           const memory = db.createAgentMemory({
             id: uuidv4(),
-            project_id: scopedProjectId,
+            project_id: effectiveProjectId,
             agent_id: agentId,
             category,
             content,
@@ -125,12 +140,14 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         'get_memories',
         '获取你之前保存的长期记忆，帮助你回忆之前的决策、经验和成果。',
         {
+          project_id: projectIdSchema.describe('当前项目 ID，必填，用于隔离不同项目的数据'),
           category: z.enum(['general', 'preference', 'decision', 'lesson', 'achievement']).optional().describe('按类别筛选，不填则返回全部'),
           keyword: z.string().trim().max(200).optional().describe('按关键词模糊搜索记忆内容，可选，最长 200 字符'),
           limit: z.number().min(1).max(50).optional().default(20).describe('返回条数上限')
         },
-        async ({ category, keyword, limit }) => {
-          const memories = db.getAgentMemories(scopedProjectId, agentId, {
+        async ({ project_id, category, keyword, limit }) => {
+          const effectiveProjectId = requireProjectId(project_id);
+          const memories = db.getAgentMemories(effectiveProjectId, agentId, {
             category,
             keyword,
             limit
@@ -152,6 +169,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         'create_handoff',
         '将任务移交给其他团队成员。当你完成自己的工作部分，需要其他 Agent 接手时调用此工具。交接需要管理者确认后目标 Agent 才会开始工作。',
         {
+          project_id: projectIdSchema.describe('当前项目 ID，必填，用于隔离不同项目的数据'),
           to_agent_id: AGENT_ID_ENUM
             .refine((value) => value !== TEAM_BUILDING_AGENT_ID, { message: 'to_agent_id 不支持 team_builder' })
             .describe(
@@ -164,17 +182,18 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           ),
           priority: z.enum(db.HANDOFF_PRIORITIES).optional().default('normal').describe('任务优先级')
         },
-        async ({ to_agent_id, title, description, context, priority }) => {
+        async ({ project_id, to_agent_id, title, description, context, priority }) => {
+          const effectiveProjectId = requireProjectId(project_id);
           const allowedTargets = ALLOWED_HANDOFF_TARGETS[agentId] || [];
           if (!allowedTargets.includes(to_agent_id)) {
             throw new Error(`交接目标不合法：${agentId} 仅可移交给 ${allowedTargets.join(' / ') || '无'}`);
           }
           const now = new Date().toISOString();
-          const settings = db.getProjectSettings(scopedProjectId);
+          const settings = db.getProjectSettings(effectiveProjectId);
           const autoHandoffEnabled = settings.autopilot_enabled === 1;
           const handoff = db.createHandoff({
             id: uuidv4(),
-            project_id: scopedProjectId,
+            project_id: effectiveProjectId,
             from_agent_id: agentId,
             to_agent_id,
             title,
@@ -189,7 +208,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
             created_at: now,
             updated_at: now,
           });
-          sseBroadcaster.broadcast({ type: 'handoff_created', handoff }, scopedProjectId);
+          sseBroadcaster.broadcast({ type: 'handoff_created', handoff }, effectiveProjectId);
           log(agentId, '创建交接', `${agentId} → ${to_agent_id}: ${title}`, 'success');
           if (autoHandoffEnabled && onAutoHandoff) {
             try {
@@ -217,6 +236,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         'split_dev_test_tasks',
         '将一个功能目标拆分为开发任务和测试任务，并写入任务看板。',
         {
+          project_id: projectIdSchema.describe('当前项目 ID，必填，用于隔离不同项目的数据'),
           feature_title: singleLineTitleSchema('feature_title').describe('功能标题'),
           development_description: requiredTextSchema('development_description').describe('开发任务描述'),
           testing_description: z.string().optional().transform((value, ctx) => {
@@ -231,12 +251,13 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           }).describe('测试任务描述（不填则自动生成）'),
           priority_hint: z.enum(db.HANDOFF_PRIORITIES).optional().default('normal').describe('优先级提示（用于描述，不影响状态机）')
         },
-        async ({ feature_title, development_description, testing_description, priority_hint }) => {
+        async ({ project_id, feature_title, development_description, testing_description, priority_hint }) => {
+          const effectiveProjectId = requireProjectId(project_id);
           validateAgentPermission(['engineer'], '拆分开发与测试任务');
           const now = new Date().toISOString();
           const devTask = db.createTaskBoardTask({
             id: uuidv4(),
-            project_id: scopedProjectId,
+            project_id: effectiveProjectId,
             title: `开发：${feature_title}`,
             description: `[优先级:${priority_hint || 'normal'}] ${development_description}`,
             task_type: 'development',
@@ -252,9 +273,9 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
           const testTask = db.createTaskBoardTask({
             id: uuidv4(),
-            project_id: scopedProjectId,
+            project_id: effectiveProjectId,
             title: `测试：${feature_title}`,
-            description: testing_description || `验证“${feature_title}”功能正确性与回归影响，覆盖功能、边界和异常路径。`,
+            description: testing_description || `验证"${feature_title}"功能正确性与回归影响，覆盖功能、边界和异常路径。`,
             task_type: 'testing',
             status: 'todo',
             source_task_id: devTask.id,
@@ -266,8 +287,8 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
             updated_at: now
           });
 
-          sseBroadcaster.broadcast({ type: 'task_created', task: devTask }, scopedProjectId);
-          sseBroadcaster.broadcast({ type: 'task_created', task: testTask }, scopedProjectId);
+          sseBroadcaster.broadcast({ type: 'task_created', task: devTask }, effectiveProjectId);
+          sseBroadcaster.broadcast({ type: 'task_created', task: testTask }, effectiveProjectId);
           log(agentId, '拆分任务看板', `${feature_title} -> 开发+测试`, 'success');
 
           return {
@@ -283,14 +304,16 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         'get_tasks',
         '查询任务看板中的任务，用于查看待办和当前进度。可选按 agent_id 筛选 created_by/updated_by；不传则查询项目内全部任务。',
         {
+          project_id: projectIdSchema.describe('当前项目 ID，必填，用于隔离不同项目的数据'),
           status: z.enum(db.TASK_STATUSES).optional().describe('按状态筛选'),
           task_type: z.enum(db.TASK_TYPES).optional().describe('按任务类型筛选'),
           agent_id: AGENT_ID_ENUM.optional().describe('按创建者/更新者 Agent ID 筛选；不传则查询全部'),
           limit: z.number().min(1).max(100).optional().default(20).describe('返回条数上限')
         },
-        async ({ status, task_type, agent_id, limit }) => {
+        async ({ project_id, status, task_type, agent_id, limit }) => {
+          const effectiveProjectId = requireProjectId(project_id);
           const tasks = db.getTaskBoardTasks({
-            projectId: scopedProjectId,
+            projectId: effectiveProjectId,
             status,
             taskType: task_type,
             agentId: agent_id,
@@ -311,10 +334,12 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         'update_task_status',
         '更新看板任务状态，维护开发与测试过程进度。',
         {
+          project_id: projectIdSchema.describe('当前项目 ID，必填，用于隔离不同项目的数据'),
           task_id: z.string().describe('任务 ID'),
           status: z.enum(db.TASK_STATUSES).describe('目标状态')
         },
-        async ({ task_id, status }) => {
+        async ({ project_id, task_id, status }) => {
+          const effectiveProjectId = requireProjectId(project_id);
           validateAgentPermission(['engineer'], '更新任务看板状态');
           const normalizedTaskId = task_id.trim();
           if (!UUID_PATTERN.test(normalizedTaskId)) {
@@ -366,13 +391,15 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         'submit_proposal',
         '提交一份策划案或方案文档（如游戏策划案、商业策划案、技术方案等）。提案提交后将通知管理者进行审批。',
         {
+          project_id: projectIdSchema.describe('当前项目 ID，必填，用于隔离不同项目的数据'),
           type: z.enum(db.PROPOSAL_TYPES).describe(
             '提案类型：game_design=游戏策划, biz_design=商业策划, tech_arch=架构方案, tech_impl=技术方案'
           ),
           title: singleLineTitleSchema('title').describe('提案标题'),
           content: requiredTextSchema('content').describe('提案的完整内容（Markdown 格式）')
         },
-        async ({ type, title, content }) => {
+        async ({ project_id, type, title, content }) => {
+          const effectiveProjectId = requireProjectId(project_id);
           if (type === 'game_design') {
             validateAgentPermission(['game_designer'], '提交游戏策划案');
           } else if (type === 'biz_design') {
@@ -387,7 +414,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           const now = new Date().toISOString();
           const proposal = db.createProposal({
             id: uuidv4(),
-            project_id: scopedProjectId,
+            project_id: effectiveProjectId,
             type,
             title,
             content,
@@ -403,7 +430,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
             updated_at: now
           });
           const filePath = db.saveProposalToFile(proposal);
-          sseBroadcaster.broadcast({ type: 'proposal_created', proposal, filePath }, scopedProjectId);
+          sseBroadcaster.broadcast({ type: 'proposal_created', proposal, filePath }, effectiveProjectId);
           log(agentId, '提交提案', `提案: ${title}${filePath ? ' → 已保存' : ''}`, 'success');
           return {
             content: [{ type: 'text' as const, text: `提案已提交 (ID: ${proposal.id.slice(0, 8)})，等待审批。` }]
@@ -415,6 +442,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         'submit_game',
         '提交一个完成的游戏成品。支持两种模式：1) 单文件 HTML 模式（传入 html_content）；2) 文件打包模式（传入 file_path）。文件打包模式下，游戏文件夹会被压缩为 ZIP 并上传到 MinIO 存储。',
         {
+          project_id: projectIdSchema.describe('当前项目 ID，必填，用于隔离不同项目的数据'),
           name: z.string().max(db.MAX_FILENAME_LENGTH, `name 长度不能超过 ${db.MAX_FILENAME_LENGTH}`).transform((value, ctx) => {
             try {
               return db.normalizeAndValidateRequiredText(value, 'name');
@@ -446,7 +474,8 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           ).describe('版本号'),
           proposal_id: z.string().optional().describe('关联的策划案 ID（如果有）')
         },
-        async ({ name, html_content, file_path, description, version, proposal_id }) => {
+        async ({ project_id, name, html_content, file_path, description, version, proposal_id }) => {
+          const effectiveProjectId = requireProjectId(project_id);
           validateAgentPermission(['engineer'], '提交游戏成品');
 
           const hasHtmlContent = typeof html_content === 'string' && html_content.length >= db.MIN_GAME_HTML_LENGTH;
@@ -467,14 +496,14 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
             const pathModule = await import('path');
             const fsModule = await import('fs');
 
-            const outputDir = pathModule.resolve(pathModule.join(__dirname, '..', 'output', scopedProjectId));
+            const outputDir = pathModule.resolve(pathModule.join(__dirname, '..', 'output', effectiveProjectId));
             let targetPath: string;
             try {
               targetPath = pathModule.resolve(outputDir, file_path);
               // 检查路径是否在 output/{project_id} 下
               if (!targetPath.startsWith(outputDir + pathModule.sep) && targetPath !== outputDir) {
                 return {
-                  content: [{ type: 'text' as const, text: `提交游戏失败：file_path 只能在 output/${scopedProjectId} 目录下。` }]
+                  content: [{ type: 'text' as const, text: `提交游戏失败：file_path 只能在 output/${effectiveProjectId} 目录下。` }]
                 };
               }
             } catch (error: any) {
@@ -495,7 +524,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
             // 创建临时 ZIP 文件
             const zipId = uuidv4();
-            const zipName = `${scopedProjectId}_${zipId}.zip`;
+            const zipName = `${effectiveProjectId}_${zipId}.zip`;
             const zipTempPath = pathModule.join('/tmp', zipName);
 
             try {
@@ -522,7 +551,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
               const fileBuffer = fsModule.readFileSync(zipTempPath);
 
               // lint 检查：ZIP 内每个 HTML 逐一检查，遇第一个 error 即阻断
-              const zipLintResult = await lintZipBuffer(fileBuffer, { projectId: scopedProjectId });
+              const zipLintResult = await lintZipBuffer(fileBuffer, { projectId: effectiveProjectId });
               if (!zipLintResult.passed) {
                 try { fsModule.unlinkSync(zipTempPath); } catch { /* ignore */ }
                 return {
@@ -536,7 +565,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
               try {
                 // 创建文件存储记录
                 const { storage } = await createFileStorageRecord({
-                  project_id: scopedProjectId,
+                  project_id: effectiveProjectId,
                   object_key: objectKey,
                   file_name: zipName,
                   file_size: fileSize,
@@ -569,7 +598,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
             try {
               game = db.createGame({
                 id: uuidv4(),
-                project_id: scopedProjectId,
+                project_id: effectiveProjectId,
                 name,
                 description: description || null,
                 html_content: 'FILE_ONLY',
@@ -587,7 +616,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
               };
             }
 
-            sseBroadcaster.broadcast({ type: 'game_submitted', game: { ...game, html_content: undefined as any, hasContent: false, fileStorageId }, filePath: null }, scopedProjectId);
+            sseBroadcaster.broadcast({ type: 'game_submitted', game: { ...game, html_content: undefined as any, hasContent: false, fileStorageId }, filePath: null }, effectiveProjectId);
             log(agentId, '提交游戏', `游戏: ${name} v${version || '1.0.0'} [文件模式，ZIP: ${zipName}]`, 'success');
             return {
               content: [{ type: 'text' as const, text: `游戏已提交 (ID: ${game.id.slice(0, 8)})，名称: ${name}，版本: ${version || '1.0.0'}，文件已上传到存储。` }]
@@ -596,7 +625,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
           // ========== HTML 内容模式 ==========
           // Lint 检查：在写入 DB 前对游戏 HTML 进行静态质量检查
-          const lintResult = lintGameContent(html_content, { fileName: `${name}.html`, projectId: scopedProjectId });
+          const lintResult = lintGameContent(html_content, { fileName: `${name}.html`, projectId: effectiveProjectId });
           if (!lintResult.passed) {
             return {
               content: [{ type: 'text' as const, text: `提交游戏失败：\n${lintResult.summary}` }]
@@ -611,7 +640,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           try {
             game = db.createGame({
               id: uuidv4(),
-              project_id: scopedProjectId,
+              project_id: effectiveProjectId,
               name,
               description: description || null,
               html_content,
@@ -629,7 +658,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
             };
           }
           const filePath = db.saveGameToFile(game);
-          sseBroadcaster.broadcast({ type: 'game_submitted', game: { ...game, html_content: undefined as any, hasContent: true }, filePath }, scopedProjectId);
+          sseBroadcaster.broadcast({ type: 'game_submitted', game: { ...game, html_content: undefined as any, hasContent: true }, filePath }, effectiveProjectId);
           log(agentId, '提交游戏', `游戏: ${name} v${version || '1.0.0'}${filePath ? ' → 已保存' : ''}`, 'success');
           return {
             content: [{ type: 'text' as const, text: `游戏已提交 (ID: ${game.id.slice(0, 8)})，名称: ${name}，版本: ${version || '1.0.0'}。` }]
@@ -640,10 +669,12 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         'get_agent_logs',
         '读取当前项目下你自己的历史日志，用于回顾上下文和最近执行记录。',
         {
+          project_id: projectIdSchema.describe('当前项目 ID，必填，用于隔离不同项目的数据'),
           limit: z.number().min(1).max(200).optional().default(20).describe('返回条数上限')
         },
-        async ({ limit }) => {
-          const logs = db.getLogs(scopedProjectId, agentId, limit);
+        async ({ project_id, limit }) => {
+          const effectiveProjectId = requireProjectId(project_id);
+          const logs = db.getLogs(effectiveProjectId, agentId, limit);
           if (logs.length === 0) {
             return {
               content: [{ type: 'text' as const, text: '暂无历史日志。' }]
@@ -662,7 +693,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
       tool(
         'get_agents',
-        '查询所有 Agent 的信息（含 agent_id、名称、职责等），用于确认可用 Agent ID。',
+        '查询所有 Agent 的信息（含 agent_id、名称、职责等），用于确认可用 Agent ID。此工具不涉及项目数据，无需传 project_id。',
         {},
         async () => {
           const agents = getAllAgents();
@@ -684,12 +715,14 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         'get_proposals',
         '查询已有的提案列表，用于了解当前项目的策划案进度。可选按 agent_id 筛选 author/reviewer；不传则查询项目内全部提案。',
         {
+          project_id: projectIdSchema.describe('当前项目 ID，必填，用于隔离不同项目的数据'),
           status: z.enum(db.PROPOSAL_STATUSES).optional().describe('按状态筛选'),
           agent_id: AGENT_ID_ENUM.optional().describe('按作者/评审 Agent ID 筛选；不传则查询全部'),
           limit: z.number().min(1).max(50).optional().default(10).describe('返回条数上限')
         },
-        async ({ status, agent_id, limit }) => {
-          const proposals = db.getScopedProposals(scopedProjectId, {
+        async ({ project_id, status, agent_id, limit }) => {
+          const effectiveProjectId = requireProjectId(project_id);
+          const proposals = db.getScopedProposals(effectiveProjectId, {
             status,
             agentId: agent_id,
             limit: limit || 10
@@ -712,11 +745,13 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         'get_pending_handoffs',
         '查询待处理的任务交接。可选按 agent_id 筛选发给该 Agent 的交接；不传则查询项目内全部待处理交接。',
         {
+          project_id: projectIdSchema.describe('当前项目 ID，必填，用于隔离不同项目的数据'),
           agent_id: AGENT_ID_ENUM.optional().describe('目标 Agent ID（to_agent_id）筛选；不传则查询全部'),
           limit: z.number().min(1).max(20).optional().default(5).describe('返回条数上限')
         },
-        async ({ agent_id, limit }) => {
-          const handoffs = db.getPendingHandoffs(scopedProjectId, agent_id, limit || 5);
+        async ({ project_id, agent_id, limit }) => {
+          const effectiveProjectId = requireProjectId(project_id);
+          const handoffs = db.getPendingHandoffs(effectiveProjectId, agent_id, limit || 5);
           if (handoffs.length === 0) {
             return {
               content: [{ type: 'text' as const, text: '没有待处理的交接任务。' }]
@@ -734,17 +769,19 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         'get_project_latest_info',
         '查询当前项目最新 n 条关键信息，覆盖提案、任务、交接、日志、记忆，供总结提炼使用。',
         {
+          project_id: projectIdSchema.describe('当前项目 ID，必填，用于隔离不同项目的数据'),
           limit: z.number().min(1).max(100).optional().default(20).describe('返回条数上限（跨类型混合排序）')
         },
-        async ({ limit }) => {
+        async ({ project_id, limit }) => {
+          const effectiveProjectId = requireProjectId(project_id);
           validateAgentPermission([TEAM_BUILDING_AGENT_ID], '查询项目最新信息');
           const effectiveLimit = limit || 20;
           const fetchWindow = Math.min(Math.max(effectiveLimit * FETCH_MULTIPLIER, MIN_FETCH_WINDOW), MAX_FETCH_WINDOW);
-          const proposals = db.getScopedProposals(scopedProjectId, { limit: fetchWindow });
-          const projectTasks = db.getTaskBoardTasks({ projectId: scopedProjectId, limit: fetchWindow });
-          const handoffs = db.getAllHandoffs(scopedProjectId, fetchWindow);
-          const logs = db.getLogs(scopedProjectId, undefined, fetchWindow);
-          const memories = db.getAllAgentMemories(scopedProjectId, fetchWindow);
+          const proposals = db.getScopedProposals(effectiveProjectId, { limit: fetchWindow });
+          const projectTasks = db.getTaskBoardTasks({ projectId: effectiveProjectId, limit: fetchWindow });
+          const handoffs = db.getAllHandoffs(effectiveProjectId, fetchWindow);
+          const logs = db.getLogs(effectiveProjectId, undefined, fetchWindow);
+          const memories = db.getAllAgentMemories(effectiveProjectId, fetchWindow);
 
           const unified = [
             ...proposals.map(item => ({
