@@ -19,19 +19,18 @@ class SSEBroadcaster {
   }
 
   broadcast(event: object, projectId?: string): void {
+    // 安全加固：无 projectId 时跳过广播，防止事件泄露给所有已连接的 SSE 客户端
+    if (!projectId) return;
+
+    const clients = this.clientsByProject.get(projectId);
+    if (!clients || clients.size === 0) return;
+
     const data = `data: ${JSON.stringify(event)}\n\n`;
-
-    const targets = projectId
-      ? [this.clientsByProject.get(projectId) || new Set<express.Response>()]
-      : Array.from(this.clientsByProject.values());
-
-    for (const clients of targets) {
-      for (const client of clients) {
-        try {
-          client.write(data);
-        } catch (e) {
-          clients.delete(client);
-        }
+    for (const client of clients) {
+      try {
+        client.write(data);
+      } catch (e) {
+        clients.delete(client);
       }
     }
   }

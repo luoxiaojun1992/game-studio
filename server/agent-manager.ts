@@ -323,12 +323,20 @@ class AgentManager extends EventEmitter {
   }
 
   /**
-   * Builds the final system prompt by combining static role prompt and project memory summary.
+   * Builds the final system prompt by combining static role prompt, project context, and memory summary.
    */
   private buildSystemPrompt(projectId: string, agentId: AgentRole): string {
     const agentDef = AGENT_DEFINITIONS[agentId];
+    const projectContext = `
+
+## 当前项目上下文
+
+当前项目的 ID 为：**${projectId}**
+
+所有工具调用时必须传入正确的 \`project_id\` 参数（格式：\`[a-zA-Z0-9_-]+\`），用于隔离不同项目的数据。请确认当前操作的 project_id 为 \`${projectId}\`。
+`;
     const memorySummary = getMemorySummaryForPrompt(projectId, agentId);
-    return agentDef.systemPrompt + memorySummary;
+    return agentDef.systemPrompt + projectContext + memorySummary;
   }
 
   private sendTeamBuilderSummaryRequest(projectId: string, sourceAgentId: AgentRole, sourceTask: string, failureReason?: string): void {

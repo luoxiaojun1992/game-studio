@@ -40,7 +40,7 @@ const expectHandoff = (projectId: string, agentRole: string, toAgent: string) =>
     content: `${agentRole} 任务完成，正在移交给 ${toAgent}。`,
     toolCalls: [{
       name: 'create_handoff',
-      arguments: { to_agent_id: toAgent, title: `${agentRole} → ${toAgent} 任务完成交接`, description: `任务已完成，移交继续处理`, priority: 'high' }
+      arguments: { project_id: projectId, to_agent_id: toAgent, title: `${agentRole} → ${toAgent} 任务完成交接`, description: `任务已完成，移交继续处理`, priority: 'high' }
     }]
   });
 
@@ -331,15 +331,15 @@ const runFullWorkflowTest = async (
   await expectHandoff(projectId, 'architect', 'engineer');
   await setMockExpectation(projectId, 'engineer', {
     content: '提案已提交。',
-    toolCalls: [{ name: 'submit_proposal', arguments: { type: 'game_design', title: '最终技术方案', content: '# 技术架构方案' } }]
+    toolCalls: [{ name: 'submit_proposal', arguments: { project_id: projectId, type: 'game_design', title: '最终技术方案', content: '# 技术架构方案' } }]
   });
   await setMockExpectation(projectId, 'engineer', {
     content: '游戏已提交。',
-    toolCalls: [{ name: 'submit_game', arguments: { name: opts.gameName, html_content: `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${opts.gameName}</title><style>body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#1a1a2e;color:#eee}</style></head><body><div id="app"><h1>🎮 ${opts.gameName}</h1><p>这是一个由多Agent协作开发的游戏。</p></div></body></html>` } }]
+    toolCalls: [{ name: 'submit_game', arguments: { project_id: projectId, name: opts.gameName, html_content: `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${opts.gameName}</title><style>body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#1a1a2e;color:#eee}</style></head><body><div id="app"><h1>🎮 ${opts.gameName}</h1><p>这是一个由多Agent协作开发的游戏。</p></div></body></html>` } }]
   });
   await setMockExpectation(projectId, 'engineer', {
     content: '记忆已保存。',
-    toolCalls: [{ name: 'save_memory', arguments: { category: 'achievement', content: '项目完成' } }]
+    toolCalls: [{ name: 'save_memory', arguments: { project_id: projectId, category: 'achievement', content: '项目完成' } }]
   });
   await expectText(projectId, 'engineer', '开发任务全部完成。');
   log('mocks:all-queued');
