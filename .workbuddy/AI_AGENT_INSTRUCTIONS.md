@@ -11,6 +11,7 @@
    - [INDEX.md](../.agent/memory/INDEX.md)
    - 产物提交双模式（HTML/ZIP）与存储链路可查看 [ARCHITECTURE.md](../.agent/memory/ARCHITECTURE.md) 与 [LINT.md](../.agent/memory/LINT.md)
 3. 仅在需要 WorkBuddy 专属上下文时，再进入 `../.agent/memory/` 下细分文档。
+4. 工具调用已统一要求必填 `project_id`，并与当前会话作用域强一致校验；编写 mock/tool_calls 时必须显式传入。
 
 ## 目标
 

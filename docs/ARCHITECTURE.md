@@ -113,6 +113,8 @@ Browser (React + Vite)
 ## 8. Security and Isolation Considerations
 
 - Project-level isolation via `project_id` in data and event paths
+- Tool calls enforce `project_id` as required input and reject mismatches against session scope
+- SSE broadcaster skips emission when `projectId` is missing to avoid cross-project event leakage
 - Controlled route namespaces under `/api/*`
 - Output files are constrained to managed output directories
 - Tool usage is constrained by role and workflow rules

@@ -133,6 +133,7 @@ src/
 
 关键约束：
 
+- 所有工具都要求必填 `project_id` 参数，且会在 handler 内校验其与当前会话作用域（`scopedProjectId`）一致
 - `update_task_status` 仅接受完整 UUID `task_id`
 - 任务状态流转受限（`todo -> developing -> testing -> done`，含 `blocked` 分支）
 - 交接目标存在角色白名单
@@ -220,6 +221,7 @@ npm run build
 
 ## 10. 常见注意事项
 
+- `agent-manager.ts` 会在 system prompt 中注入“当前项目上下文”章节，确保 Agent 明确当前 `project_id`
 - 修改任务看板逻辑时，前后端都要同步更新状态定义与流转规则（`todo -> developing -> testing -> done`，含 `blocked`）
 - 新增事件时，记得更新 `src/types.ts` 的 `SSEEvent` 联合类型
 - 游戏预览接口直接返回 HTML，注意内容安全与来源可控

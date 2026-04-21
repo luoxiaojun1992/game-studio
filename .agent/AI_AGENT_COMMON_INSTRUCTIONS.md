@@ -23,8 +23,8 @@ Game Dev Studio 是一个基于 CodeBuddy Agent SDK 的多 Agent 游戏研发工
 ### 1. 项目隔离
 - 所有数据按 `project_id` 隔离
 - Agent 状态、记忆、日志、任务看板都绑定到具体项目
-- **project_id 由 `createStudioToolsServer(projectId, ...)` 在创建时注入 `scopedProjectId`**，工具内部直接使用，不依赖 LLM 输出参数
-- 真实场景 LLM 不会主动输出 `project_id`，所有工具统一内部获取
+- **所有自定义工具调用都必须显式传入 `project_id` 参数**
+- `createStudioToolsServer(projectId, ...)` 仍会注入 `scopedProjectId` 作为安全锚点，工具内部通过 `requireProjectId()` 强制校验输入 `project_id` 与当前会话作用域一致，拒绝跨项目操作
 
 ### 2. Agent 角色定义
 ```typescript
@@ -101,7 +101,7 @@ STAR_OFFICE_UI_URL=http://127.0.0.1:19000  # Star-Office-UI 地址
 - **禁止 workaround**：任何修改必须基于正确的根因分析，逻辑正确是底线
 - 遇到问题必须先定位根因，再修复，不能猜测或碰运气
 - **不允许为了"让测试通过"而放宽断言、加 fallback、或绕过正常流程**
-- **zod optional + default**：mock 必须显式传值，否则会悄悄取默认值导致跨项目数据丢失
+- **tool project_id 必填**：mock 与真实调用都必须传 `project_id`，且必须与当前会话作用域一致
 
 ### ✅ 可以安全修改的内容
 
@@ -149,7 +149,7 @@ npm run test:ui
 
 ### 添加新工具
 1. 在 `server/tools.ts` 中使用 `tool()` 定义
-2. 添加 zod schema 参数验证（**注意：project_id 应内部使用 scopedProjectId，不作为工具参数**）
+2. 添加 zod schema 参数验证（**注意：`project_id` 必须作为工具参数并设为必填，同时在 handler 内执行作用域一致性校验**）
 3. 在 `agents.ts` 的 `TOOLS_OVERVIEW` 中描述工具用途
 4. 如需自动授权，在 `agent-manager.ts` 的 `CAN_AUTO_ALLOW` 中添加
 
@@ -188,11 +188,11 @@ curl http://localhost:3001/__admin/mocks
 
 ### 工具调用失败
 - 检查工具名前缀是否为 `mcp__studio-tools__`（连字符）
-- 检查参数是否符合 zod schema（特别注意：工具不接收 project_id 参数）
+- 检查参数是否符合 zod schema（特别注意：工具必须传 `project_id`）
 - 查看 `agent-manager.ts` 中的权限配置
 
 ### 数据未持久化
-- 检查工具是否正确使用 `scopedProjectId`（不应依赖 LLM 传参）
+- 检查工具入参 `project_id` 是否与当前会话作用域匹配（不匹配会被 `requireProjectId` 拒绝）
 - 检查数据库文件权限
 - 查看 `db.ts` 中的错误处理
 

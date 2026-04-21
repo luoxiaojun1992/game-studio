@@ -11,3 +11,4 @@
    - [INDEX.md](../.agent/memory/INDEX.md)
    - 产物提交双模式（HTML/ZIP）与存储链路可查看 [ARCHITECTURE.md](../.agent/memory/ARCHITECTURE.md) 与 [LINT.md](../.agent/memory/LINT.md)
 3. 本文件仅保留入口与索引，不重复维护公共规范正文。
+4. 自定义工具调用必须显式传入 `project_id`，并通过会话作用域一致性校验；mock/tool_calls 必须与该约束保持一致。
