@@ -130,6 +130,8 @@ Each role includes:
 - `get_agents`
 - `get_proposals`
 - `get_pending_handoffs`
+- `get_games`
+- `get_game_info`
 - `get_project_latest_info` (team_builder only)
 
 Key constraints:
@@ -140,6 +142,8 @@ Key constraints:
 - Handoff targets are role-whitelisted
 - Handoff chain is role-constrained: `game_designer -> ceo -> architect -> engineer -> biz_designer`
 - `submit_game` supports two input modes: `html_content` or `file_path` (resolved under `output/{project_id}` only)
+- `get_games` returns current-project game entries in reverse chronological order with optional `limit` (`1..100`)
+- `get_game_info` returns full HTML for HTML-mode games, or MinIO presigned download URL for file-mode games
 
 ### 5.3 Star Office Sync Mechanism (`server/star-office-sync.ts`)
 
