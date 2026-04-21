@@ -96,7 +96,7 @@ services:
       - STAR_BACKEND_PORT=19000
       - FLASK_ENV=production
       - STAR_OFFICE_JOIN_KEY=${STAR_OFFICE_JOIN_KEY:-ocj_example_team_01}
-      - STAR_OFFICE_MAX_CONCURRENT=${STAR_OFFICE_MAX_CONCURRENT:-5}
+      - STAR_OFFICE_MAX_CONCURRENT=${STAR_OFFICE_MAX_CONCURRENT:-100}
       - STAR_OFFICE_SECRET=${STAR_OFFICE_SECRET:-your-secret-key-here-min-24-chars}
       - ASSET_DRAWER_PASS=${ASSET_DRAWER_PASS:-secure-pass-1234}
     volumes:

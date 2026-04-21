@@ -97,7 +97,7 @@ docker volume inspect game-dev-studio_studio-data
 | `VITE_API_BASE` | `http://studio-backend:3000` | Frontend build-time API base URL |
 | `VITE_STAR_OFFICE_UI_URL` | `http://star-office-ui:19000` | Frontend build-time Star Office URL |
 | `STAR_OFFICE_JOIN_KEY` | ocj_example_team_01 | Agent registration key |
-| `STAR_OFFICE_MAX_CONCURRENT` | 5 | Max concurrent agents per key |
+| `STAR_OFFICE_MAX_CONCURRENT` | 100 | Max concurrent agents per key |
 | `STAR_OFFICE_SECRET` | `your-secret-key-here-min-24-chars` | Star Office backend secret |
 | `ASSET_DRAWER_PASS` | `secure-pass-1234` | Star Office asset drawer password |
 
@@ -110,19 +110,19 @@ In Docker deployment, configuration is generated automatically and can be custom
 ```bash
 # Customize key and concurrency
 STAR_OFFICE_JOIN_KEY=my_custom_key
-STAR_OFFICE_MAX_CONCURRENT=10
+STAR_OFFICE_MAX_CONCURRENT=100
 ```
 
 Generated `join-keys.json` example:
 ```json
 {
   "keys": [
-    {"key": "my_custom_key", "maxConcurrent": 10}
+    {"key": "my_custom_key", "maxConcurrent": 100}
   ]
 }
 ```
 
-The `maxConcurrent` value for a key defines how many agents can register simultaneously. The current project includes six agents (`engineer`, `architect`, `game_designer`, `biz_designer`, `ceo`, `team_builder`), so set `STAR_OFFICE_MAX_CONCURRENT` to at least `6` for full registration.
+The `maxConcurrent` value for a key defines how many agents can register simultaneously. The current project includes six agents (`engineer`, `architect`, `game_designer`, `biz_designer`, `ceo`, `team_builder`). The default of `100` supports up to ~16 projects simultaneously. Adjust based on the number of concurrent projects.
 
 For advanced setup, mount a custom `join-keys.json`:
 

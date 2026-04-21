@@ -96,7 +96,7 @@ docker volume inspect game-dev-studio_studio-data
 | `VITE_API_BASE` | `http://studio-backend:3000` | 前端构建时 API 基地址 |
 | `VITE_STAR_OFFICE_UI_URL` | `http://star-office-ui:19000` | 前端构建时 Star Office 地址 |
 | `STAR_OFFICE_JOIN_KEY` | ocj_example_team_01 | Agent 注册密钥 |
-| `STAR_OFFICE_MAX_CONCURRENT` | 5 | 每个密钥最大并发 Agent 数 |
+| `STAR_OFFICE_MAX_CONCURRENT` | 100 | 每个密钥最大并发 Agent 数 |
 | `STAR_OFFICE_SECRET` | `your-secret-key-here-min-24-chars` | Star Office 后端密钥 |
 | `ASSET_DRAWER_PASS` | `secure-pass-1234` | Star Office 资源面板密码 |
 
@@ -109,19 +109,19 @@ Docker 部署时会自动生成配置，支持通过环境变量自定义：
 ```bash
 # 自定义密钥和并发数
 STAR_OFFICE_JOIN_KEY=my_custom_key
-STAR_OFFICE_MAX_CONCURRENT=10
+STAR_OFFICE_MAX_CONCURRENT=100
 ```
 
 生成的 `join-keys.json` 示例：
 ```json
 {
   "keys": [
-    {"key": "my_custom_key", "maxConcurrent": 10}
+    {"key": "my_custom_key", "maxConcurrent": 100}
   ]
 }
 ```
 
-一个 key 的 `maxConcurrent` 设置决定了可以同时注册多少个 Agent。当前项目包含 6 个 Agent（`engineer`、`architect`、`game_designer`、`biz_designer`、`ceo`、`team_builder`），建议将 `STAR_OFFICE_MAX_CONCURRENT` 设为至少 `6` 以确保全部注册。
+一个 key 的 `maxConcurrent` 设置决定了可以同时注册多少个 Agent。当前项目包含 6 个 Agent（`engineer`、`architect`、`game_designer`、`biz_designer`、`ceo`、`team_builder`）。默认值为 `100`，可支撑约 16 个 project 同时注册。根据实际 project 数量调优即可。
 
 如果需要更复杂的配置，可以挂载自定义的 `join-keys.json`：
 

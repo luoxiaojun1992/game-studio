@@ -431,20 +431,11 @@ app.post('/api/projects', (req, res) => {
   res.json({ project });
 });
 app.post('/api/projects/switch', async (req, res) => {
-  const fromProjectId = typeof req.body?.fromProjectId === 'string' ? req.body.fromProjectId.trim() : null;
-  const toProjectId = typeof req.body?.toProjectId === 'string' ? normalizeProjectId(req.body.toProjectId) : null;
-
-  if (!toProjectId) {
-    return res.status(400).json({ error: '缺少目标项目ID' });
-  }
-
-  try {
-    await starOfficeSyncService.switchProject(fromProjectId, toProjectId);
-    res.json({ success: true, fromProjectId, toProjectId });
-  } catch (error) {
-    console.error('[project-switch] Error:', error);
-    res.status(500).json({ error: '切换项目失败', details: String(error) });
-  }
+  // 多 project 架构下不再需要切换逻辑，所有 agent 始终同步
+  const toProjectId = typeof req.body?.toProjectId === 'string'
+    ? normalizeProjectId(req.body.toProjectId) : null;
+  if (!toProjectId) return res.status(400).json({ error: '缺少目标项目ID' });
+  res.json({ success: true });
 });
 
 // Game asset and preview APIs.
