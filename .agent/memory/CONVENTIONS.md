@@ -53,6 +53,8 @@
 
 | 错误做法 | 正确做法 | 影响 |
 |:---|:---|:---|
+| 删除迁移代码前未确认 DDL 是否已包含所有必要列 | 删除迁移代码时必须审查 DDL（CREATE TABLE）是否已包含迁移所添加的全部列 | 迁移删了但 DDL 没列 → submit_game 等静默报错，数据无法持久化 |
+| 推送前未 commit，直接 `git push -u origin branch` | 每次 push 前必须 `git status` 确认改动已 commit | 避免空分支 PR |
 | mock `submit_game` 不传或传错 project_id | 在 `toolCalls.arguments` 显式传入且与当前项目一致的 `project_id` | 避免 zod/作用域校验失败导致工具不执行 |
 | 用 class/文本选择器定位 DOM 元素 | 统一使用 `data-testid` 属性 + `getByTestId()` | DOM 结构变化不断言 |
 | 逐步等待固定时间（waitForTimeout 链式调用） | 目标状态驱动的事件循环 + 非阻塞轮询 | 测试更稳定、更快 |

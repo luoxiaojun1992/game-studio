@@ -136,6 +136,7 @@ db.exec(`
     name TEXT NOT NULL,
     description TEXT,
     html_content TEXT NOT NULL,
+    file_storage_id TEXT,
     proposal_id TEXT,
     version TEXT NOT NULL DEFAULT '1.0.0',
     status TEXT NOT NULL DEFAULT 'draft',
@@ -278,62 +279,6 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_file_storages_project ON file_storages(project_id);
 `);
-
-function hasColumn(tableName: 'proposals' | 'games' | 'agent_sessions' | 'commands' | 'handoffs' | 'agent_memories' | 'task_board_tasks' | 'file_storages', columnName: string): boolean {
-  const pragmaSql = tableName === 'proposals'
-    ? 'PRAGMA table_info(proposals)'
-    : tableName === 'games'
-      ? 'PRAGMA table_info(games)'
-      : tableName === 'agent_sessions'
-        ? 'PRAGMA table_info(agent_sessions)'
-        : tableName === 'commands'
-          ? 'PRAGMA table_info(commands)'
-          : tableName === 'handoffs'
-            ? 'PRAGMA table_info(handoffs)'
-            : tableName === 'agent_memories'
-              ? 'PRAGMA table_info(agent_memories)'
-              : tableName === 'task_board_tasks'
-                ? 'PRAGMA table_info(task_board_tasks)'
-                : 'PRAGMA table_info(file_storages)';
-  const rows = db.prepare(pragmaSql).all() as Array<{ name: string }>;
-  return rows.some(row => row.name === columnName);
-}
-
-function ensureProjectColumns(): void {
-  if (!hasColumn('proposals', 'project_id')) {
-    db.exec(`ALTER TABLE proposals ADD COLUMN project_id TEXT NOT NULL DEFAULT 'default';`);
-  }
-  if (!hasColumn('games', 'project_id')) {
-    db.exec(`ALTER TABLE games ADD COLUMN project_id TEXT NOT NULL DEFAULT 'default';`);
-  }
-  if (!hasColumn('games', 'file_storage_id')) {
-    db.exec(`ALTER TABLE games ADD COLUMN file_storage_id TEXT;`);
-  }
-  db.exec(`UPDATE proposals SET project_id = 'default' WHERE project_id IS NULL OR project_id = '';`);
-  db.exec(`UPDATE games SET project_id = 'default' WHERE project_id IS NULL OR project_id = '';`);
-}
-
-ensureProjectColumns();
-
-function ensureFileStorageColumns(): void {
-  // file_storages 表是新创建，DDL 已定义完整结构，无需列迁移
-}
-
-ensureFileStorageColumns();
-
-function ensureProjectIsolationColumns(): void {
-  if (!hasColumn('agent_sessions', 'project_id')) db.exec(`ALTER TABLE agent_sessions ADD COLUMN project_id TEXT NOT NULL DEFAULT 'default';`);
-  if (!hasColumn('commands', 'project_id')) db.exec(`ALTER TABLE commands ADD COLUMN project_id TEXT NOT NULL DEFAULT 'default';`);
-  if (!hasColumn('handoffs', 'project_id')) db.exec(`ALTER TABLE handoffs ADD COLUMN project_id TEXT NOT NULL DEFAULT 'default';`);
-  if (!hasColumn('agent_memories', 'project_id')) db.exec(`ALTER TABLE agent_memories ADD COLUMN project_id TEXT NOT NULL DEFAULT 'default';`);
-
-  db.exec(`UPDATE agent_sessions SET project_id = 'default' WHERE project_id IS NULL OR project_id = '';`);
-  db.exec(`UPDATE commands SET project_id = 'default' WHERE project_id IS NULL OR project_id = '';`);
-  db.exec(`UPDATE handoffs SET project_id = 'default' WHERE project_id IS NULL OR project_id = '';`);
-  db.exec(`UPDATE agent_memories SET project_id = 'default' WHERE project_id IS NULL OR project_id = '';`);
-}
-
-ensureProjectIsolationColumns();
 ensureProject('default');
 export interface DbAgentSession {
   id: string;
