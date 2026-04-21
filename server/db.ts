@@ -136,6 +136,7 @@ db.exec(`
     name TEXT NOT NULL,
     description TEXT,
     html_content TEXT NOT NULL,
+    file_storage_id TEXT,
     proposal_id TEXT,
     version TEXT NOT NULL DEFAULT '1.0.0',
     status TEXT NOT NULL DEFAULT 'draft',
