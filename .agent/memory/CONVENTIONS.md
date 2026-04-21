@@ -56,7 +56,9 @@
 | 删除迁移代码前未确认 DDL 是否已包含所有必要列 | 删除迁移代码时必须审查 DDL（CREATE TABLE）是否已包含迁移所添加的全部列 | 迁移删了但 DDL 没列 → submit_game 等静默报错，数据无法持久化 |
 | 推送前未 commit，直接 `git push -u origin branch` | 每次 push 前必须 `git status` 确认改动已 commit | 避免空分支 PR |
 | mock `submit_game` 不传或传错 project_id | 在 `toolCalls.arguments` 显式传入且与当前项目一致的 `project_id` | 避免 zod/作用域校验失败导致工具不执行 |
-| 用 class/文本选择器定位 DOM 元素 | 统一使用 `data-testid` 属性 + `getByTestId()` | DOM 结构变化不断言 |
+| Docker 构建时基础镜像包名写错（如 `libxi-6` 而非 `libxi6`） | Ubuntu 24.04 包名无横杠，且部分包已更名（如 `libasound2` → `libasound2t64`）| 构建失败 |
+| `uvicorn app.main:app` 启动时，用相对包名 `from schemas import` | 必须用完整包名 `from app.schemas import`，因为解释器工作目录是 `/app` 而非 `app/` 上级 | ModuleNotFoundError |
+| 使用第三方 Blender Docker 镜像（`blenderai/blender` 等）| Blender 官方 `download.blender.org` 提供稳定公开二进制，用 `ubuntu:24.04 + 官方tarball` 自建更可控 | 镜像不存在或失联导致构建失败 |
 | 逐步等待固定时间（waitForTimeout 链式调用） | 目标状态驱动的事件循环 + 非阻塞轮询 | 测试更稳定、更快 |
 | UI-007/008 各写独立测试逻辑 | 抽取 `runFullWorkflowTest()` 共享函数 + WorkflowOptions 参数化 | 消除重复代码，降低维护成本 |
 | 手动模式下在循环外 accept/confirm | 循环体内每轮尝试 tryAcceptAnyPending + tryConfirmAnyAccepted | 适应异步事件到达时序不确定性 |
