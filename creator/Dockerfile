@@ -1,17 +1,38 @@
 # Creator Service — Blender + FastAPI
-FROM blenderai/blender:4.2.1
+# Uses official Blender binary release (downloaded at build time)
+FROM ubuntu:24.04
 
-# Install Python dependencies for FastAPI
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install Blender dependencies + Python + curl
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
     python3-pip \
     curl \
+    libgl1 \
+    libglib2.0-0 \
+    libgomp1 \
+    libx11-6 \
+    libxrender1 \
+    libxi-6 \
+    libxkbcommon0 \
+    libxkbcommon-x11-0 \
+    libxxf86vm1 \
+    libopengl0 \
     && rm -rf /var/lib/apt/lists/*
+
+# Download and install official Blender 4.2.1 binary (headless)
+# Official releases are freely downloadable without authentication
+RUN mkdir /opt/blender && \
+    curl -fsSL "https://download.blender.org/release/Blender4.2/blender-4.2.1-linux-x64.tar.xz" \
+    | tar xJf - -C /opt/blender --strip-components=1 && \
+    ln -sf /opt/blender/blender /usr/local/bin/blender
 
 WORKDIR /app
 
 # Copy FastAPI app
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip3 install --no-cache-dir -r requirements.txt
 
 COPY app/ ./app/
 
