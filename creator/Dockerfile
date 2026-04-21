@@ -34,7 +34,7 @@ WORKDIR /app
 
 # Copy FastAPI app
 COPY requirements.txt .
-RUN pip3 install --no-cache-dir -r requirements.txt
+RUN pip3 install --no-cache-dir --break-system-packages -r requirements.txt
 
 COPY app/ ./app/
 
