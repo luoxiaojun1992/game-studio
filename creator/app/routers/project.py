@@ -6,7 +6,7 @@ import os
 from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import JSONResponse
 
-from schemas import ProjectCreateResponse, ProjectInfo, _validate_project_id
+from app.schemas import ProjectCreateResponse, ProjectInfo, _validate_project_id
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
 

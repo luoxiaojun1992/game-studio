@@ -7,7 +7,7 @@ from datetime import datetime
 from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import FileResponse, JSONResponse
 
-from schemas import FileItem, FileListResponse, _validate_project_id
+from app.schemas import FileItem, FileListResponse, _validate_project_id
 
 router = APIRouter(prefix="/api/files", tags=["files"])
 

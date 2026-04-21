@@ -7,7 +7,7 @@ All routes validate project_id before calling into Blender.
 import os
 from fastapi import APIRouter, HTTPException, status
 
-from schemas import (
+from app.schemas import (
     AddMaterialRequest,
     AddModifierRequest,
     BlenderOperationResponse,
@@ -17,8 +17,8 @@ from schemas import (
     ExportRequest,
     _validate_project_id,
 )
-from blender import BlenderError, execute_script
-from operations import (
+from app.blender import BlenderError, execute_script
+from app.operations import (
     add_material,
     add_modifier,
     boolean_operation,
