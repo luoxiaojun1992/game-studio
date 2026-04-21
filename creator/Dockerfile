@@ -14,11 +14,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgomp1 \
     libx11-6 \
     libxrender1 \
-    libxi-6 \
+    libxi6 \
     libxkbcommon0 \
-    libxkbcommon-x11-0 \
     libxxf86vm1 \
     libopengl0 \
+    libasound2 \
+    libglvnd0 \
     && rm -rf /var/lib/apt/lists/*
 
 # Download and install official Blender 4.2.1 binary (headless)
