@@ -765,6 +765,114 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           };
         }
       ),
+
+      tool(
+        'get_games',
+        '获取当前项目下已提交的游戏成品列表，按时间倒序返回。用于查看有哪些游戏已提交及其基本信息。',
+        {
+          project_id: projectIdSchema.describe('当前项目 ID，必填，用于隔离不同项目的数据'),
+          limit: z.number().min(1).max(100).optional().default(20).describe('返回条数上限')
+        },
+        async ({ project_id, limit }) => {
+          const effectiveProjectId = requireProjectId(project_id);
+          const allGames = db.getAllGames().filter(g => g.project_id === effectiveProjectId);
+          const games = allGames.slice(0, limit || 20).map(g => ({
+            id: g.id,
+            name: g.name,
+            description: g.description,
+            version: g.version,
+            status: g.status,
+            author_agent_id: g.author_agent_id,
+            created_at: g.created_at,
+            hasContent: g.html_content !== 'FILE_ONLY',
+            isFileOnly: g.html_content === 'FILE_ONLY'
+          }));
+          if (games.length === 0) {
+            return {
+              content: [{ type: 'text' as const, text: '当前项目下还没有提交过游戏。' }]
+            };
+          }
+          const lines = games.map(g =>
+            `[${g.status}] ${g.name} v${g.version} | ${g.isFileOnly ? '文件模式' : 'HTML模式'} | by=${g.author_agent_id} | ${g.created_at.slice(0, 10)}`
+          ).join('\n');
+          return {
+            content: [{ type: 'text' as const, text: lines }]
+          };
+        }
+      ),
+
+      tool(
+        'get_game_info',
+        '获取指定游戏的详细信息。若为 HTML 模式游戏则返回完整 HTML 内容（可直接在浏览器预览）；若为文件模式游戏则返回 MinIO presigned 下载链接。',
+        {
+          project_id: projectIdSchema.describe('当前项目 ID，必填，用于隔离不同项目的数据'),
+          game_id: z.string().describe('游戏 ID')
+        },
+        async ({ project_id, game_id }) => {
+          const effectiveProjectId = requireProjectId(project_id);
+          const game = db.getGame(game_id);
+          if (!game) {
+            return {
+              content: [{ type: 'text' as const, text: `游戏不存在：${game_id}` }]
+            };
+          }
+          if (game.project_id !== effectiveProjectId) {
+            return {
+              content: [{ type: 'text' as const, text: '游戏不存在或无权限访问。' }]
+            };
+          }
+          // HTML 模式：直接返回完整内容
+          if (game.html_content !== 'FILE_ONLY') {
+            const result = {
+              id: game.id,
+              name: game.name,
+              description: game.description,
+              version: game.version,
+              status: game.status,
+              author_agent_id: game.author_agent_id,
+              created_at: game.created_at,
+              hasContent: true,
+              isFileOnly: false,
+              html_content: game.html_content
+            };
+            return {
+              content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }]
+            };
+          }
+          // 文件模式：生成 MinIO presigned 下载链接
+          const storage = db.getFileStorage(game.file_storage_id!);
+          if (!storage) {
+            return {
+              content: [{ type: 'text' as const, text: `游戏文件记录不存在（ID: ${game.file_storage_id}），无法获取下载链接。` }]
+            };
+          }
+          const fullObjectKey = `${storage.project_id}/${storage.object_key}`;
+          let downloadUrl: string;
+          try {
+            downloadUrl = await getPresignedDownloadUrl(fullObjectKey);
+          } catch (error: any) {
+            return {
+              content: [{ type: 'text' as const, text: `生成下载链接失败：${error?.message || String(error)}` }]
+            };
+          }
+          const result = {
+            id: game.id,
+            name: game.name,
+            description: game.description,
+            version: game.version,
+            status: game.status,
+            author_agent_id: game.author_agent_id,
+            created_at: game.created_at,
+            hasContent: false,
+            isFileOnly: true,
+            downloadUrl
+          };
+          return {
+            content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }]
+          };
+        }
+      ),
+
       tool(
         'get_project_latest_info',
         '查询当前项目最新 n 条关键信息，覆盖提案、任务、交接、日志、记忆，供总结提炼使用。',
