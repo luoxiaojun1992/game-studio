@@ -453,7 +453,7 @@ class AgentManager extends EventEmitter {
         }
       );
       const modelingToolsServer = createModelingToolsServer(scopedProjectId, agentId, (aid, action, detail, level) => {
-        this.addLog(scopedProjectId, aid, action, detail, level);
+        this.addLog(scopedProjectId, aid as AgentRole, action, detail, level);
       });
       const settings = db.getProjectSettings(scopedProjectId);
       const autopilotEnabled = settings.autopilot_enabled === 1;

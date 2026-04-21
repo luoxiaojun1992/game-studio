@@ -5,7 +5,7 @@
  * （由调用方在注册时注入 closure）。
  */
 import { z } from 'zod';
-import { tool, type SdkMcpServerResult } from '@tencent-ai/agent-sdk';
+import { tool, createSdkMcpServer, type SdkMcpServerResult } from '@tencent-ai/agent-sdk';
 import { v4 as uuidv4 } from 'uuid';
 import * as db from './db.js';
 
