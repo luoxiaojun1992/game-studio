@@ -15,6 +15,7 @@ import {
   getPresignedDownloadUrl
 } from './file-storage.js';
 import { lintZipBuffer } from './lint/index.js';
+import { createModelingToolsServer } from './modeling-tool.js';
 
 /**
  */
@@ -933,9 +934,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
   return server;
 }
 
-/**
- */
-export function getMemorySummaryForPrompt(projectId: string, agentId: AgentRole): string {
+export function getMemorySummaryForPrompt(projectId: string, agentId: string): string {
   const memories = db.getAgentMemories(projectId, agentId, { limit: 20 });
   if (memories.length === 0) return '';
 
@@ -950,3 +949,4 @@ export function getMemorySummaryForPrompt(projectId: string, agentId: AgentRole)
 ${summary}
 `;
 }
+

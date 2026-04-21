@@ -7,6 +7,7 @@ import { AgentRole, AGENT_DEFINITIONS, AGENT_IDS } from './agents.js';
 import * as db from './db.js';
 import { sseBroadcaster } from './sse-broadcaster.js';
 import { createStudioToolsServer, getMemorySummaryForPrompt } from './tools.js';
+import { createModelingToolsServer } from './modeling-tool.js';
 
 const CODEBUDDY_BASE_URL = process.env.CODEBUDDY_BASE_URL?.trim() || undefined;
 
@@ -451,6 +452,9 @@ class AgentManager extends EventEmitter {
           this.dispatchAutoHandoffTask(handoff);
         }
       );
+      const modelingToolsServer = createModelingToolsServer(scopedProjectId, agentId, (aid, action, detail, level) => {
+        this.addLog(scopedProjectId, aid, action, detail, level);
+      });
       const settings = db.getProjectSettings(scopedProjectId);
       const autopilotEnabled = settings.autopilot_enabled === 1;
 
@@ -468,7 +472,17 @@ class AgentManager extends EventEmitter {
         'get_task',
         'get_tasks',
         ...(autopilotEnabled ? ['create_handoff', 'submit_proposal', 'submit_game'] : []),
-        ...(agentId === 'engineer' ? ['split_dev_test_tasks', 'update_task_status'] : [])
+        ...(agentId === 'engineer' ? ['split_dev_test_tasks', 'update_task_status'] : []),
+        // Modeling tools - all auto-allow (no external side effects beyond container storage)
+        'create_modeling_project',
+        'list_modeling_projects',
+        'delete_modeling_project',
+        'blender_create_mesh',
+        'blender_add_material',
+        'blender_export_model',
+        'blender_execute_script',
+        'download_model_file',
+        'delete_model_file',
       ];
       const STUDIO_TOOL_PREFIX = 'mcp__studio_tools__';
       const STUDIO_TOOL_NAMES = new Set<string>([
@@ -478,13 +492,31 @@ class AgentManager extends EventEmitter {
         'submit_proposal',
         'submit_game'
       ]);
+      const MODELING_TOOL_PREFIX = 'mcp__modeling_tools__';
+      const MODELING_TOOL_NAMES = new Set<string>([
+        'create_modeling_project',
+        'list_modeling_projects',
+        'delete_modeling_project',
+        'blender_create_mesh',
+        'blender_add_material',
+        'blender_export_model',
+        'blender_execute_script',
+        'download_model_file',
+        'delete_model_file',
+      ]);
       const READ_ONLY_SDK_TOOLS = ['Read', 'Grep', 'WebSearch', 'WebFetch', 'Glob'];
 
       const canUseTool: CanUseTool = async (toolName, input, options) => {
         const hasStudioPrefix = toolName.startsWith(STUDIO_TOOL_PREFIX);
-        const actualTool = hasStudioPrefix ? toolName.replace(STUDIO_TOOL_PREFIX, '') : toolName;
+        const hasModelingPrefix = toolName.startsWith(MODELING_TOOL_PREFIX);
+        const actualTool = hasStudioPrefix
+          ? toolName.replace(STUDIO_TOOL_PREFIX, '')
+          : hasModelingPrefix
+            ? toolName.replace(MODELING_TOOL_PREFIX, '')
+            : toolName;
         const isStudioTool = hasStudioPrefix || STUDIO_TOOL_NAMES.has(actualTool);
-        if (isStudioTool) {
+        const isModelingTool = hasModelingPrefix || MODELING_TOOL_NAMES.has(actualTool);
+        if (isStudioTool || isModelingTool) {
           if (CAN_AUTO_ALLOW.includes(actualTool)) {
             return { behavior: 'allow', updatedInput: input };
           }
@@ -553,7 +585,8 @@ class AgentManager extends EventEmitter {
           permissionMode: 'default',
           canUseTool,
           mcpServers: {
-            'studio-tools': studioToolsServer
+            'studio-tools': studioToolsServer,
+            'modeling-tools': modelingToolsServer,
           },
           env: {
             CODEBUDDY_CUSTOM_HEADERS: `X-Project-Id: ${scopedProjectId}\nX-Agent-Role: ${agentId}`
