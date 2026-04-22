@@ -11,11 +11,6 @@ export const api = {
     if (projectId) params.set('projectId', projectId);
     return fetch(`${API_BASE}/api/agents?${params}`).then(r => r.json());
   },
-  getAgentMessages: (agentId: string, projectId?: string) => {
-    const params = new URLSearchParams();
-    if (projectId) params.set('projectId', projectId);
-    return fetch(`${API_BASE}/api/agents/${agentId}/messages?${params}`).then(r => r.json());
-  },
   pauseAgent: (agentId: string, projectId?: string) =>
     fetch(`${API_BASE}/api/agents/${agentId}/pause`, {
       method: 'POST',

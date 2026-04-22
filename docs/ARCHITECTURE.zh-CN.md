@@ -78,7 +78,7 @@ data/studio.db     output/{project_id}/...
 - 主要表包括：
   - `projects`
   - `project_settings`
-  - `agent_sessions`、`agent_messages`
+  - `agent_sessions`
   - `proposals`
   - `task_board_tasks`
   - `handoffs`
@@ -93,7 +93,7 @@ data/studio.db     output/{project_id}/...
 - 打包模式游戏产物上传 MinIO，并通过 `games.file_storage_id` 关联
 - 数据与产物按 `project_id` 隔离
 - `games` 已移除 `author_agent_id`，如需追溯作者应从工作流上下文中获取。
-- `agent_messages`、`logs`、`commands`、`permission_requests` 均包含 `updated_at`，用于状态变更追踪。
+- `logs`、`commands`、`permission_requests` 均包含 `updated_at`，用于状态变更追踪。
 
 ## 6. 通信模型
 

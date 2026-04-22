@@ -165,7 +165,7 @@ Main endpoints (prefix `/api`):
 - Tasks: `/tasks` `/tasks/:id/status`
 - Memory: `/agents/:agentId/memories`(GET/POST/DELETE) `/memories` `/memories/:id`
 - Logs: `/projects/:projectId/logs`(GET/DELETE)
-- Sessions and commands: `/agents/:agentId/messages`(DELETE) `/commands`
+- Sessions and commands: `/commands`
 - Permission: `/permission-response`
 
 `/api/projects/switch` is now a lightweight project-context switch endpoint and no longer triggers Star-Office agent offline/online transitions.
@@ -176,7 +176,7 @@ Main endpoints (prefix `/api`):
 - MCP custom tool schemas no longer require `project_id`; backend injects scoped project context at tool-server initialization and enforces isolation internally.
 - Database tables are initialized by the `CREATE TABLE` DDL in `server/db.ts`; when changing schema, update DDL first and use migrations only for legacy data backfill.
 - `games` no longer stores `author_agent_id`; `/api/games` and `submit_game` no longer require this field.
-- `agent_messages`, `logs`, `commands`, and `permission_requests` all include `updated_at` for lifecycle/audit tracking.
+- `logs`, `commands`, and `permission_requests` all include `updated_at` for lifecycle/audit tracking.
 - Proposal/game submissions are also written to `output/{project_id}/...`.
 - `submit_game` supports two modes: HTML content mode (`html_content`) and packaged file mode (`file_path` -> ZIP -> `file_storage_id`).
 - `get_games` lists submitted games in the current project (newest first, with basic metadata and mode flags).
