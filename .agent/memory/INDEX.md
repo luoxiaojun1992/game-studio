@@ -17,7 +17,7 @@
 ## 快速参考
 
 ### 核心架构
-- 所有工具调用必须显式传 `project_id`，并与会话作用域 `scopedProjectId` 一致
+- 工具 schema 已移除 `project_id` 入参，项目作用域由后端注入 `scopedProjectId` 并在工具内部统一生效
 - MCP 工具执行是进程内通信，Mock Server 只返回 tool_calls
 - 6 个 Agent 中 team_builder 需特别检测（易与 CEO 混淆）
 - `submit_game` 支持 HTML 与文件打包双模式；文件模式会上传 MinIO 并回写 `file_storage_id`
@@ -26,7 +26,7 @@
 
 ### E2E 测试关键
 - 选择器不匹配 → 前端加 `data-testid` → 测试用属性选
-- gameCount=0/工具失败高频根因：mock 缺失或传错 `project_id`，被 zod/作用域校验拒绝
+- gameCount=0/工具失败高频根因：mock 的 `toolCalls.arguments` 与当前 zod schema 不一致（如继续传 `project_id` 或缺必填字段）
 - SSE reconnect bug：`connectedRef.current` 阻止重连
 
 ### 工作红线

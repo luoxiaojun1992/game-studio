@@ -147,7 +147,7 @@ src/
 
 关键约束：
 
-- 所有工具都要求必填 `project_id` 参数，且会在 handler 内校验其与当前会话作用域（`scopedProjectId`）一致
+- 工具 schema 已不再要求传 `project_id`；项目作用域在创建工具服务时注入，并在内部通过 `scopedProjectId` 执行隔离校验
 - `update_task_status` 仅接受完整 UUID `task_id`
 - 任务状态流转受限（`todo -> developing -> testing -> done`，含 `blocked` 分支）
 - 交接目标存在角色白名单
@@ -204,7 +204,7 @@ Lint 框架采用**可插拔注册式架构**（`server/lint/`）：
 1. 在 `server/lint/checkers/*.ts` 创建新文件
 2. 实现 `LintChecker` 接口（id、name、description、`check()` 方法）
 3. 在 `server/lint/checkers/index.ts` 注册（加入 `builtInCheckers` 数组）
-4. 内置检查器：`html-structure`（6 条 error 规则）+ `js-security`（4 条 warn 规则）
+4. 内置检查器：`html-structure`（6 条 error 规则）+ `http-method`（HTTP 方法安全，error 级）+ `js-security`（4 条 warn 规则）
 5. error 级别 issue **阻断** `submit_game`，warn 级别仅记录日志
 6. HTML 模式检查 `html_content`；ZIP 模式会逐个检查包内 HTML，遇到首个 error 即阻断
 

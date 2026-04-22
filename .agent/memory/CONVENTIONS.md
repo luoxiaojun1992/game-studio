@@ -36,9 +36,9 @@
 - systemPrompt 中有强制规则要求双任务状态同步
 
 ## project_id 架构原则
-- 所有工具调用都必须显式传入 `project_id` 参数
+- 工具 schema 已移除 `project_id` 入参
 - `createStudioToolsServer(projectId, ...)` 在创建时注入 `scopedProjectId`
-- 工具通过 `requireProjectId` 校验传入值与 scopedProjectId 一致，拒绝跨项目
+- 工具运行时统一使用 `scopedProjectId`，拒绝跨项目访问
 - 受影响工具: `split_dev_test_tasks`、`get_tasks`、`submit_proposal`、`submit_game`
 - 与 `create_handoff`、`get_logs`、`get_proposals`、`get_pending_handoffs` 保持一致
 - `enforceProject` 已成死代码，已删除
@@ -55,7 +55,7 @@
 |:---|:---|:---|
 | 删除迁移代码前未确认 DDL 是否已包含所有必要列 | 删除迁移代码时必须审查 DDL（CREATE TABLE）是否已包含迁移所添加的全部列 | 迁移删了但 DDL 没列 → submit_game 等静默报错，数据无法持久化 |
 | 推送前未 commit，直接 `git push -u origin branch` | 每次 push 前必须 `git status` 确认改动已 commit | 避免空分支 PR |
-| mock `submit_game` 不传或传错 project_id | 在 `toolCalls.arguments` 显式传入且与当前项目一致的 `project_id` | 避免 zod/作用域校验失败导致工具不执行 |
+| mock 继续传已移除的 `project_id` 或漏传新必填参数 | 让 `toolCalls.arguments` 与当前 zod schema 严格一致（不要再传 `project_id`） | 避免参数校验失败导致工具不执行 |
 | Docker 构建时基础镜像包名写错（如 `libxi-6` 而非 `libxi6`） | Ubuntu 24.04 包名无横杠，且部分包已更名（如 `libasound2` → `libasound2t64`）| 构建失败 |
 | `uvicorn app.main:app` 启动时，用相对包名 `from schemas import` | 必须用完整包名 `from app.schemas import`，因为解释器工作目录是 `/app` 而非 `app/` 上级 | ModuleNotFoundError |
 | 使用第三方 Blender Docker 镜像（`blenderai/blender` 等）| Blender 官方 `download.blender.org` 提供稳定公开二进制，用 `ubuntu:24.04 + 官方tarball` 自建更可控 | 镜像不存在或失联导致构建失败 |

@@ -16,6 +16,7 @@ server/lint/
 └── checkers/
     ├── index.ts          ← 内置检查器注册表
     ├── html-structure.ts ← HTML 结构检查器
+    ├── http-method-checker.ts ← HTTP 方法安全检查器
     └── js-security.ts    ← JS 安全检查器
 ```
 
@@ -93,6 +94,12 @@ const result = lintGameContent(htmlContent, { fileName: 'snake.html' });
 | `html-charset` | 字符编码 | 必须有 `<meta charset="utf-8">` 或等效声明 |
 | `html-body-not-empty` | body 非空 | body 不能为空白 |
 
+### http-method — HTTP 方法安全检查（error）
+
+- 检测 `fetch` 与 `XMLHttpRequest.open` 中声明的方法
+- 阻断明显非安全写操作方法（如 `POST`、`PUT`、`DELETE`、`PATCH`）
+- 命中后按 error 级 issue 直接阻断 `submit_game`
+
 ### js-security — JS 安全检查（4 条，全 warn）
 
 | ruleId | 检查项 | 说明 |
@@ -127,6 +134,7 @@ export const sensitiveWordChecker: LintChecker = {
 // 2. 在 server/lint/checkers/index.ts 的 builtInCheckers 数组中添加
 export const builtInCheckers: LintChecker[] = [
   htmlStructureChecker,
+  httpMethodChecker,
   jsSecurityChecker,
   sensitiveWordChecker,     // ← 加这一行
 ];
@@ -136,7 +144,7 @@ export const builtInCheckers: LintChecker[] = [
 
 ## E2E 兼容性
 
-测试中 Mock Server 返回的 `submit_game` HTML 内容已包含完整 DOCTYPE + html/head/meta charset/body 骨架，且不含 eval/innerHTML 等危险调用，**天然通过所有 10 条规则**，无需调整测试数据或 mock 配置。
+测试中 Mock Server 返回的 `submit_game` HTML 内容已包含完整 DOCTYPE + html/head/meta charset/body 骨架，不含受阻断的 HTTP 写操作方法，也不含 eval/innerHTML 等危险调用，**可通过现有内置规则**，无需调整测试数据或 mock 配置。
 
 ## 工程决策与经验
 

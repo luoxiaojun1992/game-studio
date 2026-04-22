@@ -13,6 +13,7 @@
 - `server/lint/types.ts` - 核心类型：LintChecker 接口、LintIssue、LintResult
 - `server/lint/index.ts` - LintRunner 运行时 + lintGameContent() 便捷入口
 - `server/lint/checkers/html-structure.ts` - HTML 结构检查器（6 条 error 规则）
+- `server/lint/checkers/http-method-checker.ts` - HTTP 方法安全检查器（error 级，阻断非安全方法）
 - `server/lint/checkers/js-security.ts` - JS 安全检查器（4 条 warn 规则）
 - `server/agent-manager.ts` - Agent 管理器，通过 mcpServers 注册自定义工具
 - `server/agents.ts` - Agent 定义 + 系统提示词（TOOLS_OVERVIEW）
@@ -32,7 +33,7 @@
 - zod 依赖用于定义工具的参数 schema
 - 内置工具覆盖记忆、任务拆分、任务看板、交接、提案、游戏提交、日志查询等核心流程（以 `server/tools.ts` 为准）
 - Blender 建模工具（`blender_*`）已并入同一 studio-tools server，由 `creator-service.ts` 统一调用 creator API
-- 所有工具调用都要求显式传入 project_id，并通过 scopedProjectId 做一致性校验
+- 工具 schema 已移除 `project_id` 入参，项目作用域由工具服务初始化时注入 scopedProjectId 并在工具内部执行
 
 ## Agent 角色
 - 6 个 Agent: `game_designer`, `architect`, `engineer`, `biz_designer`, `ceo`, `team_builder`
@@ -122,7 +123,7 @@ game-dev-studio/
   - `get_game_info`：按游戏 ID 获取详情；HTML 模式返回完整 HTML，文件模式返回 MinIO 预签名下载链接。
   - `get_proposals`：获取当前项目的提案列表。
   - `get_pending_handoffs`：获取待处理的交接任务。
-- **项目隔离**：每个工具都要求传 `project_id`，并通过 `requireProjectId` 校验其与 `scopedProjectId` 一致，拒绝跨项目。
+- **项目隔离**：工具不再接收 `project_id` 入参，统一依赖初始化注入的 `scopedProjectId` 实现项目内隔离与拒绝跨项目。
 - **权限检查**：部分工具（如 `submit_proposal`）会验证调用 Agent 的角色是否允许执行该操作。
 - **产物存储**：文件模式通过 `file_storage_id` 关联 `file_storages` 元数据并提供下载能力。
 
@@ -200,7 +201,7 @@ ui-e2e                         ← Playwright CI 执行
 2. **Agent 工作流**：
    - 用户通过 CommandPanel 向指定 Agent 发送指令。
    - AgentManager 创建该 Agent 的 SDK 会话，注入工具服务器。
-- Agent 调用工具（如 `submit_game`）时需传 `project_id`，工具校验通过后再按该项目写入数据库。
+- Agent 调用工具（如 `submit_game`）时无需再传 `project_id`，工具直接使用 `scopedProjectId` 写入当前项目数据库。
    - 数据库变更触发 SSE 广播，前端实时更新游戏列表。
 3. **任务交接流**：
    - 源 Agent 调用 `create_handoff` 创建交接记录。

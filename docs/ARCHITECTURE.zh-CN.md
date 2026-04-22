@@ -66,8 +66,8 @@ data/studio.db     output/{project_id}/...
 - **任务（Tasks）**：开发/测试任务拆分与状态流转
 - **交接（Handoffs）**：跨角色任务移交与确认执行
 - **产物（Games）**：支持 HTML 成品或打包产物提交，支持列表、预览与文件下载
-- **建模（Modeling）**：Blender project 管理、几何体/材质/导出/脚本执行与模型文件回传
-- **静态分析（Lint/Quality）**：可扩展静态检查框架，支持 HTML 结构、JS 安全等可插拔检查器
+- **建模（Modeling）**：Blender project 管理、几何体/材质/导出与模型文件回传
+- **静态分析（Lint/Quality）**：可扩展静态检查框架，支持 HTML 结构、HTTP 方法安全、JS 安全等可插拔检查器
 - **记忆（Memories）**：按角色/项目组织的长期记忆
 - **观测（Logs/Events）**：运行日志与事件流
 - **权限（Permissions）**：工具执行审批流与回调响应
@@ -118,7 +118,7 @@ data/studio.db     output/{project_id}/...
 ## 8. 安全与隔离要点
 
 - 通过 `project_id` 实现项目级数据与事件隔离
-- 工具调用强制要求 `project_id` 入参，并校验其与当前会话作用域一致
+- 工具 schema 不再要求 `project_id` 入参；后端注入运行时项目作用域并在内部执行隔离校验
 - SSE 广播在缺失 `projectId` 时直接跳过，避免跨项目事件泄露
 - 模型文件下载/删除仅允许操作 `output/{project_id}/models` 安全路径，防止路径穿越
 - 路由统一在 `/api/*` 命名空间下管理

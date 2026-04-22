@@ -66,8 +66,8 @@ data/studio.db     output/{project_id}/...
 - **Tasks**: development/testing decomposition and status transitions
 - **Handoffs**: cross-role ownership transfer and confirmation flow
 - **Games**: HTML artifact submission or packaged artifact submission, listing, preview, and file download
-- **Modeling**: Blender project management, mesh/material/export/script execution, and model file pullback
-- **Lint/Quality**: extensible static analysis framework with pluggable checkers (HTML structure, JS security, etc.)
+- **Modeling**: Blender project management, mesh/material/export, and model file pullback
+- **Lint/Quality**: extensible static analysis framework with pluggable checkers (HTML structure, HTTP method safety, JS security, etc.)
 - **Memories**: long-term memory records scoped by role/project
 - **Logs/Observability**: runtime logs and stream events
 - **Permissions**: tool execution approval lifecycle and response callbacks
@@ -118,7 +118,7 @@ data/studio.db     output/{project_id}/...
 ## 8. Security and Isolation Considerations
 
 - Project-level isolation via `project_id` in data and event paths
-- Tool calls enforce `project_id` as required input and reject mismatches against session scope
+- Tool schemas do not require `project_id`; runtime scope is injected by backend and enforced internally
 - SSE broadcaster skips emission when `projectId` is missing to avoid cross-project event leakage
 - Model file download/delete enforces safe-path constraints inside `output/{project_id}/models`
 - Controlled route namespaces under `/api/*`

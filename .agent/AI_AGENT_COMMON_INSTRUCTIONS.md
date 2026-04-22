@@ -23,8 +23,8 @@ Game Dev Studio 是一个基于 CodeBuddy Agent SDK 的多 Agent 游戏研发工
 ### 1. 项目隔离
 - 所有数据按 `project_id` 隔离
 - Agent 状态、记忆、日志、任务看板都绑定到具体项目
-- **所有自定义工具调用都必须显式传入 `project_id` 参数**
-- `createStudioToolsServer(projectId, ...)` 仍会注入 `scopedProjectId` 作为安全锚点，工具内部通过 `requireProjectId()` 强制校验输入 `project_id` 与当前会话作用域一致，拒绝跨项目操作
+- 自定义工具 schema 不再要求显式传入 `project_id` 参数
+- `createStudioToolsServer(projectId, ...)` 会注入 `scopedProjectId` 作为安全锚点，工具内部统一使用该作用域执行项目隔离，拒绝跨项目操作
 - Star-Office 同步为多项目持续同步模型，`/api/projects/switch` 不再触发 Agent offline/online 同步切换
 
 ### 2. Agent 角色定义
@@ -105,7 +105,7 @@ STAR_OFFICE_UI_URL=http://127.0.0.1:19000  # Star-Office-UI 地址
 - **禁止 workaround**：任何修改必须基于正确的根因分析，逻辑正确是底线
 - 遇到问题必须先定位根因，再修复，不能猜测或碰运气
 - **不允许为了"让测试通过"而放宽断言、加 fallback、或绕过正常流程**
-- **tool project_id 必填**：mock 与真实调用都必须传 `project_id`，且必须与当前会话作用域一致
+- **tool 参数契约必须与当前 schema 严格一致**：`project_id` 已从工具入参移除，mock 与真实调用都不要再显式传该字段
 
 ### ✅ 可以安全修改的内容
 
@@ -139,7 +139,7 @@ npm run test:ui
 
 **E2E 调试关键原则**：
 - **选择器不匹配** → 前端加 `data-testid` → 测试用属性选
-- **gameCount=0**：mock 缺 project_id 导致 zod 取默认值 'default'，工具内部应直接用 scopedProjectId
+- **gameCount=0**：高频根因是 mock 的 `toolCalls.arguments` 与当前 zod schema 不一致（如仍传 `project_id` 或缺必填字段）
 - **SSE reconnect bug**：`connectedRef.current` 阻止切换项目后重连
 
 ### Mock Server
@@ -153,7 +153,7 @@ npm run test:ui
 
 ### 添加新工具
 1. 在 `server/tools.ts` 中使用 `tool()` 定义
-2. 添加 zod schema 参数验证（**注意：`project_id` 必须作为工具参数并设为必填，同时在 handler 内执行作用域一致性校验**）
+2. 添加 zod schema 参数验证（确保入参与当前工具契约一致，不要引入冗余字段）
 3. 在 `agents.ts` 的 `TOOLS_OVERVIEW` 中描述工具用途
 4. 如需自动授权，在 `agent-manager.ts` 的 `CAN_AUTO_ALLOW` 中添加
 
@@ -192,11 +192,11 @@ curl http://localhost:3001/__admin/mocks
 
 ### 工具调用失败
 - 检查工具名前缀是否为 `mcp__studio_tools__`（下划线）
-- 检查参数是否符合 zod schema（特别注意：工具必须传 `project_id`）
+- 检查参数是否符合 zod schema（特别注意：不要继续传已移除的 `project_id`）
 - 查看 `agent-manager.ts` 中的权限配置
 
 ### 数据未持久化
-- 检查工具入参 `project_id` 是否与当前会话作用域匹配（不匹配会被 `requireProjectId` 拒绝）
+- 检查工具是否在当前项目作用域下执行（`createStudioToolsServer` 注入 `scopedProjectId`，工具内不再读取 `project_id` 入参）
 - 检查数据库文件权限
 - 查看 `db.ts` 中的错误处理
 
