@@ -15,8 +15,8 @@ A multi-agent game development workspace built on the CodeBuddy Agent SDK, provi
 - Project settings (auto-handoff toggle)
 - Proposal management (create, review, and human decision)
 - Game artifact management (submit HTML artifacts or packaged files, preview, download, and version status)
-- Blender modeling pipeline (creator service + `blender_*` tools for project/mesh/material/export/script/file operations)
-- Static analysis (extensible lint framework with pluggable checkers for HTML structure/JS security, supports HTML mode and ZIP package mode)
+- Blender modeling pipeline (creator service + `blender_*` tools for project/mesh/material/export/file operations)
+- Static analysis (extensible lint framework with pluggable checkers for HTML structure/HTTP method safety/JS security, supports HTML mode and ZIP package mode)
 - Long-term agent memory (save/query/clear)
 - Project isolation (data and observability streams isolated by `project_id`)
 
@@ -171,7 +171,7 @@ Main endpoints (prefix `/api`):
 ## Project Data and Artifacts
 
 - Supports multi-project isolation via `project_id`.
-- All MCP custom tool calls must include `project_id`, and backend validates it against current session scope.
+- MCP custom tool schemas no longer require `project_id`; backend injects scoped project context at tool-server initialization and enforces isolation internally.
 - Database tables are initialized by the `CREATE TABLE` DDL in `server/db.ts`; when changing schema, update DDL first and use migrations only for legacy data backfill.
 - Proposal/game submissions are also written to `output/{project_id}/...`.
 - `submit_game` supports two modes: HTML content mode (`html_content`) and packaged file mode (`file_path` -> ZIP -> `file_storage_id`).

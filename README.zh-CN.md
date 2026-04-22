@@ -14,8 +14,8 @@
 - 项目设置（自动交接开关）
 - 提案管理（创建、评审、人工决策）
 - 游戏成品管理（支持 HTML 成品或打包文件提交、预览下载、版本状态）
-- Blender 建模链路（creator service + `blender_*` 工具，覆盖 project/几何体/材质/导出/脚本/文件操作）
-- 静态分析（可扩展 Lint 框架，支持 HTML 结构、JS 安全等可插拔检查器，覆盖 HTML 模式与 ZIP 模式）
+- Blender 建模链路（creator service + `blender_*` 工具，覆盖 project/几何体/材质/导出/文件操作）
+- 静态分析（可扩展 Lint 框架，支持 HTML 结构、HTTP 方法安全、JS 安全等可插拔检查器，覆盖 HTML 模式与 ZIP 模式）
 - Agent 长期记忆（保存/查询/清理）
 - 项目隔离（按 `project_id` 隔离数据与观测流）
 
@@ -170,7 +170,7 @@ game-studio/
 ## 项目与数据产出
 
 - 支持多项目隔离（`project_id`）。
-- 所有 MCP 自定义工具调用都必须携带 `project_id`，后端会校验其与当前会话作用域一致。
+- MCP 自定义工具 schema 已不再要求传 `project_id`；后端在工具服务初始化时注入项目作用域并在内部执行隔离校验。
 - 数据库表结构由 `server/db.ts` 内 `CREATE TABLE` DDL 直接初始化；调整字段时应先更新 DDL，迁移仅用于历史数据补齐。
 - 提案与游戏提交时会同步写入 `output/{project_id}/...` 目录。
 - `submit_game` 支持双模式：HTML 内容模式（`html_content`）与打包文件模式（`file_path` -> ZIP -> `file_storage_id`）。
