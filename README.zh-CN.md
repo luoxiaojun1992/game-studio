@@ -174,6 +174,8 @@ game-studio/
 - 支持多项目隔离（`project_id`）。
 - MCP 自定义工具 schema 已不再要求传 `project_id`；后端在工具服务初始化时注入项目作用域并在内部执行隔离校验。
 - 数据库表结构由 `server/db.ts` 内 `CREATE TABLE` DDL 直接初始化；调整字段时应先更新 DDL，迁移仅用于历史数据补齐。
+- `games` 表已移除 `author_agent_id`；`/api/games` 与 `submit_game` 不再要求该字段。
+- `agent_messages`、`logs`、`commands`、`permission_requests` 已统一包含 `updated_at` 字段用于生命周期/审计追踪。
 - 提案与游戏提交时会同步写入 `output/{project_id}/...` 目录。
 - `submit_game` 支持双模式：HTML 内容模式（`html_content`）与打包文件模式（`file_path` -> ZIP -> `file_storage_id`）。
 - `get_games` 可按时间倒序查询当前项目已提交游戏列表（含基础元数据与模式标记）。

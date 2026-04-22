@@ -69,6 +69,8 @@ Recommendations:
 - When adding or removing fields, update `CREATE TABLE` DDL in `server/db.ts` first so fresh databases are correct.
 - Use migration scripts only for legacy data backfill/compatibility scenarios when truly needed.
 - Add indexes for high-frequency query fields.
+- `games` no longer includes `author_agent_id`; game submission interfaces should not require this field.
+- `agent_messages`, `logs`, `commands`, and `permission_requests` should persist both `created_at` and `updated_at`.
 
 ## 4. APIs and Events
 
