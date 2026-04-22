@@ -62,6 +62,13 @@
 | 逐步等待固定时间（waitForTimeout 链式调用） | 目标状态驱动的事件循环 + 非阻塞轮询 | 测试更稳定、更快 |
 | UI-007/008 各写独立测试逻辑 | 抽取 `runFullWorkflowTest()` 共享函数 + WorkflowOptions 参数化 | 消除重复代码，降低维护成本 |
 | 手动模式下在循环外 accept/confirm | 循环体内每轮尝试 tryAcceptAnyPending + tryConfirmAnyAccepted | 适应异步事件到达时序不确定性 |
+| MCP server 工具无差别注册给所有 agent session | 按 agent 角色选择性注册：modeling-tools 只给 engineer，studio-tools 给所有 agent | game_designer 收到 31 tools（含 9 个 modeling tools）后 LLM 行为改变，mock 期望错乱，handoff=0 |
+
+## Session ↔ Project 关系
+- **Session 不会跨 project**：每次 `sendMessage(projectId, agentId, ...)` 都会创建全新的 SDK session，session 与 project 一一对应
+- `scopedProjectId` 在 `createStudioToolsServer` / `createModelingToolsServer` 注册时被闭包捕获是安全的，因为 session 不会跨越 project 边界
+- 当前通过"每次 sendMessage 重新创建 server 实例"实现多 project 隔离，而非单实例多 project context 动态隔离
+- 如果未来需要同一 session 内跨 project 操作，需要改用动态 project context 而非硬捕获 `scopedProjectId`
 
 ## Lint Framework 约定
 - **新增检查器必须实现 `LintChecker` 接口**，注册到 `checkers/index.ts` 的 `builtInCheckers` 数组

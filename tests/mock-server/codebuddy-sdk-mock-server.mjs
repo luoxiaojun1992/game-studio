@@ -278,7 +278,7 @@ const server = http.createServer(async (req, res) => {
     const { projectId, agentRole } = parseIdentity(req);
     const hasIdentity = !!(projectId && agentRole);
 
-    console.error(`[mock-debug] /chat/completions identity=${projectId || '?'}:${agentRole || '?'} tools=${availableTools.length} hasIdentity=${hasIdentity}`);
+    console.error(`[mock-debug] /chat/completions identity=${projectId || '?'}:${agentRole || '?'} tools=${availableTools.length} hasIdentity=${hasIdentity} tool_list=[${availableTools.join(',')}]`);
 
     // Route by (projectId, agentRole) — precise per-agent queue
     if (hasIdentity) {
