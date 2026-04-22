@@ -185,7 +185,8 @@ class AgentManager extends EventEmitter {
       tool_name: null,
       action,
       is_error: level === 'error',
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     };
     db.addLog(entry);
   }
@@ -212,7 +213,8 @@ class AgentManager extends EventEmitter {
       tool_name: extra?.toolName || null,
       action: null,
       is_error: extra?.isError || false,
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     };
     db.addLog(entry);
   }
