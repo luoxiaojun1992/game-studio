@@ -292,7 +292,8 @@ app.post('/api/agents/:agentId/command', async (req, res) => {
     status: 'executing',
     result: null,
     created_at: new Date().toISOString(),
-    executed_at: new Date().toISOString()
+    executed_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
   });
   db.addLog({
     id: uuidv4(),
@@ -304,7 +305,8 @@ app.post('/api/agents/:agentId/command', async (req, res) => {
     tool_name: null,
     action: '👤 用户指令',
     is_error: false,
-    created_at: new Date().toISOString()
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
   });
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');

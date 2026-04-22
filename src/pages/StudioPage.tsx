@@ -148,7 +148,8 @@ export default function StudioPage() {
               tool_name: streamEvent.name || null,
               action: null,
               is_error: !!streamEvent.isError || streamEvent.type === 'agent_error',
-              created_at: new Date().toISOString()
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
             };
             return [...prev, newLog].slice(-1000);
           });

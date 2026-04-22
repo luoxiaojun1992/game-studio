@@ -434,7 +434,8 @@ class AgentManager extends EventEmitter {
       content: message,
       model: null,
       tool_calls: null,
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     });
 
     let fullResponse = '';
@@ -526,7 +527,8 @@ class AgentManager extends EventEmitter {
           tool_name: toolName,
           input: JSON.stringify(input),
           status: 'pending',
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         });
         
         const permEvent: StreamEvent = {
@@ -693,7 +695,8 @@ class AgentManager extends EventEmitter {
         content: fullResponse,
         model,
         tool_calls: toolCalls.length > 0 ? JSON.stringify(toolCalls) : null,
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       });
 
       if (agentId === 'engineer') {

@@ -52,6 +52,7 @@ export default function LogPanel({ logs: externalLogs, agents, projectId }: Prop
                 action: null,
                 is_error: false,
                 created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
               }].slice(-1000);
             });
           } else if (se.type === 'tool' && se.agentId) {
@@ -69,6 +70,7 @@ export default function LogPanel({ logs: externalLogs, agents, projectId }: Prop
               action: null,
               is_error: false,
               created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
             }].slice(-1000));
           } else if (se.type === 'tool_result' && se.agentId) {
             setLogs(prev => [...prev, {
@@ -82,6 +84,7 @@ export default function LogPanel({ logs: externalLogs, agents, projectId }: Prop
               action: null,
               is_error: !!se.isError,
               created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
             }].slice(-1000));
           } else if (se.type === 'agent_done' && se.agentId) {
             setLogs(prev => [...prev, {
@@ -95,6 +98,7 @@ export default function LogPanel({ logs: externalLogs, agents, projectId }: Prop
               action: null,
               is_error: false,
               created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
             }].slice(-1000));
           } else if (se.type === 'agent_error' && se.agentId) {
             setLogs(prev => [...prev, {
@@ -108,6 +112,7 @@ export default function LogPanel({ logs: externalLogs, agents, projectId }: Prop
               action: null,
               is_error: true,
               created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
             }].slice(-1000));
           }
         }
