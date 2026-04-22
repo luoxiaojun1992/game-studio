@@ -205,7 +205,19 @@ export const AGENT_DEFINITIONS: Record<AgentRole, AgentDefinition> = {
 - \`blender_download_model_file\`：将模型文件下载到本地 output 目录（可供 submit_game 打包上传 MinIO）
 - \`blender_delete_project\`：清理 creator 端容器存储（不删除本地文件）
 
-重要：实现前仍需遵守方案审批流程；但成品完成后必须主动调用工具提交产物。${HANDOFF_INSTRUCTION}${MEMORY_INSTRUCTION}${TOOLS_OVERVIEW}`,
+重要：实现前仍需遵守方案审批流程；但成品完成后必须主动调用工具提交产物。
+
+## 游戏成品 Lint 规则（提交前自查）
+
+submit_game 时系统会自动执行以下检查，error 级别规则不通过则无法提交：
+
+| 检查器 | 级别 | 规则说明 |
+|--------|------|---------|
+| HTML 结构 | error | 必须包含 DOCTYPE、\`html\`/\`head\`/\`body\` 标签、UTF-8 编码声明，body 内容非空 |
+| HTTP 方法安全 | error | fetch / XMLHttpRequest 仅允许 GET/OPTIONS/HEAD/CONNECT/TRACE 方法，禁止 POST/PUT/DELETE/PATCH 等 |
+| JS 安全 | warn | eval、Function()、javascript: 协议、innerHTML 赋值存在风险，建议自查 |
+
+**提示**：仅纯 HTML 内容（html_content 参数）受 lint 检查约束；file_path 打包模式下的 ZIP 内 HTML 也逐一检查。${HANDOFF_INSTRUCTION}${MEMORY_INSTRUCTION}${TOOLS_OVERVIEW}`,
     handoffTargets: ['biz_designer']
   },
 

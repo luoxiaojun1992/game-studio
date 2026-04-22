@@ -457,7 +457,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
       tool(
         'submit_game',
-        '提交一个完成的游戏成品（仅 engineer 可用）。支持两种模式：1) 单文件 HTML 模式（传入 html_content）；2) 文件打包模式（传入 file_path）。文件打包模式下，游戏文件夹会被压缩为 ZIP 并上传到 MinIO 存储。',
+        '提交一个完成的游戏成品（仅 engineer 可用）。支持两种模式：1) 单文件 HTML 模式（传入 html_content）；2) 文件打包模式（传入 file_path）。文件打包模式下，游戏文件夹会被压缩为 ZIP 并上传到 MinIO 存储。\n\n⚠️ 提交前请确保游戏通过以下 lint 检查（error 级别规则阻断提交）：\n- HTML 结构：必须包含 DOCTYPE、<html>/<head>/<body> 标签、UTF-8 编码声明，body 内容非空\n- HTTP 安全：fetch / XMLHttpRequest 仅允许 GET/OPTIONS/HEAD/CONNECT/TRACE 方法，禁止 POST/PUT/DELETE/PATCH 等\n- JS 安全（warn，不阻断）：eval、Function()、javascript: 协议、innerHTML 赋值等高风险模式需自查',
         {
           project_id: projectIdSchema.describe('当前项目 ID，必填，用于隔离不同项目的数据'),
           name: z.string().max(db.MAX_FILENAME_LENGTH, `name 长度不能超过 ${db.MAX_FILENAME_LENGTH}`).transform((value, ctx) => {
