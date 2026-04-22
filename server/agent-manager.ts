@@ -454,6 +454,7 @@ class AgentManager extends EventEmitter {
       const settings = db.getProjectSettings(scopedProjectId);
       const autopilotEnabled = settings.autopilot_enabled === 1;
 
+      const isEngineer = agentId === 'engineer';
       const CAN_AUTO_ALLOW = [
         'save_memory',
         'get_memories',
@@ -467,8 +468,22 @@ class AgentManager extends EventEmitter {
         'get_pending_handoffs',
         'get_task',
         'get_tasks',
-        ...(autopilotEnabled ? ['create_handoff', 'submit_proposal', 'submit_game'] : []),
-        ...(agentId === 'engineer' ? ['split_dev_test_tasks', 'update_task_status'] : [])
+        ...(autopilotEnabled ? ['create_handoff', 'submit_proposal'] : []),
+        // submit_game 仅对 engineer 开放（无论是否 autopilot）
+        ...(isEngineer ? ['submit_game'] : []),
+        ...(isEngineer ? ['split_dev_test_tasks', 'update_task_status'] : []),
+        // Blender / 建模工具 — 仅 engineer 可用（无外部副作用，仅容器存储）
+        ...(isEngineer ? [
+          'blender_create_project',
+          'blender_list_projects',
+          'blender_delete_project',
+          'blender_create_mesh',
+          'blender_add_material',
+          'blender_export_model',
+          'blender_execute_script',
+          'blender_download_model_file',
+          'blender_delete_model_file',
+        ] : []),
       ];
       const STUDIO_TOOL_PREFIX = 'mcp__studio_tools__';
       const STUDIO_TOOL_NAMES = new Set<string>([
@@ -476,13 +491,25 @@ class AgentManager extends EventEmitter {
         'split_dev_test_tasks',
         'update_task_status',
         'submit_proposal',
-        'submit_game'
+        'submit_game',
+        // Blender tools
+        'blender_create_project',
+        'blender_list_projects',
+        'blender_delete_project',
+        'blender_create_mesh',
+        'blender_add_material',
+        'blender_export_model',
+        'blender_execute_script',
+        'blender_download_model_file',
+        'blender_delete_model_file',
       ]);
       const READ_ONLY_SDK_TOOLS = ['Read', 'Grep', 'WebSearch', 'WebFetch', 'Glob'];
 
       const canUseTool: CanUseTool = async (toolName, input, options) => {
         const hasStudioPrefix = toolName.startsWith(STUDIO_TOOL_PREFIX);
-        const actualTool = hasStudioPrefix ? toolName.replace(STUDIO_TOOL_PREFIX, '') : toolName;
+        const actualTool = hasStudioPrefix
+          ? toolName.replace(STUDIO_TOOL_PREFIX, '')
+          : toolName;
         const isStudioTool = hasStudioPrefix || STUDIO_TOOL_NAMES.has(actualTool);
         if (isStudioTool) {
           if (CAN_AUTO_ALLOW.includes(actualTool)) {
@@ -542,7 +569,7 @@ class AgentManager extends EventEmitter {
         fs.mkdirSync(outputDir, { recursive: true });
       }
 
-      const stream = query({
+      const _queryOpts = {
         prompt: message,
         options: {
           cwd: outputDir,
@@ -550,10 +577,10 @@ class AgentManager extends EventEmitter {
           model,
           maxTurns: 15,
           systemPrompt: this.buildSystemPrompt(scopedProjectId, agentId),
-          permissionMode: 'default',
+          permissionMode: 'default' as const,
           canUseTool,
           mcpServers: {
-            'studio-tools': studioToolsServer
+            'studio-tools': studioToolsServer,
           },
           env: {
             CODEBUDDY_CUSTOM_HEADERS: `X-Project-Id: ${scopedProjectId}\nX-Agent-Role: ${agentId}`
@@ -561,7 +588,9 @@ class AgentManager extends EventEmitter {
           ...(CODEBUDDY_BASE_URL ? { endpoint: CODEBUDDY_BASE_URL } : {}),
           ...(sdkSessionId ? { resume: sdkSessionId } : {})
         }
-      });
+      };
+      console.error(`[DEBUG sendMessage] calling query() agentId=${agentId} projectId=${scopedProjectId} isEngineer=${isEngineer}`);
+      const stream = query(_queryOpts);
 
       const startEvent: StreamEvent = { type: 'agent_start', projectId: scopedProjectId, agentId, streamId, message };
       this.emit('stream_event', startEvent);

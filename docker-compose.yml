@@ -45,6 +45,7 @@ services:
       - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
       - MINIO_USE_SSL=false
       - MINIO_BUCKET=game-files
+      - CREATOR_SERVICE_URL=http://creator:8080
     volumes:
       - studio-data:/app/data
       - studio-output:/app/output
@@ -53,6 +54,8 @@ services:
     depends_on:
       minio:
         condition: service_healthy
+      creator:
+        condition: service_started
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/api/agents"]
       interval: 30s
@@ -111,6 +114,28 @@ services:
       start_period: 10s
     restart: unless-stopped
 
+  # Creator 建模微服务（Blender + FastAPI）
+  creator:
+    build:
+      context: ./creator
+      dockerfile: Dockerfile
+    container_name: game-studio-creator
+    ports:
+      - "${CREATOR_PORT:-8080}:8080"
+    environment:
+      - CREATOR_PORT=8080
+    volumes:
+      - creator-data:/app/data
+    networks:
+      - game-studio-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
 volumes:
   studio-data:
     driver: local
@@ -119,6 +144,8 @@ volumes:
   star-office-data:
     driver: local
   minio-data:
+    driver: local
+  creator-data:
     driver: local
 
 networks:

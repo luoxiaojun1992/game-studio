@@ -15,6 +15,25 @@ import {
   getPresignedDownloadUrl
 } from './file-storage.js';
 import { lintZipBuffer } from './lint/index.js';
+import {
+  createBlenderProject,
+  listBlenderProjects,
+  deleteBlenderProject,
+  blenderCreateMesh,
+  blenderAddMaterial,
+  blenderExportModel,
+  blenderExecuteScript,
+  downloadModelFile,
+  deleteModelFile,
+  type CreateBlenderProjectOptions,
+  type DeleteBlenderProjectOptions,
+  type BlenderCreateMeshOptions,
+  type BlenderAddMaterialOptions,
+  type BlenderExportModelOptions,
+  type BlenderExecuteScriptOptions,
+  type DownloadModelFileOptions,
+  type DeleteModelFileOptions,
+} from './creator-service.js';
 
 /**
  */
@@ -926,16 +945,281 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
             content: [{ type: 'text' as const, text: unified.map(item => item.line).join('\n') }]
           };
         }
-      )
+      ),
+
+      // ---- Blender / 建模工具（仅 engineer 可用）----
+
+      tool(
+        'blender_create_project',
+        '创建建模 project。在 backend 数据库创建记录，然后调用 creator service 创建容器内项目目录，返回 blender_project_id。建议在完成建模工作后调用 blender_delete_project 清理资源。',
+        {
+          project_id: projectIdSchema.describe('当前项目 ID，必填，用于隔离不同项目的数据'),
+          name: z.string().min(1).max(50).describe('建模 project 名称'),
+        },
+        async ({ project_id, name }) => {
+          const effectiveProjectId = requireProjectId(project_id);
+          const opts: CreateBlenderProjectOptions = {
+            projectId: effectiveProjectId,
+            name,
+            agentId,
+            logFn: log,
+          };
+          const { dbId, blenderProjectId } = await createBlenderProject(opts);
+          return {
+            content: [{
+              type: 'text' as const,
+              text: `建模 project 已创建 (DB ID: ${dbId.slice(0, 8)}, blender_project_id: ${blenderProjectId})，名称: ${name}`,
+            }]
+          };
+        }
+      ),
+
+      tool(
+        'blender_list_projects',
+        '列出当前 studio project 下所有建模 project。',
+        {
+          project_id: projectIdSchema.describe('当前项目 ID，必填'),
+          limit: z.number().min(1).max(50).optional().default(20).describe('返回条数上限'),
+        },
+        async ({ project_id, limit }) => {
+          const effectiveProjectId = requireProjectId(project_id);
+          const records = listBlenderProjects(effectiveProjectId, limit || 20);
+          if (records.length === 0) {
+            return { content: [{ type: 'text' as const, text: '暂无建模 project。' }] };
+          }
+          const lines = records.map(r =>
+            `[${r.id.slice(0, 8)}] ${r.name} | blender_project_id=${r.blender_project_id} | ${r.created_at.slice(0, 10)}`
+          ).join('\n');
+          return { content: [{ type: 'text' as const, text: lines }] };
+        }
+      ),
+
+      tool(
+        'blender_delete_project',
+        '删除建模 project。先调用 creator service 删除远程目录（幂等），再删除 backend DB 记录。建议完成模型文件下载后主动调用以释放容器存储空间。',
+        {
+          project_id: projectIdSchema.describe('当前项目 ID，必填'),
+          blender_project_id: z.string().describe('blender_project_id（来自 blender_create_project 的返回值）'),
+        },
+        async ({ project_id, blender_project_id }) => {
+          requireProjectId(project_id);
+          if (!blender_project_id || typeof blender_project_id !== 'string') {
+            throw new Error('blender_project_id 不能为空');
+          }
+          const opts: DeleteBlenderProjectOptions = {
+            projectId: scopedProjectId,
+            blenderProjectId: blender_project_id.trim(),
+            agentId,
+            logFn: log,
+          };
+          await deleteBlenderProject(opts);
+          return {
+            content: [{ type: 'text' as const, text: `建模 project 已删除 (blender_project_id: ${blender_project_id})` }]
+          };
+        }
+      ),
+
+      tool(
+        'blender_create_mesh',
+        '在 Blender 场景中创建一个基础几何体（立方体/球体/平面/圆柱体/圆环/圆锥）。',
+        {
+          project_id: projectIdSchema.describe('当前项目 ID，必填'),
+          blender_project_id: z.string().describe('blender_project_id'),
+          mesh_type: z.enum(['cube', 'sphere', 'plane', 'cylinder', 'torus', 'cone']).describe('几何体类型'),
+          name: z.string().min(1).max(64).describe('物体名称'),
+          location: z.tuple([z.number(), z.number(), z.number()]).optional()
+            .describe('位置 (x, y, z)，默认 (0, 0, 0)'),
+          scale: z.tuple([z.number(), z.number(), z.number()]).optional()
+            .describe('缩放 (x, y, z)，默认 (1, 1, 1)'),
+        },
+        async ({ project_id, blender_project_id, mesh_type, name, location, scale }) => {
+          requireProjectId(project_id);
+          if (!blender_project_id || typeof blender_project_id !== 'string') {
+            throw new Error('blender_project_id 不能为空');
+          }
+          const opts: BlenderCreateMeshOptions = {
+            blenderProjectId: blender_project_id.trim(),
+            meshType: mesh_type,
+            name,
+            location,
+            scale,
+            agentId,
+            logFn: log,
+          };
+          const output = await blenderCreateMesh(opts);
+          return {
+            content: [{ type: 'text' as const, text: `已创建 ${mesh_type} "${name}"。${output}` }]
+          };
+        }
+      ),
+
+      tool(
+        'blender_add_material',
+        '为 Blender 场景中的物体添加 PBR 材质。',
+        {
+          project_id: projectIdSchema.describe('当前项目 ID，必填'),
+          blender_project_id: z.string().describe('blender_project_id'),
+          object_name: z.string().min(1).max(64).describe('物体名称'),
+          color: z.tuple([z.number(), z.number(), z.number()]).optional()
+            .describe('颜色 RGB (0-1)，默认 (0.8, 0.8, 0.8)'),
+          metallic: z.number().min(0).max(1).optional().describe('金属度 0-1，默认 0'),
+          roughness: z.number().min(0).max(1).optional().describe('粗糙度 0-1，默认 0.5'),
+        },
+        async ({ project_id, blender_project_id, object_name, color, metallic, roughness }) => {
+          requireProjectId(project_id);
+          if (!blender_project_id || typeof blender_project_id !== 'string') {
+            throw new Error('blender_project_id 不能为空');
+          }
+          const opts: BlenderAddMaterialOptions = {
+            blenderProjectId: blender_project_id.trim(),
+            objectName: object_name,
+            color,
+            metallic,
+            roughness,
+            agentId,
+            logFn: log,
+          };
+          const output = await blenderAddMaterial(opts);
+          return {
+            content: [{ type: 'text' as const, text: `材质已添加到 "${object_name}"。${output}` }]
+          };
+        }
+      ),
+
+      tool(
+        'blender_export_model',
+        '将 Blender 场景中的物体导出为模型文件（GLB/FBX/OBJ/PLY/USD）。',
+        {
+          project_id: projectIdSchema.describe('当前项目 ID，必填'),
+          blender_project_id: z.string().describe('blender_project_id'),
+          object_name: z.string().min(1).max(64).describe('要导出的物体名称'),
+          output_filename: z.string().min(1).max(128).describe('输出文件名（含扩展名，如 model.glb）'),
+          format: z.enum(['glb', 'fbx', 'obj', 'ply', 'usd']).optional().default('glb').describe('导出格式'),
+        },
+        async ({ project_id, blender_project_id, object_name, output_filename, format }) => {
+          requireProjectId(project_id);
+          if (!blender_project_id || typeof blender_project_id !== 'string') {
+            throw new Error('blender_project_id 不能为空');
+          }
+          const opts: BlenderExportModelOptions = {
+            blenderProjectId: blender_project_id.trim(),
+            objectName: object_name,
+            outputFilename: output_filename,
+            format,
+            agentId,
+            logFn: log,
+          };
+          const output = await blenderExportModel(opts);
+          return {
+            content: [{ type: 'text' as const, text: `已导出 "${object_name}" 为 ${format || 'glb'} 格式：${output_filename}。${output}` }]
+          };
+        }
+      ),
+
+      tool(
+        'blender_execute_script',
+        '在 Blender 场景中执行自定义 Python 脚本。用于预置操作无法满足的复杂场景。',
+        {
+          project_id: projectIdSchema.describe('当前项目 ID，必填'),
+          blender_project_id: z.string().describe('blender_project_id'),
+          script: z.string().max(10 * 1024).describe('Blender Python 脚本代码（最长 10KB）'),
+        },
+        async ({ project_id, blender_project_id, script }) => {
+          requireProjectId(project_id);
+          if (!blender_project_id || typeof blender_project_id !== 'string') {
+            throw new Error('blender_project_id 不能为空');
+          }
+          if (!script || typeof script !== 'string' || !script.trim()) {
+            throw new Error('script 不能为空');
+          }
+          const opts: BlenderExecuteScriptOptions = {
+            blenderProjectId: blender_project_id.trim(),
+            script: script.trim(),
+            agentId,
+            logFn: log,
+          };
+          const output = await blenderExecuteScript(opts);
+          return {
+            content: [{ type: 'text' as const, text: `脚本执行完成。${output}` }]
+          };
+        }
+      ),
+
+      tool(
+        'blender_download_model_file',
+        '从 creator service 下载模型文件到 backend 本地 output 目录。下载完成后应主动调用 blender_delete_model_file 清理 creator 远程资源。',
+        {
+          project_id: projectIdSchema.describe('当前项目 ID，必填'),
+          blender_project_id: z.string().describe('blender_project_id'),
+          filename: z.string().min(1).max(128).describe('要下载的文件名'),
+        },
+        async ({ project_id, blender_project_id, filename }) => {
+          requireProjectId(project_id);
+          if (!blender_project_id || typeof blender_project_id !== 'string') {
+            throw new Error('blender_project_id 不能为空');
+          }
+          if (!filename || typeof filename !== 'string' || !filename.trim()) {
+            throw new Error('filename 不能为空');
+          }
+          // 使用动态 import 解析 __dirname（ESM）
+          const pathModule = await import('path');
+          const localOutputDir = pathModule.resolve(__dirname, '..', 'output', scopedProjectId, 'models');
+          const opts: DownloadModelFileOptions = {
+            blenderProjectId: blender_project_id.trim(),
+            filename: filename.trim(),
+            localOutputDir,
+            agentId,
+            logFn: log,
+          };
+          const { localPath, sizeBytes } = await downloadModelFile(opts);
+          return {
+            content: [{
+              type: 'text' as const,
+              text: `文件已下载到：${localPath} (${sizeBytes} bytes)`,
+            }]
+          };
+        }
+      ),
+
+      tool(
+        'blender_delete_model_file',
+        '删除 creator 远程模型文件（幂等）。下载到本地后应先调用此工具删除远程文件，再删除本地副本以释放容器存储空间。',
+        {
+          project_id: projectIdSchema.describe('当前项目 ID，必填'),
+          blender_project_id: z.string().describe('blender_project_id'),
+          filename: z.string().min(1).max(128).describe('要删除的文件名'),
+        },
+        async ({ project_id, blender_project_id, filename }) => {
+          requireProjectId(project_id);
+          if (!blender_project_id || typeof blender_project_id !== 'string') {
+            throw new Error('blender_project_id 不能为空');
+          }
+          if (!filename || typeof filename !== 'string' || !filename.trim()) {
+            throw new Error('filename 不能为空');
+          }
+          const pathModule = await import('path');
+          const localOutputDir = pathModule.resolve(__dirname, '..', 'output', scopedProjectId, 'models');
+          const opts: DeleteModelFileOptions = {
+            blenderProjectId: blender_project_id.trim(),
+            filename: filename.trim(),
+            localOutputDir,
+            agentId,
+            logFn: log,
+          };
+          await deleteModelFile(opts);
+          return {
+            content: [{ type: 'text' as const, text: `已删除模型文件：${filename}（远程 + 本地）` }]
+          };
+        }
+      ),
+
     ]
   });
 
   return server;
 }
 
-/**
- */
-export function getMemorySummaryForPrompt(projectId: string, agentId: AgentRole): string {
+export function getMemorySummaryForPrompt(projectId: string, agentId: string): string {
   const memories = db.getAgentMemories(projectId, agentId, { limit: 20 });
   if (memories.length === 0) return '';
 
@@ -950,3 +1234,4 @@ export function getMemorySummaryForPrompt(projectId: string, agentId: AgentRole)
 ${summary}
 `;
 }
+

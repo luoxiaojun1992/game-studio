@@ -278,6 +278,18 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS idx_file_storages_project ON file_storages(project_id);
+
+  -- Blender 建模项目表（关联 studio project 与 creator service project）
+  CREATE TABLE IF NOT EXISTS blender_projects (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL,
+    blender_project_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_blender_projects_project ON blender_projects(project_id);
 `);
 ensureProject('default');
 export interface DbAgentSession {
@@ -399,6 +411,15 @@ export interface DbAgentMemory {
   content: string;
   importance: 'low' | 'normal' | 'high' | 'critical';
   source_task: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DbBlenderProject {
+  id: string;
+  project_id: string;
+  blender_project_id: string;
+  name: string;
   created_at: string;
   updated_at: string;
 }
@@ -1211,7 +1232,7 @@ function normalizeProjectId(projectId: string | null | undefined): string {
   return raw;
 }
 
-function resolveSafePath(baseDir: string, fileName: string): string {
+export function resolveSafePath(baseDir: string, fileName: string): string {
   const resolvedBase = path.resolve(baseDir);
   const candidate = path.resolve(baseDir, fileName);
   if (!candidate.startsWith(`${resolvedBase}${path.sep}`) && candidate !== resolvedBase) {
@@ -1368,5 +1389,67 @@ export function updateFileStorage(id: string, updates: Partial<DbFileStorage>): 
   values.push(id);
   const stmt = db.prepare(`UPDATE file_storages SET ${fields.join(', ')} WHERE id = ?`);
   const result = stmt.run(...values);
+  return result.changes > 0;
+}
+
+// ============================================================================
+// BlenderProject CRUD（建模 project，关联 studio project 与 creator service）
+// ============================================================================
+
+export function getBlenderProjects(projectId: string): DbBlenderProject[] {
+  const stmt = db.prepare('SELECT * FROM blender_projects WHERE project_id = ? ORDER BY created_at DESC');
+  return stmt.all(projectId) as DbBlenderProject[];
+}
+
+export function getBlenderProject(id: string): DbBlenderProject | null {
+  const stmt = db.prepare('SELECT * FROM blender_projects WHERE id = ?');
+  const result = stmt.get(id) as DbBlenderProject | undefined;
+  return result ?? null;
+}
+
+export function createBlenderProject(data: {
+  id: string;
+  project_id: string;
+  blender_project_id: string;
+  name: string;
+  created_at: string;
+  updated_at: string;
+}): DbBlenderProject {
+  const normalizedProjectId = normalizeAndValidateRequiredText(data.project_id, 'project_id');
+  const normalizedName = normalizeAndValidateRequiredText(data.name, 'name');
+  if (normalizedName.length > MAX_FILENAME_LENGTH) {
+    throw new Error(`name 长度不能超过 ${MAX_FILENAME_LENGTH}`);
+  }
+  const stmt = db.prepare(`
+    INSERT INTO blender_projects (id, project_id, blender_project_id, name, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `);
+  stmt.run(data.id, normalizedProjectId, data.blender_project_id, normalizedName, data.created_at, data.updated_at);
+  return {
+    ...data,
+    project_id: normalizedProjectId,
+    name: normalizedName,
+  };
+}
+
+export function updateBlenderProject(id: string, updates: { blender_project_id?: string }): boolean {
+  const fields: string[] = [];
+  const values: any[] = [];
+  if (updates.blender_project_id !== undefined) {
+    fields.push('blender_project_id = ?');
+    values.push(updates.blender_project_id);
+  }
+  if (fields.length === 0) return false;
+  fields.push('updated_at = ?');
+  values.push(new Date().toISOString());
+  values.push(id);
+  const stmt = db.prepare(`UPDATE blender_projects SET ${fields.join(', ')} WHERE id = ?`);
+  const result = stmt.run(...values);
+  return result.changes > 0;
+}
+
+export function deleteBlenderProject(id: string): boolean {
+  const stmt = db.prepare('DELETE FROM blender_projects WHERE id = ?');
+  const result = stmt.run(id);
   return result.changes > 0;
 }
