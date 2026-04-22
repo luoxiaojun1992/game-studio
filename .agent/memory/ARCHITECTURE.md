@@ -108,8 +108,10 @@ game-dev-studio/
 
 #### 2. 数据库层 (`server/db.ts`)
 - 使用 **better‑sqlite3** 驱动，WAL 模式，外键启用。
-- 核心表：`projects`、`project_settings`、`agent_sessions`、`agent_messages`、`proposals`、`games`、`handoffs`、`task_board_tasks`、`logs`、`commands`。
-- 每个表均通过 `project_id` 字段实现多项目隔离。
+- 核心表：`projects`、`project_settings`、`agent_sessions`、`agent_messages`、`proposals`、`games`、`handoffs`、`task_board_tasks`、`agent_memories`、`logs`、`commands`、`permission_requests`。
+- 核心业务数据按 `project_id` 隔离；`agent_messages` 等通过 `agent_session_id` 与项目关联。
+- `games` 已移除 `author_agent_id`，提交链路不再要求该字段。
+- `agent_messages`、`logs`、`commands`、`permission_requests` 已统一包含 `updated_at`。
 - 提供原子化的增删改查函数，以及文件导出功能（`saveProposalToFile`、`saveGameToFile`）。
 
 #### 3. 工具定义 (`server/tools.ts`)
@@ -252,8 +254,8 @@ ui-e2e                         ← Playwright CI 执行
 
 - **开发模式**：`npm run dev` 同时启动前后端热重载。
 - **生产构建**：`npm run build` 生成前端静态文件，`npm run build:server` 编译后端。
-- **Docker 编排**：`docker‑compose up --build -d` 一键启动完整服务。
-- **UI 测试**：`docker compose ui test` 运行完整的 E2E 测试套件。
+- **Docker 编排**：`make compose-build`（或 `make compose-up`）启动完整服务。
+- **UI 测试**：`make compose-ui-test-build`（或 `make compose-ui-test-up`）运行 E2E 测试套件。
 
 ### 技术亮点
 

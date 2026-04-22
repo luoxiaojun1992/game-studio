@@ -68,6 +68,8 @@ src/
 - 新增或删除字段时，先更新 `server/db.ts` 中 `CREATE TABLE` DDL，保证新库结构正确。
 - 迁移脚本仅在确有历史数据补齐/兼容需求时使用。
 - 对高频查询字段补索引。
+- `games` 已不再包含 `author_agent_id`，游戏提交接口不应再要求该字段。
+- `agent_messages`、`logs`、`commands`、`permission_requests` 应统一持久化 `created_at` 与 `updated_at`。
 
 ## 4. API 与事件
 

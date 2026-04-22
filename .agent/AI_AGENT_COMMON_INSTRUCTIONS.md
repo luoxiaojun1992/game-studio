@@ -70,8 +70,9 @@ export const AGENT_IDS = ['engineer', 'architect', 'game_designer', 'biz_designe
 
 ### 数据库
 - 使用 `better-sqlite3` 的同步 API
-- 所有表都有 `project_id` 字段用于项目隔离
-- 关键表：`agents`, `handoffs`, `tasks`, `memories`, `proposals`, `games`, `logs`
+- 核心业务表通过 `project_id` 进行项目隔离（部分表通过会话/关联键间接归属项目）
+- 关键表：`projects`、`project_settings`、`agent_sessions`、`agent_messages`、`proposals`、`games`、`handoffs`、`task_board_tasks`、`agent_memories`、`logs`、`commands`、`permission_requests`
+- `games` 已移除 `author_agent_id`；`agent_messages`/`logs`/`commands`/`permission_requests` 均要求 `updated_at`
 
 ### 环境变量
 ```bash
