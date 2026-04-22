@@ -62,7 +62,7 @@
 | 逐步等待固定时间（waitForTimeout 链式调用） | 目标状态驱动的事件循环 + 非阻塞轮询 | 测试更稳定、更快 |
 | UI-007/008 各写独立测试逻辑 | 抽取 `runFullWorkflowTest()` 共享函数 + WorkflowOptions 参数化 | 消除重复代码，降低维护成本 |
 | 手动模式下在循环外 accept/confirm | 循环体内每轮尝试 tryAcceptAnyPending + tryConfirmAnyAccepted | 适应异步事件到达时序不确定性 |
-| MCP server 工具无差别注册给所有 agent session | 使用单一 studio-tools server，但按角色选择性放行：`blender_*` 仅给 engineer | 降低非工程角色工具噪音，避免 handoff 流程与 mock 期望错乱 |
+| MCP server 采用按角色拆分的独立 server/工具集并行注册，导致非工程角色也暴露多余建模工具 | 使用单一 studio-tools server，但按角色选择性放行：`blender_*` 仅给 engineer | 降低非工程角色工具噪音，避免 handoff 流程与 mock 期望错乱 |
 | 模型文件下载/删除直接拼接路径 | 下载/删除前必须做 safe path 校验（限制在 `output/{project_id}/models`） | 防止路径穿越导致越权读写 |
 
 ## Session ↔ Project 关系
