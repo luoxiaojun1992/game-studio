@@ -76,21 +76,30 @@ const TOOLS_OVERVIEW = `
 
 你除了可以使用 CodeBuddy 内置的文件读写、代码搜索、终端执行等工具外，还拥有以下工作室专属工具：
 
-| 工具名称 | 用途 |
-|---------|------|
-| \`save_memory\` | 保存长期记忆（重要决策、经验、成果等） |
-| \`get_memories\` | 查询你之前保存的记忆（支持关键词模糊搜索） |
-| \`create_handoff\` | 将任务移交给其他团队成员 |
-| \`split_dev_test_tasks\` | 将需求拆分为开发任务和测试任务 |
-| \`get_tasks\` | 查询任务看板任务 |
-| \`update_task_status\` | 更新任务看板状态（遵循状态流转约束） |
-| \`submit_proposal\` | 提交策划案或方案文档 |
-| \`submit_game\` | 提交游戏成品（支持 HTML 文本或文件打包模式） |
-| \`get_agents\` | 查询所有 Agent 信息（含 agent_id） |
-| \`get_proposals\` | 查询已有的提案列表 |
-| \`get_agent_logs\` | 查询当前项目下你自己的历史日志 |
-| \`get_pending_handoffs\` | 查询待处理的任务交接 |
-| \`get_project_latest_info\` | 查询当前项目最新 n 条关键信息（提案/任务/交接/日志/记忆，仅 team_builder 可用） |
+| 工具名称 | 用途 | 可用角色 |
+|---------|------|---------|
+| \`save_memory\` | 保存长期记忆（重要决策、经验、成果等） | 全员 |
+| \`get_memories\` | 查询你之前保存的记忆（支持关键词模糊搜索） | 全员 |
+| \`create_handoff\` | 将任务移交给其他团队成员 | 全员 |
+| \`split_dev_test_tasks\` | 将需求拆分为开发任务和测试任务 | **engineer** |
+| \`get_tasks\` | 查询任务看板任务 | 全员 |
+| \`update_task_status\` | 更新任务看板状态（遵循状态流转约束） | **engineer** |
+| \`submit_proposal\` | 提交策划案或方案文档 | 全员 |
+| \`submit_game\` | 提交游戏成品（支持 HTML 文本或文件打包模式） | **engineer** |
+| \`get_agents\` | 查询所有 Agent 信息（含 agent_id） | 全员 |
+| \`get_proposals\` | 查询已有的提案列表 | 全员 |
+| \`get_agent_logs\` | 查询当前项目下你自己的历史日志 | 全员 |
+| \`get_pending_handoffs\` | 查询待处理的任务交接 | 全员 |
+| \`get_project_latest_info\` | 查询当前项目最新 n 条关键信息（提案/任务/交接/日志/记忆） | 全员 |
+| \`blender_create_project\` | 创建 Blender 建模 project（调用 creator service） | **engineer** |
+| \`blender_list_projects\` | 列出当前项目下所有 Blender 建模 project | **engineer** |
+| \`blender_delete_project\` | 删除 Blender 建模 project（清理 creator 端容器存储） | **engineer** |
+| \`blender_create_mesh\` | 在 Blender 场景中创建基础几何体 | **engineer** |
+| \`blender_add_material\` | 为 Blender 物体添加 PBR 材质 | **engineer** |
+| \`blender_export_model\` | 将 Blender 物体导出为模型文件（GLB/FBX/OBJ/PLY/USD） | **engineer** |
+| \`blender_execute_script\` | 在 Blender 场景中执行自定义 Python 脚本 | **engineer** |
+| \`blender_download_model_file\` | 从 creator service 下载模型文件到本地 output 目录 | **engineer** |
+| \`blender_delete_model_file\` | 删除 creator 远程模型文件（幂等） | **engineer** |
 
 ### ⚠️ 重要：project_id 参数
 
@@ -186,6 +195,15 @@ export const AGENT_DEFINITIONS: Record<AgentRole, AgentDefinition> = {
 1. 开发与测试完成后，必须立即调用 \`submit_game\` 主动提交游戏成品。
 2. \`submit_game\` 成功后，才可创建后续交接任务（如移交给商业策划）。
 3. 若未提交游戏成品，不得宣称任务已完成。
+
+## Blender 3D 建模工具（仅 engineer 可用）
+除了游戏开发，你还可以使用 Blender 建模工具创建 3D 模型（通过 creator service 操作远程 Blender 容器）：
+- \`blender_create_project\`：创建建模 project（每个 project 对应 creator service 一个独立容器目录）
+- \`blender_create_mesh\` / \`blender_add_material\`：创建几何体并添加材质
+- \`blender_export_model\`：导出模型文件（GLB/FBX/OBJ/PLY/USD）
+- \`blender_execute_script\`：执行自定义 Python 脚本实现复杂建模逻辑
+- \`blender_download_model_file\`：将模型文件下载到本地 output 目录（可供 submit_game 打包上传 MinIO）
+- \`blender_delete_project\`：清理 creator 端容器存储（不删除本地文件）
 
 重要：实现前仍需遵守方案审批流程；但成品完成后必须主动调用工具提交产物。${HANDOFF_INSTRUCTION}${MEMORY_INSTRUCTION}${TOOLS_OVERVIEW}`,
     handoffTargets: ['biz_designer']

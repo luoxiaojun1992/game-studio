@@ -459,7 +459,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
       tool(
         'submit_game',
-        '提交一个完成的游戏成品。支持两种模式：1) 单文件 HTML 模式（传入 html_content）；2) 文件打包模式（传入 file_path）。文件打包模式下，游戏文件夹会被压缩为 ZIP 并上传到 MinIO 存储。',
+        '提交一个完成的游戏成品（仅 engineer 可用）。支持两种模式：1) 单文件 HTML 模式（传入 html_content）；2) 文件打包模式（传入 file_path）。文件打包模式下，游戏文件夹会被压缩为 ZIP 并上传到 MinIO 存储。',
         {
           project_id: projectIdSchema.describe('当前项目 ID，必填，用于隔离不同项目的数据'),
           name: z.string().max(db.MAX_FILENAME_LENGTH, `name 长度不能超过 ${db.MAX_FILENAME_LENGTH}`).transform((value, ctx) => {
@@ -951,7 +951,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
       tool(
         'blender_create_project',
-        '创建建模 project。在 backend 数据库创建记录，然后调用 creator service 创建容器内项目目录，返回 blender_project_id。建议在完成建模工作后调用 blender_delete_project 清理资源。',
+        '创建建模 project（仅 engineer 可用）。在 backend 数据库创建记录，然后调用 creator service 创建容器内项目目录，返回 blender_project_id。建议在完成建模工作后调用 blender_delete_project 清理资源。',
         {
           project_id: projectIdSchema.describe('当前项目 ID，必填，用于隔离不同项目的数据'),
           name: z.string().min(1).max(50).describe('建模 project 名称'),
@@ -976,7 +976,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
       tool(
         'blender_list_projects',
-        '列出当前 studio project 下所有建模 project。',
+        '列出当前 studio project 下所有建模 project（仅 engineer 可用）。',
         {
           project_id: projectIdSchema.describe('当前项目 ID，必填'),
           limit: z.number().min(1).max(50).optional().default(20).describe('返回条数上限'),
@@ -996,7 +996,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
       tool(
         'blender_delete_project',
-        '删除建模 project。先调用 creator service 删除远程目录（幂等），再删除 backend DB 记录。建议完成模型文件下载后主动调用以释放容器存储空间。',
+        '删除建模 project（仅 engineer 可用）。先调用 creator service 删除远程目录（幂等），再删除 backend DB 记录。建议完成模型文件下载后主动调用以释放容器存储空间。',
         {
           project_id: projectIdSchema.describe('当前项目 ID，必填'),
           blender_project_id: z.string().describe('blender_project_id（来自 blender_create_project 的返回值）'),
@@ -1021,7 +1021,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
       tool(
         'blender_create_mesh',
-        '在 Blender 场景中创建一个基础几何体（立方体/球体/平面/圆柱体/圆环/圆锥）。',
+        '在 Blender 场景中创建一个基础几何体（立方体/球体/平面/圆柱体/圆环/圆锥）（仅 engineer 可用）。',
         {
           project_id: projectIdSchema.describe('当前项目 ID，必填'),
           blender_project_id: z.string().describe('blender_project_id'),
@@ -1055,7 +1055,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
       tool(
         'blender_add_material',
-        '为 Blender 场景中的物体添加 PBR 材质。',
+        '为 Blender 场景中的物体添加 PBR 材质（仅 engineer 可用）。',
         {
           project_id: projectIdSchema.describe('当前项目 ID，必填'),
           blender_project_id: z.string().describe('blender_project_id'),
@@ -1088,7 +1088,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
       tool(
         'blender_export_model',
-        '将 Blender 场景中的物体导出为模型文件（GLB/FBX/OBJ/PLY/USD）。',
+        '将 Blender 场景中的物体导出为模型文件（GLB/FBX/OBJ/PLY/USD）（仅 engineer 可用）。',
         {
           project_id: projectIdSchema.describe('当前项目 ID，必填'),
           blender_project_id: z.string().describe('blender_project_id'),
@@ -1118,7 +1118,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
       tool(
         'blender_execute_script',
-        '在 Blender 场景中执行自定义 Python 脚本。用于预置操作无法满足的复杂场景。',
+        '在 Blender 场景中执行自定义 Python 脚本（仅 engineer 可用）。用于预置操作无法满足的复杂场景。',
         {
           project_id: projectIdSchema.describe('当前项目 ID，必填'),
           blender_project_id: z.string().describe('blender_project_id'),
@@ -1147,7 +1147,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
       tool(
         'blender_download_model_file',
-        '从 creator service 下载模型文件到 backend 本地 output 目录。下载完成后应主动调用 blender_delete_model_file 清理 creator 远程资源。',
+        '从 creator service 下载模型文件到 backend 本地 output 目录（仅 engineer 可用）。下载完成后应主动调用 blender_delete_model_file 清理 creator 远程资源。',
         {
           project_id: projectIdSchema.describe('当前项目 ID，必填'),
           blender_project_id: z.string().describe('blender_project_id'),
@@ -1183,7 +1183,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
       tool(
         'blender_delete_model_file',
-        '删除 creator 远程模型文件（幂等）。下载到本地后应先调用此工具删除远程文件，再删除本地副本以释放容器存储空间。',
+        '删除 creator 远程模型文件（幂等）（仅 engineer 可用）。下载到本地后应先调用此工具删除远程文件，再删除本地副本以释放容器存储空间。',
         {
           project_id: projectIdSchema.describe('当前项目 ID，必填'),
           blender_project_id: z.string().describe('blender_project_id'),
