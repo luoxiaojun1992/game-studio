@@ -34,8 +34,8 @@ const RE_XHR_METHOD = /\.open\s*\(\s*["']([^"']+)["']\s*,/gi;
 
 // ====== 辅助函数 ======
 
-const ALLOWED_METHODS = new Set(['get', 'options']);
-const FORBIDDEN_METHODS = ['POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'CONNECT', 'TRACE'];
+const ALLOWED_METHODS = new Set(['get', 'options', 'head', 'connect', 'trace']);
+const FORBIDDEN_METHODS = ['POST', 'PUT', 'DELETE', 'PATCH'];
 
 function buildMessage(method: string): string {
   return `检测到非安全 HTTP 方法 [${method}]。游戏成品仅允许 GET/OPTIONS 请求，禁止向外部接口发送 POST/PUT/DELETE/PATCH 等操作。建议检查是否使用了游戏数据接口，如需服务端交互请通过 GET 参数或预定义接口实现。`;
