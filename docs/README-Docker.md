@@ -37,6 +37,7 @@ docker compose logs -f
 docker compose logs -f studio-backend
 docker compose logs -f studio-frontend
 docker compose logs -f star-office-ui
+docker compose logs -f creator
 ```
 
 ### 4. Access Services
@@ -44,6 +45,7 @@ docker compose logs -f star-office-ui
 - **Game Dev Studio Frontend**: http://localhost:5173
 - **Game Dev Studio Backend API**: http://localhost:3000
 - **Star Office UI**: http://localhost:19000
+- **Creator Service Health**: http://localhost:8080/health
 
 ### 5. Stop Services
 
@@ -62,13 +64,15 @@ docker compose down -v
 │  studio-frontend │────▶│  studio-backend  │────▶│  star-office-ui │
 │    (Nginx)       │     │   (Node.js)      │     │   (Flask)       │
 │    :5173         │     │    :3000         │     │    :19000       │
-└─────────────────┘     └──────────────────┘     └─────────────────┘
-                               │
-                               ▼
-                        ┌──────────────┐
-                        │   SQLite DB  │
-                        │   (Volume)   │
-                        └──────────────┘
+└─────────────────┘     └─────────┬────────┘     └─────────────────┘
+                                   │
+                                   ├──────────────▶ creator (FastAPI + Blender)
+                                   │
+                                   ▼
+                            ┌──────────────┐
+                            │   SQLite DB  │
+                            │   (Volume)   │
+                            └──────────────┘
 ```
 
 ## Data Persistence
@@ -78,6 +82,7 @@ Data is persisted using Docker volumes:
 - `studio-data`: Game Dev Studio data (SQLite database)
 - `studio-output`: Game output files
 - `star-office-data`: Star Office UI data
+- `creator-data`: Creator service Blender workspace data
 
 Inspect volumes:
 
@@ -100,6 +105,8 @@ docker volume inspect game-dev-studio_studio-data
 | `STAR_OFFICE_MAX_CONCURRENT` | 100 | Max concurrent agents per key |
 | `STAR_OFFICE_SECRET` | `your-secret-key-here-min-24-chars` | Star Office backend secret |
 | `ASSET_DRAWER_PASS` | `secure-pass-1234` | Star Office asset drawer password |
+| `CREATOR_PORT` | 8080 | Creator service exposed port |
+| `CREATOR_SERVICE_URL` | `http://creator:8080` | Backend-to-creator internal service URL |
 
 ## Star Office Concurrency Configuration
 

@@ -22,6 +22,7 @@
 - 6 个 Agent 中 team_builder 需特别检测（易与 CEO 混淆）
 - `submit_game` 支持 HTML 与文件打包双模式；文件模式会上传 MinIO 并回写 `file_storage_id`
 - 新增 `get_games`（列表）与 `get_game_info`（详情）用于按项目查询游戏；文件模式详情返回 MinIO 预签名下载链接
+- Blender 建模工具（`blender_*`）通过 `creator-service.ts` 调用 creator 微服务，模型文件下载/删除带安全路径校验
 
 ### E2E 测试关键
 - 选择器不匹配 → 前端加 `data-testid` → 测试用属性选

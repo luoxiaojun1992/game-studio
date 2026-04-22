@@ -36,6 +36,7 @@ docker compose logs -f
 docker compose logs -f studio-backend
 docker compose logs -f studio-frontend
 docker compose logs -f star-office-ui
+docker compose logs -f creator
 ```
 
 ### 4. 访问服务
@@ -43,6 +44,7 @@ docker compose logs -f star-office-ui
 - **Game Dev Studio 前端**: http://localhost:5173
 - **Game Dev Studio 后端 API**: http://localhost:3000
 - **Star Office UI**: http://localhost:19000
+- **Creator 服务健康检查**: http://localhost:8080/health
 
 ### 5. 停止服务
 
@@ -61,13 +63,15 @@ docker compose down -v
 │  studio-frontend │────▶│  studio-backend  │────▶│  star-office-ui │
 │    (Nginx)       │     │   (Node.js)      │     │   (Flask)       │
 │    :5173         │     │    :3000         │     │    :19000       │
-└─────────────────┘     └──────────────────┘     └─────────────────┘
-                               │
-                               ▼
-                        ┌──────────────┐
-                        │   SQLite DB  │
-                        │   (Volume)   │
-                        └──────────────┘
+└─────────────────┘     └─────────┬────────┘     └─────────────────┘
+                                   │
+                                   ├──────────────▶ creator (FastAPI + Blender)
+                                   │
+                                   ▼
+                            ┌──────────────┐
+                            │   SQLite DB  │
+                            │   (Volume)   │
+                            └──────────────┘
 ```
 
 ## 数据持久化
@@ -77,6 +81,7 @@ docker compose down -v
 - `studio-data`: Game Dev Studio 数据（SQLite 数据库）
 - `studio-output`: 游戏输出文件
 - `star-office-data`: Star Office UI 数据
+- `creator-data`: Creator 服务 Blender 工作目录数据
 
 查看数据卷：
 
@@ -99,6 +104,8 @@ docker volume inspect game-dev-studio_studio-data
 | `STAR_OFFICE_MAX_CONCURRENT` | 100 | 每个密钥最大并发 Agent 数 |
 | `STAR_OFFICE_SECRET` | `your-secret-key-here-min-24-chars` | Star Office 后端密钥 |
 | `ASSET_DRAWER_PASS` | `secure-pass-1234` | Star Office 资源面板密码 |
+| `CREATOR_PORT` | 8080 | Creator 服务对外端口 |
+| `CREATOR_SERVICE_URL` | `http://creator:8080` | 后端访问 Creator 的内部服务地址 |
 
 ## Star Office 并发配置
 

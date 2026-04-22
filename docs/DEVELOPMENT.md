@@ -13,6 +13,7 @@ This guide is based on the current repository implementation and focuses on real
 - Backend: Express (`server/index.ts`)
 - AI orchestration: `agent-manager.ts` + `tools.ts` + Agent SDK
 - Studio integration: `star-office-sync.ts` (agent registration, state sync, health checks)
+- 3D modeling integration: `creator-service.ts` + `creator/` (Blender FastAPI service)
 - Data layer: SQLite (`server/db.ts`)
 - Static analysis: extensible Lint framework (`server/lint/`)
 - Real-time observability: SSE (`/api/observe` + `sse-broadcaster.ts`)
@@ -31,6 +32,7 @@ server/
   index.ts               # REST API + SSE + static artifact hosting
   agent-manager.ts       # Agent states, message sending, permission requests
   tools.ts               # MCP custom tool definitions and permission rules
+  creator-service.ts     # Creator service integration for Blender modeling tools
   lint/                  # Extensible Lint framework (LintRunner, pluggable checkers)
   agents.ts              # Role definitions, system prompts, tool usage constraints
   star-office-sync.ts    # Star-Office-UI registration and state sync
@@ -53,6 +55,7 @@ Core tables (`server/db.ts`):
 - `agent_sessions` / `agent_messages`: agent sessions and messages
 - `proposals`: proposals and approval states
 - `games`: game artifacts (`html_content` or `file_storage_id`)
+- `blender_projects`: Blender modeling project records (`project_id` ↔ `blender_project_id`)
 - `file_storages`: packaged artifact metadata for MinIO objects
 - `logs`: unified logs (system + agent output, distinguished by `log_type`)
 - `commands`: command execution records
@@ -133,6 +136,15 @@ Each role includes:
 - `get_pending_handoffs`
 - `get_games`
 - `get_game_info`
+- `blender_create_project`
+- `blender_list_projects`
+- `blender_delete_project`
+- `blender_create_mesh`
+- `blender_add_material`
+- `blender_export_model`
+- `blender_execute_script`
+- `blender_download_model_file`
+- `blender_delete_model_file`
 - `get_project_latest_info` (team_builder only)
 
 Key constraints:
@@ -145,6 +157,8 @@ Key constraints:
 - `submit_game` supports two input modes: `html_content` or `file_path` (resolved under `output/{project_id}` only)
 - `get_games` returns current-project game entries in reverse chronological order with optional `limit` (`1..100`)
 - `get_game_info` returns full HTML for HTML-mode games, or MinIO presigned download URL for file-mode games
+- Blender tools (`blender_*`) are available only to `engineer`
+- Blender model file download/delete validates safe path under `output/{project_id}/models` to prevent traversal
 
 ### 5.3 Star Office Sync Mechanism (`server/star-office-sync.ts`)
 
@@ -216,6 +230,7 @@ npm run build
 - Studio page URL: `VITE_STAR_OFFICE_UI_URL`
 - Backend sync URL: `STAR_OFFICE_UI_URL` (default `http://127.0.0.1:19000`)
 - Agent join key: `STAR_OFFICE_JOIN_KEY`
+- Creator service URL: `CREATOR_SERVICE_URL` (default `http://localhost:8080`)
 
 ## 9. Debugging Tips
 
@@ -232,4 +247,4 @@ npm run build
 - When adding events, update `SSEEvent` union type in `src/types.ts`
 - Game preview endpoints return HTML directly; keep content secure and source controlled
 - Artifact write logic is in `db.ts`; keep backward compatibility if you change path rules
-- Project switching triggers Star Office sync; if integration fails, check `/api/projects/switch` and logs in `star-office-sync.ts`
+- `/api/projects/switch` only switches project context; Star Office sync is maintained continuously across projects

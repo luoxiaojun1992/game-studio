@@ -43,7 +43,8 @@ export const AGENT_IDS = ['engineer', 'architect', 'game_designer', 'biz_designe
 ### 3. SDK Custom Tools 架构
 - 使用 `createSdkMcpServer` + `tool()` 注册自定义工具
 - 工具通过 `mcpServers` 参数传给 `query()`
-- 工具名前缀为 `mcp__studio-tools__`（连字符）
+- 工具名前缀为 `mcp__studio_tools__`（下划线）
+- 建模工具已并入单一 studio-tools（`blender_*`），并仅对 `engineer` 角色开放
 - 记忆通过 `getMemorySummaryForPrompt()` 注入 systemPrompt
 
 ### 4. 关键文件位置
@@ -53,6 +54,7 @@ export const AGENT_IDS = ['engineer', 'architect', 'game_designer', 'biz_designe
 | Agent 管理器 | `server/agent-manager.ts` |
 | Agent 定义 | `server/agents.ts` |
 | 自定义工具 | `server/tools.ts` |
+| Creator 集成 | `server/creator-service.ts`、`creator/` |
 | 数据库操作 | `server/db.ts` |
 | 文件存储 | `server/file-storage.ts`、`server/minio-client.ts` |
 | Lint 框架 | `server/lint/`（LintRunner + 可插拔检查器） |
@@ -189,7 +191,7 @@ curl http://localhost:3001/__admin/mocks
 - 查看 mock server 日志确认请求路径
 
 ### 工具调用失败
-- 检查工具名前缀是否为 `mcp__studio-tools__`（连字符）
+- 检查工具名前缀是否为 `mcp__studio_tools__`（下划线）
 - 检查参数是否符合 zod schema（特别注意：工具必须传 `project_id`）
 - 查看 `agent-manager.ts` 中的权限配置
 

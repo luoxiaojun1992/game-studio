@@ -9,7 +9,7 @@
    - [AI_AGENT_COMMON_INSTRUCTIONS.md](../.agent/AI_AGENT_COMMON_INSTRUCTIONS.md)
 2. 如需历史经验，查看 WorkBuddy 记忆索引：
    - [INDEX.md](../.agent/memory/INDEX.md)
-   - 产物提交双模式（HTML/ZIP）、游戏查询工具（`get_games`/`get_game_info`）与存储链路可查看 [ARCHITECTURE.md](../.agent/memory/ARCHITECTURE.md) 与 [LINT.md](../.agent/memory/LINT.md)
+   - 产物提交双模式（HTML/ZIP）、游戏查询工具（`get_games`/`get_game_info`）、Blender 建模链路（`blender_*` + creator service）与存储链路可查看 [ARCHITECTURE.md](../.agent/memory/ARCHITECTURE.md) 与 [LINT.md](../.agent/memory/LINT.md)
 3. 本文件仅保留入口与索引，不重复维护公共规范正文。
 4. 自定义工具调用必须显式传入 `project_id`，并通过会话作用域一致性校验；mock/tool_calls 必须与该约束保持一致。
 5. 数据库结构变更采用 DDL 优先策略：先更新 `server/db.ts` 的 `CREATE TABLE` 定义；迁移仅用于历史数据补齐。

@@ -12,6 +12,7 @@
 - 后端：Express（`server/index.ts`）
 - AI 编排：`agent-manager.ts` + `tools.ts` + Agent SDK
 - Studio 联动：`star-office-sync.ts`（Agent 注册、状态同步、健康巡检）
+- 3D 建模集成：`creator-service.ts` + `creator/`（Blender FastAPI 服务）
 - 数据层：SQLite（`server/db.ts`）
 - 静态分析：可扩展 Lint 框架（`server/lint/`）
 - 实时观测：SSE（`/api/observe` + `sse-broadcaster.ts`）
@@ -30,6 +31,7 @@ server/
   index.ts               # REST API + SSE + 静态产物服务
   agent-manager.ts       # Agent 状态、消息发送、权限请求
   tools.ts               # MCP 自定义工具定义与权限规则
+  creator-service.ts     # Creator 服务集成（Blender 建模工具调用）
   lint/                  # 可扩展 Lint 框架（LintRunner、可插拔检查器）
   agents.ts              # 角色定义、系统提示词、工具使用约束
   star-office-sync.ts    # Star-Office-UI 注册与状态同步
@@ -52,6 +54,7 @@ src/
 - `agent_sessions` / `agent_messages`：Agent 会话与消息
 - `proposals`：提案与审批状态
 - `games`：游戏成品（`html_content` 或 `file_storage_id`）
+- `blender_projects`：Blender 建模项目记录（`project_id` ↔ `blender_project_id`）
 - `file_storages`：打包产物在 MinIO 的元数据
 - `logs`：统一日志（系统日志 + Agent 输出日志，通过 `log_type` 区分）
 - `commands`：指令执行记录
@@ -132,6 +135,15 @@ src/
 - `get_pending_handoffs`
 - `get_games`
 - `get_game_info`
+- `blender_create_project`
+- `blender_list_projects`
+- `blender_delete_project`
+- `blender_create_mesh`
+- `blender_add_material`
+- `blender_export_model`
+- `blender_execute_script`
+- `blender_download_model_file`
+- `blender_delete_model_file`
 - `get_project_latest_info`（仅 team_builder 可用）
 
 关键约束：
@@ -144,6 +156,8 @@ src/
 - `submit_game` 支持两种输入：`html_content` 或 `file_path`（仅允许 `output/{project_id}` 目录内路径）
 - `get_games` 按时间倒序返回当前项目游戏列表，支持可选 `limit`（`1..100`）
 - `get_game_info`：HTML 模式返回完整 HTML；文件模式返回 MinIO 预签名下载链接
+- Blender 工具（`blender_*`）仅 `engineer` 可用
+- Blender 模型文件下载/删除仅允许 `output/{project_id}/models` 安全路径，防止路径穿越
 
 ### 5.3 Star Office 同步机制（`server/star-office-sync.ts`）
 
@@ -215,6 +229,7 @@ npm run build
 - Studio 页面地址：`VITE_STAR_OFFICE_UI_URL`
 - 后端同步地址：`STAR_OFFICE_UI_URL`（默认 `http://127.0.0.1:19000`）
 - Agent 注册密钥：`STAR_OFFICE_JOIN_KEY`
+- Creator 服务地址：`CREATOR_SERVICE_URL`（默认 `http://localhost:8080`）
 
 ## 9. 调试建议
 
@@ -231,4 +246,4 @@ npm run build
 - 新增事件时，记得更新 `src/types.ts` 的 `SSEEvent` 联合类型
 - 游戏预览接口直接返回 HTML，注意内容安全与来源可控
 - 产物写盘逻辑在 `db.ts`，改路径规则时需兼容历史数据
-- 项目切换时会触发 Star Office 同步，若联调异常优先检查 `/api/projects/switch` 与 `star-office-sync.ts` 日志
+- `/api/projects/switch` 仅做项目上下文切换；Star Office 同步在多项目场景下持续维护

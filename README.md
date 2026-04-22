@@ -15,6 +15,7 @@ A multi-agent game development workspace built on the CodeBuddy Agent SDK, provi
 - Project settings (auto-handoff toggle)
 - Proposal management (create, review, and human decision)
 - Game artifact management (submit HTML artifacts or packaged files, preview, download, and version status)
+- Blender modeling pipeline (creator service + `blender_*` tools for project/mesh/material/export/script/file operations)
 - Static analysis (extensible lint framework with pluggable checkers for HTML structure/JS security, supports HTML mode and ZIP package mode)
 - Long-term agent memory (save/query/clear)
 - Project isolation (data and observability streams isolated by `project_id`)
@@ -104,6 +105,7 @@ npm run server
 | `VITE_API_BASE` | `http://localhost:3000` | Frontend API base URL |
 | `VITE_STAR_OFFICE_UI_URL` | `http://127.0.0.1:19000` | Embedded Studio URL in frontend tab |
 | `STAR_OFFICE_UI_URL` | `http://127.0.0.1:19000` | Backend sync service base URL |
+| `CREATOR_SERVICE_URL` | `http://localhost:8080` | Blender creator service base URL used by backend modeling tools |
 | `STAR_OFFICE_JOIN_KEY` | `ocj_example_team_01` | Agent registration key |
 | `STAR_OFFICE_SYNC_DEBOUNCE_MS` | 300 | State sync debounce interval (ms) |
 | `STAR_OFFICE_HEALTH_CHECK_INTERVAL_MS` | 10000 | Star Office health check interval (ms) |
@@ -130,6 +132,7 @@ game-studio/
 │   ├── config.ts           # API wrappers
 │   └── types.ts            # Shared business types
 ├── star-office-ui/         # Star-Office-UI Docker build resources
+├── creator/                # Blender creator service (FastAPI + Blender runtime)
 ├── docs/images/            # README preview images
 ├── data/                   # SQLite database files (runtime-generated)
 ├── output/                 # Proposal/game outputs (runtime-generated)
@@ -174,6 +177,8 @@ Main endpoints (prefix `/api`):
 - `submit_game` supports two modes: HTML content mode (`html_content`) and packaged file mode (`file_path` -> ZIP -> `file_storage_id`).
 - `get_games` lists submitted games in the current project (newest first, with basic metadata and mode flags).
 - `get_game_info` returns full HTML content for HTML-mode games, or a MinIO presigned download URL for file-mode games.
+- Blender modeling projects are tracked in `blender_projects`, bound to `project_id` and `blender_project_id`.
+- `blender_download_model_file` / `blender_delete_model_file` use safe path validation to prevent path traversal.
 - Packaged mode stores ZIP assets in MinIO and keeps metadata in `file_storages`.
 - `/output` is served as static content (HTML returned with `text/html; charset=utf-8`).
 
