@@ -1026,10 +1026,9 @@ app.post('/api/proposals/:id/decide', (req, res) => {
 
 // Game submission API.
 app.post('/api/games', (req, res) => {
-  const { project_id, name, description, html_content, proposal_id, author_agent_id, version, file_storage_id } = req.body;
+  const { project_id, name, description, html_content, proposal_id, version, file_storage_id } = req.body;
   const missing: string[] = [];
   if (!name) missing.push('name');
-  if (!author_agent_id) missing.push('author_agent_id');
   // html_content 和 file_storage_id 二选一（都为空时 html_content 报错）
   const hasHtmlContent = typeof html_content === 'string' && html_content.length > 0;
   const hasFileStorage = typeof file_storage_id === 'string' && file_storage_id.length > 0;
@@ -1041,8 +1040,6 @@ app.post('/api/games', (req, res) => {
   if (!nameValidation.ok) return res.status(400).json({ error: nameValidation.error });
   const projectValidation = validateProjectIdInput(project_id, 'project_id');
   if (!projectValidation.ok) return res.status(400).json({ error: projectValidation.error });
-  const gameAuthorValidation = validateAgentIdInput(author_agent_id, 'author_agent_id');
-  if (!gameAuthorValidation.ok) return res.status(400).json({ error: gameAuthorValidation.error });
   if (proposal_id !== undefined && proposal_id !== null && typeof proposal_id !== 'string') {
     return res.status(400).json({ error: 'proposal_id 必须是字符串' });
   }
@@ -1101,7 +1098,6 @@ app.post('/api/games', (req, res) => {
       proposal_id: normalizedProposalId,
       version: normalizedVersion || '1.0.0',
       status: 'draft',
-      author_agent_id: gameAuthorValidation.agentId,
       file_storage_id: fileStorageIdValidation.text,
       created_at: now,
       updated_at: now

@@ -140,7 +140,6 @@ db.exec(`
     proposal_id TEXT,
     version TEXT NOT NULL DEFAULT '1.0.0',
     status TEXT NOT NULL DEFAULT 'draft',
-    author_agent_id TEXT NOT NULL,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
   );
@@ -341,7 +340,6 @@ export interface DbGame {
   proposal_id: string | null;
   version: string;
   status: 'draft' | 'published';
-  author_agent_id: string;
   file_storage_id: string | null;
   created_at: string;
   updated_at: string;
@@ -625,13 +623,12 @@ export function createGame(game: DbGame): DbGame {
     throw new Error(`version 长度不能超过 ${MAX_VERSION_LENGTH}`);
   }
   const normalizedStatus = validateEnumValue(game.status, 'status', GAME_STATUSES);
-  const normalizedAuthorAgentId = normalizeAndValidateRequiredText(game.author_agent_id, 'author_agent_id');
   const normalizedDescription = normalizeOptionalText(game.description, 'description');
   const normalizedProposalId = normalizeOptionalText(game.proposal_id, 'proposal_id');
   const normalizedFileStorageId = normalizeOptionalText(game.file_storage_id, 'file_storage_id');
   const stmt = db.prepare(`
-    INSERT INTO games (id, project_id, name, description, html_content, proposal_id, version, status, author_agent_id, file_storage_id, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO games (id, project_id, name, description, html_content, proposal_id, version, status, file_storage_id, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   stmt.run(
     game.id,
@@ -642,7 +639,6 @@ export function createGame(game: DbGame): DbGame {
     normalizedProposalId,
     normalizedVersion,
     normalizedStatus,
-    normalizedAuthorAgentId,
     normalizedFileStorageId,
     game.created_at,
     game.updated_at
@@ -656,7 +652,6 @@ export function createGame(game: DbGame): DbGame {
     proposal_id: normalizedProposalId,
     version: normalizedVersion,
     status: normalizedStatus,
-    author_agent_id: normalizedAuthorAgentId,
     file_storage_id: normalizedFileStorageId
   };
 }
