@@ -28,7 +28,13 @@ Then update values in `.env` as needed.
 
 ```bash
 # Build and start all services
-docker compose up -d
+make compose-build
+
+# Start all services (already built)
+make compose-up
+
+# Stop all services
+make compose-down
 
 # View logs
 docker compose logs -f
@@ -51,7 +57,7 @@ docker compose logs -f creator
 
 ```bash
 # Stop all services
-docker compose down
+make compose-down
 
 # Stop services and remove volumes (use with caution)
 docker compose down -v
@@ -155,8 +161,8 @@ docker compose logs --tail=100
 Update port settings in `.env`, then restart:
 
 ```bash
-docker compose down
-docker compose up -d
+make compose-down
+make compose-up
 ```
 
 ### Volume issues
@@ -164,8 +170,9 @@ docker compose up -d
 To fully reset data:
 
 ```bash
+make compose-down
 docker compose down -v
-docker compose up -d
+make compose-up
 ```
 
 ## Development Mode

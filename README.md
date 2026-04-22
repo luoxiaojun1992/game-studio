@@ -137,6 +137,8 @@ game-studio/
 ├── data/                   # SQLite database files (runtime-generated)
 ├── output/                 # Proposal/game outputs (runtime-generated)
 ├── docker-compose.yml
+├── docker-compose.ui-test.yml
+├── Makefile
 ├── README.md
 ├── docs/
 │   ├── README-Docker.md
@@ -194,9 +196,15 @@ See [ARCHITECTURE.md](./docs/ARCHITECTURE.md).
 ## UI Testing
 
 ```bash
-# Recommended: run complete UI tests with docker compose
+# Recommended: use Makefile to run UI tests (build + start)
 mkdir -p tests/ui/artifacts
-docker compose -f docker-compose.ui-test.yml up --build --abort-on-container-exit --exit-code-from ui-e2e
+make compose-ui-test-build
+
+# Start already-built UI test services (cluster auto-down when ui-e2e exits)
+make compose-ui-test-up
+
+# Stop UI test services
+make compose-ui-test-down
 ```
 
 - Playwright videos/traces and reports are written to `tests/ui/artifacts/`.
