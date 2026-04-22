@@ -67,7 +67,7 @@ export default function GamePreview({ game, onClose }: Props) {
           <span className="text-xl">🎮</span>
           <div>
             <h2 className="font-bold text-white text-base">{game.name}</h2>
-            <div className="text-xs text-gray-500">v{game.version} · {(isZh ? AGENT_NAMES_ZH : AGENT_NAMES_EN)[game.author_agent_id] || game.author_agent_id}</div>
+            <div className="text-xs text-gray-500">v{game.version}</div>
           </div>
         </div>
         <div className="flex items-center gap-2">

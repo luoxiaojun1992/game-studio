@@ -594,7 +594,6 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
                 proposal_id: proposal_id || null,
                 version: version || '1.0.0',
                 status: 'draft',
-                author_agent_id: agentId,
                 file_storage_id: fileStorageId,
                 created_at: now,
                 updated_at: now
@@ -636,7 +635,6 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
               proposal_id: proposal_id || null,
               version: version || '1.0.0',
               status: 'draft',
-              author_agent_id: agentId,
               file_storage_id: null,
               created_at: now,
               updated_at: now
@@ -763,7 +761,6 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
             description: g.description,
             version: g.version,
             status: g.status,
-            author_agent_id: g.author_agent_id,
             created_at: g.created_at,
             hasContent: g.html_content !== 'FILE_ONLY',
             isFileOnly: g.html_content === 'FILE_ONLY'
@@ -774,7 +771,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
             };
           }
           const lines = games.map(g =>
-            `[${g.status}] ${g.name} v${g.version} | ${g.isFileOnly ? '文件模式' : 'HTML模式'} | by=${g.author_agent_id} | ${g.created_at.slice(0, 10)}`
+            `[${g.status}] ${g.name} v${g.version} | ${g.isFileOnly ? '文件模式' : 'HTML模式'} | ${g.created_at.slice(0, 10)}`
           ).join('\n');
           return {
             content: [{ type: 'text' as const, text: lines }]
@@ -808,7 +805,6 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
               description: game.description,
               version: game.version,
               status: game.status,
-              author_agent_id: game.author_agent_id,
               created_at: game.created_at,
               hasContent: true,
               isFileOnly: false,
@@ -840,7 +836,6 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
             description: game.description,
             version: game.version,
             status: game.status,
-            author_agent_id: game.author_agent_id,
             created_at: game.created_at,
             hasContent: false,
             isFileOnly: true,
