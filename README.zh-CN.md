@@ -155,7 +155,7 @@ game-studio/
 主要接口（前缀 `/api`）：
 
 - 基础：`/health` `/models` `/check-login` `/observe`
-- Agent：`/agents` `/agents/:agentId/messages` `/agents/:agentId/command` `/agents/:agentId/pause` `/agents/:agentId/resume`
+- Agent：`/agents` `/agents/:agentId/command` `/agents/:agentId/pause` `/agents/:agentId/resume`
 - 提案：`/proposals` `/proposals/:id` `/proposals`(POST) `/proposals/:id/review` `/proposals/:id/decide`
 - 游戏：`/games` `/games/:id` `/games`(POST) `/games/:id/preview` `/games/:id`(PATCH)
 - 文件存储：`/file-storage` `/file-storage/:id` `/file-storage/:id/download`

@@ -14,4 +14,4 @@
 4. 自定义工具 schema 已移除 `project_id` 入参；项目作用域由后端初始化工具服务时注入，mock/tool_calls 必须与当前 schema 保持一致（不要再显式传该字段）。
 5. 数据库结构变更采用 DDL 优先策略：先更新 `server/db.ts` 的 `CREATE TABLE` 定义；迁移仅用于历史数据补齐。
 6. Star-Office 同步已切换为多项目持续同步模型；`/api/projects/switch` 不再触发 Agent offline/online 同步切换。
-7. 数据模型更新：`games` 已移除 `author_agent_id`；`agent_messages`/`logs`/`commands`/`permission_requests` 统一包含 `updated_at`。
+7. 数据模型更新：`games` 已移除 `author_agent_id`；`logs`/`commands`/`permission_requests` 统一包含 `updated_at`。

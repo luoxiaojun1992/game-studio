@@ -156,7 +156,7 @@ game-studio/
 Main endpoints (prefix `/api`):
 
 - Basic: `/health` `/models` `/check-login` `/observe`
-- Agents: `/agents` `/agents/:agentId/messages` `/agents/:agentId/command` `/agents/:agentId/pause` `/agents/:agentId/resume`
+- Agents: `/agents` `/agents/:agentId/command` `/agents/:agentId/pause` `/agents/:agentId/resume`
 - Proposals: `/proposals` `/proposals/:id` `/proposals`(POST) `/proposals/:id/review` `/proposals/:id/decide`
 - Games: `/games` `/games/:id` `/games`(POST) `/games/:id/preview` `/games/:id`(PATCH)
 - File storage: `/file-storage` `/file-storage/:id` `/file-storage/:id/download`
