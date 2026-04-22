@@ -1109,7 +1109,7 @@ app.post('/api/games', (req, res) => {
   const filePath = hasHtmlContent ? db.saveGameToFile(game) : null;
 
   sseBroadcaster.broadcast({ type: 'game_submitted', game: { ...game, html_content: undefined, hasContent: hasHtmlContent, fileStorageId: game.file_storage_id }, filePath }, game.project_id);
-  agentManager.addLog(game.project_id, gameAuthorValidation.agentId, '提交游戏', `游戏: ${game.name} v${game.version}${filePath ? ` → 已保存到 ${path.basename(filePath)}` : ''}${hasFileStorage ? ' [文件模式]' : ''}`, 'success');
+  agentManager.addLog(game.project_id, 'api', '提交游戏', `游戏: ${game.name} v${game.version}${filePath ? ` → 已保存到 ${path.basename(filePath)}` : ''}${hasFileStorage ? ' [文件模式]' : ''}`, 'success');
 
   res.json({ game: { ...game, html_content: undefined }, filePath });
 });
