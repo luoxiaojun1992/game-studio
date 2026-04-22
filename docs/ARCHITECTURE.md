@@ -78,7 +78,7 @@ data/studio.db     output/{project_id}/...
 - Main tables include:
   - `projects`
   - `project_settings`
-  - `agent_sessions`, `agent_messages`
+  - `agent_sessions`
   - `proposals`
   - `task_board_tasks`
   - `handoffs`
@@ -93,7 +93,7 @@ data/studio.db     output/{project_id}/...
 - Packaged game artifacts are uploaded to MinIO and linked through `games.file_storage_id`
 - Data and outputs are isolated by `project_id`
 - `games` no longer stores `author_agent_id`; author attribution should be tracked from workflow context if needed.
-- `agent_messages`, `logs`, `commands`, and `permission_requests` include `updated_at` for state transition tracking.
+- `logs`, `commands`, and `permission_requests` include `updated_at` for state transition tracking.
 
 ## 6. Communication Model
 

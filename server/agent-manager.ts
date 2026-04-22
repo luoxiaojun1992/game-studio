@@ -427,19 +427,6 @@ class AgentManager extends EventEmitter {
         updated_at: now
       });
     }
-    const userMsgId = uuidv4();
-    db.createAgentMessage({
-      id: userMsgId,
-      agent_session_id: agentDbSession.id,
-      agent_id: agentId,
-      role: 'user',
-      content: message,
-      model: null,
-      tool_calls: null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    });
-
     let fullResponse = '';
     let toolCalls: any[] = [];
 
@@ -688,19 +675,6 @@ class AgentManager extends EventEmitter {
           this.addAgentLogEntry(scopedProjectId, agentId, 'done', doneContent);
         }
       }
-      const assistantMsgId = uuidv4();
-      db.createAgentMessage({
-        id: assistantMsgId,
-        agent_session_id: agentDbSession.id,
-        agent_id: agentId,
-        role: 'assistant',
-        content: fullResponse,
-        model,
-        tool_calls: toolCalls.length > 0 ? JSON.stringify(toolCalls) : null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      });
-
       if (agentId === 'engineer') {
         const guardWarning = this.validateEngineerTaskBoardBeforeFinish(scopedProjectId);
         if (guardWarning) {

@@ -52,7 +52,7 @@ Core tables (`server/db.ts`):
 
 - `projects`: project metadata
 - `project_settings`: project-level configuration (including `autopilot_enabled`)
-- `agent_sessions` / `agent_messages`: agent sessions and messages
+- `agent_sessions`: agent runtime sessions
 - `proposals`: proposals and approval states
 - `games`: game artifacts (`html_content` or `file_storage_id`)
 - `blender_projects`: Blender modeling project records (`project_id` ↔ `blender_project_id`)
@@ -70,7 +70,7 @@ Recommendations:
 - Use migration scripts only for legacy data backfill/compatibility scenarios when truly needed.
 - Add indexes for high-frequency query fields.
 - `games` no longer includes `author_agent_id`; game submission interfaces should not require this field.
-- `agent_messages`, `logs`, `commands`, and `permission_requests` should persist both `created_at` and `updated_at`.
+- `logs`, `commands`, and `permission_requests` should persist both `created_at` and `updated_at`.
 
 ## 4. APIs and Events
 
@@ -78,7 +78,7 @@ Recommendations:
 
 - System: `GET /api/health`, `GET /api/models`, `GET /api/check-login`
 - Observability: `GET /api/observe` (SSE)
-- Agents: query, message query/clear, pause/resume, command send (team_builder cannot pause/resume or receive manual commands)
+- Agents: query, pause/resume, command send (team_builder cannot pause/resume or receive manual commands)
 - Proposals: create, query, review, user decision
 - Games: submit, query, preview, status update
 - Tasks: create, query, status update

@@ -236,16 +236,6 @@ app.get('/api/agents', (req, res) => {
   res.json({ agents: agentsWithState });
 });
 
-// Returns recent chat history for one agent within the selected project.
-app.get('/api/agents/:agentId/messages', (req, res) => {
-  const { agentId } = req.params;
-  const agentValidation = validateAgentIdInput(agentId, 'agentId');
-  if (!agentValidation.ok) return res.status(400).json({ error: agentValidation.error });
-  const projectId = normalizeProjectId(req.query.projectId);
-  const messages = db.getAgentMessages(projectId, agentValidation.agentId, 100);
-  res.json({ messages: messages.map(m => ({ ...m, tool_calls: m.tool_calls ? JSON.parse(m.tool_calls) : null })) });
-});
-
 // Manual runtime controls for operator intervention.
 app.post('/api/agents/:agentId/pause', (req, res) => {
   const { agentId } = req.params;
@@ -875,15 +865,6 @@ app.patch('/api/tasks/:id/status', (req, res) => {
 });
 
 // Agent memory APIs.
-app.delete('/api/agents/:agentId/messages', (req, res) => {
-  const { agentId } = req.params;
-  const agentValidation = validateAgentIdInput(agentId, 'agentId');
-  if (!agentValidation.ok) return res.status(400).json({ error: agentValidation.error });
-  const projectId = normalizeProjectId(req.query.projectId ?? req.body?.projectId);
-  db.clearAgentMessages(projectId, agentValidation.agentId);
-  agentManager.addLog(projectId, agentValidation.agentId, '清除聊天记录', '用户清除了该 Agent 的所有聊天记录和会话', 'warn');
-  res.json({ success: true });
-});
 app.get('/api/agents/:agentId/memories', (req, res) => {
   const { agentId } = req.params;
   const agentValidation = validateAgentIdInput(agentId, 'agentId');

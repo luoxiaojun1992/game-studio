@@ -51,7 +51,7 @@ src/
 
 - `projects`：项目基础信息
 - `project_settings`：项目级配置（含 `autopilot_enabled`）
-- `agent_sessions` / `agent_messages`：Agent 会话与消息
+- `agent_sessions`：Agent 运行会话
 - `proposals`：提案与审批状态
 - `games`：游戏成品（`html_content` 或 `file_storage_id`）
 - `blender_projects`：Blender 建模项目记录（`project_id` ↔ `blender_project_id`）
@@ -69,7 +69,7 @@ src/
 - 迁移脚本仅在确有历史数据补齐/兼容需求时使用。
 - 对高频查询字段补索引。
 - `games` 已不再包含 `author_agent_id`，游戏提交接口不应再要求该字段。
-- `agent_messages`、`logs`、`commands`、`permission_requests` 应统一持久化 `created_at` 与 `updated_at`。
+- `logs`、`commands`、`permission_requests` 应统一持久化 `created_at` 与 `updated_at`。
 
 ## 4. API 与事件
 
@@ -77,7 +77,7 @@ src/
 
 - 系统：`GET /api/health`，`GET /api/models`，`GET /api/check-login`
 - 观测：`GET /api/observe`（SSE）
-- Agent：查询、消息查询/清理、暂停/恢复、发送指令（team_builder 不支持暂停/恢复与手动指令）
+- Agent：查询、暂停/恢复、发送指令（team_builder 不支持暂停/恢复与手动指令）
 - 提案：创建、查询、评审、用户决策
 - 游戏：提交、查询、预览、状态更新
 - 任务：创建、查询、状态更新

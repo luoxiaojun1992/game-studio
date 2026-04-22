@@ -97,20 +97,6 @@ db.exec(`
     updated_at TEXT NOT NULL
   );
 
-  -- Agent 消息表
-  CREATE TABLE IF NOT EXISTS agent_messages (
-    id TEXT PRIMARY KEY,
-    agent_session_id TEXT NOT NULL,
-    agent_id TEXT NOT NULL,
-    role TEXT NOT NULL,
-    content TEXT NOT NULL,
-    model TEXT,
-    tool_calls TEXT,
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL,
-    FOREIGN KEY (agent_session_id) REFERENCES agent_sessions(id) ON DELETE CASCADE
-  );
-
   -- 提案表（策划案、架构方案、技术方案等）
   CREATE TABLE IF NOT EXISTS proposals (
     id TEXT PRIMARY KEY,
@@ -216,8 +202,6 @@ db.exec(`
     updated_at TEXT NOT NULL
   );
 
-  CREATE INDEX IF NOT EXISTS idx_agent_messages_session ON agent_messages(agent_session_id);
-  CREATE INDEX IF NOT EXISTS idx_agent_messages_agent ON agent_messages(agent_id);
   CREATE INDEX IF NOT EXISTS idx_agent_sessions_project_agent ON agent_sessions(project_id, agent_id);
   CREATE INDEX IF NOT EXISTS idx_proposals_status ON proposals(status);
   CREATE INDEX IF NOT EXISTS idx_proposals_project_id ON proposals(project_id);
@@ -302,18 +286,6 @@ export interface DbAgentSession {
   sdk_session_id: string | null;
   status: 'idle' | 'working' | 'paused' | 'error';
   current_task: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface DbAgentMessage {
-  id: string;
-  agent_session_id: string;
-  agent_id: string;
-  role: 'user' | 'assistant' | 'system';
-  content: string;
-  model: string | null;
-  tool_calls: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -489,21 +461,6 @@ export function updateAgentStatus(projectId: string, agentId: string, status: Db
     const stmt = db.prepare('UPDATE agent_sessions SET status = ?, current_task = ?, updated_at = ? WHERE id = ?');
     stmt.run(status, currentTask !== undefined ? currentTask : existing.current_task, new Date().toISOString(), existing.id);
   }
-}
-export function getAgentMessages(projectId: string, agentId: string, limit = 50): DbAgentMessage[] {
-  const session = getAgentSession(projectId, agentId);
-  if (!session) return [];
-  const stmt = db.prepare('SELECT * FROM agent_messages WHERE agent_session_id = ? ORDER BY created_at ASC LIMIT ?');
-  return stmt.all(session.id, limit) as DbAgentMessage[];
-}
-
-export function createAgentMessage(message: DbAgentMessage): DbAgentMessage {
-  const stmt = db.prepare(`
-    INSERT INTO agent_messages (id, agent_session_id, agent_id, role, content, model, tool_calls, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-  stmt.run(message.id, message.agent_session_id, message.agent_id, message.role, message.content, message.model, message.tool_calls, message.created_at, message.updated_at);
-  return message;
 }
 export function getAllProposals(): DbProposal[] {
   const stmt = db.prepare('SELECT * FROM proposals ORDER BY created_at DESC');
@@ -948,18 +905,6 @@ export function updateHandoff(id: string, updates: Partial<DbHandoff>): boolean 
   const stmt = db.prepare(`UPDATE handoffs SET ${fields.join(', ')} WHERE id = ?`);
   const result = stmt.run(...values);
   return result.changes > 0;
-}
-/**
- */
-export function clearAgentMessages(projectId: string, agentId: string): boolean {
-  const session = getAgentSession(projectId, agentId);
-  if (!session) return true;
-  const deleteMsgs = db.prepare('DELETE FROM agent_messages WHERE agent_session_id = ?');
-  deleteMsgs.run(session.id);
-  const updateSession = db.prepare('UPDATE agent_sessions SET sdk_session_id = NULL, current_task = NULL, updated_at = ? WHERE id = ?');
-  updateSession.run(new Date().toISOString(), session.id);
-
-  return true;
 }
 export function createAgentMemory(memory: DbAgentMemory): DbAgentMemory {
   const stmt = db.prepare(`
