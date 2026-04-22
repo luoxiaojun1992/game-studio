@@ -107,6 +107,7 @@ db.exec(`
     model TEXT,
     tool_calls TEXT,
     created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
     FOREIGN KEY (agent_session_id) REFERENCES agent_sessions(id) ON DELETE CASCADE
   );
 
@@ -155,7 +156,8 @@ db.exec(`
     tool_name TEXT,
     action TEXT,
     is_error INTEGER NOT NULL DEFAULT 0,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
   );
 
   CREATE INDEX IF NOT EXISTS idx_logs_project ON logs(project_id);
@@ -171,7 +173,8 @@ db.exec(`
     status TEXT NOT NULL DEFAULT 'pending',
     result TEXT,
     created_at TEXT NOT NULL,
-    executed_at TEXT
+    executed_at TEXT,
+    updated_at TEXT NOT NULL
   );
 
   -- 权限请求表（工具执行审批消息）
@@ -186,7 +189,8 @@ db.exec(`
     message TEXT, -- 用户回复的消息
     updated_input TEXT, -- 用户修改后的输入参数（JSON）
     created_at TEXT NOT NULL,
-    responded_at TEXT
+    responded_at TEXT,
+    updated_at TEXT NOT NULL
   );
 
   CREATE INDEX IF NOT EXISTS idx_permission_requests_project ON permission_requests(project_id);
@@ -311,6 +315,7 @@ export interface DbAgentMessage {
   model: string | null;
   tool_calls: string | null;
   created_at: string;
+  updated_at: string;
 }
 
 export interface DbProposal {
@@ -370,6 +375,7 @@ export interface DbLog {
   action: string | null;
   is_error: boolean;
   created_at: string;
+  updated_at: string;
 }
 
 export interface DbCommand {
@@ -381,6 +387,7 @@ export interface DbCommand {
   result: string | null;
   created_at: string;
   executed_at: string | null;
+  updated_at: string;
 }
 
 export interface DbHandoff {
@@ -492,10 +499,10 @@ export function getAgentMessages(projectId: string, agentId: string, limit = 50)
 
 export function createAgentMessage(message: DbAgentMessage): DbAgentMessage {
   const stmt = db.prepare(`
-    INSERT INTO agent_messages (id, agent_session_id, agent_id, role, content, model, tool_calls, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO agent_messages (id, agent_session_id, agent_id, role, content, model, tool_calls, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
-  stmt.run(message.id, message.agent_session_id, message.agent_id, message.role, message.content, message.model, message.tool_calls, message.created_at);
+  stmt.run(message.id, message.agent_session_id, message.agent_id, message.role, message.content, message.model, message.tool_calls, message.created_at, message.updated_at);
   return message;
 }
 export function getAllProposals(): DbProposal[] {
@@ -707,10 +714,10 @@ export function updateGame(id: string, updates: Partial<DbGame>): boolean {
 }
 export function addLog(log: DbLog): void {
   const stmt = db.prepare(`
-    INSERT INTO logs (id, project_id, agent_id, log_type, level, content, tool_name, action, is_error, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO logs (id, project_id, agent_id, log_type, level, content, tool_name, action, is_error, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
-  stmt.run(log.id, log.project_id, log.agent_id, log.log_type, log.level, log.content, log.tool_name || null, log.action || null, log.is_error ? 1 : 0, log.created_at);
+  stmt.run(log.id, log.project_id, log.agent_id, log.log_type, log.level, log.content, log.tool_name || null, log.action || null, log.is_error ? 1 : 0, log.created_at, log.updated_at);
 }
 
 export function getLogs(projectId: string, agentId?: string, limit = 1000): DbLog[] {
@@ -734,10 +741,10 @@ export function deleteLogs(projectId: string, agentId?: string): void {
 }
 export function createCommand(command: DbCommand): DbCommand {
   const stmt = db.prepare(`
-    INSERT INTO commands (id, project_id, target_agent_id, content, status, result, created_at, executed_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO commands (id, project_id, target_agent_id, content, status, result, created_at, executed_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
-  stmt.run(command.id, command.project_id, command.target_agent_id, command.content, command.status, command.result, command.created_at, command.executed_at);
+  stmt.run(command.id, command.project_id, command.target_agent_id, command.content, command.status, command.result, command.created_at, command.executed_at, command.updated_at);
   return command;
 }
 
@@ -752,6 +759,7 @@ export function updateCommand(id: string, updates: Partial<DbCommand>): boolean 
   if (updates.status !== undefined) { fields.push('status = ?'); values.push(updates.status); }
   if (updates.result !== undefined) { fields.push('result = ?'); values.push(updates.result); }
   if (updates.executed_at !== undefined) { fields.push('executed_at = ?'); values.push(updates.executed_at); }
+  if (updates.updated_at !== undefined) { fields.push('updated_at = ?'); values.push(updates.updated_at); }
   if (fields.length === 0) return false;
   values.push(id);
   const stmt = db.prepare(`UPDATE commands SET ${fields.join(', ')} WHERE id = ?`);
@@ -775,14 +783,15 @@ export interface DbPermissionRequest {
   updated_input?: string; // JSON string
   created_at: string;
   responded_at?: string;
+  updated_at: string;
 }
 
 export function createPermissionRequest(request: DbPermissionRequest): DbPermissionRequest {
   const stmt = db.prepare(`
-    INSERT INTO permission_requests (id, project_id, agent_id, tool_name, input, status, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO permission_requests (id, project_id, agent_id, tool_name, input, status, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `);
-  stmt.run(request.id, request.project_id, request.agent_id, request.tool_name, request.input, request.status, request.created_at);
+  stmt.run(request.id, request.project_id, request.agent_id, request.tool_name, request.input, request.status, request.created_at, request.updated_at);
   return request;
 }
 
@@ -797,9 +806,10 @@ export function respondToPermissionRequest(
   message?: string,
   updatedInput?: Record<string, unknown>
 ): boolean {
+  const now = new Date().toISOString();
   const stmt = db.prepare(`
-    UPDATE permission_requests 
-    SET status = ?, behavior = ?, message = ?, updated_input = ?, responded_at = ?
+    UPDATE permission_requests
+    SET status = ?, behavior = ?, message = ?, updated_input = ?, responded_at = ?, updated_at = ?
     WHERE id = ? AND status = 'pending'
   `);
   const result = stmt.run(
@@ -807,15 +817,17 @@ export function respondToPermissionRequest(
     behavior,
     message || null,
     updatedInput ? JSON.stringify(updatedInput) : null,
-    new Date().toISOString(),
+    now,
+    now,
     id
   );
   return result.changes > 0;
 }
 
 export function expirePermissionRequest(id: string): boolean {
-  const stmt = db.prepare("UPDATE permission_requests SET status = 'expired' WHERE id = ? AND status = 'pending'");
-  const result = stmt.run(id);
+  const now = new Date().toISOString();
+  const stmt = db.prepare("UPDATE permission_requests SET status = 'expired', updated_at = ? WHERE id = ? AND status = 'pending'");
+  const result = stmt.run(now, id);
   return result.changes > 0;
 }
 

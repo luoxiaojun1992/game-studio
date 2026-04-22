@@ -78,6 +78,7 @@ export interface LogEntry {
   action: string | null;
   is_error: boolean;
   created_at: string;
+  updated_at: string;
 }
 export interface Command {
   id: string;
@@ -87,6 +88,7 @@ export interface Command {
   result: string | null;
   created_at: string;
   executed_at: string | null;
+  updated_at: string;
 }
 export interface AgentMessage {
   id: string;
@@ -97,6 +99,7 @@ export interface AgentMessage {
   model: string | null;
   tool_calls: any[] | null;
   created_at: string;
+  updated_at: string;
 }
 export interface PermissionRequest {
   requestId: string;
