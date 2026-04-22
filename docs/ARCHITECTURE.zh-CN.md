@@ -20,17 +20,18 @@ Game Dev Studio 是一个多 Agent 游戏研发工作台，包含：
   ├─ HTTP/REST  ───────────────┐
   └─ SSE (/api/observe) ───────┤
                                 ▼
-                       后端 (Express + TypeScript)
-                       ├─ Agent Manager / Tool Runtime
-                       ├─ Project + Proposal + Task + Handoff APIs
-                       ├─ Game Artifact APIs
-                       ├─ 日志/事件广播 (SSE)
-                       ├─ SQLite 持久化
-                       └─ Star-Office 同步服务
-                                │
-              ┌─────────────────┴─────────────────┐
-              ▼                                   ▼
-        data/studio.db                     output/{project_id}/...
+后端 (Express + TypeScript)
+  ├─ Agent Manager / Tool Runtime
+  ├─ Project + Proposal + Task + Handoff APIs
+  ├─ Game Artifact APIs
+  ├─ Creator Service Client（Blender API 桥接）
+  ├─ 日志/事件广播 (SSE)
+  ├─ SQLite 持久化
+  └─ Star-Office 同步服务
+                 │                    │
+      ┌──────────┴─────────┐          ▼
+      ▼                    ▼   Creator Service（FastAPI + Blender）
+data/studio.db     output/{project_id}/...
 ```
 
 ## 3. 运行时组件
@@ -50,6 +51,7 @@ Game Dev Studio 是一个多 Agent 游戏研发工作台，包含：
 - `tools.ts`：MCP 自定义工具定义与角色约束
 - `file-storage.ts`：文件存储 API 与内部上传复用函数
 - `minio-client.ts`：MinIO 对象操作与预签名 URL 能力
+- `creator-service.ts`：creator HTTP 客户端、建模 project 生命周期/模型文件操作与安全路径校验
 - `lint/`：可扩展 Lint 框架（LintRunner、可插拔检查器、零外部依赖）
 - `agents.ts`：角色定义、提示词、交接约束
 - `db.ts`：SQLite 表结构（DDL 优先初始化）与读写逻辑
@@ -64,6 +66,7 @@ Game Dev Studio 是一个多 Agent 游戏研发工作台，包含：
 - **任务（Tasks）**：开发/测试任务拆分与状态流转
 - **交接（Handoffs）**：跨角色任务移交与确认执行
 - **产物（Games）**：支持 HTML 成品或打包产物提交，支持列表、预览与文件下载
+- **建模（Modeling）**：Blender project 管理、几何体/材质/导出/脚本执行与模型文件回传
 - **静态分析（Lint/Quality）**：可扩展静态检查框架，支持 HTML 结构、JS 安全等可插拔检查器
 - **记忆（Memories）**：按角色/项目组织的长期记忆
 - **观测（Logs/Events）**：运行日志与事件流
@@ -80,6 +83,7 @@ Game Dev Studio 是一个多 Agent 游戏研发工作台，包含：
   - `task_board_tasks`
   - `handoffs`
   - `games`
+  - `blender_projects`
   - `file_storages`
   - `agent_memories`
   - `logs`
@@ -116,6 +120,7 @@ Game Dev Studio 是一个多 Agent 游戏研发工作台，包含：
 - 通过 `project_id` 实现项目级数据与事件隔离
 - 工具调用强制要求 `project_id` 入参，并校验其与当前会话作用域一致
 - SSE 广播在缺失 `projectId` 时直接跳过，避免跨项目事件泄露
+- 模型文件下载/删除仅允许操作 `output/{project_id}/models` 安全路径，防止路径穿越
 - 路由统一在 `/api/*` 命名空间下管理
 - 产物文件受限于受管控的输出目录
 - 工具调用受角色权限与工作流规则约束
@@ -123,7 +128,7 @@ Game Dev Studio 是一个多 Agent 游戏研发工作台，包含：
 ## 9. 部署形态
 
 - 本地开发：单节点后端 + 前端开发服务器
-- Docker 部署：前后端容器化（见 `README-Docker.zh-CN.md`）
+- Docker 部署：前后端 + creator 服务容器化（见 `README-Docker.zh-CN.md`）
 - 运行目录：
   - `data/`：SQLite 数据库
   - `output/`：提案/游戏产物

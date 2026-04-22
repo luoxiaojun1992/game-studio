@@ -14,6 +14,7 @@
 - 项目设置（自动交接开关）
 - 提案管理（创建、评审、人工决策）
 - 游戏成品管理（支持 HTML 成品或打包文件提交、预览下载、版本状态）
+- Blender 建模链路（creator service + `blender_*` 工具，覆盖 project/几何体/材质/导出/脚本/文件操作）
 - 静态分析（可扩展 Lint 框架，支持 HTML 结构、JS 安全等可插拔检查器，覆盖 HTML 模式与 ZIP 模式）
 - Agent 长期记忆（保存/查询/清理）
 - 项目隔离（按 `project_id` 隔离数据与观测流）
@@ -103,6 +104,7 @@ npm run server
 | `VITE_API_BASE` | `http://localhost:3000` | 前端 API 基地址 |
 | `VITE_STAR_OFFICE_UI_URL` | `http://127.0.0.1:19000` | 前端 Studio 页签嵌入地址 |
 | `STAR_OFFICE_UI_URL` | `http://127.0.0.1:19000` | 后端同步服务基础地址 |
+| `CREATOR_SERVICE_URL` | `http://localhost:8080` | 后端建模工具调用的 Blender creator service 基础地址 |
 | `STAR_OFFICE_JOIN_KEY` | `ocj_example_team_01` | Agent 注册密钥 |
 | `STAR_OFFICE_SYNC_DEBOUNCE_MS` | 300 | 状态同步防抖时间（毫秒） |
 | `STAR_OFFICE_HEALTH_CHECK_INTERVAL_MS` | 10000 | Star Office 健康检查周期（毫秒） |
@@ -129,6 +131,7 @@ game-studio/
 │   ├── config.ts           # API 封装
 │   └── types.ts            # 前后端共享业务类型
 ├── star-office-ui/         # Star-Office-UI Docker 构建资源
+├── creator/                # Blender creator 微服务（FastAPI + Blender 运行时）
 ├── docs/images/            # README 预览图片
 ├── data/                   # SQLite 数据文件目录（运行时生成）
 ├── output/                 # 提案/游戏产出目录（运行时生成）
@@ -173,6 +176,8 @@ game-studio/
 - `submit_game` 支持双模式：HTML 内容模式（`html_content`）与打包文件模式（`file_path` -> ZIP -> `file_storage_id`）。
 - `get_games` 可按时间倒序查询当前项目已提交游戏列表（含基础元数据与模式标记）。
 - `get_game_info` 对 HTML 模式返回完整 HTML 内容，对文件模式返回 MinIO 预签名下载链接。
+- Blender 建模项目通过 `blender_projects` 表管理，并绑定 `project_id` 与 `blender_project_id`。
+- `blender_download_model_file` / `blender_delete_model_file` 内置安全路径校验，防止路径穿越。
 - 打包模式会将 ZIP 上传至 MinIO，并在 `file_storages` 表记录元数据。
 - `/output` 提供静态访问（HTML 以 `text/html; charset=utf-8` 返回）。
 

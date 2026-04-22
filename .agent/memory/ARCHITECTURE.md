@@ -8,6 +8,7 @@
 ## 架构关键点
 - `server/db.ts` - SQLite 所有数据操作
 - `server/tools.ts` - SDK Custom Tools（MCP 自定义工具）
+- `server/creator-service.ts` - Creator 服务调用封装（Blender 项目/文件生命周期）
 - `server/lint/` - 可扩展静态检查框架（LintRunner + 可插拔 checker）
 - `server/lint/types.ts` - 核心类型：LintChecker 接口、LintIssue、LintResult
 - `server/lint/index.ts` - LintRunner 运行时 + lintGameContent() 便捷入口
@@ -30,6 +31,7 @@
 - 记忆通过 `getMemorySummaryForPrompt()` 注入 systemPrompt
 - zod 依赖用于定义工具的参数 schema
 - 内置工具覆盖记忆、任务拆分、任务看板、交接、提案、游戏提交、日志查询等核心流程（以 `server/tools.ts` 为准）
+- Blender 建模工具（`blender_*`）已并入同一 studio-tools server，由 `creator-service.ts` 统一调用 creator API
 - 所有工具调用都要求显式传入 project_id，并通过 scopedProjectId 做一致性校验
 
 ## Agent 角色
@@ -37,7 +39,8 @@
 - `team_builder` 每个 agent 结束后运行，负责总结沉淀记忆，handoffTargets 为空数组
 
 ## canUseTool 放行规则
-- `mcp__studio-tools__*` 工具自动放行（无需权限检查）
+- studio-tools 前缀为 `mcp__studio_tools__`；内部按白名单自动放行
+- `blender_*` 工具仅 `engineer` 自动放行，其他角色默认不放行
 
 ## DB 初始化注意事项
 - `MAX_PROJECT_ID_LENGTH` 等常量必须放在文件顶部，在任何函数调用之前完成初始化
@@ -79,6 +82,7 @@ game-dev-studio/
 │   ├── config.ts         # API 配置
 │   └── i18n.ts           # 国际化支持
 ├── star-office-ui/       # Star‑Office‑UI 子模块（用于同步）
+├── creator/              # Blender Creator 微服务（FastAPI）
 ├── tests/                # 测试文件
 │   ├── ui/               # UI E2E 测试（Playwright）
 │   │   ├── e2e/studio.spec.ts    # 主测试用例

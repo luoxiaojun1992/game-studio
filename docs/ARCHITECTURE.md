@@ -20,17 +20,18 @@ Browser (React + Vite)
   ├─ HTTP/REST  ───────────────┐
   └─ SSE (/api/observe) ───────┤
                                 ▼
-                       Backend (Express + TypeScript)
-                       ├─ Agent Manager / Tool Runtime
-                       ├─ Project + Proposal + Task + Handoff APIs
-                       ├─ Game Artifact APIs
-                       ├─ Log/Event Broadcasting (SSE)
-                       ├─ SQLite Persistence
-                       └─ Star-Office Sync Service
-                                │
-              ┌─────────────────┴─────────────────┐
-              ▼                                   ▼
-      data/studio.db                        output/{project_id}/...
+Backend (Express + TypeScript)
+  ├─ Agent Manager / Tool Runtime
+  ├─ Project + Proposal + Task + Handoff APIs
+  ├─ Game Artifact APIs
+  ├─ Creator Service Client (Blender API bridge)
+  ├─ Log/Event Broadcasting (SSE)
+  ├─ SQLite Persistence
+  └─ Star-Office Sync Service
+                 │                    │
+      ┌──────────┴─────────┐          ▼
+      ▼                    ▼   Creator Service (FastAPI + Blender)
+data/studio.db     output/{project_id}/...
 ```
 
 ## 3. Runtime Components
@@ -50,6 +51,7 @@ Browser (React + Vite)
 - `tools.ts`: MCP custom tool definitions and role constraints
 - `file-storage.ts`: shared file storage APIs/internal upload helpers
 - `minio-client.ts`: MinIO object operations and presigned URL helpers
+- `creator-service.ts`: creator HTTP client, Blender project lifecycle/model file operations, and safe-path validation
 - `lint/`: extensible lint framework (LintRunner, pluggable checkers, zero external dependencies)
 - `agents.ts`: role declarations, prompts, and handoff constraints
 - `db.ts`: SQLite schema (DDL-first initialization) and read/write operations
@@ -64,6 +66,7 @@ Browser (React + Vite)
 - **Tasks**: development/testing decomposition and status transitions
 - **Handoffs**: cross-role ownership transfer and confirmation flow
 - **Games**: HTML artifact submission or packaged artifact submission, listing, preview, and file download
+- **Modeling**: Blender project management, mesh/material/export/script execution, and model file pullback
 - **Lint/Quality**: extensible static analysis framework with pluggable checkers (HTML structure, JS security, etc.)
 - **Memories**: long-term memory records scoped by role/project
 - **Logs/Observability**: runtime logs and stream events
@@ -80,6 +83,7 @@ Browser (React + Vite)
   - `task_board_tasks`
   - `handoffs`
   - `games`
+  - `blender_projects`
   - `file_storages`
   - `agent_memories`
   - `logs`
@@ -116,6 +120,7 @@ Browser (React + Vite)
 - Project-level isolation via `project_id` in data and event paths
 - Tool calls enforce `project_id` as required input and reject mismatches against session scope
 - SSE broadcaster skips emission when `projectId` is missing to avoid cross-project event leakage
+- Model file download/delete enforces safe-path constraints inside `output/{project_id}/models`
 - Controlled route namespaces under `/api/*`
 - Output files are constrained to managed output directories
 - Tool usage is constrained by role and workflow rules
@@ -123,7 +128,7 @@ Browser (React + Vite)
 ## 9. Deployment Topology
 
 - Local development: single-node backend + frontend dev server
-- Docker deployment: frontend/backend containerized (see `README-Docker.md`)
+- Docker deployment: frontend/backend + creator service containerized (see `README-Docker.md`)
 - Runtime directories:
   - `data/` for SQLite DB
   - `output/` for generated artifacts
