@@ -17,7 +17,6 @@ from pydantic import BaseModel, Field, field_validator
 # ---------------------------------------------------------------------------
 PROJECT_ID_PATTERN = re.compile(r"^[a-zA-Z0-9_-]{1,64}$")
 FILENAME_PATTERN = re.compile(r"^[a-zA-Z0-9_\-\.]+$")
-MAX_SCRIPT_BYTES = 10 * 1024
 
 MESH_TYPES = Literal["cube", "sphere", "plane", "cylinder", "torus", "cone"]
 EXPORT_FORMATS = Literal["glb", "fbx", "obj", "ply", "usd"]
@@ -131,19 +130,6 @@ class ExportRequest(BaseModel):
         if "/" in v or "\\" in v:
             raise ValueError("output_filename must not contain path separators")
         return _validate_filename(v)
-
-
-class ExecuteScriptRequest(BaseModel):
-    script: str = Field(..., description="Blender Python script code")
-
-    @field_validator("script")
-    @classmethod
-    def validate_script_size(cls, v: str) -> str:
-        if len(v.encode("utf-8")) > MAX_SCRIPT_BYTES:
-            raise ValueError(
-                f"script exceeds maximum size of {MAX_SCRIPT_BYTES} bytes (10KB)"
-            )
-        return v
 
 
 class BlenderOperationResponse(BaseModel):

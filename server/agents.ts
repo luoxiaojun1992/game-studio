@@ -97,7 +97,7 @@ const TOOLS_OVERVIEW = `
 | \`blender_create_mesh\` | 在 Blender 场景中创建基础几何体 | **engineer** |
 | \`blender_add_material\` | 为 Blender 物体添加 PBR 材质 | **engineer** |
 | \`blender_export_model\` | 将 Blender 物体导出为模型文件（GLB/FBX/OBJ/PLY/USD） | **engineer** |
-| \`blender_execute_script\` | 在 Blender 场景中执行自定义 Python 脚本 | **engineer** |
+
 | \`blender_download_model_file\` | 从 creator service 下载模型文件到本地 output 目录 | **engineer** |
 | \`blender_delete_model_file\` | 删除 creator 远程模型文件（幂等） | **engineer** |
 
@@ -201,7 +201,7 @@ export const AGENT_DEFINITIONS: Record<AgentRole, AgentDefinition> = {
 - \`blender_create_project\`：创建建模 project（每个 project 对应 creator service 一个独立容器目录）
 - \`blender_create_mesh\` / \`blender_add_material\`：创建几何体并添加材质
 - \`blender_export_model\`：导出模型文件（GLB/FBX/OBJ/PLY/USD）
-- \`blender_execute_script\`：执行自定义 Python 脚本实现复杂建模逻辑
+
 - \`blender_download_model_file\`：将模型文件下载到本地 output 目录（可供 submit_game 打包上传 MinIO）
 - \`blender_delete_project\`：清理 creator 端容器存储（不删除本地文件）
 

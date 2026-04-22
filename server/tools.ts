@@ -22,7 +22,6 @@ import {
   blenderCreateMesh,
   blenderAddMaterial,
   blenderExportModel,
-  blenderExecuteScript,
   downloadModelFile,
   deleteModelFile,
   type CreateBlenderProjectOptions,
@@ -30,7 +29,6 @@ import {
   type BlenderCreateMeshOptions,
   type BlenderAddMaterialOptions,
   type BlenderExportModelOptions,
-  type BlenderExecuteScriptOptions,
   type DownloadModelFileOptions,
   type DeleteModelFileOptions,
 } from './creator-service.js';
@@ -1112,35 +1110,6 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           const output = await blenderExportModel(opts);
           return {
             content: [{ type: 'text' as const, text: `已导出 "${object_name}" 为 ${format || 'glb'} 格式：${output_filename}。${output}` }]
-          };
-        }
-      ),
-
-      tool(
-        'blender_execute_script',
-        '在 Blender 场景中执行自定义 Python 脚本（仅 engineer 可用）。用于预置操作无法满足的复杂场景。',
-        {
-          project_id: projectIdSchema.describe('当前项目 ID，必填'),
-          blender_project_id: z.string().describe('blender_project_id'),
-          script: z.string().max(10 * 1024).describe('Blender Python 脚本代码（最长 10KB）'),
-        },
-        async ({ project_id, blender_project_id, script }) => {
-          requireProjectId(project_id);
-          if (!blender_project_id || typeof blender_project_id !== 'string') {
-            throw new Error('blender_project_id 不能为空');
-          }
-          if (!script || typeof script !== 'string' || !script.trim()) {
-            throw new Error('script 不能为空');
-          }
-          const opts: BlenderExecuteScriptOptions = {
-            blenderProjectId: blender_project_id.trim(),
-            script: script.trim(),
-            agentId,
-            logFn: log,
-          };
-          const output = await blenderExecuteScript(opts);
-          return {
-            content: [{ type: 'text' as const, text: `脚本执行完成。${output}` }]
           };
         }
       ),
