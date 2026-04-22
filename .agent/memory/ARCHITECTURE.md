@@ -108,10 +108,10 @@ game-dev-studio/
 
 #### 2. 数据库层 (`server/db.ts`)
 - 使用 **better‑sqlite3** 驱动，WAL 模式，外键启用。
-- 核心表：`projects`、`project_settings`、`agent_sessions`、`agent_messages`、`proposals`、`games`、`handoffs`、`task_board_tasks`、`agent_memories`、`logs`、`commands`、`permission_requests`。
-- 核心业务数据按 `project_id` 隔离；`agent_messages` 等通过 `agent_session_id` 与项目关联。
+- 核心表：`projects`、`project_settings`、`agent_sessions`、`proposals`、`games`、`handoffs`、`task_board_tasks`、`agent_memories`、`logs`、`commands`、`permission_requests`。
+- 核心业务数据按 `project_id` 隔离；Agent 运行状态通过 `agent_sessions` 与项目关联。
 - `games` 已移除 `author_agent_id`，提交链路不再要求该字段。
-- `agent_messages`、`logs`、`commands`、`permission_requests` 已统一包含 `updated_at`。
+- `logs`、`commands`、`permission_requests` 已统一包含 `updated_at`。
 - 提供原子化的增删改查函数，以及文件导出功能（`saveProposalToFile`、`saveGameToFile`）。
 
 #### 3. 工具定义 (`server/tools.ts`)
@@ -236,12 +236,12 @@ ui-e2e                         ← Playwright CI 执行
 - 进程初始化或首次访问项目时，`ensureProjectState` 会从 `agent_sessions` 恢复状态：
   - DB 中若是 `working`，会回正为 `idle`（避免重启后卡在“工作中”假状态）。
   - `paused` 会恢复为暂停态并写入 `pausedAgentsByProject`。
-- `lastMessage` 属于内存态，当前不落库； 服务重启后该字段会丢失。 持久化主要覆盖 `status/current_task/sdk_session_id/updated_at`， 不影响可恢复状态（status/current_task/paused）和历史消息查询（`agent_messages`）。
+- `lastMessage` 属于内存态，当前不落库；服务重启后该字段会丢失。持久化主要覆盖 `status/current_task/sdk_session_id/updated_at`，不影响可恢复状态（status/current_task/paused）。
 
 #### 4) 项目切换与状态边界
 - 前端项目切换通过 `api.switchProject(fromProjectId, toProjectId)` 调用 `/api/projects/switch`，该接口现在只做轻量上下文切换，不再驱动 Star Office Agent offline/online 同步。
 - 指令中心当前 Agent 的“记忆”是前端 localStorage 行为（按项目键隔离），不是服务端 `/api/projects/switch` 写库行为。
-- Agent 运行状态与消息历史的服务端隔离依赖 `project_id`（`agent_sessions`、`agent_messages`、`logs` 等）。
+- Agent 运行状态与日志等服务端隔离依赖 `project_id`（`agent_sessions`、`logs` 等）。
 
 ### 测试策略
 
