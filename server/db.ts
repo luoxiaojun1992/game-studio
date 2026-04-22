@@ -1232,7 +1232,7 @@ function normalizeProjectId(projectId: string | null | undefined): string {
   return raw;
 }
 
-function resolveSafePath(baseDir: string, fileName: string): string {
+export function resolveSafePath(baseDir: string, fileName: string): string {
   const resolvedBase = path.resolve(baseDir);
   const candidate = path.resolve(baseDir, fileName);
   if (!candidate.startsWith(`${resolvedBase}${path.sep}`) && candidate !== resolvedBase) {

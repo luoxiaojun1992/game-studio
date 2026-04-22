@@ -6,6 +6,7 @@
  */
 import { v4 as uuidv4 } from 'uuid';
 import * as db from './db.js';
+import { resolveSafePath } from './db.js';
 import type { AgentRole } from './agents.js';
 
 const CREATOR_SERVICE_URL = process.env.CREATOR_SERVICE_URL || 'http://localhost:8080';
@@ -242,7 +243,6 @@ export async function downloadModelFile(opts: DownloadModelFileOptions): Promise
   }
 
   // 下载文件到 backend output 目录
-  const { execSync } = await import('child_process');
   const pathModule = await import('path');
   const fsModule = await import('fs');
 
@@ -250,7 +250,8 @@ export async function downloadModelFile(opts: DownloadModelFileOptions): Promise
   if (!fsModule.existsSync(outputDir)) {
     fsModule.mkdirSync(outputDir, { recursive: true });
   }
-  const localPath = pathModule.join(outputDir, safeFilename);
+  // 路径安全校验：拒绝任何试图跨出 outputDir 的文件名（如含 ../）
+  const localPath = resolveSafePath(outputDir, safeFilename);
 
   const downloadRes = await fetch(`${CREATOR_SERVICE_URL}/api/files/${bpId}/${encodeURIComponent(safeFilename)}`);
   if (!downloadRes.ok) {
@@ -286,7 +287,9 @@ export async function deleteModelFile(opts: DeleteModelFileOptions): Promise<voi
   // 2. 删除 backend 本地副本（如果存在）
   const pathModule = await import('path');
   const fsModule = await import('fs');
-  const localPath = pathModule.resolve(pathModule.join(localOutputDir, safeFilename));
+  const localOutputDirResolved = pathModule.resolve(localOutputDir);
+  // 路径安全校验：拒绝任何试图跨出 localOutputDir 的文件名
+  const localPath = resolveSafePath(localOutputDirResolved, safeFilename);
   if (fsModule.existsSync(localPath)) {
     fsModule.unlinkSync(localPath);
   }
