@@ -142,7 +142,6 @@ Each role includes:
 - `blender_create_mesh`
 - `blender_add_material`
 - `blender_export_model`
-- `blender_execute_script`
 - `blender_download_model_file`
 - `blender_delete_model_file`
 - `get_project_latest_info` (team_builder only)

@@ -197,25 +197,6 @@ export async function blenderExportModel(opts: BlenderExportModelOptions): Promi
   return res?.output || '';
 }
 
-export interface BlenderExecuteScriptOptions {
-  blenderProjectId: string;
-  script: string;
-  agentId: AgentRole;
-  logFn?: (agentId: AgentRole, action: string, detail: string, level: 'info' | 'warn' | 'error' | 'success') => void;
-}
-
-export async function blenderExecuteScript(opts: BlenderExecuteScriptOptions): Promise<string> {
-  const { blenderProjectId: bpId, script, agentId, logFn } = opts;
-  const log = logFn || (() => {});
-  const payload = { script: script.trim() };
-  const res = await creatorFetch(`/api/blender/exec?project_id=${bpId}`, {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
-  log(agentId, 'Blender 执行脚本', `blender_project_id=${bpId}`, 'success');
-  return res?.output || '';
-}
-
 // ---------------------------------------------------------------------------
 // 文件管理
 // ---------------------------------------------------------------------------

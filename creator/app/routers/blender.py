@@ -13,7 +13,6 @@ from app.schemas import (
     BlenderOperationResponse,
     BooleanRequest,
     CreateMeshRequest,
-    ExecuteScriptRequest,
     ExportRequest,
     _validate_project_id,
 )
@@ -179,23 +178,4 @@ async def blender_export(req: ExportRequest, project_id: str) -> BlenderOperatio
         raise _blender_error(e)
 
 
-@router.post(
-    "/exec",
-    response_model=BlenderOperationResponse,
-    summary="Execute a custom Blender Python script",
-)
-async def blender_exec(req: ExecuteScriptRequest, project_id: str) -> BlenderOperationResponse:
-    """
-    Execute an arbitrary Blender Python script.
-    Use this as a fallback when the pre-built operations are insufficient.
-    """
-    validated_pid = _validate_project_id(project_id)
-    path = _project_path(validated_pid)
-    if not os.path.isdir(path):
-        raise HTTPException(status_code=404, detail=f"Project not found: {project_id}")
 
-    try:
-        stdout = execute_script(req.script, path)
-        return _blender_result(stdout, "Script executed")
-    except BlenderError as e:
-        raise _blender_error(e)
