@@ -7,6 +7,7 @@
 
 import type { LintChecker } from '../types.js';
 import { htmlStructureChecker } from './html-structure.js';
+import { httpMethodChecker } from './http-method-checker.js';
 import { jsSecurityChecker } from './js-security.js';
 
 /**
@@ -17,5 +18,6 @@ import { jsSecurityChecker } from './js-security.js';
  */
 export const builtInCheckers: LintChecker[] = [
   htmlStructureChecker,
+  httpMethodChecker,
   jsSecurityChecker,
 ];
