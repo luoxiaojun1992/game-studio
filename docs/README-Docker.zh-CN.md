@@ -27,7 +27,13 @@ cp .env.example .env
 
 ```bash
 # 构建并启动所有服务
-docker compose up -d
+make compose-build
+
+# 启动所有服务（已构建）
+make compose-up
+
+# 停止所有服务
+make compose-down
 
 # 查看日志
 docker compose logs -f
@@ -154,8 +160,8 @@ docker compose logs --tail=100
 修改 `.env` 文件中的端口配置，然后重启：
 
 ```bash
-docker compose down
-docker compose up -d
+make compose-down
+make compose-up
 ```
 
 ### 数据卷问题
@@ -163,8 +169,9 @@ docker compose up -d
 如果需要完全重置数据：
 
 ```bash
+make compose-down
 docker compose down -v
-docker compose up -d
+make compose-up
 ```
 
 ## 开发模式

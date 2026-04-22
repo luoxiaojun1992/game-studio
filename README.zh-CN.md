@@ -136,6 +136,8 @@ game-studio/
 ├── data/                   # SQLite 数据文件目录（运行时生成）
 ├── output/                 # 提案/游戏产出目录（运行时生成）
 ├── docker-compose.yml
+├── docker-compose.ui-test.yml
+├── Makefile
 ├── README.md
 ├── docs/
 │   ├── README-Docker.md
@@ -193,9 +195,15 @@ game-studio/
 ## UI 测试
 
 ```bash
-# 推荐：使用 docker compose 一键运行完整 UI 测试
+# 推荐：使用 Makefile 运行 UI 测试（构建 + 启动）
 mkdir -p tests/ui/artifacts
-docker compose -f docker-compose.ui-test.yml up --build --abort-on-container-exit --exit-code-from ui-e2e
+make compose-ui-test-build
+
+# 启动已有镜像的 UI 测试服务（ui-e2e 退出后自动 down 集群）
+make compose-ui-test-up
+
+# 停止 UI 测试服务
+make compose-ui-test-down
 ```
 
 - Playwright 视频/trace 与报告输出在 `tests/ui/artifacts/`。
