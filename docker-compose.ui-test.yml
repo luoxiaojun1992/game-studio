@@ -102,6 +102,39 @@ services:
       retries: 5
       start_period: 30s
 
+  sonarqube:
+    image: sonarqube:10.6-community
+    environment:
+      - SONAR_JDBC_URL=postgresql://sonarqube-db:5432/sonar
+      - SONAR_JDBC_USERNAME=sonar
+      - SONAR_JDBC_PASSWORD=sonarpass
+    ports:
+      - "9000:9000"
+    volumes:
+      - sonarqube-data:/opt/sonarqube/data
+      - sonarqube-logs:/opt/sonarqube/logs
+      - sonarqube-extensions:/opt/sonarqube/extensions
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/api/system/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
+  sonarqube-db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_DB=sonar
+      - POSTGRES_USER=sonar
+      - POSTGRES_PASSWORD=sonarpass
+    volumes:
+      - sonarqube-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "sonar"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   ui-app:
     build:
       context: .
@@ -153,3 +186,9 @@ services:
         condition: service_healthy
       creator:
         condition: service_healthy
+
+volumes:
+  sonarqube-data:
+  sonarqube-logs:
+  sonarqube-extensions:
+  sonarqube-db-data:

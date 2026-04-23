@@ -70,5 +70,5 @@ export interface LintChecker {
    * @param context 可选上下文信息（文件名、项目ID等）
    * @returns 发现的 issue 列表（空数组表示无问题）
    */
-  check(content: string, context?: LintContext): LintIssue[];
+  check(content: string, context?: LintContext): LintIssue[] | Promise<LintIssue[]>;
 }

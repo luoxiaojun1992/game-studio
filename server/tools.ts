@@ -8,13 +8,12 @@ import { v4 as uuidv4 } from 'uuid';
 import * as db from './db.js';
 import { AGENT_IDS, AgentRole, getAllAgents } from './agents.js';
 import { sseBroadcaster } from './sse-broadcaster.js';
-import { lintGameContent } from './lint/index.js';
+import { lintGameContent, lintZipBuffer, type LintIssue } from './lint/index.js';
 import {
   createFileStorageRecord,
   uploadBuffer,
   getPresignedDownloadUrl
 } from './file-storage.js';
-import { lintZipBuffer } from './lint/index.js';
 import {
   createBlenderProject,
   listBlenderProjects,
@@ -613,14 +612,14 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
           // ========== HTML 内容模式 ==========
           // Lint 检查：在写入 DB 前对游戏 HTML 进行静态质量检查
-          const lintResult = lintGameContent(html_content, { fileName: `${name}.html`, projectId: scopedProjectId });
+          const lintResult = await lintGameContent(html_content, { fileName: `${name}.html`, projectId: scopedProjectId });
           if (!lintResult.passed) {
             return {
               content: [{ type: 'text' as const, text: `提交游戏失败：\n${lintResult.summary}` }]
             };
           }
           if (lintResult.warnings.length > 0) {
-            log(agentId, '提交游戏-lint', `警告: ${lintResult.warnings.map(w => w.message).join('; ')}`, 'warn');
+            log(agentId, '提交游戏-lint', `警告: ${lintResult.warnings.map((w: LintIssue) => w.message).join('; ')}`, 'warn');
           }
 
           const now = new Date().toISOString();
