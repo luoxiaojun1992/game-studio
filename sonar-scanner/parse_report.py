@@ -79,42 +79,31 @@ def main():
 
     # ── 2. 拉取 CE task 详情 ─────────────────────────────────────
     ce_info = {}
+    task_status = ""
     if task_id:
         print(f"[parse_report] Waiting for CE task: {task_id}")
         ce_info = wait_for_ce_task(args.host, args.token, task_id)
+        task_status = ce_info.get("status", "")
         if ce_info:
             analysis_date = ce_info.get("submittedAt", analysis_date)
 
-    # ── 3. 拉取 issues（CE SUCCESS 后可能还未索引完，加重试）─────────
+    # ── 3. 拉取 issues ────────────────────────────────────────────
     print("[parse_report] Fetching issues...")
     all_issues = []
     page = 1
-    page_size = 100
-    retry_count = 0
-    max_retries = 12
-    while retry_count < max_retries:
-        resp = api_get(
-            args.host, args.token,
-            f"/api/issues/search?projects={project_key}&ps={page_size}&p={page}&statuses=OPEN,CONFIRMED,REOPENED,RESOLVED,CLOSED"
-        )
-        issues = resp.get("issues", [])
-        total = resp.get("total", 0)
-        print(f"[parse_report] Page {page}: fetched {len(issues)} issues (total {total})")
-        if issues or total > 0:
-            all_issues.extend(issues)
-            while len(all_issues) < total and page * page_size < total * 2:
-                page += 1
-                resp = api_get(
-                    args.host, args.token,
-                    f"/api/issues/search?projects={project_key}&ps={page_size}&p={page}&statuses=OPEN,CONFIRMED,REOPENED,RESOLVED,CLOSED"
-                )
-                all_issues.extend(resp.get("issues", []))
-            break
-        retry_count += 1
-        print(f"[parse_report] No issues yet, retrying ({retry_count}/{max_retries})...")
-        time.sleep(5)
-    if retry_count >= max_retries:
-        print("[parse_report] WARNING: issues API returned 0 after max retries", file=sys.stderr)
+    page_size = 500
+    resp = api_get(
+        args.host, args.token,
+        f"/api/issues/search?projects={project_key}&ps={page_size}&p={page}&statuses=OPEN,CONFIRMED,REOPENED,RESOLVED,CLOSED"
+    )
+    issues = resp.get("issues", [])
+    total = resp.get("total", 0)
+    all_issues.extend(issues)
+    print(f"[parse_report] Fetched {len(issues)} issues (total {total})")
+
+    # CE task 失败则警告
+    if task_status == "FAILED":
+        print("[parse_report] WARNING: CE task FAILED, scan results may be incomplete", file=sys.stderr)
 
     # ── 4. 按 severity + type 统计 ──────────────────────────────
     severities = ["BLOCKER", "CRITICAL", "MAJOR", "MINOR", "INFO"]
