@@ -19,7 +19,7 @@ services:
     networks:
       - sonar-network
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O- http://localhost:9000/api/system/status 2>/dev/null | grep -q '\"status\":\"UP\"' && exit 0 || exit 1"]
+      test: ["CMD-SHELL", "curl -sf http://localhost:9000/api/system/status | grep -q '\"status\":\"UP\"' || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 10
