@@ -1,8 +1,8 @@
 version: '3.8'
 
 # SonarQube CI 环境专用 compose
-# 用途：GitHub Actions 中启动 SonarQube 供 scanner 分析
-# 特点：不含 studio-backend 等业务服务，最小依赖集；restart: no（容器执行完即销毁）
+# 用途：GitHub Actions 中启动 SonarQube + Scanner 进行代码扫描
+# 特点：不含业务服务；restart: no（容器执行完即销毁）
 
 services:
   sonarqube:
@@ -22,6 +22,27 @@ services:
       timeout: 10s
       retries: 10
       start_period: 300s
+    restart: "no"
+
+  sonar-scanner:
+    image: sonarsource/sonar-scanner-cli:latest
+    container_name: game-studio-sonar-scanner
+    volumes:
+      - .:/usr/src
+    working_dir: /usr/src
+    environment:
+      - SONAR_TOKEN=sonarpass
+    command: >
+      -Dsonar.projectKey=game-studio
+      -Dsonar.sources=server,src,star-office-ui/server
+      -Dsonar.sourceEncoding=UTF-8
+      -Dsonar.host.url=http://sonarqube:9000
+      -Dsonar.token=sonarpass
+    networks:
+      - sonar-network
+    depends_on:
+      sonarqube:
+        condition: service_healthy
     restart: "no"
 
 volumes:

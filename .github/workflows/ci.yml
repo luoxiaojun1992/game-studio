@@ -36,18 +36,7 @@ jobs:
           exit 1
 
       - name: Run SonarQube Scanner
-        run: |
-          docker run --rm \
-            --network host \
-            -v ${PWD}:/usr/src \
-            -w /usr/src \
-            -e SONAR_TOKEN=sonarpass \
-            sonarsource/sonar-scanner-cli:latest \
-            -Dsonar.projectKey=game-studio \
-            -Dsonar.sources=server,src,star-office-ui/server \
-            -Dsonar.sourceEncoding=UTF-8 \
-            -Dsonar.host.url=http://localhost:9000 \
-            -Dsonar.token=sonarpass
+        run: docker compose -f docker-compose-sonar-check.yml up --abort-on-container-exit sonar-scanner
 
       - name: Check Quality Gate
         id: quality-gate
