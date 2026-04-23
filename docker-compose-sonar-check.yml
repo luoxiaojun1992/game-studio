@@ -29,6 +29,7 @@ services:
   sonar-scanner:
     image: sonarsource/sonar-scanner-cli:latest
     container_name: game-studio-sonar-scanner
+    tty: false
     volumes:
       - .:/usr/src
     working_dir: /usr/src
