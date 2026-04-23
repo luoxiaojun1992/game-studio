@@ -1,11 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-# ── 0. 确保 /report 目录可写 ─────────────────────────────────
-mkdir -p /report
-chmod 777 /report
-
-# ── 1. 前置条件 ───────────────────────────────────────────────
+# ── 0. 前置条件 ───────────────────────────────────────────────
 # depends_on: sonarqube condition:service_healthy 已保证 SonarQube 就绪
 # 但首次启动时 SonarQube 可能还在后台执行 migrations，所以多等一下
 echo "[entrypoint] Waiting for SonarQube to be fully ready..."
@@ -52,15 +48,16 @@ echo "[entrypoint] sonar-scanner exited with code: $SCAN_EXIT"
 
 # ── 3. 解析 Report ────────────────────────────────────────────
 # 输出目录挂载到 /report（GitHub Actions artifact 上传用）
-REPORT_DIR="${REPORT_DIR:-/report}"
-mkdir -p "$REPORT_DIR"
+REPORT_HOST_DIR="/usr/src/scanner-report"
+mkdir -p "$REPORT_HOST_DIR"
+chmod 777 "$REPORT_HOST_DIR"
 
 echo "[entrypoint] Parsing scan report..."
 python3 /parse_report.py \
   --host "$SONAR_HOST_URL" \
   --token "$API_TOKEN" \
   --project game-studio \
-  --output "$REPORT_DIR/sonar-issues.json"
+  --output "$REPORT_HOST_DIR/sonar-issues.json"
 
 echo "[entrypoint] Report written to $REPORT_DIR/sonar-issues.json"
 echo "[entrypoint] Done. Scanner exit code: $SCAN_EXIT"

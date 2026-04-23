@@ -34,11 +34,10 @@ services:
       - SONAR_HOST_URL=http://sonarqube:9000
     volumes:
       - .:/usr/src
-      - scanner-report:/report
     working_dir: /usr/src
     command: >
       -Dsonar.projectKey=game-studio
-      -Dsonar.sources=server,src
+      -Dsonar.sources=server,src,creator
       -Dsonar.sourceEncoding=UTF-8
     user: root
     networks:
@@ -52,7 +51,6 @@ volumes:
   sonarqube-data:
   sonarqube-logs:
   sonarqube-extensions:
-  scanner-report:
 
 networks:
   sonar-network:
