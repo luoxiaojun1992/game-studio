@@ -129,11 +129,11 @@ services:
     networks:
       - game-studio-network
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:9000/api/system/health || exit 1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:9000/api/system/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 10
-      start_period: 60s
+      start_period: 300s
     restart: unless-stopped
 
   # Creator 建模微服务（Blender + FastAPI）
