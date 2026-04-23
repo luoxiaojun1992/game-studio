@@ -41,7 +41,6 @@ export SONAR_HOST_URL="${SONAR_HOST_URL:-http://sonarqube:9000}"
 sonar-scanner \
   -Dsonar.token="$API_TOKEN" \
   -Dsonar.host.url="$SONAR_HOST_URL" \
-  -Dsonar.scanner.report.output.path=/usr/src/scanner-report \
   "$@"
 
 SCAN_EXIT=$?
