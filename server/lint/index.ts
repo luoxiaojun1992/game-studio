@@ -20,6 +20,7 @@
  */
 
 import type { LintChecker, LintContext, LintIssue, LintResult } from './types.js';
+export type { LintIssue } from './types.js';
 import { builtInCheckers } from './checkers/index.js';
 
 /**
@@ -36,7 +37,7 @@ export function createLintRunner(): LintRunner {
  * @param context 可选上下文信息
  * @returns lint 检查结果
  */
-export function lintGameContent(htmlContent: string, context?: LintContext): LintResult {
+export async function lintGameContent(htmlContent: string, context?: LintContext): Promise<LintResult> {
   const runner = createLintRunner();
   runner.registerAll(builtInCheckers);
   return runner.run(htmlContent, context);
@@ -109,7 +110,7 @@ export class LintRunner {
    * @param context 可选上下文信息
    * @returns 聚合后的 lint 结果
    */
-  run(content: string, context?: LintContext): LintResult {
+  async run(content: string, context?: LintContext): Promise<LintResult> {
     const allIssues: LintIssue[] = [];
 
     for (const [id, checker] of this.checkers) {
@@ -117,7 +118,8 @@ export class LintRunner {
       if (this.disabledIds.has(id)) continue;
 
       try {
-        const issues = checker.check(content, context);
+        const result = checker.check(content, context);
+        const issues = result instanceof Promise ? await result : result;
         allIssues.push(...issues);
       } catch (error: any) {
         // 检查器本身抛出异常 → 记录为 error 级 issue
@@ -200,7 +202,7 @@ export async function lintZipBuffer(zipBuffer: Buffer, context?: LintContext): P
   for (const file of htmlFiles) {
     const content = await file.buffer();
     const text = content.toString('utf-8');
-    const result = runner.run(text, { ...context, fileName: file.path });
+    const result = await runner.run(text, { ...context, fileName: file.path, zipBuffer });
 
     if (!result.passed) {
       // 第一个 error 文件，直接返回

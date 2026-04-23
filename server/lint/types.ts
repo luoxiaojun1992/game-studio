@@ -25,6 +25,12 @@ export interface LintContext {
   fileName?: string;
   /** 项目 ID */
   projectId?: string;
+  /**
+   * 原始 ZIP Buffer（ZIP 打包模式专用）
+   * 当 lintZipBuffer 传入时，sonarqube checker 可直接上传此 buffer，
+   * 避免"提取 HTML → 重新打包"的往返开销。
+   */
+  zipBuffer?: Buffer;
   /** 扩展字段，供各 checker 自由使用 */
   [key: string]: unknown;
 }
@@ -70,5 +76,5 @@ export interface LintChecker {
    * @param context 可选上下文信息（文件名、项目ID等）
    * @returns 发现的 issue 列表（空数组表示无问题）
    */
-  check(content: string, context?: LintContext): LintIssue[];
+  check(content: string, context?: LintContext): LintIssue[] | Promise<LintIssue[]>;
 }

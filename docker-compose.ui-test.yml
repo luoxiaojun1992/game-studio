@@ -58,6 +58,8 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+      sonarqube:
+        condition: service_healthy
       creator:
         condition: service_started
     ports:
@@ -101,6 +103,21 @@ services:
       timeout: 10s
       retries: 5
       start_period: 30s
+
+  sonarqube:
+    image: sonarqube:10.6-community
+    ports:
+      - "${SONARQUBE_PORT:-9002}:9000"
+    volumes:
+      - sonarqube-data:/opt/sonarqube/data
+      - sonarqube-logs:/opt/sonarqube/logs
+      - sonarqube-extensions:/opt/sonarqube/extensions
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:9000/api/system/status 2>/dev/null | grep -q '\"status\":\"UP\"' && exit 0 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 300s
 
   ui-app:
     build:
@@ -153,3 +170,8 @@ services:
         condition: service_healthy
       creator:
         condition: service_healthy
+
+volumes:
+  sonarqube-data:
+  sonarqube-logs:
+  sonarqube-extensions:
