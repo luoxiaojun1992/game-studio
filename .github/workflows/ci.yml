@@ -20,18 +20,12 @@ jobs:
       - name: Run SonarQube Scanner
         run: docker compose -f docker-compose-sonar-check.yml up --abort-on-container-exit --exit-code-from sonar-scanner sonar-scanner
 
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
       - name: Check HIGH/CRITICAL Issues
         run: |
-          CRIT_COUNT=$(python3 -c "
-import json, sys
-try:
-    with open('.scannerwork/sonar-report.json') as f:
-        data = json.load(f)
-    count = sum(1 for i in data.get('issues', []) if i.get('severity') in ('CRITICAL', 'HIGH'))
-    print(count)
-except:
-    print(0)
-")
+          CRIT_COUNT=$(jq '[.issues[] | select(.severity == "CRITICAL" or .severity == "HIGH")] | length' .scannerwork/sonar-report.json 2>/dev/null || echo 0)
           echo "HIGH/CRITICAL issues: $CRIT_COUNT"
           if [ "$CRIT_COUNT" -gt 0 ]; then
             echo "Blocking UI tests due to HIGH/CRITICAL issues"
