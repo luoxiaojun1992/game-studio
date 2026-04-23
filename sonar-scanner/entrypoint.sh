@@ -59,7 +59,7 @@ python3 /parse_report.py \
   --project game-studio \
   --output "$REPORT_HOST_DIR/sonar-issues.json"
 
-echo "[entrypoint] Report written to $REPORT_DIR/sonar-issues.json"
+echo "[entrypoint] Report written to $REPORT_HOST_DIR/sonar-issues.json"
 echo "[entrypoint] Done. Scanner exit code: $SCAN_EXIT"
 
 exit $SCAN_EXIT
