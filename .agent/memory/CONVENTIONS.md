@@ -69,8 +69,6 @@
 | 新增 docker compose 服务未检查端口冲突 | 添加服务前先 `docker ps -a --format '{{.Ports}}'` 确认端口未被占用 | `Bind for 0.0.0.0:9000 failed: port is already allocated` |
 | SonarQube 开发环境使用 PostgreSQL 外部依赖 | 开发/测试环境直接用 SonarQube 内置 H2 数据库，不挂 PostgreSQL | 减少运维复杂度，H2 对单实例够用 |
 | health check 的 `start_period` 设置过短 | 新服务初始化时间可能很长（如 SonarQube H2 初始化需 120-300s），`start_period` 应设 300s 并配合 `retries` 重试 | `start_period` 不足导致 health check 直接失败，服务被标记 unhealthy |
-| SonarQube health check 用 `wget --spider` 对返回 JSON body 的 API 不兼容 | SonarQube `/api/system/status` 返回 JSON body，`wget --spider` 视为"broken link"；正确做法是 `wget -q -O- <url> | grep -q '"status":"UP"' && exit 0 || exit 1` | health check 永远失败，服务被标记 unhealthy |
-| SonarQube health check 路径用 `/api/system/health`（需认证，永远 403） | `/api/system/health` 需要 SonarQube token 认证，匿名请求永远 403；应改为公开的 `/api/system/status` 并验证 `status=UP` | health check 永远失败（403 Forbidden），与 UP/STARTING 状态无关 |
 | 遇到问题时先自己尝试而非查官方文档 | Docker/SonarQube 等开源软件的配置问题，官方文档和 GitHub issue 才是最准确的信息源 | 自己试错耗时且容易踩坑，官方文档一句话就能解决（如 SonarQube health check API 路径、`jdbc:` 前缀要求） |
 | 新增 async 类型 checker 但未修改 LintRunner.run() 为 async | 若 checker.check() 返回 Promise，LintRunner.run() 必须改为 async 并用 `await` 等待结果 | 异步 checker 直接返回 Promise 但同步调用方拿不到正确结果 |
 | ZIP 模式传给检查器前先解压再重压缩 | LintContext 新增 `zipBuffer?: Buffer` 字段，原生传递原始 Buffer 避免冗余压缩 | 浪费 CPU，且 SonarQube 接收的是重新压缩后的包（与原始提交不符） |
@@ -78,7 +76,10 @@
 | GitHub Actions 中 `docker exec <container>` 必须用 `docker compose exec -T <service>` | `docker compose` 环境下容器名带项目前缀，硬编码容器名会失败；`exec -T` 禁用 TTY 交互 | `exec <container_name>` 找不到容器，health check 和质量门查询都失败 |
 | sonar-scanner CLI 容器与 SonarQube 网络隔离 | scanner Docker 容器与 SonarQube 容器不在同一网络时无法解析 `sonarqube:9000`；SonarQube 端口已映射到宿主 `9000:9000`，scanner 直接用 `--network host` + `sonar.host.url=http://localhost:9000` 更简单 | scanner 无法连接 SonarQube，扫描直接失败 |
 | Docker Hub 镜像标签与 GitHub release 版本不对应 | 不能把 GitHub release 版本号（如 `7.3.0.5189`）直接当作 Docker Hub 镜像标签使用；Docker Hub `sonarsource/sonar-scanner-cli` 实际只有 `latest`、`5`、`5.0` 可用；必须用 `docker pull <tag>` 验证标签是否真实存在 | 用了不存在的镜像标签导致 `manifest unknown` 错误 |
-| scanner 与 SonarQube server token 认证复杂 | scanner 的 `sonar.login`/`sonar.password` 已在 6.x 弃用（官方推荐 `sonar.token`）；而 Basic Auth `admin:sonarpass` 对 SonarQube 各 API 的支持不一致；scanner 8.x 用 `/api/v2/` + Bearer token 与旧版 SonarQube 不完全兼容 | CI ephemeral SonarQube 场景：用 `SONAR_FORCEAUTHENTICATION=false` 关闭认证（环境变量），scanner 无需任何 token，彻底规避 auth 问题 |
+| parse_report.py 以 scanner-cli 用户运行，`/report` 目录无写权限 | sonarqube:community 镜像以 `scanner-cli`（UID 1000）非 root 用户运行，匿名挂载的 volume 或目录可能无写权限；entrypoint.sh 应在开始时用 root 创建并 `chmod 777 /report`，或 compose 中显式 `user: root` | PermissionError 导致 report 写失败，CI 无法上传 artifacts |
+| SonarQube 默认密码是 `admin:admin`，不是 `admin:sonarpass` | SonarQube 首次启动默认 credentials 是 `admin:admin`；`admin:sonarpass` 是 SonarQube 旧版本的默认值，容易混淆 | API 认证一直 401 Unauthorized，误以为是 network 或 token 问题 |
+| `/api/user_tokens/generate` 的 `type` 参数值必须是 `USER_TOKEN` | 官方文档或旧经验可能写成 `USER_API_TOKEN`，SonarQube 26.x 实际只接受 `USER_TOKEN`、`GLOBAL_ANALYSIS_TOKEN`、`PROJECT_ANALYSIS_TOKEN` | 一直报 type 参数校验错误，不提示正确枚举值 |
+| `/api/projects/show` 在 SonarQube 26.x 已被移除 | SonarQube 新版废弃了多个 `api/projects/*` 端点；获取项目信息应改用 `report-task.txt` 直接读取 taskId，或调 `/api/navigation/component` | 404 Unknown url，parse_report.py 无法获取项目信息 |
 
 ## Session ↔ Project 关系
 - **Session 不会跨 project**：每次 `sendMessage(projectId, agentId, ...)` 都会创建全新的 SDK session，session 与 project 一一对应
