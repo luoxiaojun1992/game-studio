@@ -52,7 +52,7 @@ data/studio.db     output/{project_id}/...
 - `file-storage.ts`: shared file storage APIs/internal upload helpers
 - `minio-client.ts`: MinIO object operations and presigned URL helpers
 - `creator-service.ts`: creator HTTP client, Blender project lifecycle/model file operations, and safe-path validation
-- `lint/`: extensible lint framework (LintRunner, pluggable checkers, zero external dependencies)
+- `lint/`: extensible lint framework (LintRunner, pluggable checkers, local rules + SonarQube quality scan checker)
 - `agents.ts`: role declarations, prompts, and handoff constraints
 - `db.ts`: SQLite schema (DDL-first initialization) and read/write operations
 - `sse-broadcaster.ts`: SSE client management and event broadcast
@@ -67,7 +67,7 @@ data/studio.db     output/{project_id}/...
 - **Handoffs**: cross-role ownership transfer and confirmation flow
 - **Games**: HTML artifact submission or packaged artifact submission, listing, preview, and file download
 - **Modeling**: Blender project management, mesh/material/export, and model file pullback
-- **Lint/Quality**: extensible static analysis framework with pluggable checkers (HTML structure, HTTP method safety, JS security, etc.)
+- **Lint/Quality**: extensible static analysis framework with pluggable checkers (HTML structure, HTTP method safety, JS security, SonarQube quality scan), including async checker support
 - **Memories**: long-term memory records scoped by role/project
 - **Logs/Observability**: runtime logs and stream events
 - **Permissions**: tool execution approval lifecycle and response callbacks
@@ -130,7 +130,7 @@ data/studio.db     output/{project_id}/...
 ## 9. Deployment Topology
 
 - Local development: single-node backend + frontend dev server
-- Docker deployment: frontend/backend + creator service containerized (see `README-Docker.md`)
+- Docker deployment: frontend/backend + creator service + SonarQube containerized (see `README-Docker.md`)
 - Runtime directories:
   - `data/` for SQLite DB
   - `output/` for generated artifacts

@@ -15,7 +15,7 @@
 - 提案管理（创建、评审、人工决策）
 - 游戏成品管理（支持 HTML 成品或打包文件提交、预览下载、版本状态）
 - Blender 建模链路（creator service + `blender_*` 工具，覆盖 project/几何体/材质/导出/文件操作）
-- 静态分析（可扩展 Lint 框架，支持 HTML 结构、HTTP 方法安全、JS 安全等可插拔检查器，覆盖 HTML 模式与 ZIP 模式）
+- 静态分析（可扩展 Lint 框架，支持 HTML 结构、HTTP 方法安全、JS 安全、SonarQube 质量扫描等可插拔检查器，覆盖 HTML 模式与 ZIP 模式）
 - Agent 长期记忆（保存/查询/清理）
 - 项目隔离（按 `project_id` 隔离数据与观测流）
 
@@ -108,6 +108,8 @@ npm run server
 | `STAR_OFFICE_JOIN_KEY` | `ocj_example_team_01` | Agent 注册密钥 |
 | `STAR_OFFICE_SYNC_DEBOUNCE_MS` | 300 | 状态同步防抖时间（毫秒） |
 | `STAR_OFFICE_HEALTH_CHECK_INTERVAL_MS` | 10000 | Star Office 健康检查周期（毫秒） |
+| `SONARQUBE_PORT` | 9002 | 本地 SonarQube 服务端口（供 lint 检查器访问） |
+| `SONARQUBE_TOKEN` | `sonarpass` | `sonarqube` 检查器使用的 SonarQube Token |
 
 ## Docker 部署
 

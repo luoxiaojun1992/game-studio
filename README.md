@@ -16,7 +16,7 @@ A multi-agent game development workspace built on the CodeBuddy Agent SDK, provi
 - Proposal management (create, review, and human decision)
 - Game artifact management (submit HTML artifacts or packaged files, preview, download, and version status)
 - Blender modeling pipeline (creator service + `blender_*` tools for project/mesh/material/export/file operations)
-- Static analysis (extensible lint framework with pluggable checkers for HTML structure/HTTP method safety/JS security, supports HTML mode and ZIP package mode)
+- Static analysis (extensible lint framework with pluggable checkers for HTML structure/HTTP method safety/JS security/SonarQube quality scan, supports HTML mode and ZIP package mode)
 - Long-term agent memory (save/query/clear)
 - Project isolation (data and observability streams isolated by `project_id`)
 
@@ -109,6 +109,8 @@ npm run server
 | `STAR_OFFICE_JOIN_KEY` | `ocj_example_team_01` | Agent registration key |
 | `STAR_OFFICE_SYNC_DEBOUNCE_MS` | 300 | State sync debounce interval (ms) |
 | `STAR_OFFICE_HEALTH_CHECK_INTERVAL_MS` | 10000 | Star Office health check interval (ms) |
+| `SONARQUBE_PORT` | 9002 | Local SonarQube service port used by lint checker |
+| `SONARQUBE_TOKEN` | `sonarpass` | SonarQube token used by `sonarqube` lint checker |
 
 ## Docker Deployment
 

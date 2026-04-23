@@ -83,6 +83,8 @@ PORT=3000                                  # 后端端口
 
 # 可选变量
 STAR_OFFICE_UI_URL=http://127.0.0.1:19000  # Star-Office-UI 地址
+SONARQUBE_PORT=9002                        # SonarQube 服务端口
+SONARQUBE_TOKEN=sonarpass                  # SonarQube 检查器访问 token（未配时使用默认值）
 ```
 
 ## 修改约束
@@ -161,7 +163,8 @@ npm run test:ui
 ### 添加新 Lint 检查器
 1. 在 `server/lint/checkers/` 下新建文件，实现 `LintChecker` 接口（来自 `types.ts`）
 2. 在 `server/lint/checkers/index.ts` 的 `builtInCheckers` 数组中注册
-3. **tools.ts、index.ts、types.ts 不需要任何修改**
+3. `LintChecker.check()` 支持 `LintIssue[] | Promise<LintIssue[]>`，异步检查器需返回 Promise 并由框架统一 await
+4. `sonarqube` 为现有内置检查器之一，依赖本地 SonarQube 服务（默认 `http://localhost:9002`）
 4. 详见 `.agent/memory/LINT.md` 扩展指南
 
 ### 添加新 Agent
