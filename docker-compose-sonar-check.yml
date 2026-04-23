@@ -6,7 +6,7 @@ version: '3.8'
 
 services:
   sonarqube:
-    image: sonarqube:10.6-community
+    image: sonarqube:2025.1-community
     container_name: game-studio-sonarqube
     ports:
       - "9000:9000"
@@ -25,7 +25,7 @@ services:
     restart: "no"
 
   sonar-scanner:
-    image: sonarsource/sonar-scanner-cli:5.0
+    image: sonarsource/sonar-scanner-cli:latest
     container_name: game-studio-sonar-scanner
     volumes:
       - .:/usr/src
