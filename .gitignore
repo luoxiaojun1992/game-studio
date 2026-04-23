@@ -6,8 +6,8 @@
 /dist
 /dist-server
 *.tsbuildinfo
-server/*.js
-server/*.d.ts
+server/**/*.js
+server/**/*.d.ts
 vite.config.js
 vite.config.d.ts
 
