@@ -78,7 +78,7 @@
 | GitHub Actions 中 `docker exec <container>` 必须用 `docker compose exec -T <service>` | `docker compose` 环境下容器名带项目前缀，硬编码容器名会失败；`exec -T` 禁用 TTY 交互 | `exec <container_name>` 找不到容器，health check 和质量门查询都失败 |
 | sonar-scanner CLI 容器与 SonarQube 网络隔离 | scanner Docker 容器与 SonarQube 容器不在同一网络时无法解析 `sonarqube:9000`；SonarQube 端口已映射到宿主 `9000:9000`，scanner 直接用 `--network host` + `sonar.host.url=http://localhost:9000` 更简单 | scanner 无法连接 SonarQube，扫描直接失败 |
 | Docker Hub 镜像标签与 GitHub release 版本不对应 | 不能把 GitHub release 版本号（如 `7.3.0.5189`）直接当作 Docker Hub 镜像标签使用；Docker Hub `sonarsource/sonar-scanner-cli` 实际只有 `latest`、`5`、`5.0` 可用；必须用 `docker pull <tag>` 验证标签是否真实存在 | 用了不存在的镜像标签导致 `manifest unknown` 错误 |
-| scanner 与 SonarQube server 版本存在 API 兼容性 | scanner 8.x (latest) 使用 `/api/v2/` + Bearer token，与 SonarQube 10.6 community 的 token 认证不完全兼容，导致 401；scanner 5.x 同样失败（10.6 community 的 token 验证逻辑变化，`sonarpass` 默认密码不能当作 token 使用）；正确方案：SonarQube 升级到 2025.1 + scanner 用 latest | scanner 5.0 + SonarQube 10.6 community 混用时仍报 Not authorized，scanner 退出码 2 |
+| scanner 与 SonarQube server token 认证复杂 | scanner 的 `sonar.login`/`sonar.password` 已在 6.x 弃用（官方推荐 `sonar.token`）；而 Basic Auth `admin:sonarpass` 对 SonarQube 各 API 的支持不一致；scanner 8.x 用 `/api/v2/` + Bearer token 与旧版 SonarQube 不完全兼容 | CI ephemeral SonarQube 场景：用 `SONAR_FORCEAUTHENTICATION=false` 关闭认证（环境变量），scanner 无需任何 token，彻底规避 auth 问题 |
 
 ## Session ↔ Project 关系
 - **Session 不会跨 project**：每次 `sendMessage(projectId, agentId, ...)` 都会创建全新的 SDK session，session 与 project 一一对应

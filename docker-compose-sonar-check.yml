@@ -10,6 +10,8 @@ services:
     container_name: game-studio-sonarqube
     ports:
       - "9000:9000"
+    environment:
+      - SONAR_FORCEAUTHENTICATION=false
     volumes:
       - sonarqube-data:/opt/sonarqube/data
       - sonarqube-logs:/opt/sonarqube/logs
@@ -30,16 +32,11 @@ services:
     volumes:
       - .:/usr/src
     working_dir: /usr/src
-    environment:
-      - SONAR_LOGIN=admin
-      - SONAR_PASSWORD=sonarpass
     command: >
       -Dsonar.projectKey=game-studio
       -Dsonar.sources=server,src,star-office-ui/server
       -Dsonar.sourceEncoding=UTF-8
       -Dsonar.host.url=http://sonarqube:9000
-      -Dsonar.login=admin
-      -Dsonar.password=sonarpass
     networks:
       - sonar-network
     depends_on:
