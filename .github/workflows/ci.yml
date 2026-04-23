@@ -37,10 +37,8 @@ jobs:
 
       - name: Run SonarQube Scanner
         run: |
-          SONAR_NETWORK=$(docker network ls --filter "name=sonarqube" --format "{{.Name}}" | head -1)
-          echo "Joining network: $SONAR_NETWORK"
           docker run --rm \
-            --network ${SONAR_NETWORK} \
+            --network host \
             -v ${PWD}:/usr/src \
             -w /usr/src \
             -e SONAR_TOKEN=sonarpass \
@@ -48,7 +46,7 @@ jobs:
             -Dsonar.projectKey=game-studio \
             -Dsonar.sources=server,src,star-office-ui/server \
             -Dsonar.sourceEncoding=UTF-8 \
-            -Dsonar.host.url=http://game-studio-sonarqube:9000 \
+            -Dsonar.host.url=http://localhost:9000 \
             -Dsonar.token=sonarpass
 
       - name: Check Quality Gate
