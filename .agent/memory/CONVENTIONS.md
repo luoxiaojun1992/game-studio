@@ -69,7 +69,7 @@
 | 新增 docker compose 服务未检查端口冲突 | 添加服务前先 `docker ps -a --format '{{.Ports}}'` 确认端口未被占用 | `Bind for 0.0.0.0:9000 failed: port is already allocated` |
 | SonarQube 开发环境使用 PostgreSQL 外部依赖 | 开发/测试环境直接用 SonarQube 内置 H2 数据库，不挂 PostgreSQL | 减少运维复杂度，H2 对单实例够用 |
 | health check 的 `start_period` 设置过短 | 新服务初始化时间可能很长（如 SonarQube H2 初始化需 120-300s），`start_period` 应设 300s 并配合 `retries` 重试 | `start_period` 不足导致 health check 直接失败，服务被标记 unhealthy |
-| SonarQube health check 用 `wget --spider` 对返回 JSON body 的 API 不兼容 | SonarQube `/api/system/status` 返回 JSON body，`wget --spider` 视为"broken link"；正确做法是 `wget -q -O- <url> | grep -q '"status":"UP"' && exit 0 || exit 1` | health check 永远失败，服务被标记 unhealthy |
+| SonarQube health check 用 `wget` 而非 `curl` | sonarqube:community 镜像默认不带 `wget`，带 `curl`；应统一用 `curl -sf http://localhost:9000/api/system/status | grep -q '"status":"UP"' || exit 1` | health check 永远 fail，依赖服务无法启动 |
 | SonarQube health check 路径用 `/api/system/health`（需认证，永远 403） | `/api/system/health` 需要 SonarQube token 认证，匿名请求永远 403；应改为公开的 `/api/system/status` 并验证 `status=UP` | health check 永远失败（403 Forbidden），与 UP/STARTING 状态无关 |
 | 遇到问题时先自己尝试而非查官方文档 | Docker/SonarQube 等开源软件的配置问题，官方文档和 GitHub issue 才是最准确的信息源 | 自己试错耗时且容易踩坑，官方文档一句话就能解决（如 SonarQube health check API 路径、`jdbc:` 前缀要求） |
 | 新增 async 类型 checker 但未修改 LintRunner.run() 为 async | 若 checker.check() 返回 Promise，LintRunner.run() 必须改为 async 并用 `await` 等待结果 | 异步 checker 直接返回 Promise 但同步调用方拿不到正确结果 |
