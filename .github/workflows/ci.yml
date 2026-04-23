@@ -1,4 +1,4 @@
-name: ui-test-ci
+name: CI
 
 on:
   pull_request:
@@ -7,11 +7,37 @@ on:
       - main
 
 jobs:
+  sonar-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run SonarQube Scanner
+        run: docker compose -f docker-compose-sonar-check.yml up --abort-on-container-exit --exit-code-from sonar-scanner sonar-scanner
+
+      - name: Upload SonarQube Report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonar-report
+          path: scanner-report/
+          if-no-files-found: warn
+
+      - name: Teardown SonarQube
+        if: always()
+        run: docker compose -f docker-compose-sonar-check.yml down -v
+
   ui-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
       contents: read
+    needs: [sonar-check]
 
     steps:
       - name: Checkout

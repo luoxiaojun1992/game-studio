@@ -1,0 +1,16 @@
+# 自定义 Sonar Scanner 镜像
+# 继承官方 scanner-cli，在容器内自动生成 API token 并解析 report
+FROM sonarsource/sonar-scanner-cli:latest
+
+USER root
+# requests 库用于 parse_report.py
+RUN python3 -m pip install --quiet --no-cache-dir requests && python3 -m pip cache purge
+USER scanner-cli
+
+COPY --chown=scanner-cli:scanner-cli entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+COPY --chown=scanner-cli:scanner-cli parse_report.py /parse_report.py
+RUN chmod +r /parse_report.py
+
+ENTRYPOINT ["/entrypoint.sh"]

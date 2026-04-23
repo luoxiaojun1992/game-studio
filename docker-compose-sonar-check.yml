@@ -1,0 +1,57 @@
+# SonarQube CI 环境专用 compose
+# 用途：GitHub Actions 中启动 SonarQube + Scanner 进行代码扫描
+# 特点：不含业务服务；restart: no（容器执行完即销毁）
+
+services:
+  sonarqube:
+    image: sonarqube:community
+    container_name: game-studio-sonarqube
+    ports:
+      - "9000:9000"
+    volumes:
+      - sonarqube-data:/opt/sonarqube/data
+      - sonarqube-logs:/opt/sonarqube/logs
+      - sonarqube-extensions:/opt/sonarqube/extensions
+    networks:
+      - sonar-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9000/api/system/status | grep -q '\"status\":\"UP\"' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 300s
+    restart: "no"
+
+  sonar-scanner:
+    build:
+      context: ./sonar-scanner
+      dockerfile: Dockerfile.scanner
+    image: game-studio/sonar-scanner:latest
+    container_name: game-studio-sonar-scanner
+    environment:
+      - SONAR_USER=admin
+      - SONAR_PASSWORD=admin
+      - SONAR_HOST_URL=http://sonarqube:9000
+    volumes:
+      - .:/usr/src
+    working_dir: /usr/src
+    command: >
+      -Dsonar.projectKey=game-studio
+      -Dsonar.sources=server,src,creator
+      -Dsonar.sourceEncoding=UTF-8
+    user: root
+    networks:
+      - sonar-network
+    depends_on:
+      sonarqube:
+        condition: service_healthy
+    restart: "no"
+
+volumes:
+  sonarqube-data:
+  sonarqube-logs:
+  sonarqube-extensions:
+
+networks:
+  sonar-network:
+    driver: bridge
