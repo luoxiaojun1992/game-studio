@@ -68,10 +68,12 @@ def main():
     try:
         with open(report_task_file) as f:
             for line in f:
-                if line.startswith("taskId="):
+                if line.startswith("ceTaskId="):
                     task_id = line.split("=", 1)[1].strip()
                 elif line.startswith("analysedAt="):
                     analysis_date = line.split("=", 1)[1].strip()
+                elif line.startswith("taskId="):
+                    task_id = line.split("=", 1)[1].strip()
     except FileNotFoundError:
         print(f"[parse_report] {report_task_file} not found", file=sys.stderr)
 
@@ -83,23 +85,36 @@ def main():
         if ce_info:
             analysis_date = ce_info.get("submittedAt", analysis_date)
 
-    # ── 3. 拉取 issues ────────────────────────────────────────────
+    # ── 3. 拉取 issues（CE SUCCESS 后可能还未索引完，加重试）─────────
     print("[parse_report] Fetching issues...")
     all_issues = []
     page = 1
     page_size = 100
-    while True:
+    retry_count = 0
+    max_retries = 12
+    while retry_count < max_retries:
         resp = api_get(
             args.host, args.token,
             f"/api/issues/search?projects={project_key}&ps={page_size}&p={page}&statuses=OPEN,CONFIRMED,REOPENED,RESOLVED,CLOSED"
         )
         issues = resp.get("issues", [])
-        all_issues.extend(issues)
         total = resp.get("total", 0)
         print(f"[parse_report] Page {page}: fetched {len(issues)} issues (total {total})")
-        if len(all_issues) >= total or len(issues) == 0:
+        if issues or total > 0:
+            all_issues.extend(issues)
+            while len(all_issues) < total and page * page_size < total * 2:
+                page += 1
+                resp = api_get(
+                    args.host, args.token,
+                    f"/api/issues/search?projects={project_key}&ps={page_size}&p={page}&statuses=OPEN,CONFIRMED,REOPENED,RESOLVED,CLOSED"
+                )
+                all_issues.extend(resp.get("issues", []))
             break
-        page += 1
+        retry_count += 1
+        print(f"[parse_report] No issues yet, retrying ({retry_count}/{max_retries})...")
+        time.sleep(5)
+    if retry_count >= max_retries:
+        print("[parse_report] WARNING: issues API returned 0 after max retries", file=sys.stderr)
 
     # ── 4. 按 severity + type 统计 ──────────────────────────────
     severities = ["BLOCKER", "CRITICAL", "MAJOR", "MINOR", "INFO"]
