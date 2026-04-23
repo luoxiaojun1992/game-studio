@@ -132,7 +132,7 @@ def main():
                 "severity": i.get("severity"),
                 "type": i.get("type"),
                 "message": i.get("message", ""),
-                "file": (i.get("component", "") or "").split(":")[0] if ":" in (i.get("component", "") or "") else i.get("component", ""),
+                "file": (i.get("component", "") or "").split(":")[1] if ":" in (i.get("component", "") or "") else i.get("component", ""),
                 "line": i.get("line"),
                 "status": i.get("status"),
                 "tags": i.get("tags", []),
