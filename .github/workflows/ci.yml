@@ -17,11 +17,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Start SonarQube Scanner
-        run: docker compose -f docker-compose-sonar-check.yml up -d sonar-scanner
-
-      - name: Wait for Scanner to finish
-        run: docker compose -f docker-compose-sonar-check.yml wait sonar-scanner; echo "scanner_exit=$?"
+      - name: Run SonarQube Scanner
+        run: docker compose -f docker-compose-sonar-check.yml up --abort-on-container-exit --exit-code-from sonar-scanner sonar-scanner
 
       - name: Check HIGH/CRITICAL Issues
         run: |
