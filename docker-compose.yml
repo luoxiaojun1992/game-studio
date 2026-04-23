@@ -119,7 +119,7 @@ services:
     image: sonarqube:10.6-community
     container_name: game-studio-sonarqube
     ports:
-      - "${SONARQUBE_PORT:-9000}:9000"
+      - "${SONARQUBE_PORT:-9002}:9000"
     environment:
       - SONAR_JDBC_URL=postgresql://sonarqube-db:5432/sonar
       - SONAR_JDBC_USERNAME=sonar

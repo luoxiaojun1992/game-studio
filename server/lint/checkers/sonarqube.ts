@@ -9,7 +9,7 @@
  * 3. 触发扫描任务并轮询直到完成
  * 4. 从 SonarQube 问题列表中提取 LintIssue
  *
- * 依赖 SonarQube 服务运行于 http://localhost:9000（.env SONARQUBE_PORT=9000）
+ * 依赖 SonarQube 服务运行于 http://localhost:9002（.env SONARQUBE_PORT=9002）
  * 认证凭证：.env SONARQUBE_DB_PASSWORD（默认 sonarpass）
  */
 
@@ -287,7 +287,7 @@ function resolveConfig(context?: LintContext): {
   baseUrl: string; token: string; projectKey: string; projectName: string;
 } {
   const baseUrl = (context?.sonarQubeUrl as string)
-    || `http://localhost:${process.env.SONARQUBE_PORT ?? '9000'}`;
+    || `http://localhost:${process.env.SONARQUBE_PORT ?? '9002'}`;
   const token = (context?.sonarQubeToken as string)
     || process.env.SONARQUBE_TOKEN
     || process.env.SONARQUBE_DB_PASSWORD
