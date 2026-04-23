@@ -43,18 +43,18 @@ jobs:
             --network ${SONAR_NETWORK} \
             -v ${PWD}:/usr/src \
             -w /usr/src \
-            -e SONAR_TOKEN=${SONAR_TOKEN} \
+            -e SONAR_TOKEN=sonarpass \
             sonarsource/sonar-scanner-cli:latest \
             -Dsonar.projectKey=game-studio \
             -Dsonar.sources=server,src,star-office-ui/server \
             -Dsonar.sourceEncoding=UTF-8 \
             -Dsonar.host.url=http://game-studio-sonarqube:9000 \
-            -Dsonar.token=${SONAR_TOKEN}
+            -Dsonar.token=sonarpass
 
       - name: Check Quality Gate
         id: quality-gate
         run: |
-          RESULT=$(docker compose -f docker-compose-sonar-check.yml exec -T sonarqube wget -q -O- --header="Authorization: Bearer ${SONAR_TOKEN}" "http://localhost:9000/api/qualitygates/project_status?project=game-studio" 2>/dev/null)
+          RESULT=$(docker compose -f docker-compose-sonar-check.yml exec -T sonarqube wget -q -O- --header="Authorization: Bearer sonarpass" "http://localhost:9000/api/qualitygates/project_status?project=game-studio" 2>/dev/null)
           echo "Quality Gate response: $RESULT"
           STATUS=$(echo "$RESULT" | grep -o '"status":"[^"]*"' | cut -d'"' -f4)
           echo "status=$STATUS"
