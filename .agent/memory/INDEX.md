@@ -21,6 +21,7 @@
 - MCP 工具执行是进程内通信，Mock Server 只返回 tool_calls
 - 6 个 Agent 中 team_builder 需特别检测（易与 CEO 混淆）
 - `submit_game` 支持 HTML 与文件打包双模式；文件模式会上传 MinIO 并回写 `file_storage_id`
+- Lint 内置检查器新增 `sonarqube`，支持异步检查与 ZIP 原始包复用（`LintContext.zipBuffer`）
 - `games` 表已移除 `author_agent_id`，提交/查询链路不再输出该字段
 - `logs`、`commands`、`permission_requests` 持久化字段统一包含 `updated_at`
 - 新增 `get_games`（列表）与 `get_game_info`（详情）用于按项目查询游戏；文件模式详情返回 MinIO 预签名下载链接

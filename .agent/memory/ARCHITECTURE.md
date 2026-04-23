@@ -15,6 +15,7 @@
 - `server/lint/checkers/html-structure.ts` - HTML 结构检查器（6 条 error 规则）
 - `server/lint/checkers/http-method-checker.ts` - HTTP 方法安全检查器（error 级，阻断非安全方法）
 - `server/lint/checkers/js-security.ts` - JS 安全检查器（4 条 warn 规则）
+- `server/lint/checkers/sonarqube.ts` - SonarQube 质量扫描检查器（支持 HTML/ZIP，服务不可达时降级 warn）
 - `server/agent-manager.ts` - Agent 管理器，通过 mcpServers 注册自定义工具
 - `server/agents.ts` - Agent 定义 + 系统提示词（TOOLS_OVERVIEW）
 - `server/sse-broadcaster.ts` - SSE 广播（解耦循环依赖）

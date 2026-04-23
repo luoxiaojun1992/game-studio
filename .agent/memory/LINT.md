@@ -5,7 +5,7 @@
 在 `submit_game` tool 层提供**可插拔的静态检查网关**，拦截不合规的游戏提交。
 - **可扩展**：新增检查器只需实现接口 + 一行注册，框架核心和 tools.ts 零改动
 - **两级阻断**：error 级别阻止提交，warn 级别仅记录日志
-- **零外部依赖**：纯正则/字符串分析，无需 AST 解析器或 HTML parser
+- **核心规则轻依赖**：本地规则仍基于正则/字符串分析；另集成 SonarQube 作为外部质量扫描检查器
 
 ## 架构
 
@@ -17,7 +17,8 @@ server/lint/
     ├── index.ts          ← 内置检查器注册表
     ├── html-structure.ts ← HTML 结构检查器
     ├── http-method-checker.ts ← HTTP 方法安全检查器
-    └── js-security.ts    ← JS 安全检查器
+    ├── js-security.ts    ← JS 安全检查器
+    └── sonarqube.ts      ← SonarQube 代码质量检查器（支持 HTML/ZIP）
 ```
 
 ### 调用链路
@@ -26,7 +27,7 @@ server/lint/
 submit_game (tools.ts)
   → validateAgentPermission()
   → HTML 模式: lintGameContent(htmlContent, { fileName })
-  → ZIP 模式: lintZipBuffer(zipBuffer, { projectId })   ← ZIP 内 HTML 逐一检查，首个 error 立即阻断
+  → ZIP 模式: lintZipBuffer(zipBuffer, { projectId })   ← ZIP 内 HTML 逐一检查，首个 error 立即阻断，并把原始 zipBuffer 注入 context
   │   ├─ passed=true  → 继续执行 db.createGame()
   │   └─ passed=false → return { content: error text }  // 直接返回，不写 DB
   → db.createGame()（ZIP 模式写入 file_storage_id）
@@ -41,7 +42,7 @@ interface LintChecker {
   readonly id: string;           // 唯一标识，如 'html-structure'
   readonly name: string;         // 显示名称
   readonly description: string;  // 功能描述
-  check(content: string, context?: LintContext): LintIssue[];
+  check(content: string, context?: LintContext): LintIssue[] | Promise<LintIssue[]>;
 }
 
 // issue 结构
@@ -78,10 +79,10 @@ interface LintResult {
 **便捷入口**：
 ```typescript
 import { lintGameContent } from './lint/index.js';
-const result = lintGameContent(htmlContent, { fileName: 'snake.html' });
+const result = await lintGameContent(htmlContent, { fileName: 'snake.html' });
 ```
 
-## 第一期检查器
+## 内置检查器
 
 ### html-structure — HTML 结构检查（6 条，全 error）
 
@@ -108,6 +109,13 @@ const result = lintGameContent(htmlContent, { fileName: 'snake.html' });
 | `js-function` | Function() 构造函数 | 检测 `new Function(` / `Function(` |
 | `js-js-url` | javascript: 协议 | 检测 `javascript:` URL scheme |
 | `js-innerHTML` | innerHTML 写入 | 检测 `.innerHTML =` 赋值（含行号定位） |
+
+### sonarqube — SonarQube 质量扫描（warn/error 混合）
+
+- 通过 SonarQube REST API 上传 HTML/ZIP 源码并触发分析任务
+- 当服务不可访问时返回 `sonarqube-unavailable`（warn），不阻断提交
+- ZIP 模式优先复用 `LintContext.zipBuffer`，避免“解压后再打包”的重复开销
+- 默认连接：`http://localhost:9002`，token 来源：`SONARQUBE_TOKEN`（默认 `sonarpass`）
 
 ## 扩展指南
 
@@ -153,5 +161,5 @@ export const builtInCheckers: LintChecker[] = [
 | 正则而非 DOM/AST 解析 | 保持零依赖；HTML 结构规则只需字符串匹配即可覆盖 |
 | error/warn 两级而非三级 | 简化语义：要么阻断要么提示，无"info"噪音 |
 | 框架层 catch 单检查器异常 | 一个 checker 崩溃不影响其他 checker 继续运行 |
-| context 对象传 fileName/projectId | 未来 checker 可能需要根据文件名或项目选择不同规则集 |
+| context 对象传 fileName/projectId/zipBuffer | 支持按文件/项目策略检查，并允许 SonarQube 在 ZIP 模式复用原始包 |
 | LintResult.summary 直接作为 tool 返回文本 | 减少上层格式化逻辑，checker 报错信息直达用户 |

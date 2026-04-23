@@ -52,7 +52,7 @@ data/studio.db     output/{project_id}/...
 - `file-storage.ts`：文件存储 API 与内部上传复用函数
 - `minio-client.ts`：MinIO 对象操作与预签名 URL 能力
 - `creator-service.ts`：creator HTTP 客户端、建模 project 生命周期/模型文件操作与安全路径校验
-- `lint/`：可扩展 Lint 框架（LintRunner、可插拔检查器、零外部依赖）
+- `lint/`：可扩展 Lint 框架（LintRunner、可插拔检查器、本地规则 + SonarQube 质量扫描）
 - `agents.ts`：角色定义、提示词、交接约束
 - `db.ts`：SQLite 表结构（DDL 优先初始化）与读写逻辑
 - `sse-broadcaster.ts`：SSE 客户端管理与事件广播
@@ -67,7 +67,7 @@ data/studio.db     output/{project_id}/...
 - **交接（Handoffs）**：跨角色任务移交与确认执行
 - **产物（Games）**：支持 HTML 成品或打包产物提交，支持列表、预览与文件下载
 - **建模（Modeling）**：Blender project 管理、几何体/材质/导出与模型文件回传
-- **静态分析（Lint/Quality）**：可扩展静态检查框架，支持 HTML 结构、HTTP 方法安全、JS 安全等可插拔检查器
+- **静态分析（Lint/Quality）**：可扩展静态检查框架，支持 HTML 结构、HTTP 方法安全、JS 安全、SonarQube 质量扫描等可插拔检查器，并支持异步检查器
 - **记忆（Memories）**：按角色/项目组织的长期记忆
 - **观测（Logs/Events）**：运行日志与事件流
 - **权限（Permissions）**：工具执行审批流与回调响应
@@ -130,7 +130,7 @@ data/studio.db     output/{project_id}/...
 ## 9. 部署形态
 
 - 本地开发：单节点后端 + 前端开发服务器
-- Docker 部署：前后端 + creator 服务容器化（见 `README-Docker.zh-CN.md`）
+- Docker 部署：前后端 + creator 服务 + SonarQube 容器化（见 `README-Docker.zh-CN.md`）
 - 运行目录：
   - `data/`：SQLite 数据库
   - `output/`：提案/游戏产物

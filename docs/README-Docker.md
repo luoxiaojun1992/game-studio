@@ -51,6 +51,7 @@ docker compose logs -f creator
 - **Game Dev Studio Frontend**: http://localhost:5173
 - **Game Dev Studio Backend API**: http://localhost:3000
 - **Star Office UI**: http://localhost:19000
+- **SonarQube**: http://localhost:9002
 - **Creator Service Health**: http://localhost:8080/health
 
 ### 5. Stop Services
@@ -89,6 +90,9 @@ Data is persisted using Docker volumes:
 - `studio-output`: Game output files
 - `star-office-data`: Star Office UI data
 - `creator-data`: Creator service Blender workspace data
+- `sonarqube-data`: SonarQube data
+- `sonarqube-logs`: SonarQube logs
+- `sonarqube-extensions`: SonarQube plugins/extensions
 
 Inspect volumes:
 
@@ -113,6 +117,8 @@ docker volume inspect game-dev-studio_studio-data
 | `ASSET_DRAWER_PASS` | `secure-pass-1234` | Star Office asset drawer password |
 | `CREATOR_PORT` | 8080 | Creator service exposed port |
 | `CREATOR_SERVICE_URL` | `http://creator:8080` | Backend-to-creator internal service URL |
+| `SONARQUBE_PORT` | 9002 | SonarQube service port (mapped to container 9000) |
+| `SONARQUBE_TOKEN` | `sonarpass` | SonarQube token used by backend `sonarqube` lint checker |
 
 ## Star Office Concurrency Configuration
 
