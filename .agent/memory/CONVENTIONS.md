@@ -76,7 +76,7 @@
 | ZIP 模式传给检查器前先解压再重压缩 | LintContext 新增 `zipBuffer?: Buffer` 字段，原生传递原始 Buffer 避免冗余压缩 | 浪费 CPU，且 SonarQube 接收的是重新压缩后的包（与原始提交不符） |
 | sonar-scanner 退出码 0 不等于质量门通过 | scanner 退出码 0 只表示"分析跑完了"，质量门是否通过需要单独调 `/api/qualitygates/project_status?project=xxx` 判断；若 `status != OK` 必须主动 `exit 1` | CI 流程误认为 scanner 成功 = 质量门通过，漏拦截不合格代码 |
 | GitHub Actions 中 `docker exec <container>` 必须用 `docker compose exec -T <service>` | `docker compose` 环境下容器名带项目前缀，硬编码容器名会失败；`exec -T` 禁用 TTY 交互 | `exec <container_name>` 找不到容器，health check 和质量门查询都失败 |
-| sonar-scanner CLI 容器与 SonarQube 网络隔离 | scanner Docker 容器与 SonarQube 容器不在同一网络时无法解析 `sonarqube:9000`；需动态获取 `docker network ls --filter "name=sonarqube"` 并 `--network` 加入 | scanner 无法连接 SonarQube，扫描直接失败 |
+| sonar-scanner CLI 容器与 SonarQube 网络隔离 | scanner Docker 容器与 SonarQube 容器不在同一网络时无法解析 `sonarqube:9000`；SonarQube 端口已映射到宿主 `9000:9000`，scanner 直接用 `--network host` + `sonar.host.url=http://localhost:9000` 更简单 | scanner 无法连接 SonarQube，扫描直接失败 |
 
 ## Session ↔ Project 关系
 - **Session 不会跨 project**：每次 `sendMessage(projectId, agentId, ...)` 都会创建全新的 SDK session，session 与 project 一一对应
