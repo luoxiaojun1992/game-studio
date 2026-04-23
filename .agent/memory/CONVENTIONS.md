@@ -77,6 +77,8 @@
 | sonar-scanner 退出码 0 不等于质量门通过 | scanner 退出码 0 只表示"分析跑完了"，质量门是否通过需要单独调 `/api/qualitygates/project_status?project=xxx` 判断；若 `status != OK` 必须主动 `exit 1` | CI 流程误认为 scanner 成功 = 质量门通过，漏拦截不合格代码 |
 | GitHub Actions 中 `docker exec <container>` 必须用 `docker compose exec -T <service>` | `docker compose` 环境下容器名带项目前缀，硬编码容器名会失败；`exec -T` 禁用 TTY 交互 | `exec <container_name>` 找不到容器，health check 和质量门查询都失败 |
 | sonar-scanner CLI 容器与 SonarQube 网络隔离 | scanner Docker 容器与 SonarQube 容器不在同一网络时无法解析 `sonarqube:9000`；SonarQube 端口已映射到宿主 `9000:9000`，scanner 直接用 `--network host` + `sonar.host.url=http://localhost:9000` 更简单 | scanner 无法连接 SonarQube，扫描直接失败 |
+| Docker Hub 镜像标签与 GitHub release 版本不对应 | 不能把 GitHub release 版本号（如 `7.3.0.5189`）直接当作 Docker Hub 镜像标签使用；Docker Hub `sonarsource/sonar-scanner-cli` 实际只有 `latest`、`5`、`5.0` 可用；必须用 `docker pull <tag>` 验证标签是否真实存在 | 用了不存在的镜像标签导致 `manifest unknown` 错误 |
+| scanner 与 SonarQube server 版本存在 API 兼容性 | scanner 8.x (latest) 使用 `/api/v2/` + Bearer token，与 SonarQube 10.6 community 的 token 认证不完全兼容，导致 401；scanner 5.x 用旧 API，与 10.6 兼容 | scanner 8.x + SonarQube 10.6 community 混用时 token 认证失败，scanner 退出码 0 但实际未完成分析 |
 
 ## Session ↔ Project 关系
 - **Session 不会跨 project**：每次 `sendMessage(projectId, agentId, ...)` 都会创建全新的 SDK session，session 与 project 一一对应
