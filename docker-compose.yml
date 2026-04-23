@@ -54,6 +54,8 @@ services:
     depends_on:
       minio:
         condition: service_healthy
+      sonarqube:
+        condition: service_healthy
       creator:
         condition: service_started
     healthcheck:

@@ -58,6 +58,8 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+      sonarqube:
+        condition: service_healthy
       creator:
         condition: service_started
     ports:
