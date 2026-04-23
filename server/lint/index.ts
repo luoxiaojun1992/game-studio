@@ -202,7 +202,7 @@ export async function lintZipBuffer(zipBuffer: Buffer, context?: LintContext): P
   for (const file of htmlFiles) {
     const content = await file.buffer();
     const text = content.toString('utf-8');
-    const result = await runner.run(text, { ...context, fileName: file.path });
+    const result = await runner.run(text, { ...context, fileName: file.path, zipBuffer });
 
     if (!result.passed) {
       // 第一个 error 文件，直接返回

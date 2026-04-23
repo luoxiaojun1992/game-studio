@@ -322,11 +322,12 @@ export const sonarqubeChecker: LintChecker = {
     try {
       await client.ensureProject(projectKey, projectName);
 
-      const wrapped = wrapHtmlForSonarQube(content, fileName);
-      const zip = buildZipBuffer([
-        { name: `dist/${fileName}`, data: wrapped },
-        { name: `dist/game.html`, data: wrapped },
-      ]);
+      // 优先使用 lintZipBuffer 传入的原始 ZIP buffer，避免重复打包
+      const zip = context?.zipBuffer
+        ?? buildZipBuffer([
+          { name: `dist/${fileName}`, data: wrapHtmlForSonarQube(content, fileName) },
+          { name: `dist/game.html`, data: wrapHtmlForSonarQube(content, fileName) },
+        ]);
 
       const taskId = await client.submitAnalysis(projectKey, zip);
       await client.waitForTask(taskId);
