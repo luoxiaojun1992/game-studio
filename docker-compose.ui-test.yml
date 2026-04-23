@@ -105,7 +105,7 @@ services:
   sonarqube:
     image: sonarqube:10.6-community
     environment:
-      - SONAR_JDBC_URL=postgresql://sonarqube-db:5432/sonar
+      - SONAR_JDBC_URL=jdbc:postgresql://sonarqube-db:5432/sonar
       - SONAR_JDBC_USERNAME=sonar
       - SONAR_JDBC_PASSWORD=sonarpass
     ports:

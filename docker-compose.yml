@@ -121,7 +121,7 @@ services:
     ports:
       - "${SONARQUBE_PORT:-9002}:9000"
     environment:
-      - SONAR_JDBC_URL=postgresql://sonarqube-db:5432/sonar
+      - SONAR_JDBC_URL=jdbc:postgresql://sonarqube-db:5432/sonar
       - SONAR_JDBC_USERNAME=sonar
       - SONAR_JDBC_PASSWORD=${SONARQUBE_DB_PASSWORD:-sonarpass}
     volumes:
