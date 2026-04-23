@@ -114,16 +114,12 @@ services:
       start_period: 10s
     restart: unless-stopped
 
-  # SonarQube 代码质量扫描服务
+  # SonarQube 代码质量扫描服务（使用内置 H2 数据库，不依赖外部 PostgreSQL）
   sonarqube:
     image: sonarqube:10.6-community
     container_name: game-studio-sonarqube
     ports:
       - "${SONARQUBE_PORT:-9002}:9000"
-    environment:
-      - SONAR_JDBC_URL=jdbc:postgresql://sonarqube-db:5432/sonar
-      - SONAR_JDBC_USERNAME=sonar
-      - SONAR_JDBC_PASSWORD=${SONARQUBE_DB_PASSWORD:-sonarpass}
     volumes:
       - sonarqube-data:/opt/sonarqube/data
       - sonarqube-logs:/opt/sonarqube/logs
@@ -136,25 +132,6 @@ services:
       timeout: 10s
       retries: 10
       start_period: 60s
-    restart: unless-stopped
-
-  # SonarQube PostgreSQL 依赖数据库
-  sonarqube-db:
-    image: postgres:16-alpine
-    container_name: game-studio-sonarqube-db
-    environment:
-      - POSTGRES_DB=sonar
-      - POSTGRES_USER=sonar
-      - POSTGRES_PASSWORD=${SONARQUBE_DB_PASSWORD:-sonarpass}
-    volumes:
-      - sonarqube-db-data:/var/lib/postgresql/data
-    networks:
-      - game-studio-network
-    healthcheck:
-      test: ["CMD", "pg_isready", "-U", "sonar"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
     restart: unless-stopped
 
   # Creator 建模微服务（Blender + FastAPI）
@@ -195,8 +172,6 @@ volumes:
   sonarqube-logs:
     driver: local
   sonarqube-extensions:
-    driver: local
-  sonarqube-db-data:
     driver: local
 
 networks:

@@ -290,7 +290,6 @@ function resolveConfig(context?: LintContext): {
     || `http://localhost:${process.env.SONARQUBE_PORT ?? '9002'}`;
   const token = (context?.sonarQubeToken as string)
     || process.env.SONARQUBE_TOKEN
-    || process.env.SONARQUBE_DB_PASSWORD
     || 'sonarpass';
   const projectKey = context?.projectId ? `game-${context.projectId}` : 'game-default';
   return { baseUrl, token, projectKey, projectName: `Game ${projectKey}` };
