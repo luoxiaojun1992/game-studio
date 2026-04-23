@@ -6,7 +6,7 @@ version: '3.8'
 
 services:
   sonarqube:
-    image: sonarqube:2025.1-community
+    image: sonarqube:community
     container_name: game-studio-sonarqube
     ports:
       - "9000:9000"
@@ -31,13 +31,15 @@ services:
       - .:/usr/src
     working_dir: /usr/src
     environment:
-      - SONAR_TOKEN=sonarpass
+      - SONAR_LOGIN=admin
+      - SONAR_PASSWORD=sonarpass
     command: >
       -Dsonar.projectKey=game-studio
       -Dsonar.sources=server,src,star-office-ui/server
       -Dsonar.sourceEncoding=UTF-8
       -Dsonar.host.url=http://sonarqube:9000
-      -Dsonar.token=sonarpass
+      -Dsonar.login=admin
+      -Dsonar.password=sonarpass
     networks:
       - sonar-network
     depends_on:
