@@ -64,6 +64,10 @@
 | 手动模式下在循环外 accept/confirm | 循环体内每轮尝试 tryAcceptAnyPending + tryConfirmAnyAccepted | 适应异步事件到达时序不确定性 |
 | MCP server 采用按角色拆分的独立 server/工具集并行注册，导致非工程角色也暴露多余建模工具 | 使用单一 studio-tools server，但按角色选择性放行：`blender_*` 仅给 engineer | 降低非工程角色工具噪音，避免 handoff 流程与 mock 期望错乱 |
 | 模型文件下载/删除直接拼接路径 | 下载/删除前必须做 safe path 校验（限制在 `output/{project_id}/models`） | 防止路径穿越导致越权读写 |
+| 引入外部服务（如 SonarQube）后未配置 `depends_on` 和健康检查 | docker-compose 中新增有 API 依赖的服务（如 sonarqube），studio-backend 必须 `depends_on` 并设 `condition: service_healthy` | studio-backend 启动时依赖服务未就绪 → 认证/扫描请求直接失败 |
+| SonarQube JDBC URL 格式写成 `postgresql://...` | 必须为 `jdbc:postgresql://...`，JDBC driver 要求 `jdbc:` 前缀 | 启动时 `Bad format of JDBC URL` 错误 |
+| 新增 docker compose 服务未检查端口冲突 | 添加服务前先 `docker ps -a --format '{{.Ports}}'` 确认端口未被占用 | `Bind for 0.0.0.0:9000 failed: port is already allocated` |
+| SonarQube 开发环境使用 PostgreSQL 外部依赖 | 开发/测试环境直接用 SonarQube 内置 H2 数据库，不挂 PostgreSQL | 减少运维复杂度，H2 对单实例够用 |
 
 ## Session ↔ Project 关系
 - **Session 不会跨 project**：每次 `sendMessage(projectId, agentId, ...)` 都会创建全新的 SDK session，session 与 project 一一对应
