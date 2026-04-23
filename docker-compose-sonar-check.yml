@@ -1,0 +1,34 @@
+version: '3.8'
+
+# SonarQube CI 环境专用 compose
+# 用途：GitHub Actions 中启动 SonarQube 供 scanner 分析
+# 特点：不含 studio-backend 等业务服务，最小依赖集；restart: no（容器执行完即销毁）
+
+services:
+  sonarqube:
+    image: sonarqube:10.6-community
+    container_name: game-studio-sonarqube
+    ports:
+      - "9000:9000"
+    volumes:
+      - sonarqube-data:/opt/sonarqube/data
+      - sonarqube-logs:/opt/sonarqube/logs
+      - sonarqube-extensions:/opt/sonarqube/extensions
+    networks:
+      - sonar-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:9000/api/system/status 2>/dev/null | grep -q '\"status\":\"UP\"' && exit 0 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 300s
+    restart: "no"
+
+volumes:
+  sonarqube-data:
+  sonarqube-logs:
+  sonarqube-extensions:
+
+networks:
+  sonar-network:
+    driver: bridge

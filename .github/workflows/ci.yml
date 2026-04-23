@@ -7,11 +7,83 @@ on:
       - main
 
 jobs:
+  sonar-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Start SonarQube
+        run: docker compose -f docker-compose-sonar-check.yml up -d sonarqube
+
+      - name: Wait for SonarQube to be healthy
+        run: |
+          for i in $(seq 1 60); do
+            STATUS=$(docker compose -f docker-compose-sonar-check.yml exec -T sonarqube wget -q -O- http://localhost:9000/api/system/status 2>/dev/null | grep -o '"status":"[^"]*"' | cut -d'"' -f4)
+            if [ "$STATUS" = "UP" ]; then
+              echo "SonarQube is UP"
+              exit 0
+            fi
+            echo "Waiting for SonarQube... ($i/60) status=$STATUS"
+            sleep 10
+          done
+          echo "SonarQube failed to start within 600s"
+          docker compose -f docker-compose-sonar-check.yml logs sonarqube
+          exit 1
+
+      - name: Run SonarQube Scanner
+        run: |
+          SONAR_NETWORK=$(docker network ls --filter "name=sonarqube" --format "{{.Name}}" | head -1)
+          echo "Joining network: $SONAR_NETWORK"
+          docker run --rm \
+            --network ${SONAR_NETWORK} \
+            -v ${PWD}:/usr/src \
+            -w /usr/src \
+            -e SONAR_TOKEN=${SONAR_TOKEN} \
+            sonarsource/sonar-scanner-cli:latest \
+            -Dsonar.projectKey=game-studio \
+            -Dsonar.sources=server,src,star-office-ui/server \
+            -Dsonar.sourceEncoding=UTF-8 \
+            -Dsonar.host.url=http://game-studio-sonarqube:9000 \
+            -Dsonar.token=${SONAR_TOKEN}
+
+      - name: Check Quality Gate
+        id: quality-gate
+        run: |
+          RESULT=$(docker compose -f docker-compose-sonar-check.yml exec -T sonarqube wget -q -O- --header="Authorization: Bearer ${SONAR_TOKEN}" "http://localhost:9000/api/qualitygates/project_status?project=game-studio" 2>/dev/null)
+          echo "Quality Gate response: $RESULT"
+          STATUS=$(echo "$RESULT" | grep -o '"status":"[^"]*"' | cut -d'"' -f4)
+          echo "status=$STATUS"
+          if [ "$STATUS" != "OK" ]; then
+            echo "Quality Gate FAILED — blocking UI tests"
+            exit 1
+          fi
+          echo "Quality Gate PASSED"
+
+      - name: Upload SonarQube Report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonar-report
+          path: |
+            .scannerwork/sonar-report.json
+            .scannerwork/sonar-task.txt
+          if-no-files-found: warn
+
+      - name: Teardown SonarQube
+        if: always()
+        run: docker compose -f docker-compose-sonar-check.yml down -v
+
   ui-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
       contents: read
+    needs: [sonar-check]
 
     steps:
       - name: Checkout

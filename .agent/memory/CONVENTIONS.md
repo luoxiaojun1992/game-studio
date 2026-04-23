@@ -74,6 +74,9 @@
 | 遇到问题时先自己尝试而非查官方文档 | Docker/SonarQube 等开源软件的配置问题，官方文档和 GitHub issue 才是最准确的信息源 | 自己试错耗时且容易踩坑，官方文档一句话就能解决（如 SonarQube health check API 路径、`jdbc:` 前缀要求） |
 | 新增 async 类型 checker 但未修改 LintRunner.run() 为 async | 若 checker.check() 返回 Promise，LintRunner.run() 必须改为 async 并用 `await` 等待结果 | 异步 checker 直接返回 Promise 但同步调用方拿不到正确结果 |
 | ZIP 模式传给检查器前先解压再重压缩 | LintContext 新增 `zipBuffer?: Buffer` 字段，原生传递原始 Buffer 避免冗余压缩 | 浪费 CPU，且 SonarQube 接收的是重新压缩后的包（与原始提交不符） |
+| sonar-scanner 退出码 0 不等于质量门通过 | scanner 退出码 0 只表示"分析跑完了"，质量门是否通过需要单独调 `/api/qualitygates/project_status?project=xxx` 判断；若 `status != OK` 必须主动 `exit 1` | CI 流程误认为 scanner 成功 = 质量门通过，漏拦截不合格代码 |
+| GitHub Actions 中 `docker exec <container>` 必须用 `docker compose exec -T <service>` | `docker compose` 环境下容器名带项目前缀，硬编码容器名会失败；`exec -T` 禁用 TTY 交互 | `exec <container_name>` 找不到容器，health check 和质量门查询都失败 |
+| sonar-scanner CLI 容器与 SonarQube 网络隔离 | scanner Docker 容器与 SonarQube 容器不在同一网络时无法解析 `sonarqube:9000`；需动态获取 `docker network ls --filter "name=sonarqube"` 并 `--network` 加入 | scanner 无法连接 SonarQube，扫描直接失败 |
 
 ## Session ↔ Project 关系
 - **Session 不会跨 project**：每次 `sendMessage(projectId, agentId, ...)` 都会创建全新的 SDK session，session 与 project 一一对应
