@@ -156,9 +156,9 @@ export const sonarqubeChecker: LintChecker = {
       });
 
       if (finalStatus.status === 'error') {
-        console.error(`[SonarQube checker] 扫描失败 project=${projectKey} message=${finalStatus.message}`);
-        // scanner 扫描失败不阻断提交，降级返回空 issues
-        return [];
+        const msg = `SonarQube scan failed: ${finalStatus.message}`;
+        console.error(`[SonarQube checker] ${msg}`);
+        throw new Error(msg);  // throw 让 LintRunner 捕获并转为 lintIssue
       }
 
       // 3. 扫描成功，从 SonarQube 拉取 issues
