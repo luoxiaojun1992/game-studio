@@ -3,7 +3,7 @@ Pydantic schemas for the Creator API.
 
 Validation rules:
   - project_id:  regex ^[a-zA-Z0-9_-]{1,64}$
-  - filename:    regex ^[a-zA-Z0-9_.\-]+$  (no path separators)
+  - filename:    regex ^[a-zA-Z0-9_.\\-]+$  (no path separators)
   - script:       max 10 KB
 """
 
