@@ -3,7 +3,7 @@ Pydantic schemas for the Creator API.
 
 Validation rules:
   - project_id:  regex ^[a-zA-Z0-9_-]{1,64}$
-  - filename:    regex ^[a-zA-Z0-9_\-\.]+$  (no path separators)
+  - filename:    regex ^[a-zA-Z0-9_.\-]+$  (no path separators)
   - script:       max 10 KB
 """
 
@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field, field_validator
 # Shared patterns
 # ---------------------------------------------------------------------------
 PROJECT_ID_PATTERN = re.compile(r"^[a-zA-Z0-9_-]{1,64}$")
-FILENAME_PATTERN = re.compile(r"^[a-zA-Z0-9_\-\.]+$")
+FILENAME_PATTERN = re.compile(r"^[a-zA-Z0-9_.\-]+$")
 
 MESH_TYPES = Literal["cube", "sphere", "plane", "cylinder", "torus", "cone"]
 EXPORT_FORMATS = Literal["glb", "fbx", "obj", "ply", "usd"]

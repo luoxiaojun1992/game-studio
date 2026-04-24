@@ -17,7 +17,7 @@ import zipfile
 from pathlib import Path
 
 from fastapi import APIRouter, File, HTTPException, status, UploadFile
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 
 from app.schemas import ScanResponse, ScanStatusResponse, ScanDeleteResponse, _validate_project_id
 
@@ -243,15 +243,15 @@ async def get_scan_status(project_id: str) -> ScanStatusResponse:
 
 @router.delete(
     "/{project_id}",
-    response_model=ScanDeleteResponse,
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Cancel / clean up scan (idempotent)",
 )
-async def delete_scan(project_id: str) -> None:
+async def delete_scan(project_id: str) -> Response:
     """Remove the working directory for a project. Idempotent."""
     validated_id = _validate_project_id(project_id)
     scan_dir = _scan_dir(validated_id)
     if scan_dir.exists():
         shutil.rmtree(scan_dir)
+    return Response(status_code=204)
     _scan_states.pop(validated_id, None)
     return None
