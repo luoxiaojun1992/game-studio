@@ -11,6 +11,7 @@ import os
 import shutil
 import subprocess
 import threading
+import time
 import urllib.error
 import urllib.request
 import zipfile
@@ -27,6 +28,57 @@ SCANNER_ROOT = "/app/scanner"
 SONAR_HOST = os.getenv("SONAR_HOST_URL", "http://sonarqube:9000")
 SONAR_USER = os.getenv("SONAR_USER", "admin")
 SONAR_PASSWORD = os.getenv("SONAR_PASSWORD", "admin")
+
+# Token TTL: 24h in ms, refresh 1 minute before expiry
+_TOKEN_TTL_MS = 24 * 60 * 60 * 1000
+_TOKEN_REFRESH_BEFORE_MS = 60 * 1000  # refresh 1 min before expiry
+
+_cached_token: str | None = None
+_cached_token_expire_at: float = 0.0
+_token_lock = threading.Lock()
+
+
+def _basic_auth(user: str, password: str) -> str:
+    token = base64.b64encode(f"{user}:{password}".encode()).decode()
+    return f"Basic {token}"
+
+
+def _ensure_token() -> str:
+    """Thread-safe token getter with auto-refresh before TTL expiry."""
+    global _cached_token, _cached_token_expire_at
+    now = time.time() * 1000
+    if _cached_token and now < (_cached_token_expire_at - _TOKEN_REFRESH_BEFORE_MS):
+        return _cached_token
+
+    with _token_lock:
+        # Double-check after acquiring lock
+        now = time.time() * 1000
+        if _cached_token and now < (_cached_token_expire_at - _TOKEN_REFRESH_BEFORE_MS):
+            return _cached_token
+
+        # Generate new token via SonarQube API (Basic Auth)
+        token_name = f"scanner-token-{int(time.time() * 1000)}"
+        req = urllib.request.Request(
+            f"{SONAR_HOST}/api/user_tokens/generate",
+            data=urllib.parse.urlencode({"name": token_name, "type": "USER_TOKEN"}).encode(),
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        req.add_header("Authorization", _basic_auth(SONAR_USER, SONAR_PASSWORD))
+        try:
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                data = resp.read()
+        except urllib.error.HTTPError as e:
+            raise RuntimeError(f"Failed to generate SonarQube token: {e.code} {e.reason}")
+
+        import json
+        parsed = json.loads(data)
+        if "token" not in parsed:
+            raise RuntimeError(f"SonarQube token response missing 'token' field: {parsed}")
+
+        _cached_token = parsed["token"]
+        _cached_token_expire_at = time.time() * 1000 + _TOKEN_TTL_MS
+        print(f"[scanner] SonarQube token generated, ttl={_TOKEN_TTL_MS}ms")
+        return _cached_token
 
 # In-memory scan states: project_id -> {"status": ..., "exit_code": ..., "message": ...}
 _scan_states: dict[str, dict] = {}
@@ -46,11 +98,6 @@ def _extract_dir(project_id: str) -> Path:
 
 def _log_path(project_id: str) -> Path:
     return Path(SCANNER_ROOT) / project_id / "scan.log"
-
-
-def _basic_auth(user: str, password: str) -> str:
-    token = base64.b64encode(f"{user}:{password}".encode()).decode()
-    return f"Basic {token}"
 
 
 def _ensure_sonar_project(project_key: str) -> None:
@@ -86,6 +133,9 @@ def _run_scanner_bg(project_id: str) -> None:
         state["message"] = "SonarQube project ready, running scanner..."
         _scan_states[project_id] = state
 
+        # Get or refresh token before running scanner
+        scanner_token = _ensure_token()
+
         # Run sonar-scanner
         log_fp = open(log_fp_path, "w")
         proc = subprocess.Popen(
@@ -95,8 +145,7 @@ def _run_scanner_bg(project_id: str) -> None:
                 f"-Dsonar.sources={sources_dir}",
                 "-Dsonar.sourceEncoding=UTF-8",
                 f"-Dsonar.host.url={SONAR_HOST}",
-                f"-Dsonar.login={SONAR_USER}",
-                f"-Dsonar.password={SONAR_PASSWORD}",
+                f"-Dsonar.token={scanner_token}",
             ],
             stdout=log_fp,
             stderr=subprocess.STDOUT,
