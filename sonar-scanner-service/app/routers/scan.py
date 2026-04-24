@@ -170,7 +170,7 @@ async def submit_scan(project_id: str, file: UploadFile = File(...)) -> ScanResp
     # Validate it's a valid ZIP
     try:
         with zipfile.ZipFile(zip_path) as zf:
-            zf.validate_names()
+            pass  # opening already validates
     except zipfile.BadZipFile:
         shutil.rmtree(scan_dir)
         raise HTTPException(
