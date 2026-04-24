@@ -1,0 +1,2675 @@
+{
+  "project": "game-studio",
+  "analysisDate": "",
+  "taskId": null,
+  "totalIssues": 201,
+  "openIssues": 201,
+  "closedIssues": 0,
+  "summaryBySeverity": {
+    "BLOCKER": {
+      "BUG": 0,
+      "VULNERABILITY": 1,
+      "CODE_SMELL": 8,
+      "SECURITY_HOTSPOT": 0
+    },
+    "CRITICAL": {
+      "BUG": 0,
+      "VULNERABILITY": 0,
+      "CODE_SMELL": 15,
+      "SECURITY_HOTSPOT": 0
+    },
+    "MAJOR": {
+      "BUG": 1,
+      "VULNERABILITY": 0,
+      "CODE_SMELL": 81,
+      "SECURITY_HOTSPOT": 0
+    },
+    "MINOR": {
+      "BUG": 7,
+      "VULNERABILITY": 0,
+      "CODE_SMELL": 88,
+      "SECURITY_HOTSPOT": 0
+    },
+    "INFO": {
+      "BUG": 0,
+      "VULNERABILITY": 0,
+      "CODE_SMELL": 0,
+      "SECURITY_HOTSPOT": 0
+    }
+  },
+  "openIssuesList": [
+    {
+      "key": "b304ceec-7560-4d22-9e40-5d698bebad1a",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Refactor this code to not use nested template literals.",
+      "file": "game-studio",
+      "line": 94,
+      "status": "OPEN",
+      "tags": [
+        "es2015",
+        "brain-overload",
+        "confusing"
+      ]
+    },
+    {
+      "key": "3aa9d8e9-10cd-48a3-a2fd-959d90b0be55",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Prefer `node:zlib` over `zlib`.",
+      "file": "game-studio",
+      "line": 263,
+      "status": "OPEN",
+      "tags": [
+        "convention",
+        "import",
+        "nodejs"
+      ]
+    },
+    {
+      "key": "cfd4f899-ca0a-481a-b931-5c86f5fd320a",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Prefer `node:zlib` over `zlib`.",
+      "file": "game-studio",
+      "line": 263,
+      "status": "OPEN",
+      "tags": [
+        "convention",
+        "import",
+        "nodejs"
+      ]
+    },
+    {
+      "key": "e3a29376-abc5-49ee-869e-2fc1e85dd6a1",
+      "severity": "CRITICAL",
+      "type": "CODE_SMELL",
+      "message": "Refactor this function to reduce its Cognitive Complexity from 37 to the 15 allowed.",
+      "file": "game-studio",
+      "line": 1011,
+      "status": "OPEN",
+      "tags": [
+        "brain-overload"
+      ]
+    },
+    {
+      "key": "bc6ba148-06b4-4352-b34d-d991ff68f54a",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Refactor this code to not use nested template literals.",
+      "file": "game-studio",
+      "line": 1095,
+      "status": "OPEN",
+      "tags": [
+        "es2015",
+        "brain-overload",
+        "confusing"
+      ]
+    },
+    {
+      "key": "b615c8d6-5e9a-4cf5-90f0-772e19d99c23",
+      "severity": "CRITICAL",
+      "type": "CODE_SMELL",
+      "message": "Refactor this function to reduce its Cognitive Complexity from 42 to the 15 allowed.",
+      "file": "game-studio",
+      "line": 466,
+      "status": "OPEN",
+      "tags": [
+        "brain-overload"
+      ]
+    },
+    {
+      "key": "ffebbe65-5c5b-488b-a0c2-78beaeb68a3a",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Do not call `Array#push()` multiple times.",
+      "file": "game-studio",
+      "line": 96,
+      "status": "OPEN",
+      "tags": [
+        "readability",
+        "performance"
+      ]
+    },
+    {
+      "key": "edad1612-af83-498a-91c4-b2870b7b44db",
+      "severity": "BLOCKER",
+      "type": "VULNERABILITY",
+      "message": "Avoid binding the application to all network interfaces.",
+      "file": "game-studio",
+      "line": 56,
+      "status": "OPEN",
+      "tags": [
+        "fastapi",
+        "least-privilege",
+        "uvicorn",
+        "flask",
+        "deployment",
+        "network"
+      ]
+    },
+    {
+      "key": "0e4944d5-00ce-464c-8820-ccc6cd534082",
+      "severity": "BLOCKER",
+      "type": "CODE_SMELL",
+      "message": "Remove this redundant \"response_model\" parameter; it duplicates the return type annotation.",
+      "file": "game-studio",
+      "line": 50,
+      "status": "OPEN",
+      "tags": [
+        "fastapi",
+        "api",
+        "redundant"
+      ]
+    },
+    {
+      "key": "acc17ce4-8208-4cc9-863a-ccadddd82b55",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Document this HTTPException with status code 404 in the \"responses\" parameter.",
+      "file": "game-studio",
+      "line": 58,
+      "status": "OPEN",
+      "tags": [
+        "fastapi",
+        "openapi",
+        "documentation"
+      ]
+    },
+    {
+      "key": "a31f3134-8141-4f4e-bb94-40a4e4e170f1",
+      "severity": "BLOCKER",
+      "type": "CODE_SMELL",
+      "message": "Remove this redundant \"response_model\" parameter; it duplicates the return type annotation.",
+      "file": "game-studio",
+      "line": 76,
+      "status": "OPEN",
+      "tags": [
+        "fastapi",
+        "api",
+        "redundant"
+      ]
+    },
+    {
+      "key": "702ceded-fa43-4341-9fab-c92bea111337",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Document this HTTPException with status code 404 in the \"responses\" parameter.",
+      "file": "game-studio",
+      "line": 84,
+      "status": "OPEN",
+      "tags": [
+        "fastapi",
+        "openapi",
+        "documentation"
+      ]
+    },
+    {
+      "key": "2e1bb47e-1f29-418a-a2ba-6955fe8b99e4",
+      "severity": "BLOCKER",
+      "type": "CODE_SMELL",
+      "message": "Remove this redundant \"response_model\" parameter; it duplicates the return type annotation.",
+      "file": "game-studio",
+      "line": 103,
+      "status": "OPEN",
+      "tags": [
+        "fastapi",
+        "api",
+        "redundant"
+      ]
+    },
+    {
+      "key": "821bbf4d-8620-4cb5-92e0-bbf627434b07",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Document this HTTPException with status code 404 in the \"responses\" parameter.",
+      "file": "game-studio",
+      "line": 111,
+      "status": "OPEN",
+      "tags": [
+        "fastapi",
+        "openapi",
+        "documentation"
+      ]
+    },
+    {
+      "key": "f0fce965-df50-4cb6-900c-c94e5f8f55d4",
+      "severity": "BLOCKER",
+      "type": "CODE_SMELL",
+      "message": "Remove this redundant \"response_model\" parameter; it duplicates the return type annotation.",
+      "file": "game-studio",
+      "line": 128,
+      "status": "OPEN",
+      "tags": [
+        "fastapi",
+        "api",
+        "redundant"
+      ]
+    },
+    {
+      "key": "fb8afbff-2bb9-4386-9936-7d1e30eb0379",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Document this HTTPException with status code 404 in the \"responses\" parameter.",
+      "file": "game-studio",
+      "line": 136,
+      "status": "OPEN",
+      "tags": [
+        "fastapi",
+        "openapi",
+        "documentation"
+      ]
+    },
+    {
+      "key": "1806a6e8-6893-4f7f-8399-7cdc4ac90839",
+      "severity": "BLOCKER",
+      "type": "CODE_SMELL",
+      "message": "Remove this redundant \"response_model\" parameter; it duplicates the return type annotation.",
+      "file": "game-studio",
+      "line": 152,
+      "status": "OPEN",
+      "tags": [
+        "fastapi",
+        "api",
+        "redundant"
+      ]
+    },
+    {
+      "key": "a0be8d0e-c201-4cb8-8965-346141c68b56",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Document this HTTPException with status code 404 in the \"responses\" parameter.",
+      "file": "game-studio",
+      "line": 160,
+      "status": "OPEN",
+      "tags": [
+        "fastapi",
+        "openapi",
+        "documentation"
+      ]
+    },
+    {
+      "key": "971dec7a-7a38-43e0-8703-e0d517b883ae",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Document this HTTPException with status code 400 in the \"responses\" parameter.",
+      "file": "game-studio",
+      "line": 167,
+      "status": "OPEN",
+      "tags": [
+        "fastapi",
+        "openapi",
+        "documentation"
+      ]
+    },
+    {
+      "key": "42b04320-8dbd-4401-a408-9079ce18511c",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Document this HTTPException with status code 400 in the \"responses\" parameter.",
+      "file": "game-studio",
+      "line": 22,
+      "status": "OPEN",
+      "tags": [
+        "fastapi",
+        "openapi",
+        "documentation"
+      ]
+    },
+    {
+      "key": "b7e2eb1a-4454-4ac7-85b8-5373a5c1ebc3",
+      "severity": "BLOCKER",
+      "type": "CODE_SMELL",
+      "message": "Remove this redundant \"response_model\" parameter; it duplicates the return type annotation.",
+      "file": "game-studio",
+      "line": 28,
+      "status": "OPEN",
+      "tags": [
+        "fastapi",
+        "api",
+        "redundant"
+      ]
+    },
+    {
+      "key": "ead5ee10-c4b0-4633-a7f8-ee67889aa030",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Document this HTTPException with status code 404 in the \"responses\" parameter.",
+      "file": "game-studio",
+      "line": 36,
+      "status": "OPEN",
+      "tags": [
+        "fastapi",
+        "openapi",
+        "documentation"
+      ]
+    },
+    {
+      "key": "373d4bd3-d96d-4881-a6bf-7b70ad5cb502",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Document this HTTPException with status code 404 in the \"responses\" parameter.",
+      "file": "game-studio",
+      "line": 62,
+      "status": "OPEN",
+      "tags": [
+        "fastapi",
+        "openapi",
+        "documentation"
+      ]
+    },
+    {
+      "key": "1f5d4cd1-0840-4f50-9d31-8f03123b87be",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Document this HTTPException with status code 404 in the \"responses\" parameter.",
+      "file": "game-studio",
+      "line": 67,
+      "status": "OPEN",
+      "tags": [
+        "fastapi",
+        "openapi",
+        "documentation"
+      ]
+    },
+    {
+      "key": "85567dd8-a029-4342-85b2-a3f85d806af9",
+      "severity": "CRITICAL",
+      "type": "CODE_SMELL",
+      "message": "Define a constant instead of duplicating this literal \"application/octet-stream\" 4 times.",
+      "file": "game-studio",
+      "line": 72,
+      "status": "OPEN",
+      "tags": [
+        "design"
+      ]
+    },
+    {
+      "key": "6aedd31a-543d-41d0-9d53-bcbd8b28f616",
+      "severity": "BLOCKER",
+      "type": "CODE_SMELL",
+      "message": "Remove this redundant \"response_model\" parameter; it duplicates the return type annotation.",
+      "file": "game-studio",
+      "line": 22,
+      "status": "OPEN",
+      "tags": [
+        "fastapi",
+        "api",
+        "redundant"
+      ]
+    },
+    {
+      "key": "c0eb546c-7efb-48e3-8599-c56d6017fef8",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Return a value of type \"ProjectCreateResponse\" instead of \"JSONResponse\" or update function \"create_project\" type hint.",
+      "file": "game-studio",
+      "line": 32,
+      "status": "OPEN",
+      "tags": [
+        "typing"
+      ]
+    },
+    {
+      "key": "1a81d980-4e5a-49da-8eb1-8f6f7cc3e0a7",
+      "severity": "BLOCKER",
+      "type": "CODE_SMELL",
+      "message": "Remove this redundant \"response_model\" parameter; it duplicates the return type annotation.",
+      "file": "game-studio",
+      "line": 42,
+      "status": "OPEN",
+      "tags": [
+        "fastapi",
+        "api",
+        "redundant"
+      ]
+    },
+    {
+      "key": "fcfa8c72-139e-4007-8706-a8feccfe8cf6",
+      "severity": "CRITICAL",
+      "type": "CODE_SMELL",
+      "message": "Refactor this function to reduce its Cognitive Complexity from 109 to the 15 allowed.",
+      "file": "game-studio",
+      "line": 372,
+      "status": "OPEN",
+      "tags": [
+        "brain-overload"
+      ]
+    },
+    {
+      "key": "e7758757-3180-456a-a1a3-ccb06bb476f1",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Replace this union type with a type alias.",
+      "file": "game-studio",
+      "line": 45,
+      "status": "OPEN",
+      "tags": [
+        "proficiency"
+      ]
+    },
+    {
+      "key": "e2ea455f-7e4e-4318-96d5-1d9fa49fc299",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Remove this useless assignment to variable \"record\".",
+      "file": "game-studio",
+      "line": 56,
+      "status": "OPEN",
+      "tags": [
+        "cwe",
+        "unused"
+      ]
+    },
+    {
+      "key": "87f3f8ce-727a-474a-94a1-9fb6ac1994fc",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Prefer `.find(…)` over `.filter(…)`.",
+      "file": "game-studio",
+      "line": 99,
+      "status": "OPEN",
+      "tags": [
+        "readability",
+        "performance",
+        "es2015"
+      ]
+    },
+    {
+      "key": "34b49ac2-4610-4579-bfff-2bb73dccdd30",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Don't use a zero fraction in the number.",
+      "file": "game-studio",
+      "line": 164,
+      "status": "OPEN",
+      "tags": [
+        "consistency",
+        "formatting"
+      ]
+    },
+    {
+      "key": "4e507e0c-ece5-4a01-a6f2-6a63f5d7cfb8",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Prefer `node:path` over `path`.",
+      "file": "game-studio",
+      "line": 227,
+      "status": "OPEN",
+      "tags": [
+        "convention",
+        "import",
+        "nodejs"
+      ]
+    },
+    {
+      "key": "971d319d-e1a1-4eec-b4ad-06b85f9071ae",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Prefer `node:fs` over `fs`.",
+      "file": "game-studio",
+      "line": 228,
+      "status": "OPEN",
+      "tags": [
+        "convention",
+        "import",
+        "nodejs"
+      ]
+    },
+    {
+      "key": "fc210831-15fb-4b32-883c-f44dc7086ad2",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Prefer `node:path` over `path`.",
+      "file": "game-studio",
+      "line": 269,
+      "status": "OPEN",
+      "tags": [
+        "convention",
+        "import",
+        "nodejs"
+      ]
+    },
+    {
+      "key": "12987690-c089-4a5a-965d-24a44b380fb7",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Prefer `node:fs` over `fs`.",
+      "file": "game-studio",
+      "line": 270,
+      "status": "OPEN",
+      "tags": [
+        "convention",
+        "import",
+        "nodejs"
+      ]
+    },
+    {
+      "key": "b1ed4180-e1fe-4f2d-bee1-c86baebc5657",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Do not call `Array#push()` multiple times.",
+      "file": "game-studio",
+      "line": 1397,
+      "status": "OPEN",
+      "tags": [
+        "readability",
+        "performance"
+      ]
+    },
+    {
+      "key": "baf088a5-8f62-4380-bd10-70913210e321",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Prefer `node:path` over `path`.",
+      "file": "game-studio",
+      "line": 1074,
+      "status": "OPEN",
+      "tags": [
+        "convention",
+        "import",
+        "nodejs"
+      ]
+    },
+    {
+      "key": "8ded0a6d-0679-4b0f-a654-d9486ac72e3e",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Prefer `node:path` over `path`.",
+      "file": "game-studio",
+      "line": 1107,
+      "status": "OPEN",
+      "tags": [
+        "convention",
+        "import",
+        "nodejs"
+      ]
+    },
+    {
+      "key": "f19b2da4-1646-4e5b-ba11-b0a6e495a1d9",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Member 'agentSyncLocks' is never reassigned; mark it as `readonly`.",
+      "file": "game-studio",
+      "line": 61,
+      "status": "OPEN",
+      "tags": [
+        "type-dependent",
+        "confusing"
+      ]
+    },
+    {
+      "key": "f0d0b4b0-10f3-476f-8a24-e01514f1f62e",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Member 'pendingAgentSyncWaits' is never reassigned; mark it as `readonly`.",
+      "file": "game-studio",
+      "line": 62,
+      "status": "OPEN",
+      "tags": [
+        "type-dependent",
+        "confusing"
+      ]
+    },
+    {
+      "key": "b219cdf6-f522-41ba-9f4b-85cde7edb6d0",
+      "severity": "CRITICAL",
+      "type": "CODE_SMELL",
+      "message": "Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed.",
+      "file": "game-studio",
+      "line": 623,
+      "status": "OPEN",
+      "tags": [
+        "brain-overload"
+      ]
+    },
+    {
+      "key": "63ef90c1-635a-4a22-8b48-c8923fb59b8e",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Do not call `Array#push()` multiple times.",
+      "file": "game-studio",
+      "line": 1341,
+      "status": "OPEN",
+      "tags": [
+        "readability",
+        "performance"
+      ]
+    },
+    {
+      "key": "92681c7f-32ba-4e6a-9e61-6a42354805f2",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Prefer using nullish coalescing operator (`??=`) instead of an assignment expression, as it is simpler to read.",
+      "file": "game-studio",
+      "line": 17,
+      "status": "OPEN",
+      "tags": [
+        "type-dependent",
+        "nullish-coalescing",
+        "es2020"
+      ]
+    },
+    {
+      "key": "fd20a420-12a4-498d-9fd4-41b6ba10d1e3",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Prefer `Number.parseInt` over `parseInt`.",
+      "file": "game-studio",
+      "line": 20,
+      "status": "OPEN",
+      "tags": [
+        "convention",
+        "es2015"
+      ]
+    },
+    {
+      "key": "0b380686-3308-4b04-9709-3b62ff34c38c",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Prefer `node:fs` over `fs`.",
+      "file": "game-studio",
+      "line": 6,
+      "status": "OPEN",
+      "tags": [
+        "convention",
+        "import",
+        "nodejs"
+      ]
+    },
+    {
+      "key": "2cfe1042-70e6-45e9-aaf9-324fb724cfac",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Prefer `node:child_process` over `child_process`.",
+      "file": "game-studio",
+      "line": 483,
+      "status": "OPEN",
+      "tags": [
+        "convention",
+        "import",
+        "nodejs"
+      ]
+    },
+    {
+      "key": "d55ff00a-55e4-42ee-bb45-c998e102b7e6",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Prefer `node:path` over `path`.",
+      "file": "game-studio",
+      "line": 484,
+      "status": "OPEN",
+      "tags": [
+        "convention",
+        "import",
+        "nodejs"
+      ]
+    },
+    {
+      "key": "f76e9365-928f-471d-9edb-47215f8a87c0",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Prefer `node:fs` over `fs`.",
+      "file": "game-studio",
+      "line": 485,
+      "status": "OPEN",
+      "tags": [
+        "convention",
+        "import",
+        "nodejs"
+      ]
+    },
+    {
+      "key": "d116b6b6-d746-4862-8c46-829351fa54d4",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Handle this exception or don't catch it at all.",
+      "file": "game-studio",
+      "line": 497,
+      "status": "OPEN",
+      "tags": [
+        "cwe",
+        "error-handling",
+        "suspicious"
+      ]
+    },
+    {
+      "key": "131cca29-68e2-4ae7-8bd7-2466c8288e72",
+      "severity": "MAJOR",
+      "type": "BUG",
+      "message": "This conditional operation returns the same value whether the condition is \"true\" or \"false\".",
+      "file": "game-studio",
+      "line": 521,
+      "status": "OPEN",
+      "tags": []
+    },
+    {
+      "key": "8967caa5-cae2-43ce-8f8f-9c552f9282a6",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Remove duplicates in this character class.",
+      "file": "game-studio",
+      "line": 32,
+      "status": "OPEN",
+      "tags": [
+        "regex",
+        "type-dependent"
+      ]
+    },
+    {
+      "key": "2037aa31-ba13-4714-90cf-d701c9078c8b",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Use the \"RegExp.exec()\" method instead.",
+      "file": "game-studio",
+      "line": 97,
+      "status": "OPEN",
+      "tags": [
+        "regex",
+        "type-dependent"
+      ]
+    },
+    {
+      "key": "12c54635-8ff2-48e0-bf33-2239c03ac655",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Replace this character class by the character itself.",
+      "file": "game-studio",
+      "line": 25,
+      "status": "OPEN",
+      "tags": [
+        "regex",
+        "type-dependent"
+      ]
+    },
+    {
+      "key": "482a1f1c-3e25-4c0d-aadb-cf20da09a7e3",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Unnecessary escape character: \\+.",
+      "file": "game-studio",
+      "line": 25,
+      "status": "OPEN",
+      "tags": []
+    },
+    {
+      "key": "898a9faf-787a-46ce-9eed-33971f0cdf40",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Do not call `Array#push()` multiple times.",
+      "file": "game-studio",
+      "line": 92,
+      "status": "OPEN",
+      "tags": [
+        "readability",
+        "performance"
+      ]
+    },
+    {
+      "key": "3fe0a1f3-984a-4e08-8c5f-38736106514a",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Do not call `Array#push()` multiple times.",
+      "file": "game-studio",
+      "line": 101,
+      "status": "OPEN",
+      "tags": [
+        "readability",
+        "performance"
+      ]
+    },
+    {
+      "key": "912a9fe0-b35e-473c-8fa7-c17daa82b198",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Do not call `Array#push()` multiple times.",
+      "file": "game-studio",
+      "line": 110,
+      "status": "OPEN",
+      "tags": [
+        "readability",
+        "performance"
+      ]
+    },
+    {
+      "key": "ef3e6622-9279-47ca-8c38-7e2be1392688",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Member 'checkers' is never reassigned; mark it as `readonly`.",
+      "file": "game-studio",
+      "line": 55,
+      "status": "OPEN",
+      "tags": [
+        "type-dependent",
+        "confusing"
+      ]
+    },
+    {
+      "key": "720683da-a478-4df3-940d-73013798c7a4",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Member 'disabledIds' is never reassigned; mark it as `readonly`.",
+      "file": "game-studio",
+      "line": 56,
+      "status": "OPEN",
+      "tags": [
+        "type-dependent",
+        "confusing"
+      ]
+    },
+    {
+      "key": "4896b086-8000-4f1d-b457-5daca8ca6f25",
+      "severity": "MINOR",
+      "type": "BUG",
+      "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener.",
+      "file": "game-studio",
+      "line": 74,
+      "status": "OPEN",
+      "tags": [
+        "accessibility",
+        "react"
+      ]
+    },
+    {
+      "key": "4f3bfd46-ead8-4d37-9f46-305c408dc38d",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element.",
+      "file": "game-studio",
+      "line": 74,
+      "status": "OPEN",
+      "tags": [
+        "accessibility",
+        "react"
+      ]
+    },
+    {
+      "key": "789855fb-0f5b-43d5-a700-186e4ed288f4",
+      "severity": "MINOR",
+      "type": "BUG",
+      "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener.",
+      "file": "game-studio",
+      "line": 23,
+      "status": "OPEN",
+      "tags": [
+        "accessibility",
+        "react"
+      ]
+    },
+    {
+      "key": "8cbdae4f-e31d-4d07-9128-6fefe1735435",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element.",
+      "file": "game-studio",
+      "line": 23,
+      "status": "OPEN",
+      "tags": [
+        "accessibility",
+        "react"
+      ]
+    },
+    {
+      "key": "7bab6d21-1fcf-41f0-924b-50f8261eec9f",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element.",
+      "file": "game-studio",
+      "line": 350,
+      "status": "OPEN",
+      "tags": [
+        "accessibility",
+        "react"
+      ]
+    },
+    {
+      "key": "84d78908-60cf-464f-80ac-6c191f67fd6a",
+      "severity": "MINOR",
+      "type": "BUG",
+      "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener.",
+      "file": "game-studio",
+      "line": 350,
+      "status": "OPEN",
+      "tags": [
+        "accessibility",
+        "react"
+      ]
+    },
+    {
+      "key": "b911e84a-b214-4359-a103-693ade53bc0b",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Non-interactive elements should not be assigned interactive roles.",
+      "file": "game-studio",
+      "line": 564,
+      "status": "OPEN",
+      "tags": [
+        "accessibility",
+        "react"
+      ]
+    },
+    {
+      "key": "e267d76a-2fcb-4f46-aac1-ef8c77757797",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Extract this nested ternary operation into an independent statement.",
+      "file": "game-studio",
+      "line": 352,
+      "status": "OPEN",
+      "tags": [
+        "confusing"
+      ]
+    },
+    {
+      "key": "b72dee4f-c372-4a4b-ba96-63dda03535b5",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Extract this nested ternary operation into an independent statement.",
+      "file": "game-studio",
+      "line": 355,
+      "status": "OPEN",
+      "tags": [
+        "confusing"
+      ]
+    },
+    {
+      "key": "314e3af2-720c-4013-86cd-a54c9a390b32",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "`new Error()` is too unspecific for a type check. Use `new TypeError()` instead.",
+      "file": "game-studio",
+      "line": 24,
+      "status": "OPEN",
+      "tags": [
+        "convention",
+        "error-handling",
+        "type-checking"
+      ]
+    },
+    {
+      "key": "a87d2a0e-1db7-43e7-8029-b084c33b7cad",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "`new Error()` is too unspecific for a type check. Use `new TypeError()` instead.",
+      "file": "game-studio",
+      "line": 36,
+      "status": "OPEN",
+      "tags": [
+        "convention",
+        "error-handling",
+        "type-checking"
+      ]
+    },
+    {
+      "key": "ea2b4fed-9dfc-40db-8857-20f89826a4a4",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "`new Error()` is too unspecific for a type check. Use `new TypeError()` instead.",
+      "file": "game-studio",
+      "line": 51,
+      "status": "OPEN",
+      "tags": [
+        "convention",
+        "error-handling",
+        "type-checking"
+      ]
+    },
+    {
+      "key": "f755876f-a1e0-4a5e-b604-f36498c55622",
+      "severity": "CRITICAL",
+      "type": "CODE_SMELL",
+      "message": "Refactor this function to reduce its Cognitive Complexity from 19 to the 15 allowed.",
+      "file": "game-studio",
+      "line": 531,
+      "status": "OPEN",
+      "tags": [
+        "brain-overload"
+      ]
+    },
+    {
+      "key": "e57633b8-733d-4358-ac46-4c9643484da9",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Refactor this code to not use nested template literals.",
+      "file": "game-studio",
+      "line": 972,
+      "status": "OPEN",
+      "tags": [
+        "es2015",
+        "brain-overload",
+        "confusing"
+      ]
+    },
+    {
+      "key": "35cea8f8-b219-46f9-affe-1464b7cb01de",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Refactor this code to not use nested template literals.",
+      "file": "game-studio",
+      "line": 868,
+      "status": "OPEN",
+      "tags": [
+        "es2015",
+        "brain-overload",
+        "confusing"
+      ]
+    },
+    {
+      "key": "733a401e-92d4-4718-b92d-e29a6afc2f45",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Refactor this code to not use nested template literals.",
+      "file": "game-studio",
+      "line": 872,
+      "status": "OPEN",
+      "tags": [
+        "es2015",
+        "brain-overload",
+        "confusing"
+      ]
+    },
+    {
+      "key": "e315222e-ff56-457b-9a9e-30a8a3e1fdaa",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Refactor this code to not use nested template literals.",
+      "file": "game-studio",
+      "line": 876,
+      "status": "OPEN",
+      "tags": [
+        "es2015",
+        "brain-overload",
+        "confusing"
+      ]
+    },
+    {
+      "key": "48e814b3-9bf6-4bfd-8c40-a6ac422ef7ba",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Refactor this code to not use nested template literals.",
+      "file": "game-studio",
+      "line": 884,
+      "status": "OPEN",
+      "tags": [
+        "es2015",
+        "brain-overload",
+        "confusing"
+      ]
+    },
+    {
+      "key": "42e65270-af77-40c4-b95f-d139870d68fb",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Prefer `.some(…)` over `.find(…)`.",
+      "file": "game-studio",
+      "line": 283,
+      "status": "OPEN",
+      "tags": [
+        "readability",
+        "performance"
+      ]
+    },
+    {
+      "key": "79fbddfd-0ae5-403b-bd6a-41037dfd56f1",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Refactor this code to not use nested template literals.",
+      "file": "game-studio",
+      "line": 312,
+      "status": "OPEN",
+      "tags": [
+        "es2015",
+        "brain-overload",
+        "confusing"
+      ]
+    },
+    {
+      "key": "c149d67a-0224-409f-8465-b9a09a0c4248",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "`String.raw` should be used to avoid escaping `\\`.",
+      "file": "game-studio",
+      "line": 936,
+      "status": "OPEN",
+      "tags": [
+        "readability",
+        "es2015"
+      ]
+    },
+    {
+      "key": "ad243680-cc7d-4faa-bcc7-9323caa85cdd",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Unexpected negated condition.",
+      "file": "game-studio",
+      "line": 534,
+      "status": "OPEN",
+      "tags": [
+        "readability"
+      ]
+    },
+    {
+      "key": "f22fb788-26c7-4a28-8ebb-035379cfe8d0",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Remove this redundant \"undefined\".",
+      "file": "game-studio",
+      "line": 742,
+      "status": "OPEN",
+      "tags": [
+        "type-dependent",
+        "confusing"
+      ]
+    },
+    {
+      "key": "4a44a4c9-3a8f-4a1d-8920-1c9a4e9b80e4",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Remove this useless assignment to variable \"isZh\".",
+      "file": "game-studio",
+      "line": 30,
+      "status": "OPEN",
+      "tags": [
+        "cwe",
+        "unused"
+      ]
+    },
+    {
+      "key": "4d62ad56-fa78-4293-a9b9-d89e55f0a283",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Extract this nested ternary operation into an independent statement.",
+      "file": "game-studio",
+      "line": 157,
+      "status": "OPEN",
+      "tags": [
+        "confusing"
+      ]
+    },
+    {
+      "key": "09ea2251-2762-4379-a3e5-1f36771a70d7",
+      "severity": "CRITICAL",
+      "type": "CODE_SMELL",
+      "message": "Refactor this function to reduce its Cognitive Complexity from 52 to the 15 allowed.",
+      "file": "game-studio",
+      "line": 172,
+      "status": "OPEN",
+      "tags": [
+        "brain-overload"
+      ]
+    },
+    {
+      "key": "a0724f1c-7aed-41d9-a6b3-6a010b323c39",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Extract this nested ternary operation into an independent statement.",
+      "file": "game-studio",
+      "line": 318,
+      "status": "OPEN",
+      "tags": [
+        "confusing"
+      ]
+    },
+    {
+      "key": "9025c2c5-d1c4-4022-89fd-33108716a290",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Unnecessary escape character: \\\".",
+      "file": "game-studio",
+      "line": 309,
+      "status": "OPEN",
+      "tags": []
+    },
+    {
+      "key": "c8b9705a-8ab9-49b2-b60c-6edc69318b0e",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Unnecessary escape character: \\\".",
+      "file": "game-studio",
+      "line": 309,
+      "status": "OPEN",
+      "tags": []
+    },
+    {
+      "key": "045e40ce-b162-4f41-9736-8809a5e66d31",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Refactor this code to not use nested template literals.",
+      "file": "game-studio",
+      "line": 96,
+      "status": "OPEN",
+      "tags": [
+        "es2015",
+        "brain-overload",
+        "confusing"
+      ]
+    },
+    {
+      "key": "08d82591-5fd1-4e63-90c4-582dcbd0a015",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Refactor this code to not use nested template literals.",
+      "file": "game-studio",
+      "line": 96,
+      "status": "OPEN",
+      "tags": [
+        "es2015",
+        "brain-overload",
+        "confusing"
+      ]
+    },
+    {
+      "key": "695e2f7e-c631-4c30-926a-e8b7feef526a",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Extract this nested ternary operation into an independent statement.",
+      "file": "game-studio",
+      "line": 96,
+      "status": "OPEN",
+      "tags": [
+        "confusing"
+      ]
+    },
+    {
+      "key": "061b88f6-20fa-472b-8215-88a997eb42d2",
+      "severity": "CRITICAL",
+      "type": "CODE_SMELL",
+      "message": "Refactor this function to reduce its Cognitive Complexity from 63 to the 15 allowed.",
+      "file": "game-studio",
+      "line": 148,
+      "status": "OPEN",
+      "tags": [
+        "brain-overload"
+      ]
+    },
+    {
+      "key": "52ccd236-ba94-4db0-a269-e37c647c930b",
+      "severity": "CRITICAL",
+      "type": "CODE_SMELL",
+      "message": "Refactor this code to not nest functions more than 4 levels deep.",
+      "file": "game-studio",
+      "line": 131,
+      "status": "OPEN",
+      "tags": [
+        "brain-overload"
+      ]
+    },
+    {
+      "key": "06e816ce-a96b-442a-bc21-de44ea9eb03e",
+      "severity": "CRITICAL",
+      "type": "CODE_SMELL",
+      "message": "Refactor this code to not nest functions more than 4 levels deep.",
+      "file": "game-studio",
+      "line": 134,
+      "status": "OPEN",
+      "tags": [
+        "brain-overload"
+      ]
+    },
+    {
+      "key": "23b91074-147a-48bd-9222-4d0c4c73cc83",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Unexpected negated condition.",
+      "file": "game-studio",
+      "line": 8,
+      "status": "OPEN",
+      "tags": [
+        "readability"
+      ]
+    },
+    {
+      "key": "5b4d51d7-203c-46d7-9069-5ba602453f2e",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Mark the props of the component as read-only.",
+      "file": "game-studio",
+      "line": 25,
+      "status": "OPEN",
+      "tags": [
+        "type-dependent",
+        "react"
+      ]
+    },
+    {
+      "key": "753ff4d5-d8e2-45b9-8c8a-625dd211adbe",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "useState call is not destructured into value + setter pair",
+      "file": "game-studio",
+      "line": 26,
+      "status": "OPEN",
+      "tags": [
+        "react"
+      ]
+    },
+    {
+      "key": "1ec4da58-366d-4f6a-86b3-16f856dbf8c5",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Mark the props of the component as read-only.",
+      "file": "game-studio",
+      "line": 918,
+      "status": "OPEN",
+      "tags": [
+        "type-dependent",
+        "react"
+      ]
+    },
+    {
+      "key": "a2a5dc90-f2e9-481d-a0c9-c4ef5728b077",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "useState call is not destructured into value + setter pair",
+      "file": "game-studio",
+      "line": 59,
+      "status": "OPEN",
+      "tags": [
+        "react"
+      ]
+    },
+    {
+      "key": "f053c165-7f8d-4c0e-9a3a-3d8f3b302b64",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Member 'registeredAgents' is never reassigned; mark it as `readonly`.",
+      "file": "game-studio",
+      "line": 57,
+      "status": "OPEN",
+      "tags": [
+        "type-dependent",
+        "confusing"
+      ]
+    },
+    {
+      "key": "4fab1f6b-562d-44fa-b28d-b689069b1d47",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "'/usr/src/server/agent-manager.js' imported multiple times.",
+      "file": "game-studio",
+      "line": 11,
+      "status": "OPEN",
+      "tags": [
+        "es2015"
+      ]
+    },
+    {
+      "key": "074cd789-be08-4bd9-b215-a4f4c8b557fa",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Member 'timerByProject' is never reassigned; mark it as `readonly`.",
+      "file": "game-studio",
+      "line": 56,
+      "status": "OPEN",
+      "tags": [
+        "type-dependent",
+        "confusing"
+      ]
+    },
+    {
+      "key": "3988807f-8852-4930-9f5b-f13706ab26e6",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Prefer `globalThis` over `window`.",
+      "file": "game-studio",
+      "line": 13,
+      "status": "OPEN",
+      "tags": [
+        "portability",
+        "es2020"
+      ]
+    },
+    {
+      "key": "7de06cd1-f7c2-40f0-9d07-60b7354acbe8",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Prefer `globalThis` over `window`.",
+      "file": "game-studio",
+      "line": 14,
+      "status": "OPEN",
+      "tags": [
+        "portability",
+        "es2020"
+      ]
+    },
+    {
+      "key": "b2e807b7-1054-4b58-8a08-f5d283879573",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Prefer `globalThis` over `window`.",
+      "file": "game-studio",
+      "line": 32,
+      "status": "OPEN",
+      "tags": [
+        "portability",
+        "es2020"
+      ]
+    },
+    {
+      "key": "a10ae49f-d8f6-468f-9a96-f933e612362a",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Prefer `globalThis` over `window`.",
+      "file": "game-studio",
+      "line": 43,
+      "status": "OPEN",
+      "tags": [
+        "portability",
+        "es2020"
+      ]
+    },
+    {
+      "key": "a63437d9-8516-488c-a40b-82bda4f0f451",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Prefer `globalThis` over `window`.",
+      "file": "game-studio",
+      "line": 44,
+      "status": "OPEN",
+      "tags": [
+        "portability",
+        "es2020"
+      ]
+    },
+    {
+      "key": "1bba85b9-5f5b-4fa6-89e9-3ab0d1a6a85c",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Prefer `globalThis` over `window`.",
+      "file": "game-studio",
+      "line": 48,
+      "status": "OPEN",
+      "tags": [
+        "portability",
+        "es2020"
+      ]
+    },
+    {
+      "key": "4f324e9e-7181-419e-a9cb-193e25d8c0c0",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Prefer `globalThis` over `window`.",
+      "file": "game-studio",
+      "line": 54,
+      "status": "OPEN",
+      "tags": [
+        "portability",
+        "es2020"
+      ]
+    },
+    {
+      "key": "24f34939-5552-49af-ba52-3809d0e39eb4",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Mark the props of the component as read-only.",
+      "file": "game-studio",
+      "line": 56,
+      "status": "OPEN",
+      "tags": [
+        "type-dependent",
+        "react"
+      ]
+    },
+    {
+      "key": "9f320efc-7d67-4004-a4a3-6e7960d6163e",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Refactor this code to not use nested template literals.",
+      "file": "game-studio",
+      "line": 81,
+      "status": "OPEN",
+      "tags": [
+        "es2015",
+        "brain-overload",
+        "confusing"
+      ]
+    },
+    {
+      "key": "61e7234e-4466-411d-81d8-eed836d623d6",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Mark the props of the component as read-only.",
+      "file": "game-studio",
+      "line": 27,
+      "status": "OPEN",
+      "tags": [
+        "type-dependent",
+        "react"
+      ]
+    },
+    {
+      "key": "b0374e6a-9c18-4afa-b6a6-cb8b201f35d8",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Prefer using an optional chain expression instead, as it's more concise and easier to read.",
+      "file": "game-studio",
+      "line": 724,
+      "status": "OPEN",
+      "tags": [
+        "type-dependent"
+      ]
+    },
+    {
+      "key": "d1aa12ee-ee2d-497c-b0b4-1d8685b9751c",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "`READ_ONLY_SDK_TOOLS` should be a `Set`, and use `READ_ONLY_SDK_TOOLS.has()` to check existence or non-existence.",
+      "file": "game-studio",
+      "line": 494,
+      "status": "OPEN",
+      "tags": [
+        "performance",
+        "es2015",
+        "optimization"
+      ]
+    },
+    {
+      "key": "00f96a3e-0d3b-4429-9cbb-a6c170e53c9b",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Refactor this code to not use nested template literals.",
+      "file": "game-studio",
+      "line": 674,
+      "status": "OPEN",
+      "tags": [
+        "es2015",
+        "brain-overload",
+        "confusing"
+      ]
+    },
+    {
+      "key": "0889062f-560e-41bc-b01b-08be3911496f",
+      "severity": "CRITICAL",
+      "type": "CODE_SMELL",
+      "message": "Refactor this function to reduce its Cognitive Complexity from 19 to the 15 allowed.",
+      "file": "game-studio",
+      "line": 128,
+      "status": "OPEN",
+      "tags": [
+        "brain-overload"
+      ]
+    },
+    {
+      "key": "1c593ab7-0681-4099-ae0c-3c69278d90c1",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Extract this nested ternary operation into an independent statement.",
+      "file": "game-studio",
+      "line": 185,
+      "status": "OPEN",
+      "tags": [
+        "confusing"
+      ]
+    },
+    {
+      "key": "016d1a03-ed33-4850-959c-87641643f0f6",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Extract this nested ternary operation into an independent statement.",
+      "file": "game-studio",
+      "line": 205,
+      "status": "OPEN",
+      "tags": [
+        "confusing"
+      ]
+    },
+    {
+      "key": "78b670d4-83b1-459a-8f0f-100fbb993eef",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Unexpected negated condition.",
+      "file": "game-studio",
+      "line": 392,
+      "status": "OPEN",
+      "tags": [
+        "readability"
+      ]
+    },
+    {
+      "key": "1727646f-12f1-4e2e-9239-b4a2bd7d2101",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Mark the props of the component as read-only.",
+      "file": "game-studio",
+      "line": 19,
+      "status": "OPEN",
+      "tags": [
+        "type-dependent",
+        "react"
+      ]
+    },
+    {
+      "key": "4ee367d9-c9d1-473f-a5ee-a26722ac569d",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Prefer using an optional chain expression instead, as it's more concise and easier to read.",
+      "file": "game-studio",
+      "line": 41,
+      "status": "OPEN",
+      "tags": [
+        "type-dependent"
+      ]
+    },
+    {
+      "key": "96bbe2e3-7a9e-4327-a7d3-44a2e75c1ba9",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Extract this nested ternary operation into an independent statement.",
+      "file": "game-studio",
+      "line": 168,
+      "status": "OPEN",
+      "tags": [
+        "confusing"
+      ]
+    },
+    {
+      "key": "dc370344-fdc3-46c5-81ab-b3dc8cb7f836",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Extract this nested ternary operation into an independent statement.",
+      "file": "game-studio",
+      "line": 185,
+      "status": "OPEN",
+      "tags": [
+        "confusing"
+      ]
+    },
+    {
+      "key": "239e90b4-078f-4e88-aea0-89d277285092",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Extract this nested ternary operation into an independent statement.",
+      "file": "game-studio",
+      "line": 205,
+      "status": "OPEN",
+      "tags": [
+        "confusing"
+      ]
+    },
+    {
+      "key": "04e176fb-168e-4801-85fb-15119e217def",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Extract this nested ternary operation into an independent statement.",
+      "file": "game-studio",
+      "line": 145,
+      "status": "OPEN",
+      "tags": [
+        "confusing"
+      ]
+    },
+    {
+      "key": "7792e406-3c31-440d-9136-8833376aead3",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Extract this nested ternary operation into an independent statement.",
+      "file": "game-studio",
+      "line": 146,
+      "status": "OPEN",
+      "tags": [
+        "confusing"
+      ]
+    },
+    {
+      "key": "061868d0-4c16-48c5-aaf6-97438faf1117",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Mark the props of the component as read-only.",
+      "file": "game-studio",
+      "line": 952,
+      "status": "OPEN",
+      "tags": [
+        "type-dependent",
+        "react"
+      ]
+    },
+    {
+      "key": "860dd63f-98e4-4946-b16d-a66d786dea4d",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Do not use Array index in keys",
+      "file": "game-studio",
+      "line": 970,
+      "status": "OPEN",
+      "tags": [
+        "performance",
+        "react",
+        "jsx"
+      ]
+    },
+    {
+      "key": "0c7415a2-066a-4166-8d99-0741527b8915",
+      "severity": "CRITICAL",
+      "type": "CODE_SMELL",
+      "message": "Refactor this code to not nest functions more than 4 levels deep.",
+      "file": "game-studio",
+      "line": 975,
+      "status": "OPEN",
+      "tags": [
+        "brain-overload"
+      ]
+    },
+    {
+      "key": "3373f2b5-1a04-436f-8d7e-4e38e5f3796a",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Refactor this code to not use nested template literals.",
+      "file": "game-studio",
+      "line": 621,
+      "status": "OPEN",
+      "tags": [
+        "es2015",
+        "brain-overload",
+        "confusing"
+      ]
+    },
+    {
+      "key": "3fa8880c-8a60-47cc-9709-210ea8cd011e",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Do not call `Array#push()` multiple times.",
+      "file": "game-studio",
+      "line": 1108,
+      "status": "OPEN",
+      "tags": [
+        "readability",
+        "performance"
+      ]
+    },
+    {
+      "key": "eeb723ea-fcf6-45c3-a709-069657d5fd65",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Refactor this code to not use nested template literals.",
+      "file": "game-studio",
+      "line": 592,
+      "status": "OPEN",
+      "tags": [
+        "es2015",
+        "brain-overload",
+        "confusing"
+      ]
+    },
+    {
+      "key": "a012709f-bb4d-4782-8209-c23eff3b5f84",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Member 'activeAgentStreamsByProject' is never reassigned; mark it as `readonly`.",
+      "file": "game-studio",
+      "line": 47,
+      "status": "OPEN",
+      "tags": [
+        "type-dependent",
+        "confusing"
+      ]
+    },
+    {
+      "key": "f5a4236c-7079-4ca8-adb9-e2290f8f3f4f",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Member 'agentStatesByProject' is never reassigned; mark it as `readonly`.",
+      "file": "game-studio",
+      "line": 34,
+      "status": "OPEN",
+      "tags": [
+        "type-dependent",
+        "confusing"
+      ]
+    },
+    {
+      "key": "85cac8f9-3dd7-4b34-bb9f-1b4e431eae7a",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Member 'pausedAgentsByProject' is never reassigned; mark it as `readonly`.",
+      "file": "game-studio",
+      "line": 35,
+      "status": "OPEN",
+      "tags": [
+        "type-dependent",
+        "confusing"
+      ]
+    },
+    {
+      "key": "ba56ee6e-27fd-4933-9517-ee789a2b03c3",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Member 'activeStreams' is never reassigned; mark it as `readonly`.",
+      "file": "game-studio",
+      "line": 36,
+      "status": "OPEN",
+      "tags": [
+        "type-dependent",
+        "confusing"
+      ]
+    },
+    {
+      "key": "bbe2bdba-a00e-4323-920b-704c8c520754",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Member 'pendingPermissionExpirations' is never reassigned; mark it as `readonly`.",
+      "file": "game-studio",
+      "line": 46,
+      "status": "OPEN",
+      "tags": [
+        "type-dependent",
+        "confusing"
+      ]
+    },
+    {
+      "key": "2b21fe52-22b3-42b5-9727-2676444c3c7f",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Prefer `Number.parseInt` over `parseInt`.",
+      "file": "game-studio",
+      "line": 512,
+      "status": "OPEN",
+      "tags": [
+        "convention",
+        "es2015"
+      ]
+    },
+    {
+      "key": "47a86ddd-3c1e-4656-92dd-4ef12a22f8b2",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Prefer `Number.parseInt` over `parseInt`.",
+      "file": "game-studio",
+      "line": 515,
+      "status": "OPEN",
+      "tags": [
+        "convention",
+        "es2015"
+      ]
+    },
+    {
+      "key": "2ea5f863-c78e-4a71-92ba-eb2d3ab5a81e",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Prefer `Number.parseInt` over `parseInt`.",
+      "file": "game-studio",
+      "line": 518,
+      "status": "OPEN",
+      "tags": [
+        "convention",
+        "es2015"
+      ]
+    },
+    {
+      "key": "2ffa1f76-c0a0-4b51-ba27-b25652dcd33c",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Member 'clientsByProject' is never reassigned; mark it as `readonly`.",
+      "file": "game-studio",
+      "line": 6,
+      "status": "OPEN",
+      "tags": [
+        "type-dependent",
+        "confusing"
+      ]
+    },
+    {
+      "key": "0bd654a5-a12c-4f80-9ad8-53e5a68d39bd",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Handle this exception or don't catch it at all.",
+      "file": "game-studio",
+      "line": 32,
+      "status": "OPEN",
+      "tags": [
+        "cwe",
+        "error-handling",
+        "suspicious"
+      ]
+    },
+    {
+      "key": "7a1dbf79-7d36-46cf-9eab-abe07633e0b2",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Mark the props of the component as read-only.",
+      "file": "game-studio",
+      "line": 56,
+      "status": "OPEN",
+      "tags": [
+        "type-dependent",
+        "react"
+      ]
+    },
+    {
+      "key": "c7853cc9-7ef4-4f57-a472-b331b8da9b69",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Prefer `.some(…)` over `.find(…)`.",
+      "file": "game-studio",
+      "line": 333,
+      "status": "OPEN",
+      "tags": [
+        "readability",
+        "performance"
+      ]
+    },
+    {
+      "key": "f788b9a5-0e24-40a9-997a-8556fb2b1718",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Mark the props of the component as read-only.",
+      "file": "game-studio",
+      "line": 26,
+      "status": "OPEN",
+      "tags": [
+        "type-dependent",
+        "react"
+      ]
+    },
+    {
+      "key": "4536d694-74cd-4819-9864-d685b7daf804",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Prefer `.some(…)` over `.find(…)`.",
+      "file": "game-studio",
+      "line": 266,
+      "status": "OPEN",
+      "tags": [
+        "readability",
+        "performance"
+      ]
+    },
+    {
+      "key": "bdc46c2f-66a7-4617-87b0-5b1b216adbb2",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "`CAN_AUTO_ALLOW` should be a `Set`, and use `CAN_AUTO_ALLOW.has()` to check existence or non-existence.",
+      "file": "game-studio",
+      "line": 448,
+      "status": "OPEN",
+      "tags": [
+        "performance",
+        "es2015",
+        "optimization"
+      ]
+    },
+    {
+      "key": "7159c945-60e3-4ae3-8d99-dda55f7e458d",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Do not call `Array#push()` multiple times.",
+      "file": "game-studio",
+      "line": 1164,
+      "status": "OPEN",
+      "tags": [
+        "readability",
+        "performance"
+      ]
+    },
+    {
+      "key": "3090da3b-b033-4889-b53c-9cdbed597b35",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element.",
+      "file": "game-studio",
+      "line": 429,
+      "status": "OPEN",
+      "tags": [
+        "accessibility",
+        "react"
+      ]
+    },
+    {
+      "key": "8c69ac4e-4a36-4188-9350-eb36372d0b4b",
+      "severity": "MINOR",
+      "type": "BUG",
+      "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener.",
+      "file": "game-studio",
+      "line": 429,
+      "status": "OPEN",
+      "tags": [
+        "accessibility",
+        "react"
+      ]
+    },
+    {
+      "key": "8ec8e42d-1b1b-43ad-af20-69f1e9b0b2e4",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Prefer `node:fs` over `fs`.",
+      "file": "game-studio",
+      "line": 2,
+      "status": "OPEN",
+      "tags": [
+        "convention",
+        "import",
+        "nodejs"
+      ]
+    },
+    {
+      "key": "1c8825df-e4ca-4c6b-976f-fdc487faf130",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Prefer `node:path` over `path`.",
+      "file": "game-studio",
+      "line": 3,
+      "status": "OPEN",
+      "tags": [
+        "convention",
+        "import",
+        "nodejs"
+      ]
+    },
+    {
+      "key": "d7a0c438-373b-425d-9711-ef39fc0ec1da",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Remove this unused import of 'sseBroadcaster'.",
+      "file": "game-studio",
+      "line": 8,
+      "status": "OPEN",
+      "tags": [
+        "es2015",
+        "type-dependent",
+        "unused"
+      ]
+    },
+    {
+      "key": "a152bc1b-248d-4be0-8bc5-dc5104c381bd",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "'input.command || input.cmd || input.script || ''' will use Object's default stringification format ('[object Object]') when stringified.",
+      "file": "game-studio",
+      "line": 232,
+      "status": "OPEN",
+      "tags": [
+        "string",
+        "type-dependent",
+        "object"
+      ]
+    },
+    {
+      "key": "accbdd4f-d21d-42f4-897f-50ad0bca2d7b",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "'input.filePath || input.path || input.file_path || ''' will use Object's default stringification format ('[object Object]') when stringified.",
+      "file": "game-studio",
+      "line": 237,
+      "status": "OPEN",
+      "tags": [
+        "string",
+        "type-dependent",
+        "object"
+      ]
+    },
+    {
+      "key": "4af665ed-483b-40fb-becd-22c2de9fe11c",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "'input.filePath || input.path || input.file_path || ''' will use Object's default stringification format ('[object Object]') when stringified.",
+      "file": "game-studio",
+      "line": 242,
+      "status": "OPEN",
+      "tags": [
+        "string",
+        "type-dependent",
+        "object"
+      ]
+    },
+    {
+      "key": "79715a87-94e9-40f3-94f0-b5cc7c96a7ad",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "'input.content || ''' will use Object's default stringification format ('[object Object]') when stringified.",
+      "file": "game-studio",
+      "line": 243,
+      "status": "OPEN",
+      "tags": [
+        "string",
+        "type-dependent",
+        "object"
+      ]
+    },
+    {
+      "key": "b17c533e-4ab8-495b-ad43-1ae91ac79869",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "'input.pattern || input.query || ''' will use Object's default stringification format ('[object Object]') when stringified.",
+      "file": "game-studio",
+      "line": 250,
+      "status": "OPEN",
+      "tags": [
+        "string",
+        "type-dependent",
+        "object"
+      ]
+    },
+    {
+      "key": "397169c6-5d52-4424-bcec-eda6c3080840",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "'input.query || input.keyword || ''' will use Object's default stringification format ('[object Object]') when stringified.",
+      "file": "game-studio",
+      "line": 254,
+      "status": "OPEN",
+      "tags": [
+        "string",
+        "type-dependent",
+        "object"
+      ]
+    },
+    {
+      "key": "d6f2f1b4-62dc-4a5c-8bfa-632cd128c00e",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "'input' will use Object's default stringification format ('[object Object]') when stringified.",
+      "file": "game-studio",
+      "line": 262,
+      "status": "OPEN",
+      "tags": [
+        "string",
+        "type-dependent",
+        "object"
+      ]
+    },
+    {
+      "key": "7fc1b3d7-bc6b-4303-8691-6ee0c3235e10",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Do not call `Array#push()` multiple times.",
+      "file": "game-studio",
+      "line": 904,
+      "status": "OPEN",
+      "tags": [
+        "readability",
+        "performance"
+      ]
+    },
+    {
+      "key": "961345f1-c821-4580-ae23-69a0f7ca34cd",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Handle this exception or don't catch it at all.",
+      "file": "game-studio",
+      "line": 186,
+      "status": "OPEN",
+      "tags": [
+        "cwe",
+        "error-handling",
+        "suspicious"
+      ]
+    },
+    {
+      "key": "67aade4a-71a2-4c44-85e6-aec2f2fb1a15",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Remove this useless assignment to variable \"now\".",
+      "file": "game-studio",
+      "line": 654,
+      "status": "OPEN",
+      "tags": [
+        "cwe",
+        "unused"
+      ]
+    },
+    {
+      "key": "6bd9d9e5-ba14-4ab0-bd41-118822672ec9",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Refactor this code to not use nested template literals.",
+      "file": "game-studio",
+      "line": 663,
+      "status": "OPEN",
+      "tags": [
+        "es2015",
+        "brain-overload",
+        "confusing"
+      ]
+    },
+    {
+      "key": "bf3dd8de-7196-46bd-8364-209303f830db",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Remove this useless assignment to variable \"hasHandoffActivity\".",
+      "file": "game-studio",
+      "line": 115,
+      "status": "OPEN",
+      "tags": [
+        "cwe",
+        "unused"
+      ]
+    },
+    {
+      "key": "1ac524c5-5496-4961-9ea8-06cf4ad33b09",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Do not use Array index in keys",
+      "file": "game-studio",
+      "line": 271,
+      "status": "OPEN",
+      "tags": [
+        "performance",
+        "react",
+        "jsx"
+      ]
+    },
+    {
+      "key": "5d8cc84f-bd1d-4027-bbe7-c287cca9a598",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Extract this nested ternary operation into an independent statement.",
+      "file": "game-studio",
+      "line": 345,
+      "status": "OPEN",
+      "tags": [
+        "confusing"
+      ]
+    },
+    {
+      "key": "70a08467-6f15-42e9-9963-4313d8d9e697",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Extract this nested ternary operation into an independent statement.",
+      "file": "game-studio",
+      "line": 346,
+      "status": "OPEN",
+      "tags": [
+        "confusing"
+      ]
+    },
+    {
+      "key": "6e2330af-d1bb-460c-8b7e-f1f4b29c4ce9",
+      "severity": "CRITICAL",
+      "type": "CODE_SMELL",
+      "message": "Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed.",
+      "file": "game-studio",
+      "line": 33,
+      "status": "OPEN",
+      "tags": [
+        "brain-overload"
+      ]
+    },
+    {
+      "key": "f7ff54b5-360e-48ba-8a91-c458d4d124aa",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Extract this nested ternary operation into an independent statement.",
+      "file": "game-studio",
+      "line": 60,
+      "status": "OPEN",
+      "tags": [
+        "confusing"
+      ]
+    },
+    {
+      "key": "2cf57494-bff7-4937-9a6a-2c03283bc9b5",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element.",
+      "file": "game-studio",
+      "line": 157,
+      "status": "OPEN",
+      "tags": [
+        "accessibility",
+        "react"
+      ]
+    },
+    {
+      "key": "a3b15af7-39e6-4988-ae46-99945c993940",
+      "severity": "MINOR",
+      "type": "BUG",
+      "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener.",
+      "file": "game-studio",
+      "line": 157,
+      "status": "OPEN",
+      "tags": [
+        "accessibility",
+        "react"
+      ]
+    },
+    {
+      "key": "729a8d27-6441-4d7a-a9bd-09ca1284729c",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element.",
+      "file": "game-studio",
+      "line": 423,
+      "status": "OPEN",
+      "tags": [
+        "accessibility",
+        "react"
+      ]
+    },
+    {
+      "key": "9f6f6ad6-f4bf-45fa-bc80-a36ac11155ac",
+      "severity": "MINOR",
+      "type": "BUG",
+      "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener.",
+      "file": "game-studio",
+      "line": 423,
+      "status": "OPEN",
+      "tags": [
+        "accessibility",
+        "react"
+      ]
+    },
+    {
+      "key": "be67c3ee-9d48-4bce-b6c8-6de8a4f1edf4",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Prefer `node:events` over `events`.",
+      "file": "game-studio",
+      "line": 1,
+      "status": "OPEN",
+      "tags": [
+        "convention",
+        "import",
+        "nodejs"
+      ]
+    },
+    {
+      "key": "ced49a4c-03d7-4734-9438-5ee4261e1ddb",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Member 'pendingPermissions' is never reassigned; mark it as `readonly`.",
+      "file": "game-studio",
+      "line": 37,
+      "status": "OPEN",
+      "tags": [
+        "type-dependent",
+        "confusing"
+      ]
+    },
+    {
+      "key": "31287b72-8772-4337-afe9-860d509b2a31",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Prefer `node:path` over `path`.",
+      "file": "game-studio",
+      "line": 2,
+      "status": "OPEN",
+      "tags": [
+        "convention",
+        "import",
+        "nodejs"
+      ]
+    },
+    {
+      "key": "0d9bfc48-6a6a-4dc2-916a-6a0b4aeaec0f",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Prefer `node:url` over `url`.",
+      "file": "game-studio",
+      "line": 3,
+      "status": "OPEN",
+      "tags": [
+        "convention",
+        "import",
+        "nodejs"
+      ]
+    },
+    {
+      "key": "74d21b6d-a5be-4daf-a858-3a06d3c06630",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Prefer `node:fs` over `fs`.",
+      "file": "game-studio",
+      "line": 4,
+      "status": "OPEN",
+      "tags": [
+        "convention",
+        "import",
+        "nodejs"
+      ]
+    },
+    {
+      "key": "33b90614-36e0-4485-b60d-ce261c765a12",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Unexpected negated condition.",
+      "file": "game-studio",
+      "line": 462,
+      "status": "OPEN",
+      "tags": [
+        "readability"
+      ]
+    },
+    {
+      "key": "da93e3f0-e221-4188-b56d-6c7829a5951a",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Do not call `Array#push()` multiple times.",
+      "file": "game-studio",
+      "line": 560,
+      "status": "OPEN",
+      "tags": [
+        "readability",
+        "performance"
+      ]
+    },
+    {
+      "key": "c7c140ac-0132-4635-b6ad-33444621cb3b",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Do not call `Array#push()` multiple times.",
+      "file": "game-studio",
+      "line": 667,
+      "status": "OPEN",
+      "tags": [
+        "readability",
+        "performance"
+      ]
+    },
+    {
+      "key": "dd040c36-f7db-47ff-903c-4b027259f440",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Prefer `node:path` over `path`.",
+      "file": "game-studio",
+      "line": 4,
+      "status": "OPEN",
+      "tags": [
+        "convention",
+        "import",
+        "nodejs"
+      ]
+    },
+    {
+      "key": "d4f2b245-a8dd-431b-8d6b-07765b753c60",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Prefer `node:url` over `url`.",
+      "file": "game-studio",
+      "line": 5,
+      "status": "OPEN",
+      "tags": [
+        "convention",
+        "import",
+        "nodejs"
+      ]
+    },
+    {
+      "key": "53f8d01e-3958-4e03-8a63-6a53f52a2fcf",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "'/usr/src/server/agent-manager.js' imported multiple times.",
+      "file": "game-studio",
+      "line": 7,
+      "status": "OPEN",
+      "tags": [
+        "es2015"
+      ]
+    },
+    {
+      "key": "c8b9d7b1-da35-4c6a-8e6f-17e548dc8b98",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Remove this useless assignment to variable \"command\".",
+      "file": "game-studio",
+      "line": 277,
+      "status": "OPEN",
+      "tags": [
+        "cwe",
+        "unused"
+      ]
+    },
+    {
+      "key": "14aa471a-43c7-421a-98fb-ea8e3c678cc5",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Do not use Array index in keys",
+      "file": "game-studio",
+      "line": 169,
+      "status": "OPEN",
+      "tags": [
+        "performance",
+        "react",
+        "jsx"
+      ]
+    },
+    {
+      "key": "3780105f-bfd8-4cdd-bc79-1ef219c518b0",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Do not use Array index in keys",
+      "file": "game-studio",
+      "line": 447,
+      "status": "OPEN",
+      "tags": [
+        "performance",
+        "react",
+        "jsx"
+      ]
+    },
+    {
+      "key": "ed457e8f-a42c-4b5d-96c6-3605ba31d098",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Mark the props of the component as read-only.",
+      "file": "game-studio",
+      "line": 11,
+      "status": "OPEN",
+      "tags": [
+        "type-dependent",
+        "react"
+      ]
+    },
+    {
+      "key": "1c041400-3fc3-4bd4-b76c-e01bcfb1527b",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Mark the props of the component as read-only.",
+      "file": "game-studio",
+      "line": 29,
+      "status": "OPEN",
+      "tags": [
+        "type-dependent",
+        "react"
+      ]
+    },
+    {
+      "key": "bf83c388-f279-4e48-b8ea-a25bc63af8f8",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Mark the props of the component as read-only.",
+      "file": "game-studio",
+      "line": 45,
+      "status": "OPEN",
+      "tags": [
+        "type-dependent",
+        "react"
+      ]
+    },
+    {
+      "key": "fa0a3014-aed5-4dae-a1b0-701b2e62797e",
+      "severity": "CRITICAL",
+      "type": "CODE_SMELL",
+      "message": "Unexpected `await` of a non-Promise (non-\"Thenable\") value.",
+      "file": "game-studio",
+      "line": 56,
+      "status": "OPEN",
+      "tags": [
+        "es2017"
+      ]
+    },
+    {
+      "key": "34ada369-4221-4db3-b29b-2ff0de3011bf",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Mark the props of the component as read-only.",
+      "file": "game-studio",
+      "line": 11,
+      "status": "OPEN",
+      "tags": [
+        "type-dependent",
+        "react"
+      ]
+    },
+    {
+      "key": "c986b1c2-018c-4390-b06d-f9c019a1f582",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "message": "Mark the props of the component as read-only.",
+      "file": "game-studio",
+      "line": 51,
+      "status": "OPEN",
+      "tags": [
+        "type-dependent",
+        "react"
+      ]
+    },
+    {
+      "key": "781adf76-000e-43db-88c7-940cba65c990",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Unexpected duplicate selector \":root\", first used at line 5",
+      "file": "game-studio",
+      "line": 77,
+      "status": "OPEN",
+      "tags": []
+    },
+    {
+      "key": "d39f8e8e-dde2-4f5f-bc58-de7538721bc1",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Unexpected duplicate selector \".dark\", first used at line 21",
+      "file": "game-studio",
+      "line": 119,
+      "status": "OPEN",
+      "tags": []
+    },
+    {
+      "key": "8a7aa00e-da7e-49ba-9cbe-be255f0f917f",
+      "severity": "CRITICAL",
+      "type": "CODE_SMELL",
+      "message": "Refactor this code to not nest functions more than 4 levels deep.",
+      "file": "game-studio",
+      "line": 101,
+      "status": "OPEN",
+      "tags": [
+        "brain-overload"
+      ]
+    },
+    {
+      "key": "b33626f3-1ed8-4dba-b4e0-e3211b009b89",
+      "severity": "MINOR",
+      "type": "BUG",
+      "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener.",
+      "file": "game-studio",
+      "line": 629,
+      "status": "OPEN",
+      "tags": [
+        "accessibility",
+        "react"
+      ]
+    },
+    {
+      "key": "b52efeea-2442-4596-9fd6-187f459d1c03",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "message": "Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element.",
+      "file": "game-studio",
+      "line": 629,
+      "status": "OPEN",
+      "tags": [
+        "accessibility",
+        "react"
+      ]
+    }
+  ],
+  "closedIssuesList": []
+}

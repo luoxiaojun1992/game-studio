@@ -1,0 +1,6 @@
+projectKey=game-studio
+serverUrl=http://sonarqube:9000
+serverVersion=26.4.0.121862
+dashboardUrl=http://sonarqube:9000/dashboard?id=game-studio
+ceTaskId=55eb6a71-48b7-42fd-af50-64848651a70b
+ceTaskUrl=http://sonarqube:9000/api/ce/task?id=55eb6a71-48b7-42fd-af50-64848651a70b

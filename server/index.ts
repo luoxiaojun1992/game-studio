@@ -1083,6 +1083,7 @@ app.post('/api/games', (req, res) => {
       version: normalizedVersion || '1.0.0',
       status: 'draft',
       file_storage_id: fileStorageIdValidation.text,
+      sonar_storage_id: null,
       created_at: now,
       updated_at: now
     });

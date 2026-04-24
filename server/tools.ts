@@ -566,7 +566,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
                 const zip = new yazl.ZipFile();
                 zip.addBuffer(fileBuffer, zipName);
                 zip.addBuffer(sonarReportBuffer, 'sonar-issues.json');
-                zip.end({}, (err) => {
+                zip.end({}, (err: Error | undefined) => {
                   if (err) reject(err);
                 });
                 const chunks: Buffer[] = [];
@@ -677,6 +677,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
               version: version || '1.0.0',
               status: 'draft',
               file_storage_id: null,
+              sonar_storage_id: null,
               created_at: now,
               updated_at: now
             });
