@@ -542,10 +542,8 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
               const fileBuffer = fsModule.readFileSync(zipTempPath);
 
               // lint 检查：ZIP 内每个 HTML 逐一检查，遇第一个 error 即阻断
-              // htmlContent 存在时与 zipBuffer 合并后一起扫描
               const zipLintResult = await lintZipBuffer(fileBuffer, {
                 projectId: scopedProjectId,
-                ...(hasHtmlContent ? { htmlContent: html_content, fileName: `${name}.html` } : {}),
               });
               if (!zipLintResult.passed) {
                 try { fsModule.unlinkSync(zipTempPath); } catch { /* ignore */ }

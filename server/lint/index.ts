@@ -202,12 +202,8 @@ export async function lintZipBuffer(zipBuffer: Buffer, context?: LintContext): P
   for (const file of htmlFiles) {
     const content = await file.buffer();
     const text = content.toString('utf-8');
-    // htmlContent 存在时：html_content 由 sonarqubeChecker 单独打包扫描，
-    // 不再依赖 zipBuffer（避免与 zip 内 HTML 重复）。
-    const { htmlContent: _hc, ...rest } = context ?? {};
-    const checkerContext = _hc
-      ? { ...rest, htmlContent: _hc, fileName: file.path }
-      : { ...context, fileName: file.path, zipBuffer };
+    // 统一传递 context（包含 zipBuffer），供 sonarqubeChecker 直接扫描原 ZIP
+    const checkerContext = { ...context, fileName: file.path };
     const result = await runner.run(text, checkerContext);
 
     if (!result.passed) {

@@ -31,16 +31,6 @@ export interface LintContext {
    * 避免"提取 HTML → 重新打包"的往返开销。
    */
   zipBuffer?: Buffer;
-  /**
-   * HTML 内容字符串（供 SonarQube 扫描用）
-   * 打包为 html_content/<fileName> 后与 zipBuffer 合并为单一 ZIP 发送至 scanner 微服务。
-   */
-  htmlContent?: string;
-  /**
-   * 游戏成品目录绝对路径（供 SonarQube 扫描用）
-   * 打包为 source/ 目录后与 html_content/ 合并为单一 ZIP 发送至 scanner 微服务。
-   */
-  gameDirPath?: string;
   /** 扩展字段，供各 checker 自由使用 */
   [key: string]: unknown;
 }
