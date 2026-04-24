@@ -82,6 +82,7 @@
 | SonarQube 默认密码是 `admin:admin`，不是 `admin:sonarpass` | SonarQube 首次启动默认 credentials 是 `admin:admin`；`admin:sonarpass` 是 SonarQube 旧版本的默认值，容易混淆 | API 认证一直 401 Unauthorized，误以为是 network 或 token 问题 |
 | `/api/user_tokens/generate` 的 `type` 参数值必须是 `USER_TOKEN` | 官方文档或旧经验可能写成 `USER_API_TOKEN`，SonarQube 26.x 实际只接受 `USER_TOKEN`、`GLOBAL_ANALYSIS_TOKEN`、`PROJECT_ANALYSIS_TOKEN` | 一直报 type 参数校验错误，不提示正确枚举值 |
 | `/api/projects/show` 在 SonarQube 26.x 已被移除 | SonarQube 新版废弃了多个 `api/projects/*` 端点；获取项目信息应改用 `report-task.txt` 直接读取 taskId，或调 `/api/navigation/component` | 404 Unknown url，parse_report.py 无法获取项目信息 |
+| `git add -A` 前未检查暂存内容 | 大批量 `git add -A` 或 `git commit -a` 前，先 `git status --short` 或 `git diff --cached --stat` 确认只暂存目标文件；临时目录（`scanner-report/`、`__pycache__/`、`.scannerwork/`）应先确认已在 `.gitignore` 中 | 本地构建产物（zip、缓存、scanner-report）被误提交到源码仓库，污染 commit 历史；修复需 `git rm --cached` + force push 清理，且需要提醒 reviewer |
 
 ## Session ↔ Project 关系
 - **Session 不会跨 project**：每次 `sendMessage(projectId, agentId, ...)` 都会创建全新的 SDK session，session 与 project 一一对应
