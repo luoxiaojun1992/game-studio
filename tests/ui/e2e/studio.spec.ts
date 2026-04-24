@@ -335,7 +335,7 @@ const runFullWorkflowTest = async (
   });
   await setMockExpectation(projectId, 'engineer', {
     content: '游戏已提交。',
-    toolCalls: [{ name: 'submit_game', arguments: { name: opts.gameName, html_content: `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${opts.gameName}</title><style>body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#1a1a2e;color:#eee}</style></head><body><div id="app"><h1>🎮 ${opts.gameName}</h1><p>这是一个由多Agent协作开发的游戏。</p></div></body></html>` } }]
+    toolCalls: [{ name: 'submit_game', arguments: { name: opts.gameName, html_content: `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${opts.gameName}</title></head><body><h1>${opts.gameName}</h1><p>游戏说明。</p></body></html>` } }]
   });
   await setMockExpectation(projectId, 'engineer', {
     content: '记忆已保存。',
