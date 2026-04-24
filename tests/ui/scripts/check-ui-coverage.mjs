@@ -2,12 +2,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const [resultsPathArg, casesPathArg, thresholdArg] = process.argv.slice(2);
-const resultsPath = resultsPathArg || 'tests/ui/artifacts/playwright-report/results.json';
-const casesPath = casesPathArg || 'tests/ui/coverage/cases.json';
+const resultsPath = resultsPathArg || 'artifacts/playwright-report/results.json';
+const casesPath = casesPathArg || 'coverage/cases.json';
 const threshold = Number(thresholdArg || process.env.UI_COVERAGE_THRESHOLD || 90);
 
 const writeSummary = (summary) => {
-  const summaryPath = path.resolve('tests/ui/artifacts/ui-coverage-summary.json');
+  const summaryPath = path.resolve('artifacts/ui-coverage-summary.json');
   fs.mkdirSync(path.dirname(summaryPath), { recursive: true });
   fs.writeFileSync(summaryPath, JSON.stringify(summary, null, 2));
 };
