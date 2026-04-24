@@ -124,6 +124,7 @@ db.exec(`
     description TEXT,
     html_content TEXT NOT NULL,
     file_storage_id TEXT,
+    sonar_storage_id TEXT,
     proposal_id TEXT,
     version TEXT NOT NULL DEFAULT '1.0.0',
     status TEXT NOT NULL DEFAULT 'draft',
@@ -318,6 +319,7 @@ export interface DbGame {
   version: string;
   status: 'draft' | 'published';
   file_storage_id: string | null;
+  sonar_storage_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -590,9 +592,10 @@ export function createGame(game: DbGame): DbGame {
   const normalizedDescription = normalizeOptionalText(game.description, 'description');
   const normalizedProposalId = normalizeOptionalText(game.proposal_id, 'proposal_id');
   const normalizedFileStorageId = normalizeOptionalText(game.file_storage_id, 'file_storage_id');
+  const normalizedSonarStorageId = normalizeOptionalText(game.sonar_storage_id, 'sonar_storage_id');
   const stmt = db.prepare(`
-    INSERT INTO games (id, project_id, name, description, html_content, proposal_id, version, status, file_storage_id, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO games (id, project_id, name, description, html_content, proposal_id, version, status, file_storage_id, sonar_storage_id, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   stmt.run(
     game.id,
@@ -604,6 +607,7 @@ export function createGame(game: DbGame): DbGame {
     normalizedVersion,
     normalizedStatus,
     normalizedFileStorageId,
+    normalizedSonarStorageId,
     game.created_at,
     game.updated_at
   );
@@ -616,7 +620,8 @@ export function createGame(game: DbGame): DbGame {
     proposal_id: normalizedProposalId,
     version: normalizedVersion,
     status: normalizedStatus,
-    file_storage_id: normalizedFileStorageId
+    file_storage_id: normalizedFileStorageId,
+    sonar_storage_id: normalizedSonarStorageId
   };
 }
 
@@ -652,9 +657,12 @@ export function updateGame(id: string, updates: Partial<DbGame>): boolean {
   if (normalizedUpdates.file_storage_id !== undefined) {
     normalizedUpdates.file_storage_id = normalizeOptionalText(normalizedUpdates.file_storage_id, 'file_storage_id');
   }
+  if (normalizedUpdates.sonar_storage_id !== undefined) {
+    normalizedUpdates.sonar_storage_id = normalizeOptionalText(normalizedUpdates.sonar_storage_id, 'sonar_storage_id');
+  }
   const fields: string[] = [];
   const values: any[] = [];
-  const allowed: (keyof DbGame)[] = ['name', 'description', 'html_content', 'status', 'version', 'file_storage_id'];
+  const allowed: (keyof DbGame)[] = ['name', 'description', 'html_content', 'status', 'version', 'file_storage_id', 'sonar_storage_id'];
   for (const key of allowed) {
     if (normalizedUpdates[key] !== undefined) {
       fields.push(`${key} = ?`);

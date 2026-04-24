@@ -15,9 +15,9 @@
 
 import type { LintChecker, LintIssue, LintContext } from '../types.js';
 
-// ====== SonarQube 客户端 ======
+// ====== SonarQube Raw Issue 类型 ======
 
-interface SonarQubeIssue {
+export interface SonarQubeIssue {
   key: string;
   rule: string;
   severity: string;
@@ -25,6 +25,23 @@ interface SonarQubeIssue {
   line?: number;
   message: string;
   type: string;
+}
+
+// ====== Module 级 Raw Issues 缓存 ======
+// 目的：避免 lintZipBuffer 对同一 projectKey 重复 scan；submit_game 可直接复用
+
+const sonarIssuesCache = new Map<string, SonarQubeIssue[]>();
+
+export function getCachedSonarIssues(projectKey: string): SonarQubeIssue[] | undefined {
+  return sonarIssuesCache.get(projectKey);
+}
+
+export function clearCachedSonarIssues(projectKey?: string): void {
+  if (projectKey) {
+    sonarIssuesCache.delete(projectKey);
+  } else {
+    sonarIssuesCache.clear();
+  }
 }
 
 interface SonarTaskResponse {
@@ -37,7 +54,7 @@ interface SonarIssuesResponse {
   total: number;
 }
 
-class SonarQubeClient {
+export class SonarQubeClient {
   private readonly baseUrl: string;
   private readonly token: string;
 
@@ -281,16 +298,102 @@ ${content}
 </html>`;
 }
 
-// ====== 配置解析 ======
+// ====== SonarQube Token 管理器 ======
 
-function resolveConfig(context?: LintContext): {
+/**
+ * 动态 Token 管理器
+ * 调用 /api/user_tokens/generate（Basic Auth）生成 Token，缓存 24 小时
+ * SonarQube 用户 Token 默认永不过期，TTL 仅作防呆用途
+ */
+class SonarTokenManager {
+  private token: string | null = null;
+  private readonly ttlMs: number;
+  private readonly baseUrl: string;
+  private readonly user: string;
+  private readonly password: string;
+
+  constructor() {
+    this.baseUrl = (process.env.SONARQUBE_HOST || 'http://localhost:9002').replace(/\/$/, '');
+    this.user = process.env.SONARQUBE_USER || 'admin';
+    this.password = process.env.SONARQUBE_PASSWORD || 'admin';
+    this.ttlMs = parseInt(process.env.SONARQUBE_TOKEN_TTL_MS || String(24 * 60 * 60 * 1000), 10);
+  }
+
+  private async fetchWithBasicAuth(url: string, options: RequestInit = {}): Promise<Response> {
+    const creds = Buffer.from(`${this.user}:${this.password}`).toString('base64');
+    return fetch(url, {
+      ...options,
+      headers: {
+        ...options.headers,
+        Authorization: `Basic ${creds}`,
+        'Content-Type': 'application/json',
+      },
+    });
+  }
+
+  async ensureToken(): Promise<string> {
+    if (this.token) return this.token;
+
+    const tokenName = `studio-token-${Date.now()}`;
+    const res = await this.fetchWithBasicAuth(`${this.baseUrl}/api/user_tokens/generate`, {
+      method: 'POST',
+      body: new URLSearchParams({ name: tokenName, type: 'USER_TOKEN' }),
+      signal: AbortSignal.timeout(15000),
+    });
+
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(`SonarQube Token 生成失败: ${res.status} ${body}`);
+    }
+
+    const data = await res.json() as { token?: string };
+    if (!data.token) {
+      throw new Error(`SonarQube Token 生成响应缺少 token 字段`);
+    }
+
+    this.token = data.token;
+    console.log('[SonarTokenManager] Token generated, ttl:', this.ttlMs, 'ms');
+    return this.token;
+  }
+
+  getToken(): string | null {
+    return this.token;
+  }
+
+  clearCache(): void {
+    this.token = null;
+  }
+}
+
+export const globalTokenManager = new SonarTokenManager();
+
+/**
+ * 对 ZIP Buffer 执行 SonarQube 扫描，返回 sonar-issues.json 内容
+ * 供 submit_game 将报告打入同一 ZIP 包
+ */
+export async function scanZipForSonarIssues(
+  zipBuffer: Buffer,
+  projectKey: string,
+  projectName: string,
+  baseUrl: string,
+  token: string,
+): Promise<{ taskId: string; issues: SonarQubeIssue[] }> {
+  const client = new SonarQubeClient(baseUrl, token);
+  await client.ensureProject(projectKey, projectName);
+  const taskId = await client.submitAnalysis(projectKey, zipBuffer);
+  await client.waitForTask(taskId);
+  const issues = await client.getProjectIssues(projectKey);
+  return { taskId, issues };
+}
+
+async function resolveConfig(context?: LintContext): Promise<{
   baseUrl: string; token: string; projectKey: string; projectName: string;
-} {
+}> {
   const baseUrl = (context?.sonarQubeUrl as string)
+    || process.env.SONARQUBE_HOST
     || `http://localhost:${process.env.SONARQUBE_PORT ?? '9002'}`;
   const token = (context?.sonarQubeToken as string)
-    || process.env.SONARQUBE_TOKEN
-    || 'sonarpass';
+    || await globalTokenManager.ensureToken();
   const projectKey = context?.projectId ? `game-${context.projectId}` : 'game-default';
   return { baseUrl, token, projectKey, projectName: `Game ${projectKey}` };
 }
@@ -304,18 +407,25 @@ export const sonarqubeChecker: LintChecker = {
 
   async check(content: string, context?: LintContext): Promise<LintIssue[]> {
     const cid = sonarqubeChecker.id;
-    const { baseUrl, token, projectKey, projectName } = resolveConfig(context);
+    const { baseUrl, token, projectKey, projectName } = await resolveConfig(context);
     const client = new SonarQubeClient(baseUrl, token);
     const fileName = context?.fileName ?? 'game.html';
 
-    // 服务可用性检查（不阻断，降级为 warn）
-    if (!await client.ping()) {
-      return [{
-        ruleId: 'sonarqube-unavailable',
-        level: 'warn',
-        message: `SonarQube 服务（${baseUrl}）不可访问，跳过代码质量扫描。`,
+    // 命中缓存：同一 projectKey 在同一 lintZipBuffer 流程中不重复 scan
+    if (sonarIssuesCache.has(projectKey)) {
+      const cached = sonarIssuesCache.get(projectKey)!;
+      return cached.map(si => ({
+        ruleId: `sonarqube:${si.rule}`,
+        level: ['BLOCKER', 'CRITICAL', 'MAJOR'].includes(si.severity) ? 'error' : 'warn',
+        message: si.message,
+        line: si.line,
         checkerId: cid,
-      }];
+      }));
+    }
+
+    // 服务不可用时直接抛出异常，由 lint runner 捕获转为 error
+    if (!await client.ping()) {
+      throw new Error(`SonarQube 服务（${baseUrl}）不可访问，跳过代码质量扫描。`);
     }
 
     try {
@@ -333,6 +443,9 @@ export const sonarqubeChecker: LintChecker = {
 
       const sonarIssues = await client.getProjectIssues(projectKey);
 
+      // 缓存 raw issues，供 submit_game 复用（按 projectKey 隔离）
+      sonarIssuesCache.set(projectKey, sonarIssues);
+
       return sonarIssues.map(si => ({
         ruleId: `sonarqube:${si.rule}`,
         level: ['BLOCKER', 'CRITICAL', 'MAJOR'].includes(si.severity) ? 'error' : 'warn',
@@ -341,12 +454,7 @@ export const sonarqubeChecker: LintChecker = {
         checkerId: cid,
       }));
     } catch (err: any) {
-      return [{
-        ruleId: 'sonarqube-analysis-error',
-        level: 'warn',
-        message: `SonarQube 扫描异常: ${err?.message ?? String(err)}`,
-        checkerId: cid,
-      }];
+      throw new Error(`SonarQube 扫描异常: ${err?.message ?? String(err)}`);
     }
   },
 };

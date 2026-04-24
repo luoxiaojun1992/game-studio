@@ -46,6 +46,9 @@ services:
       - MINIO_USE_SSL=false
       - MINIO_BUCKET=game-files
       - CREATOR_SERVICE_URL=http://creator:8080
+      - SONARQUBE_HOST=http://sonarqube:9000
+      - SONARQUBE_USER=admin
+      - SONARQUBE_PASSWORD=${SONARQUBE_PASSWORD:-admin}
     volumes:
       - studio-data:/app/data
       - studio-output:/app/output
@@ -118,7 +121,7 @@ services:
 
   # SonarQube 代码质量扫描服务（使用内置 H2 数据库，不依赖外部 PostgreSQL）
   sonarqube:
-    image: sonarqube:10.6-community
+    image: sonarqube:community
     container_name: game-studio-sonarqube
     ports:
       - "${SONARQUBE_PORT:-9002}:9000"
@@ -129,7 +132,7 @@ services:
     networks:
       - game-studio-network
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O- http://localhost:9000/api/system/status 2>/dev/null | grep -q '\"status\":\"UP\"' && exit 0 || exit 1"]
+      test: ["CMD-SHELL", "curl -sf http://localhost:9000/api/system/status 2>/dev/null | grep -q '\"status\":\"UP\"' && exit 0 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 10

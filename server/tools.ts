@@ -3,12 +3,14 @@
  */
 import { z } from 'zod';
 import { tool, createSdkMcpServer, type SdkMcpServerResult } from '@tencent-ai/agent-sdk';
+import yazl from 'yazl';
 import type { Stats } from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import * as db from './db.js';
 import { AGENT_IDS, AgentRole, getAllAgents } from './agents.js';
 import { sseBroadcaster } from './sse-broadcaster.js';
 import { lintGameContent, lintZipBuffer, type LintIssue } from './lint/index.js';
+import { getCachedSonarIssues, clearCachedSonarIssues, globalTokenManager } from './lint/checkers/sonarqube.js';
 import {
   createFileStorageRecord,
   uploadBuffer,
@@ -476,6 +478,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           }
 
           let fileStorageId: string | null = null;
+          let sonarStorageId: string | null = null;
 
           // ========== 文件打包模式 ==========
           if (hasFilePath) {
@@ -550,19 +553,57 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
                 log(agentId, '提交游戏-lint', `警告: ${zipLintResult.warnings.map(w => w.message).join('; ')}`, 'warn');
               }
 
+              // === Sonar 报告生成：复用 lintZipBuffer 缓存的 raw issues ===
+              const scopedProjectKey = `game-${scopedProjectId}`;
+              const cachedSonarIssues = getCachedSonarIssues(scopedProjectKey) ?? [];
+
+              // 使用 yazl 将 sonar-issues.json 追加到 ZIP（不改变原文件内容）
+              const sonarReportBuffer = Buffer.from(
+                JSON.stringify({ version: '1.0', issues: cachedSonarIssues }, null, 2),
+                'utf-8'
+              );
+              const finalZipBuffer = await new Promise<Buffer>((resolve, reject) => {
+                const zip = new yazl.ZipFile();
+                zip.addBuffer(fileBuffer, zipName);
+                zip.addBuffer(sonarReportBuffer, 'sonar-issues.json');
+                zip.end({}, (err) => {
+                  if (err) reject(err);
+                });
+                const chunks: Buffer[] = [];
+                zip.outputStream.on('data', (chunk: Buffer) => chunks.push(chunk));
+                zip.outputStream.on('end', () => resolve(Buffer.concat(chunks)));
+                zip.outputStream.on('error', reject);
+              });
+              const finalFileSize = finalZipBuffer.length;
+
+              // 清理 lint 缓存
+              clearCachedSonarIssues(scopedProjectKey);
+
               try {
-                // 创建文件存储记录
-                const { storage } = await createFileStorageRecord({
+                // 创建游戏文件存储记录
+                const { storage: gameStorage } = await createFileStorageRecord({
                   project_id: scopedProjectId,
                   object_key: objectKey,
                   file_name: zipName,
-                  file_size: fileSize,
+                  file_size: finalFileSize,
                   content_type: 'application/zip'
                 });
-                fileStorageId = storage.id;
+                fileStorageId = gameStorage.id;
 
-                // 直接上传到 MinIO
-                await uploadBuffer(fileBuffer, objectKey, 'application/zip');
+                // 上传含 sonar 报告的最终 ZIP 到 MinIO
+                await uploadBuffer(finalZipBuffer, objectKey, 'application/zip');
+
+                // 上传独立 sonar-issues.json 报告到 MinIO
+                const sonarObjectKey = `sonar/${zipName}`;
+                const { storage: sonarStorage } = await createFileStorageRecord({
+                  project_id: scopedProjectId,
+                  object_key: sonarObjectKey,
+                  file_name: `${zipName.replace('.zip', '')}-sonar-issues.json`,
+                  file_size: sonarReportBuffer.length,
+                  content_type: 'application/json'
+                });
+                sonarStorageId = sonarStorage.id;
+                await uploadBuffer(sonarReportBuffer, sonarObjectKey, 'application/json');
 
               } catch (error: any) {
                 return {
@@ -594,6 +635,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
                 version: version || '1.0.0',
                 status: 'draft',
                 file_storage_id: fileStorageId,
+                sonar_storage_id: sonarStorageId,
                 created_at: now,
                 updated_at: now
               });
@@ -603,8 +645,8 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
               };
             }
 
-            sseBroadcaster.broadcast({ type: 'game_submitted', game: { ...game, html_content: undefined as any, hasContent: false, fileStorageId }, filePath: null }, scopedProjectId);
-            log(agentId, '提交游戏', `游戏: ${name} v${version || '1.0.0'} [文件模式，ZIP: ${zipName}]`, 'success');
+            sseBroadcaster.broadcast({ type: 'game_submitted', game: { ...game, html_content: undefined as any, hasContent: false, fileStorageId, sonarStorageId }, filePath: null }, scopedProjectId);
+            log(agentId, '提交游戏', `游戏: ${name} v${version || '1.0.0'} [文件模式，ZIP: ${zipName}，Sonar报告: sonar/${zipName}]`, 'success');
             return {
               content: [{ type: 'text' as const, text: `游戏已提交 (ID: ${game.id.slice(0, 8)})，名称: ${name}，版本: ${version || '1.0.0'}，文件已上传到存储。` }]
             };

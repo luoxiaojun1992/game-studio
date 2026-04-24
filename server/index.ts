@@ -10,6 +10,7 @@ import { sseBroadcaster } from './sse-broadcaster.js';
 import { starOfficeSyncService } from './star-office-sync.js';
 import { StreamEvent } from './agent-manager.js';
 import fileStorageRouter from './file-storage.js';
+import { globalTokenManager, SonarQubeClient } from './lint/checkers/sonarqube.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1101,6 +1102,22 @@ app.post('/api/games', (req, res) => {
 app.listen(PORT, async () => {
   await starOfficeSyncService.syncAllProjectsOnBoot();
   starOfficeSyncService.startSupervisor();
+
+  // 预创建默认 SonarQube 项目，确保 lint 和 submit_game 流程无需判断项目是否存在
+  const sonarHost = (process.env.SONARQUBE_HOST || 'http://localhost:9002').replace(/\/$/, '');
+  try {
+    const token = await globalTokenManager.ensureToken();
+    const sonarClient = new SonarQubeClient(sonarHost, token);
+    if (await sonarClient.ping()) {
+      await sonarClient.ensureProject('game-default', 'Game Default Project');
+      console.log('[Boot] SonarQube 默认项目已就绪');
+    } else {
+      console.warn('[Boot] SonarQube 服务暂不可用，将在后继扫描时重试');
+    }
+  } catch (err) {
+    console.warn('[Boot] SonarQube 启动预检失败:', err);
+  }
+
   console.log(`
 ╔══════════════════════════════════════════════════════╗
 ║                                                      ║

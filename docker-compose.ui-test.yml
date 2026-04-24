@@ -51,6 +51,9 @@ services:
       - MINIO_USE_SSL=false
       - MINIO_BUCKET=game-files
       - CREATOR_SERVICE_URL=http://creator:8080
+      - SONARQUBE_HOST=http://sonarqube:9000
+      - SONARQUBE_USER=admin
+      - SONARQUBE_PASSWORD=admin
     depends_on:
       codebuddy-sdk-mock:
         condition: service_healthy
@@ -105,7 +108,7 @@ services:
       start_period: 30s
 
   sonarqube:
-    image: sonarqube:10.6-community
+    image: sonarqube:community
     ports:
       - "${SONARQUBE_PORT:-9002}:9000"
     volumes:
@@ -113,7 +116,7 @@ services:
       - sonarqube-logs:/opt/sonarqube/logs
       - sonarqube-extensions:/opt/sonarqube/extensions
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O- http://localhost:9000/api/system/status 2>/dev/null | grep -q '\"status\":\"UP\"' && exit 0 || exit 1"]
+      test: ["CMD-SHELL", "curl -sf http://localhost:9000/api/system/status 2>/dev/null | grep -q '\"status\":\"UP\"' && exit 0 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 10
