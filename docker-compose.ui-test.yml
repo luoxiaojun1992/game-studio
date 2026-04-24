@@ -51,6 +51,7 @@ services:
       - MINIO_USE_SSL=false
       - MINIO_BUCKET=game-files
       - CREATOR_SERVICE_URL=http://creator:8080
+      - SCANNER_SERVICE_URL=http://scanner:8081
       - SONARQUBE_HOST=http://sonarqube:9000
       - SONARQUBE_USER=admin
       - SONARQUBE_PASSWORD=admin
@@ -64,6 +65,8 @@ services:
       sonarqube:
         condition: service_healthy
       creator:
+        condition: service_started
+      scanner:
         condition: service_started
     ports:
       - "3000:3000"
@@ -106,6 +109,26 @@ services:
       timeout: 10s
       retries: 5
       start_period: 30s
+
+  scanner:
+    build:
+      context: ./sonar-scanner-service
+      dockerfile: Dockerfile
+    environment:
+      - SCANNER_PORT=8081
+      - SONAR_HOST_URL=http://sonarqube:9000
+      - SONAR_USER=admin
+      - SONAR_PASSWORD=admin
+    ports:
+      - "8081:8081"
+    volumes:
+      - scanner-data:/app/scanner
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
 
   sonarqube:
     image: sonarqube:community
@@ -175,6 +198,7 @@ services:
         condition: service_healthy
 
 volumes:
+  scanner-data:
   sonarqube-data:
   sonarqube-logs:
   sonarqube-extensions:
