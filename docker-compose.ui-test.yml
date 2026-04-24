@@ -180,12 +180,12 @@ services:
       - CODEBUDDY_MOCK_ADMIN_URL=http://codebuddy-sdk-mock:3001
       - UI_COVERAGE_THRESHOLD=90
       - UI_TEST_LOOP_TIMEOUT_MS=600000
-      - ALLURE_RESULTS_DIR=tests/ui/artifacts/allure-results
+      - ALLURE_RESULTS_DIR=artifacts/allure-results
       - HOME=/tmp
       - NPM_CONFIG_CACHE=/tmp/.npm
     volumes:
-      - ./tests/ui/artifacts:/workspace/tests/ui/artifacts
-      - ./tests/ui/coverage:/workspace/tests/ui/coverage
+      - ./tests/ui/artifacts:/workspace/artifacts
+      - ./tests/ui/coverage:/workspace/coverage
     depends_on:
       ui-app:
         condition: service_healthy

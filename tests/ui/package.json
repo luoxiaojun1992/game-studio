@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "test:ui": "playwright test -c playwright.config.ts",
-    "test:ui:coverage": "node scripts/check-ui-coverage.mjs tests/ui/artifacts/playwright-report/results.json tests/ui/coverage/cases.json",
+    "test:ui:coverage": "node scripts/check-ui-coverage.mjs artifacts/playwright-report/results.json coverage/cases.json",
     "test:ui:allure": "bash scripts/generate-ui-allure.sh",
     "test:ui:ci": "bash scripts/test-ui-ci.sh"
   },
