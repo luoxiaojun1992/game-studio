@@ -52,6 +52,7 @@ services:
       - MINIO_BUCKET=game-files
       - CREATOR_SERVICE_URL=http://creator:8080
       - SCANNER_SERVICE_URL=http://scanner:8081
+      - STAR_OFFICE_JOIN_KEY=${STAR_OFFICE_JOIN_KEY:-ocj_example_team_01}
       - SONARQUBE_HOST=http://sonarqube:9000
       - SONARQUBE_USER=admin
       - SONARQUBE_PASSWORD=admin
