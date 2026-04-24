@@ -117,8 +117,6 @@ services:
     environment:
       - SCANNER_PORT=8081
       - SONAR_HOST_URL=http://sonarqube:9000
-      - SONAR_USER=admin
-      - SONAR_PASSWORD=admin
     ports:
       - "8081:8081"
     volumes:
