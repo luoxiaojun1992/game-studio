@@ -22,6 +22,8 @@ import { SonarQubeClient, type SonarQubeIssue } from './sonarqube-client.js';
 // ====== SonarQube Raw Issue 类型 ======
 
 export type { SonarQubeIssue };
+export { globalTokenManager } from './sonarqube-token.js';
+export { SonarQubeClient } from './sonarqube-client.js';
 
 // ====== Module 级 Raw Issues 缓存 ======
 // 目的：避免 lintZipBuffer 对同一 projectKey 重复 scan；submit_game 可直接复用
