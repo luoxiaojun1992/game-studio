@@ -168,8 +168,8 @@ services:
 
   ui-e2e:
     build:
-      context: .
-      dockerfile: tests/ui/Dockerfile.e2e
+      context: tests/ui
+      dockerfile: Dockerfile.e2e
     working_dir: /workspace
     user: "${UID:-1000}:${GID:-1000}"
     command: ["sh", "-c", "npm run test:ui:ci"]

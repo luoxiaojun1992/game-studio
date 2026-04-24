@@ -1,0 +1,9 @@
+{
+  "name": "game-dev-studio-ui-tests",
+  "version": "1.0.0",
+  "type": "module",
+  "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "allure-playwright": "^3.7.1"
+  }
+}
