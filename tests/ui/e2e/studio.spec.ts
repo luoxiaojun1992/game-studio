@@ -479,7 +479,7 @@ test('[UI-008] should complete full workflow with autopilot and auto-handoff', a
   await runFullWorkflowTest(page, {
     testId: 'UI-008',
     autopilot: true,
-    gameName: '休闲游戏',
+    gameName: '测试游戏',
   });
 });
 
