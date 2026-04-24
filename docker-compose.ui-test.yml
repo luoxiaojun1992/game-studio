@@ -133,7 +133,7 @@ services:
   sonarqube:
     image: sonarqube:community
     ports:
-      - "${SONARQUBE_PORT:-9002}:9000"
+      - "9002:9000"
     volumes:
       - sonarqube-data:/opt/sonarqube/data
       - sonarqube-logs:/opt/sonarqube/logs
