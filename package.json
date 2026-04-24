@@ -42,7 +42,6 @@
     "@types/uuid": "^9.0.7",
     "@types/yazl": "^3.3.1",
     "@vitejs/plugin-react": "^4.2.1",
-    "allure-commandline": "^2.38.1",
     "autoprefixer": "^10.4.20",
     "concurrently": "^8.2.2",
     "less": "^4.3.0",
