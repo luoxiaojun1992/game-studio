@@ -10,7 +10,7 @@ import { sseBroadcaster } from './sse-broadcaster.js';
 import { starOfficeSyncService } from './star-office-sync.js';
 import { StreamEvent } from './agent-manager.js';
 import fileStorageRouter from './file-storage.js';
-import { globalTokenManager, SonarQubeClient } from './lint/checkers/sonarqube.js';
+import { globalTokenManager, SonarQubeClient } from './lint/checkers/sonar/sonarqube.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

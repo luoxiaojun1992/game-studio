@@ -14,8 +14,8 @@
  * - SonarQube 服务（SONARQUBE_HOST）
  */
 
-import type { LintChecker, LintIssue, LintContext } from '../types.js';
-import { submitScan, pollScanStatus } from '../../sonar-scanner-service.js';
+import type { LintChecker, LintIssue, LintContext } from '../../types.js';
+import { submitScan, pollScanStatus } from '../../../sonar-scanner-service.js';
 import { globalTokenManager } from './sonarqube-token.js';
 import { SonarQubeClient, type SonarQubeIssue } from './sonarqube-client.js';
 

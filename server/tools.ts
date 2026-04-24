@@ -10,7 +10,7 @@ import * as db from './db.js';
 import { AGENT_IDS, AgentRole, getAllAgents } from './agents.js';
 import { sseBroadcaster } from './sse-broadcaster.js';
 import { lintGameContent, lintZipBuffer, type LintIssue } from './lint/index.js';
-import { getCachedSonarIssues, clearCachedSonarIssues, globalTokenManager } from './lint/checkers/sonarqube.js';
+import { getCachedSonarIssues, clearCachedSonarIssues, globalTokenManager } from './lint/checkers/sonar/sonarqube.js';
 import {
   createFileStorageRecord,
   uploadBuffer,
