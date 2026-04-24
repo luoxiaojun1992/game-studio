@@ -7,7 +7,4 @@ RUN apt-get update \
 
 WORKDIR /workspace
 
-COPY package*.json ./
-RUN npm ci
-
 COPY . .
