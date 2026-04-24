@@ -180,16 +180,9 @@ export const sonarqubeChecker: LintChecker = {
       }));
 
     } catch (err: any) {
-      // scanner 微服务调用异常：
-      // - 网络不可达等非预期异常 → graceful degrade（不阻断提交）
-      // - 401/403 等认证错误 → 必须抛出，让 LintRunner 转为 error 级 lintIssue，阻断游戏提交
-      const msg = err?.message || String(err);
-      const isAuthError = /401|403|Unauthorized|Forbidden/i.test(msg);
-      console.error(`[SonarQube checker] scanner 服务异常 project=${projectKey} isAuthError=${isAuthError} error=${msg}`);
-      if (isAuthError) {
-        throw err; // 认证错误 → LintRunner 捕获后转 lintIssue，阻断提交
-      }
-      return []; // 网络错误等非认证异常 → degrade，继续提交
+      // scanner 微服务任何异常 → 抛出转为 lintIssue，阻断游戏提交
+      console.error(`[SonarQube checker] scanner 服务异常 project=${projectKey} error=${err?.message}`);
+      throw err;
     }
   },
 };
