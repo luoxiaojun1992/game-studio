@@ -11,11 +11,7 @@
     "preview": "vite preview",
     "server": "tsx server/index.ts",
     "start": "node dist-server/server/index.js",
-    "mock:server": "node tests/mock-server/codebuddy-sdk-mock-server.mjs",
-    "test:ui": "playwright test -c tests/ui/playwright.config.ts",
-    "test:ui:coverage": "node tests/ui/scripts/check-ui-coverage.mjs tests/ui/artifacts/playwright-report/results.json tests/ui/coverage/cases.json",
-    "test:ui:allure": "bash tests/ui/scripts/generate-ui-allure.sh",
-    "test:ui:ci": "bash tests/ui/scripts/test-ui-ci.sh"
+    "mock:server": "node tests/mock-server/codebuddy-sdk-mock-server.mjs"
   },
   "dependencies": {
     "@tdesign-react/aigc": "^0.1.0-alpha.1",
@@ -47,7 +43,6 @@
     "@types/yazl": "^3.3.1",
     "@vitejs/plugin-react": "^4.2.1",
     "allure-commandline": "^2.38.1",
-    "allure-playwright": "^3.7.1",
     "autoprefixer": "^10.4.20",
     "concurrently": "^8.2.2",
     "less": "^4.3.0",
