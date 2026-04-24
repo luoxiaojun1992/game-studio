@@ -9,7 +9,7 @@ import type { LintChecker } from '../types.js';
 import { htmlStructureChecker } from './html-structure.js';
 import { httpMethodChecker } from './http-method-checker.js';
 import { jsSecurityChecker } from './js-security.js';
-import { sonarqubeChecker } from './sonarqube.js';
+import { sonarqubeChecker } from './sonar/sonarqube.js';
 
 /**
  * 所有内置检查器的列表
