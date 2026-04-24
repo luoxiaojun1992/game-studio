@@ -109,8 +109,19 @@ def _run_scanner_bg(project_id: str) -> None:
             _scan_states[project_id]["status"] = "done"
             _scan_states[project_id]["message"] = "Scan completed successfully"
         else:
+            # 读取 scan.log 内容，拼到 message 里供调用方查看
+            log_p = Path(_log_path(project_id))
+            log_excerpt = ""
+            if log_p.exists():
+                try:
+                    log_content = log_p.read_text(errors="replace")
+                    # 只取最后 20 行，避免 message 过长
+                    log_lines = log_content.strip().splitlines()
+                    log_excerpt = " | " + " | ".join(log_lines[-20:])
+                except Exception:
+                    log_excerpt = ""
             _scan_states[project_id]["status"] = "error"
-            _scan_states[project_id]["message"] = f"Scan failed with exit code {exit_code}"
+            _scan_states[project_id]["message"] = f"Scan failed with exit code {exit_code}{log_excerpt}"
 
         # 扫描结束后删除 game.zip、sources 目录和 scan.log
         try:
