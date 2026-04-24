@@ -37,7 +37,7 @@ services:
     working_dir: /usr/src
     command: >
       -Dsonar.projectKey=game-studio
-      -Dsonar.sources=server,src,creator
+      -Dsonar.sources=server,src,creator,sonar-scanner-service
       -Dsonar.sourceEncoding=UTF-8
     user: root
     networks:
