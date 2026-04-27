@@ -122,6 +122,8 @@ def _run_scanner_bg(project_id: str) -> None:
     sources_dir = _extract_dir(project_id)
     log_fp_path = _log_path(project_id)
 
+    print(f"[scanner-bg] START project_id={project_id} project_key={project_key} sources_dir={sources_dir}", flush=True)
+
     state = _scan_states.get(project_id, {})
     state["status"] = "scanning"
     state["message"] = "Extracting sources and starting scanner..."
@@ -129,12 +131,14 @@ def _run_scanner_bg(project_id: str) -> None:
 
     try:
         # Ensure SonarQube project exists
+        print(f"[scanner-bg] Ensuring SonarQube project project_key={project_key}", flush=True)
         _ensure_sonar_project(project_key)
         state["message"] = "SonarQube project ready, running scanner..."
         _scan_states[project_id] = state
 
         # Get or refresh token before running scanner
         scanner_token = _ensure_token()
+        print(f"[scanner-bg] Token ready, launching sonar-scanner project_key={project_key}", flush=True)
 
         # Run sonar-scanner
         log_fp = open(log_fp_path, "w")
@@ -152,6 +156,8 @@ def _run_scanner_bg(project_id: str) -> None:
         )
         exit_code = proc.wait()
         log_fp.close()
+
+        print(f"[scanner-bg] sonar-scanner finished project_key={project_key} exit_code={exit_code}", flush=True)
 
         _scan_states[project_id]["exit_code"] = exit_code
         if exit_code == 0:
@@ -194,6 +200,9 @@ def _run_scanner_bg(project_id: str) -> None:
         _scan_states[project_id]["status"] = "error"
         _scan_states[project_id]["message"] = f"Scanner exception: {ex}"
         _scan_states[project_id]["exit_code"] = -1
+        print(f"[scanner-bg] EXCEPTION project_key={project_key} error={ex}", flush=True)
+
+    print(f"[scanner-bg] END project_id={project_id} final_status={_scan_states[project_id]['status']}", flush=True)
 
 
 @router.post(
@@ -217,8 +226,11 @@ async def submit_scan(project_id: str, file: UploadFile = File(...)) -> ScanResp
     zip_path = _zip_path(validated_id)
     extract_dir = _extract_dir(validated_id)
 
+    print(f"[scan-submit] RECEIVED project_id={validated_id} zip_size={file.size if hasattr(file, 'size') else 'unknown'}", flush=True)
+
     # Clean up any previous scan for this project
     if scan_dir.exists():
+        print(f"[scan-submit] Cleaning up previous scan dir for project_id={validated_id}", flush=True)
         shutil.rmtree(scan_dir)
     os.makedirs(scan_dir, exist_ok=True)
 
@@ -226,11 +238,13 @@ async def submit_scan(project_id: str, file: UploadFile = File(...)) -> ScanResp
     content = await file.read()
     with open(zip_path, "wb") as f:
         f.write(content)
+    print(f"[scan-submit] ZIP saved project_id={validated_id} size={len(content)}", flush=True)
 
     # Validate it's a valid ZIP
     try:
         with zipfile.ZipFile(zip_path) as zf:
-            pass  # opening already validates
+            file_list = zf.namelist()
+            print(f"[scan-submit] ZIP contents project_id={validated_id} files={file_list}", flush=True)
     except zipfile.BadZipFile:
         shutil.rmtree(scan_dir)
         raise HTTPException(
@@ -251,6 +265,7 @@ async def submit_scan(project_id: str, file: UploadFile = File(...)) -> ScanResp
     }
 
     # Launch background scan
+    print(f"[scan-submit] Launching background scan project_id={validated_id}", flush=True)
     threading.Thread(target=_run_scanner_bg, args=(validated_id,), daemon=True).start()
 
     return ScanResponse(

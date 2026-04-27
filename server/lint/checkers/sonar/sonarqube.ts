@@ -103,7 +103,7 @@ export const sonarqubeChecker: LintChecker = {
     const { baseUrl, token, projectKey } = await resolveConfig(context);
     const client = new SonarQubeClient(baseUrl, token);
 
-    console.error(`[SonarQube checker] 开始扫描 project=${projectKey}`);
+    console.error(`[SonarQube checker] 开始扫描 project=${projectKey} contentLength=${content?.length ?? 0} fileName=${context?.fileName ?? 'unknown'}`);
 
     // 命中缓存：同一 projectKey 在同一 lintZipBuffer 流程中不重复 scan
     if (sonarIssuesCache.has(projectKey)) {
@@ -169,7 +169,7 @@ export const sonarqubeChecker: LintChecker = {
       sonarIssuesCache.set(projectKey, sonarIssues);
 
       const errors = sonarIssues.filter(si => ['BLOCKER', 'CRITICAL', 'MAJOR'].includes(si.severity));
-      console.error(`[SonarQube checker] 扫描完成 project=${projectKey} totalIssues=${sonarIssues.length} errors=${errors.length}`);
+      console.error(`[SonarQube checker] 扫描完成 project=${projectKey} totalIssues=${sonarIssues.length} errors=${errors.length} issues=${JSON.stringify(sonarIssues.map(i => ({ rule: i.rule, severity: i.severity, message: i.message })))}`);
 
       return sonarIssues.map(si => ({
         ruleId: `sonarqube:${si.rule}`,
