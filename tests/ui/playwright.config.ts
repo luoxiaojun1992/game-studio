@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 import path from 'node:path';
 
-const uiArtifactsDir = path.join(process.cwd(), 'tests', 'ui', 'artifacts');
+const uiArtifactsDir = path.join(process.cwd(), 'artifacts');
 const allureResultsDir = process.env.ALLURE_RESULTS_DIR || path.join(uiArtifactsDir, 'allure-results');
 
 export default defineConfig({

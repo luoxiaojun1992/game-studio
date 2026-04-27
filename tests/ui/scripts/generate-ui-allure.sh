@@ -2,8 +2,8 @@
 
 set -u
 
-OUT_DIR="tests/ui/artifacts/allure-report"
-PRIMARY_RESULTS="tests/ui/artifacts/allure-results"
+OUT_DIR="artifacts/allure-report"
+PRIMARY_RESULTS="artifacts/allure-results"
 LEGACY_RESULTS="artifacts/allure-results"
 
 ALLURE_CMD=()

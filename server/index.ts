@@ -10,7 +10,7 @@ import { sseBroadcaster } from './sse-broadcaster.js';
 import { starOfficeSyncService } from './star-office-sync.js';
 import { StreamEvent } from './agent-manager.js';
 import fileStorageRouter from './file-storage.js';
-import { globalTokenManager, SonarQubeClient } from './lint/checkers/sonarqube.js';
+import { globalTokenManager, SonarQubeClient } from './lint/checkers/sonar/sonarqube.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1083,6 +1083,7 @@ app.post('/api/games', (req, res) => {
       version: normalizedVersion || '1.0.0',
       status: 'draft',
       file_storage_id: fileStorageIdValidation.text,
+      sonar_storage_id: null,
       created_at: now,
       updated_at: now
     });

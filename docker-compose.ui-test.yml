@@ -51,6 +51,8 @@ services:
       - MINIO_USE_SSL=false
       - MINIO_BUCKET=game-files
       - CREATOR_SERVICE_URL=http://creator:8080
+      - SCANNER_SERVICE_URL=http://scanner:8081
+      - STAR_OFFICE_JOIN_KEY=${STAR_OFFICE_JOIN_KEY:-ocj_example_team_01}
       - SONARQUBE_HOST=http://sonarqube:9000
       - SONARQUBE_USER=admin
       - SONARQUBE_PASSWORD=admin
@@ -64,6 +66,8 @@ services:
       sonarqube:
         condition: service_healthy
       creator:
+        condition: service_started
+      scanner:
         condition: service_started
     ports:
       - "3000:3000"
@@ -81,6 +85,7 @@ services:
     environment:
       - STAR_BACKEND_PORT=19000
       - STAR_OFFICE_MAX_CONCURRENT=100
+      - STAR_OFFICE_JOIN_KEY=${STAR_OFFICE_JOIN_KEY:-ocj_example_team_01}
     networks:
       default:
         aliases:
@@ -107,10 +112,30 @@ services:
       retries: 5
       start_period: 30s
 
+  scanner:
+    build:
+      context: ./sonar-scanner-service
+      dockerfile: Dockerfile
+    environment:
+      - SCANNER_PORT=8081
+      - SONAR_HOST_URL=http://sonarqube:9000
+      - SONAR_USER=admin
+      - SONAR_PASSWORD=admin
+    ports:
+      - "8081:8081"
+    volumes:
+      - scanner-data:/app/scanner
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+
   sonarqube:
     image: sonarqube:community
     ports:
-      - "${SONARQUBE_PORT:-9002}:9000"
+      - "9002:9000"
     volumes:
       - sonarqube-data:/opt/sonarqube/data
       - sonarqube-logs:/opt/sonarqube/logs
@@ -145,8 +170,8 @@ services:
 
   ui-e2e:
     build:
-      context: .
-      dockerfile: tests/ui/Dockerfile.e2e
+      context: tests/ui
+      dockerfile: Dockerfile.e2e
     working_dir: /workspace
     user: "${UID:-1000}:${GID:-1000}"
     command: ["sh", "-c", "npm run test:ui:ci"]
@@ -157,11 +182,12 @@ services:
       - CODEBUDDY_MOCK_ADMIN_URL=http://codebuddy-sdk-mock:3001
       - UI_COVERAGE_THRESHOLD=90
       - UI_TEST_LOOP_TIMEOUT_MS=600000
-      - ALLURE_RESULTS_DIR=tests/ui/artifacts/allure-results
+      - ALLURE_RESULTS_DIR=artifacts/allure-results
       - HOME=/tmp
       - NPM_CONFIG_CACHE=/tmp/.npm
     volumes:
-      - ./tests/ui/artifacts:/workspace/tests/ui/artifacts
+      - ./tests/ui/artifacts:/workspace/artifacts
+      - ./tests/ui/coverage:/workspace/coverage
     depends_on:
       ui-app:
         condition: service_healthy
@@ -175,6 +201,7 @@ services:
         condition: service_healthy
 
 volumes:
+  scanner-data:
   sonarqube-data:
   sonarqube-logs:
   sonarqube-extensions:

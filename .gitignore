@@ -15,3 +15,9 @@ vite.config.d.ts
 /allure-results
 /tests/ui/artifacts
 /tests/ui/tests
+
+# Build artifacts
+/scanner-report
+/.scannerwork
+/creator/app/__pycache__
+/creator/app/routers/__pycache__

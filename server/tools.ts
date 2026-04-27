@@ -10,7 +10,7 @@ import * as db from './db.js';
 import { AGENT_IDS, AgentRole, getAllAgents } from './agents.js';
 import { sseBroadcaster } from './sse-broadcaster.js';
 import { lintGameContent, lintZipBuffer, type LintIssue } from './lint/index.js';
-import { getCachedSonarIssues, clearCachedSonarIssues, globalTokenManager } from './lint/checkers/sonarqube.js';
+import { getCachedSonarIssues, clearCachedSonarIssues, globalTokenManager } from './lint/checkers/sonar/sonarqube.js';
 import {
   createFileStorageRecord,
   uploadBuffer,
@@ -542,7 +542,9 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
               const fileBuffer = fsModule.readFileSync(zipTempPath);
 
               // lint 检查：ZIP 内每个 HTML 逐一检查，遇第一个 error 即阻断
-              const zipLintResult = await lintZipBuffer(fileBuffer, { projectId: scopedProjectId });
+              const zipLintResult = await lintZipBuffer(fileBuffer, {
+                projectId: scopedProjectId,
+              });
               if (!zipLintResult.passed) {
                 try { fsModule.unlinkSync(zipTempPath); } catch { /* ignore */ }
                 return {
@@ -564,11 +566,10 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
               );
               const finalZipBuffer = await new Promise<Buffer>((resolve, reject) => {
                 const zip = new yazl.ZipFile();
+                zip.on('error', reject);
                 zip.addBuffer(fileBuffer, zipName);
                 zip.addBuffer(sonarReportBuffer, 'sonar-issues.json');
-                zip.end({}, (err) => {
-                  if (err) reject(err);
-                });
+                zip.end();
                 const chunks: Buffer[] = [];
                 zip.outputStream.on('data', (chunk: Buffer) => chunks.push(chunk));
                 zip.outputStream.on('end', () => resolve(Buffer.concat(chunks)));
@@ -677,6 +678,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
               version: version || '1.0.0',
               status: 'draft',
               file_storage_id: null,
+              sonar_storage_id: null,
               created_at: now,
               updated_at: now
             });
