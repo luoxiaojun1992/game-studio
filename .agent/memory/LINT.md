@@ -112,10 +112,15 @@ const result = await lintGameContent(htmlContent, { fileName: 'snake.html' });
 
 ### sonarqube — SonarQube 质量扫描（warn/error 混合）
 
-- 通过 SonarQube REST API 上传 HTML/ZIP 源码并触发分析任务
-- 当服务不可访问时返回 `sonarqube-unavailable`（warn），不阻断提交
-- ZIP 模式优先复用 `LintContext.zipBuffer`，避免“解压后再打包”的重复开销
-- 默认连接：`http://localhost:9002`，token 来源：`SONARQUBE_TOKEN`（默认 `sonarpass`）
+- 通过独立 scanner 微服务（Python/FastAPI）上传 ZIP 并触发 sonar-scanner CLI 分析
+- Scanner 微服务自动解压 ZIP、创建 SonarQube 项目、执行扫描、轮询结果
+- Backend 通过 `sonar-scanner-service.ts` 提交 ZIP 并轮询状态，扫描完成后从 SonarQube REST API 拉取 issues
+- `SonarQubeClient`（`sonarqube-client.ts`）负责查询 issues 和创建项目；`TokenManager`（`sonarqube-token.ts`）动态生成 USER_TOKEN
+- ZIP 模式优先复用 `LintContext.zipBuffer`，避免"解压后再打包"的重复开销
+- `sonarIssuesCache`（module 级 Map）按 projectKey 缓存 raw issues，供 `lintZipBuffer` → `submit_game` 复用
+- 扫描完成后将 `sonar-issues.json` 追加到 ZIP 包并独立上传 MinIO，`games` 表记录 `sonar_storage_id`
+- Scanner 服务任何异常（含 auth 失败）均 `throw err`，由 LintRunner 转为 error issue 阻断提交
+- 默认连接：`http://localhost:9002`，studio-backend 认证：`SONARQUBE_USER/PASSWORD`；scanner 微服务认证：`SONAR_USER/PASSWORD`
 
 ## 扩展指南
 

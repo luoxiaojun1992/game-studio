@@ -111,6 +111,7 @@ npm run server
 | `STAR_OFFICE_HEALTH_CHECK_INTERVAL_MS` | 10000 | Star Office health check interval (ms) |
 | `SONARQUBE_PORT` | 9002 | Local SonarQube service port used by lint checker |
 | `SONARQUBE_TOKEN` | `sonarpass` | SonarQube token used by `sonarqube` lint checker |
+| `SCANNER_SERVICE_URL` | `http://localhost:8081` | SonarQube scanner microservice URL |
 
 ## Docker Deployment
 
@@ -135,11 +136,13 @@ game-studio/
 │   └── types.ts            # Shared business types
 ├── star-office-ui/         # Star-Office-UI Docker build resources
 ├── creator/                # Blender creator service (FastAPI + Blender runtime)
+├── sonar-scanner-service/  # SonarQube scanner microservice (FastAPI + sonar-scanner CLI)
 ├── docs/images/            # README preview images
 ├── data/                   # SQLite database files (runtime-generated)
 ├── output/                 # Proposal/game outputs (runtime-generated)
 ├── docker-compose.yml
 ├── docker-compose.ui-test.yml
+├── docker-compose-sonar-check.yml
 ├── Makefile
 ├── README.md
 ├── docs/

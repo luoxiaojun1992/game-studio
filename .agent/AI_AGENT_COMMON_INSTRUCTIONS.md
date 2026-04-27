@@ -17,6 +17,7 @@ Game Dev Studio 是一个基于 CodeBuddy Agent SDK 的多 Agent 游戏研发工
 | UI 组件 | TDesign React |
 | AI SDK | `@tencent-ai/agent-sdk` |
 | 测试 | Playwright (E2E) |
+| 代码质量 | SonarQube (scanner 微服务 + REST API) |
 
 ## 架构核心原则
 
@@ -57,7 +58,9 @@ export const AGENT_IDS = ['engineer', 'architect', 'game_designer', 'biz_designe
 | Creator 集成 | `server/creator-service.ts`、`creator/` |
 | 数据库操作 | `server/db.ts` |
 | 文件存储 | `server/file-storage.ts`、`server/minio-client.ts` |
-| Lint 框架 | `server/lint/`（LintRunner + 可插拔检查器） |
+| Lint 框架 | `server/lint/`（LintRunner + 可插拔检查器，含 SonarQube） |
+| SonarQube 客户端 | `server/lint/checkers/sonar/sonarqube-client.ts`、`server/lint/checkers/sonar/sonarqube-token.ts` |
+| Scanner 服务客户端 | `server/sonar-scanner-service.ts` |
 | SSE 广播 | `server/sse-broadcaster.ts` |
 | Express 路由 | `server/index.ts` |
 
@@ -109,6 +112,7 @@ PORT=3000                                  # 后端端口
 STAR_OFFICE_UI_URL=http://127.0.0.1:19000  # Star-Office-UI 地址
 SONARQUBE_PORT=9002                        # SonarQube 服务端口
 SONARQUBE_TOKEN=sonarpass                  # SonarQube 检查器访问 token（未配时使用默认值）
+SCANNER_SERVICE_URL=http://localhost:8081  # SonarQube scanner 微服务地址
 ```
 
 ## 修改约束

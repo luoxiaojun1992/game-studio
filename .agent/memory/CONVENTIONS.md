@@ -83,6 +83,12 @@
 | `/api/user_tokens/generate` 的 `type` 参数值必须是 `USER_TOKEN` | 官方文档或旧经验可能写成 `USER_API_TOKEN`，SonarQube 26.x 实际只接受 `USER_TOKEN`、`GLOBAL_ANALYSIS_TOKEN`、`PROJECT_ANALYSIS_TOKEN` | 一直报 type 参数校验错误，不提示正确枚举值 |
 | `/api/projects/show` 在 SonarQube 26.x 已被移除 | SonarQube 新版废弃了多个 `api/projects/*` 端点；获取项目信息应改用 `report-task.txt` 直接读取 taskId，或调 `/api/navigation/component` | 404 Unknown url，parse_report.py 无法获取项目信息 |
 | `git add -A` 前未检查暂存内容 | 大批量 `git add -A` 或 `git commit -a` 前，先 `git status --short` 或 `git diff --cached --stat` 确认只暂存目标文件；临时目录（`scanner-report/`、`__pycache__/`、`.scannerwork/`）应先确认已在 `.gitignore` 中 | 本地构建产物（zip、缓存、scanner-report）被误提交到源码仓库，污染 commit 历史；修复需 `git rm --cached` + force push 清理，且需要提醒 reviewer |
+| SonarQube 双认证路径混淆 | studio-backend 的 `SonarQubeClient` 用 `SONARQUBE_USER/PASSWORD`（调 REST API）；scanner 微服务用 `SONAR_USER/PASSWORD`（调 scanner CLI + token generate）；两者 env var 名不同，不可混用 | scanner 或 backend 一侧认证失败，导致扫描中断或 issues 拉取失败 |
+| SonarQube 扫描异常被静默吞掉 | `sonarqubeChecker.check()` 的 catch 块若 `return []` 会静默跳过所有错误（含 auth 失败）；必须 `throw err` 让 LintRunner 转为 error issue 阻断提交 | sonar auth 失败但游戏仍提交成功，质量问题漏过 |
+| SonarQube Web 分析器非确定性检测 | 相同 HTML 在不同 projectKey 下扫描，SonarQube Web 规则（如 `Web:S5254`）可能随机报 issue；mock HTML 应添加 `lang` 属性消除不确定性 | UI-007/008 相同 HTML 但扫描结果不一致，测试 flaky |
+| `sonarqube:community` 优于硬编码版本 | `sonarqube:community`（无版本号）指向最新 LTS，优于 `10.6-community` 等硬编码；`wget` 不在镜像中，healthcheck 必须用 `curl -sf` | 镜像版本过时或 healthcheck 永远失败 |
+| `sonarIssuesCache` 按 projectKey 隔离 | Module 级 Map 缓存 raw issues 供 `lintZipBuffer` → `submit_game` 复用；同一 projectKey 多次调用 scanner 时首次实际 scan，后续命中缓存 | 避免 ZIP 模式重复扫描同一项目 |
+| `sonar_storage_id` 持久化到 games 表 | 扫描完成后将 `sonar-issues.json` 独立上传 MinIO，并在 `games` 表记录 `sonar_storage_id` | 支持后续查询和展示扫描报告 |
 
 ## Session ↔ Project 关系
 - **Session 不会跨 project**：每次 `sendMessage(projectId, agentId, ...)` 都会创建全新的 SDK session，session 与 project 一一对应

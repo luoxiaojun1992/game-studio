@@ -110,6 +110,7 @@ npm run server
 | `STAR_OFFICE_HEALTH_CHECK_INTERVAL_MS` | 10000 | Star Office 健康检查周期（毫秒） |
 | `SONARQUBE_PORT` | 9002 | 本地 SonarQube 服务端口（供 lint 检查器访问） |
 | `SONARQUBE_TOKEN` | `sonarpass` | `sonarqube` 检查器使用的 SonarQube Token |
+| `SCANNER_SERVICE_URL` | `http://localhost:8081` | SonarQube scanner 微服务地址 |
 
 ## Docker 部署
 
@@ -134,11 +135,13 @@ game-studio/
 │   └── types.ts            # 前后端共享业务类型
 ├── star-office-ui/         # Star-Office-UI Docker 构建资源
 ├── creator/                # Blender creator 微服务（FastAPI + Blender 运行时）
+├── sonar-scanner-service/  # SonarQube scanner 微服务（FastAPI + sonar-scanner CLI）
 ├── docs/images/            # README 预览图片
 ├── data/                   # SQLite 数据文件目录（运行时生成）
 ├── output/                 # 提案/游戏产出目录（运行时生成）
 ├── docker-compose.yml
 ├── docker-compose.ui-test.yml
+├── docker-compose-sonar-check.yml
 ├── Makefile
 ├── README.md
 ├── docs/

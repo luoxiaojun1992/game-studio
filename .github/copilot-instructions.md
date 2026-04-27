@@ -15,4 +15,4 @@
 5. 数据库结构变更采用 DDL 优先策略：先更新 `server/db.ts` 的 `CREATE TABLE` 定义；迁移仅用于历史数据补齐。
 6. Star-Office 同步已切换为多项目持续同步模型；`/api/projects/switch` 不再触发 Agent offline/online 同步切换。
 7. 数据模型更新：`games` 已移除 `author_agent_id`；`logs`/`commands`/`permission_requests` 统一包含 `updated_at`。
-8. Lint 内置检查器已包含 `sonarqube`，支持异步 `check()` 与 ZIP 原始包复用（`LintContext.zipBuffer`）。
+8. Lint 内置检查器已包含 `sonarqube`，支持异步 `check()` 与 ZIP 原始包复用（`LintContext.zipBuffer`）。SonarQube 扫描通过独立 scanner 微服务（`sonar-scanner-service/`，Python/FastAPI）执行，backend 通过 `server/sonar-scanner-service.ts` 与其交互。`sonarqube-client.ts` 负责 REST API 查询，`sonarqube-token.ts` 负责动态 Token 生成。

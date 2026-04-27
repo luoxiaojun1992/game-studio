@@ -11,11 +11,15 @@
 - `server/creator-service.ts` - Creator 服务调用封装（Blender 项目/文件生命周期）
 - `server/lint/` - 可扩展静态检查框架（LintRunner + 可插拔 checker）
 - `server/lint/types.ts` - 核心类型：LintChecker 接口、LintIssue、LintResult
-- `server/lint/index.ts` - LintRunner 运行时 + lintGameContent() 便捷入口
+- `server/lint/index.ts` - LintRunner 运行时 + lintGameContent()/lintZipBuffer() 便捷入口
 - `server/lint/checkers/html-structure.ts` - HTML 结构检查器（6 条 error 规则）
 - `server/lint/checkers/http-method-checker.ts` - HTTP 方法安全检查器（error 级，阻断非安全方法）
 - `server/lint/checkers/js-security.ts` - JS 安全检查器（4 条 warn 规则）
-- `server/lint/checkers/sonarqube.ts` - SonarQube 质量扫描检查器（支持 HTML/ZIP，服务不可达时降级 warn）
+- `server/lint/checkers/sonar/sonarqube.ts` - SonarQube 质量扫描检查器（支持 HTML/ZIP，scanner 微服务调用）
+- `server/lint/checkers/sonar/sonarqube-client.ts` - SonarQube REST API 客户端（查询 issues、创建项目）
+- `server/lint/checkers/sonar/sonarqube-token.ts` - SonarQube TokenManager（动态生成 USER_TOKEN，Basic Auth）
+- `server/sonar-scanner-service.ts` - scanner 微服务 HTTP 客户端（提交 ZIP、轮询状态）
+- `sonar-scanner-service/` - Python FastAPI 微服务（接收 ZIP、解压、调用 sonar-scanner CLI、轮询 SonarQube）
 - `server/agent-manager.ts` - Agent 管理器，通过 mcpServers 注册自定义工具
 - `server/agents.ts` - Agent 定义 + 系统提示词（TOOLS_OVERVIEW）
 - `server/sse-broadcaster.ts` - SSE 广播（解耦循环依赖）
@@ -84,15 +88,17 @@ game-dev-studio/
 │   ├── config.ts         # API 配置
 │   └── i18n.ts           # 国际化支持
 ├── star-office-ui/       # Star‑Office‑UI 子模块（用于同步）
-├── creator/              # Blender Creator 微服务（FastAPI）
+├── creator/              # Blender Creator 微服务（FastAPI + Blender 运行时）
+├── sonar-scanner-service/ # SonarQube Scanner 微服务（FastAPI + sonar-scanner CLI）
 ├── tests/                # 测试文件
 │   ├── ui/               # UI E2E 测试（Playwright）
 │   │   ├── e2e/studio.spec.ts    # 主测试用例
 │   │   └── coverage/cases.json   # 测试覆盖定义
 │   └── mock-server/      # Mock Server（模拟 SDK 行为）
 │       └── codebuddy-sdk-mock-server.mjs
-├── docker-compose.yml    # 主服务编排
-├── docker-compose.ui-test.yml # UI 测试编排
+├── docker-compose.yml              # 主服务编排
+├── docker-compose.ui-test.yml      # UI 测试编排（含 sonarqube + scanner + creator）
+├── docker-compose-sonar-check.yml  # SonarQube CI 扫描编排
 ├── Dockerfile.backend    # 后端 Dockerfile
 ├── Dockerfile.frontend   # 前端 Dockerfile
 └── package.json          # 依赖与脚本
@@ -154,16 +160,16 @@ game-dev-studio/
 - 集成 Star‑Office‑UI 组件，实现双端联动。
 
 #### 8. E2E 测试 (`tests/ui/e2e/studio.spec.ts`)
-- 使用 Playwright 编写，覆盖 8 个核心场景：
+- 使用 Playwright 编写，覆盖 9 个核心场景：
   - UI‑001: 页面加载与基础布局
-  - UI‑002: 项目切换与状态同步
-  - UI‑003: 团队建设 Agent 流程
-  - UI‑004: 游戏策划 Agent 流程
-  - UI‑005: 架构师 Agent 流程
-  - UI‑006: 软件工程师 Agent 流程
-  - UI‑007: 游戏提交与列表更新
-  - UI‑008: 任务看板与状态流转
-- 每个场景均包含前置条件、操作步骤、预期结果。
+  - UI‑002: 语言切换
+  - UI‑003: 自动驾驶开关
+  - UI‑004: 创建并切换项目
+  - UI‑005: Tab 导航
+  - UI‑006: Star-Office-UI 加载与 Agent 状态同步
+  - UI‑007: 完整工作流（手动模式）
+  - UI‑008: 完整工作流（自动模式）
+  - UI‑009: 手动创建提案
 - 依赖 Mock Server 模拟 SDK 行为，确保测试可重复、不依赖外部服务。
 
 ##### E2E 测试架构
@@ -174,12 +180,20 @@ game-dev-studio/
 - **核心模式**: `runFullWorkflowTest()` — 目标状态驱动的事件循环，UI-007/008 共用
 - **数据流**: 测试 → Mock Admin API (port 3001) → 预设响应队列 → Agent 调用 /chat/completions → 匹配 (projectId, agentRole) → 返回预设响应
 
-###### Docker 服务依赖图
+###### Docker 服务依赖图（UI 测试）
 ```
 codebuddy-sdk-mock (:3001)     ← Mock Server
        ↓ (health check)
 star-office-ui (:19000)        ← Star Office 前端
        ↓ (health check)
+minio (:9000)                  ← 对象存储
+       ↓ (health check)
+sonarqube (:9000)              ← SonarQube 代码质量平台
+       ↓ (health check)
+scanner (:8081)                ← SonarQube Scanner 微服务
+       ↓ (service_started)
+creator (:8080)                ← Blender Creator 微服务
+       ↓ (service_started)
 studio-backend (:3000)         ← Express API + SSE
        ↓ (health check)
 ui-app (:4173)                 ← 前端静态文件 (nginx)

@@ -207,10 +207,11 @@ The lint framework uses a **pluggable registration architecture** (`server/lint/
 1. Create a new file in `server/lint/checkers/*.ts`
 2. Implement the `LintChecker` interface (id, name, description, `check()` method)
 3. Register it in `server/lint/checkers/index.ts` (add to `builtInCheckers` array)
-4. Built-in checkers: `html-structure` (6 error rules) + `http-method` (HTTP method safety, error-level) + `js-security` (4 warn rules) + `sonarqube` (quality scan, usually warn-level fallback on service unavailability)
+4. Built-in checkers: `html-structure` (6 error rules) + `http-method` (HTTP method safety, error-level) + `js-security` (4 warn rules) + `sonarqube` (quality scan via scanner microservice, any error blocks submission)
 5. Error-level issues **block** `submit_game`; warn-level issues are logged only
 6. `LintChecker.check()` supports both sync and async return values (`LintIssue[] | Promise<LintIssue[]>`)
 7. HTML mode checks `html_content`; ZIP mode checks every HTML file inside the package and stops on the first error, while passing the original ZIP buffer to checkers through `LintContext.zipBuffer`
+8. SonarQube checker: submits ZIP to scanner microservice (`sonar-scanner-service/`) → background scan → polls status → fetches issues from SonarQube REST API → caches raw issues by projectKey → appends `sonar-issues.json` to final ZIP
 
 ## 8. Local Development and Build
 

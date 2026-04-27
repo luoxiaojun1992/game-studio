@@ -130,7 +130,7 @@ data/studio.db     output/{project_id}/...
 ## 9. Deployment Topology
 
 - Local development: single-node backend + frontend dev server
-- Docker deployment: frontend/backend + creator service + SonarQube containerized (see `README-Docker.md`)
+- Docker deployment: frontend/backend + creator service + SonarQube + scanner microservice containerized (see `README-Docker.md`)
 - Runtime directories:
   - `data/` for SQLite DB
   - `output/` for generated artifacts
