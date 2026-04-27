@@ -84,20 +84,34 @@ def _ensure_token() -> str:
 _scan_states: dict[str, dict] = {}
 
 
+def _safe_scan_path(*parts: str) -> Path:
+    """
+    Build a path under SCANNER_ROOT and ensure it cannot escape the root.
+    """
+    root = Path(SCANNER_ROOT).resolve()
+    candidate = (root / Path(*parts)).resolve()
+    if candidate != root and root not in candidate.parents:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid project path",
+        )
+    return candidate
+
+
 def _scan_dir(project_id: str) -> Path:
-    return Path(SCANNER_ROOT) / project_id
+    return _safe_scan_path(project_id)
 
 
 def _zip_path(project_id: str) -> Path:
-    return Path(SCANNER_ROOT) / project_id / "game.zip"
+    return _safe_scan_path(project_id, "game.zip")
 
 
 def _extract_dir(project_id: str) -> Path:
-    return Path(SCANNER_ROOT) / project_id / "sources"
+    return _safe_scan_path(project_id, "sources")
 
 
 def _log_path(project_id: str) -> Path:
-    return Path(SCANNER_ROOT) / project_id / "scan.log"
+    return _safe_scan_path(project_id, "scan.log")
 
 
 def _ensure_sonar_project(project_key: str) -> None:
