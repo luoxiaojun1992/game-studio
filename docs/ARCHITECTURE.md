@@ -15,23 +15,45 @@ Game Dev Studio is a multi-agent game development workspace:
 
 ## 2. High-Level Architecture
 
-```text
-Browser (React + Vite)
-  ├─ HTTP/REST  ───────────────┐
-  └─ SSE (/api/observe) ───────┤
-                                ▼
-Backend (Express + TypeScript)
-  ├─ Agent Manager / Tool Runtime
-  ├─ Project + Proposal + Task + Handoff APIs
-  ├─ Game Artifact APIs
-  ├─ Creator Service Client (Blender API bridge)
-  ├─ Log/Event Broadcasting (SSE)
-  ├─ SQLite Persistence
-  └─ Star-Office Sync Service
-                 │                    │
-      ┌──────────┴─────────┐          ▼
-      ▼                    ▼   Creator Service (FastAPI + Blender)
-data/studio.db     output/{project_id}/...
+```mermaid
+graph TB
+    subgraph "Frontend"
+        Browser["Browser<br/>React + Vite"]
+    end
+
+    subgraph "Backend"
+        BE["Backend<br/>Express + TypeScript"]
+    end
+
+    subgraph "External Services"
+        MinIO["MinIO<br/>Object Storage"]
+        Sonar["SonarQube<br/>Code Quality"]
+        StarOffice["Star-Office-UI"]
+    end
+
+    subgraph "Microservices"
+        Creator["Creator Service<br/>FastAPI + Blender"]
+        Scanner["Scanner Service<br/>FastAPI + sonar-scanner CLI"]
+    end
+
+    subgraph "Persistence"
+        SQLite[("SQLite<br/>data/studio.db")]
+        Output["output/{project_id}/..."]
+    end
+
+    Browser -->|HTTP / REST| BE
+    Browser -->|SSE /api/observe| BE
+
+    BE -->|HTTP| Creator
+    BE -->|Upload / Download| MinIO
+    BE -->|SQL| SQLite
+    BE -->|File I/O| Output
+    BE -->|HTTP API| Scanner
+    BE -.->|Sync| StarOffice
+
+    Scanner -->|sonar-scanner CLI| Sonar
+    Sonar -->|Issues / Quality Gate| Scanner
+    Scanner -->|Scan Result| BE
 ```
 
 ## 3. Runtime Components

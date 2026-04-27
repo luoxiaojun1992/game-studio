@@ -15,23 +15,45 @@ Game Dev Studio 是一个多 Agent 游戏研发工作台，包含：
 
 ## 2. 高层架构
 
-```text
-浏览器 (React + Vite)
-  ├─ HTTP/REST  ───────────────┐
-  └─ SSE (/api/observe) ───────┤
-                                ▼
-后端 (Express + TypeScript)
-  ├─ Agent Manager / Tool Runtime
-  ├─ Project + Proposal + Task + Handoff APIs
-  ├─ Game Artifact APIs
-  ├─ Creator Service Client（Blender API 桥接）
-  ├─ 日志/事件广播 (SSE)
-  ├─ SQLite 持久化
-  └─ Star-Office 同步服务
-                 │                    │
-      ┌──────────┴─────────┐          ▼
-      ▼                    ▼   Creator Service（FastAPI + Blender）
-data/studio.db     output/{project_id}/...
+```mermaid
+graph TB
+    subgraph "前端"
+        Browser["浏览器<br/>React + Vite"]
+    end
+
+    subgraph "后端"
+        BE["后端<br/>Express + TypeScript"]
+    end
+
+    subgraph "外部服务"
+        MinIO["MinIO<br/>对象存储"]
+        Sonar["SonarQube<br/>代码质量"]
+        StarOffice["Star-Office-UI"]
+    end
+
+    subgraph "微服务"
+        Creator["Creator Service<br/>FastAPI + Blender"]
+        Scanner["Scanner Service<br/>FastAPI + sonar-scanner CLI"]
+    end
+
+    subgraph "持久化"
+        SQLite[("SQLite<br/>data/studio.db")]
+        Output["output/{project_id}/..."]
+    end
+
+    Browser -->|HTTP / REST| BE
+    Browser -->|SSE /api/observe| BE
+
+    BE -->|HTTP| Creator
+    BE -->|上传 / 下载| MinIO
+    BE -->|SQL| SQLite
+    BE -->|文件读写| Output
+    BE -->|HTTP API| Scanner
+    BE -.->|同步| StarOffice
+
+    Scanner -->|sonar-scanner CLI| Sonar
+    Sonar -->|Issues / 质量门禁| Scanner
+    Scanner -->|扫描结果| BE
 ```
 
 ## 3. 运行时组件
