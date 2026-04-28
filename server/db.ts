@@ -278,6 +278,18 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS idx_blender_projects_project ON blender_projects(project_id);
+
+  -- Draw.io 图表项目表（关联 studio project 与 drawio service project）
+  CREATE TABLE IF NOT EXISTS drawio_projects (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL,
+    drawio_project_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_drawio_projects_project ON drawio_projects(project_id);
 `);
 ensureProject('default');
 export interface DbAgentSession {
@@ -398,6 +410,15 @@ export interface DbBlenderProject {
   id: string;
   project_id: string;
   blender_project_id: string;
+  name: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DbDrawioProject {
+  id: string;
+  project_id: string;
+  drawio_project_id: string;
   name: string;
   created_at: string;
   updated_at: string;
@@ -1410,6 +1431,75 @@ export function updateBlenderProject(id: string, updates: { blender_project_id?:
 
 export function deleteBlenderProject(id: string): boolean {
   const stmt = db.prepare('DELETE FROM blender_projects WHERE id = ?');
+  const result = stmt.run(id);
+  return result.changes > 0;
+}
+
+// ============================================================================
+// DrawioProject CRUD（图表 project，关联 studio project 与 drawio service）
+// ============================================================================
+
+export function getDrawioProjects(projectId: string): DbDrawioProject[] {
+  const stmt = db.prepare('SELECT * FROM drawio_projects WHERE project_id = ? ORDER BY created_at DESC');
+  return stmt.all(projectId) as DbDrawioProject[];
+}
+
+export function getDrawioProject(id: string): DbDrawioProject | null {
+  const stmt = db.prepare('SELECT * FROM drawio_projects WHERE id = ?');
+  const result = stmt.get(id) as DbDrawioProject | undefined;
+  return result ?? null;
+}
+
+export function createDrawioProject(data: {
+  id: string;
+  project_id: string;
+  drawio_project_id: string;
+  name: string;
+  created_at: string;
+  updated_at: string;
+}): DbDrawioProject {
+  const normalizedProjectId = normalizeAndValidateRequiredText(data.project_id, 'project_id');
+  const normalizedName = normalizeAndValidateRequiredText(data.name, 'name');
+  if (normalizedName.length > MAX_FILENAME_LENGTH) {
+    throw new Error(`name too long: max ${MAX_FILENAME_LENGTH} chars`);
+  }
+  const stmt = db.prepare(`
+    INSERT INTO drawio_projects (id, project_id, drawio_project_id, name, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `);
+  stmt.run(data.id, normalizedProjectId, data.drawio_project_id, normalizedName, data.created_at, data.updated_at);
+  return {
+    id: data.id,
+    project_id: normalizedProjectId,
+    drawio_project_id: data.drawio_project_id,
+    name: normalizedName,
+    created_at: data.created_at,
+    updated_at: data.updated_at,
+  };
+}
+
+export function updateDrawioProject(id: string, updates: { drawio_project_id?: string; name?: string }): boolean {
+  const fields: string[] = [];
+  const values: any[] = [];
+  if (updates.drawio_project_id !== undefined) {
+    fields.push('drawio_project_id = ?');
+    values.push(updates.drawio_project_id);
+  }
+  if (updates.name !== undefined) {
+    fields.push('name = ?');
+    values.push(updates.name);
+  }
+  if (fields.length === 0) return false;
+  fields.push('updated_at = ?');
+  values.push(new Date().toISOString());
+  values.push(id);
+  const stmt = db.prepare(`UPDATE drawio_projects SET ${fields.join(', ')} WHERE id = ?`);
+  const result = stmt.run(...values);
+  return result.changes > 0;
+}
+
+export function deleteDrawioProject(id: string): boolean {
+  const stmt = db.prepare('DELETE FROM drawio_projects WHERE id = ?');
   const result = stmt.run(id);
   return result.changes > 0;
 }

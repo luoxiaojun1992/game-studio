@@ -33,6 +33,21 @@ import {
   type DownloadModelFileOptions,
   type DeleteModelFileOptions,
 } from './creator-service.js';
+import {
+  createDrawioProject,
+  listDrawioProjects,
+  deleteDrawioProject,
+  createDiagram,
+  addShape,
+  addConnector,
+  downloadDiagram,
+  type CreateDrawioProjectOptions,
+  type DeleteDrawioProjectOptions,
+  type DrawioCreateDiagramOptions,
+  type DrawioAddShapeOptions,
+  type DrawioAddConnectorOptions,
+  type DownloadDiagramOptions,
+} from './drawio-service.js';
 
 /**
  */
@@ -1160,6 +1175,232 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           await deleteModelFile(opts);
           return {
             content: [{ type: 'text' as const, text: `已删除模型文件：${filename}（远程 + 本地）` }]
+          };
+        }
+      ),
+
+      // ---- Draw.io / 图表工具（仅 engineer 可用）----
+
+      tool(
+        'drawio_create_project',
+        '创建 draw.io 图表 project（仅 engineer 可用）。在 backend 数据库创建记录，然后调用 drawio service 创建项目目录，返回 drawio_project_id。',
+        {
+          name: z.string().min(1).max(50).describe('图表 project 名称'),
+        },
+        async ({ name }) => {
+          const opts: CreateDrawioProjectOptions = {
+            projectId: scopedProjectId,
+            name,
+            agentId,
+            logFn: log,
+          };
+          const { dbId, drawioProjectId } = await createDrawioProject(opts);
+          return {
+            content: [{
+              type: 'text' as const,
+              text: `图表 project 已创建 (DB ID: ${dbId.slice(0, 8)}, drawio_project_id: ${drawioProjectId})，名称: ${name}`,
+            }]
+          };
+        }
+      ),
+
+      tool(
+        'drawio_list_projects',
+        '列出当前 studio project 下所有图表 project（仅 engineer 可用）。',
+        {
+          limit: z.number().min(1).max(50).optional().default(20).describe('返回条数上限'),
+        },
+        async ({ limit }) => {
+          const records = listDrawioProjects(scopedProjectId, limit || 20);
+          if (records.length === 0) {
+            return { content: [{ type: 'text' as const, text: '暂无图表 project。' }] };
+          }
+          const lines = records.map(r =>
+            `[${r.id.slice(0, 8)}] ${r.name} | drawio_project_id=${r.drawio_project_id} | ${r.created_at.slice(0, 10)}`
+          ).join('\n');
+          return { content: [{ type: 'text' as const, text: lines }] };
+        }
+      ),
+
+      tool(
+        'drawio_delete_project',
+        '删除图表 project（仅 engineer 可用）。先调用 drawio service 删除远程目录（幂等），再删除 backend DB 记录。',
+        {
+          drawio_project_id: z.string().describe('drawio_project_id（来自 drawio_create_project 的返回值）'),
+        },
+        async ({ drawio_project_id }) => {
+          if (!drawio_project_id || typeof drawio_project_id !== 'string') {
+            throw new Error('drawio_project_id 不能为空');
+          }
+          const opts: DeleteDrawioProjectOptions = {
+            projectId: scopedProjectId,
+            drawioProjectId: drawio_project_id.trim(),
+            agentId,
+            logFn: log,
+          };
+          await deleteDrawioProject(opts);
+          return {
+            content: [{ type: 'text' as const, text: `图表 project 已删除 (drawio_project_id: ${drawio_project_id})` }]
+          };
+        }
+      ),
+
+      tool(
+        'drawio_create_diagram',
+        '在图表 project 中创建一个新图表（仅 engineer 可用）。返回 diagram_id，后续 add_shape/add_connector 需要用到。',
+        {
+          drawio_project_id: z.string().describe('drawio_project_id'),
+          name: z.string().min(1).max(100).describe('图表名称'),
+        },
+        async ({ drawio_project_id, name }) => {
+          if (!drawio_project_id || typeof drawio_project_id !== 'string') {
+            throw new Error('drawio_project_id 不能为空');
+          }
+          const opts: DrawioCreateDiagramOptions = {
+            drawioProjectId: drawio_project_id.trim(),
+            name,
+            agentId,
+            logFn: log,
+          };
+          const { diagramId } = await createDiagram(opts);
+          return {
+            content: [{
+              type: 'text' as const,
+              text: `图表已创建 (diagram_id: ${diagramId})，名称: ${name}`,
+            }]
+          };
+        }
+      ),
+
+      tool(
+        'drawio_add_shape',
+        '向图表添加一个形状（仅 engineer 可用）。支持矩形、椭圆、菱形、六边形、圆柱、云形等多种形状类型。返回 shape_id，后续 add_connector 需要用到。',
+        {
+          drawio_project_id: z.string().describe('drawio_project_id'),
+          diagram_id: z.string().describe('diagram_id（来自 drawio_create_diagram）'),
+          shape_type: z.enum([
+            'rectangle', 'ellipse', 'diamond', 'parallelogram',
+            'hexagon', 'cylinder', 'cloud', 'process',
+            'decision', 'document', 'person', 'database'
+          ]).describe('形状类型'),
+          label: z.string().describe('形状内显示的文本'),
+          x: z.number().describe('X 坐标'),
+          y: z.number().describe('Y 坐标'),
+          width: z.number().optional().default(120).describe('宽度'),
+          height: z.number().optional().default(60).describe('高度'),
+          fill_color: z.string().optional().describe('填充颜色，如 #dae8fc'),
+          stroke_color: z.string().optional().describe('边框颜色'),
+        },
+        async ({ drawio_project_id, diagram_id, shape_type, label, x, y, width, height, fill_color, stroke_color }) => {
+          if (!drawio_project_id || typeof drawio_project_id !== 'string') {
+            throw new Error('drawio_project_id 不能为空');
+          }
+          if (!diagram_id || typeof diagram_id !== 'string') {
+            throw new Error('diagram_id 不能为空');
+          }
+          const style: { fillColor?: string; strokeColor?: string } = {};
+          if (fill_color) style.fillColor = fill_color;
+          if (stroke_color) style.strokeColor = stroke_color;
+          const opts: DrawioAddShapeOptions = {
+            drawioProjectId: drawio_project_id.trim(),
+            diagramId: diagram_id.trim(),
+            shapeType: shape_type,
+            label,
+            x,
+            y,
+            width,
+            height,
+            style: Object.keys(style).length > 0 ? style : undefined,
+            agentId,
+            logFn: log,
+          };
+          const shapeId = await addShape(opts);
+          return {
+            content: [{ type: 'text' as const, text: `已添加 ${shape_type} "${label}"，shape_id: ${shapeId}` }]
+          };
+        }
+      ),
+
+      tool(
+        'drawio_add_connector',
+        '将两个形状用连接线连接起来（仅 engineer 可用）。支持直线、肘形、曲线等多种连接线类型，可设置箭头。',
+        {
+          drawio_project_id: z.string().describe('drawio_project_id'),
+          diagram_id: z.string().describe('diagram_id'),
+          from_shape_id: z.string().describe('起点形状 ID（add_shape 返回值）'),
+          to_shape_id: z.string().describe('终点形状 ID（add_shape 返回值）'),
+          label: z.string().optional().describe('连接线上显示的文本'),
+          connector_type: z.enum(['straight', 'orthogonal', 'elbow', 'curved'])
+            .optional().default('straight').describe('连接线类型'),
+          arrow_start: z.boolean().optional().default(false).describe('起点是否加箭头'),
+          arrow_end: z.boolean().optional().default(true).describe('终点是否加箭头（默认加）'),
+          stroke_color: z.string().optional().describe('线条颜色'),
+          stroke_width: z.number().optional().default(1).describe('线条粗细'),
+        },
+        async ({ drawio_project_id, diagram_id, from_shape_id, to_shape_id, label, connector_type, arrow_start, arrow_end, stroke_color, stroke_width }) => {
+          if (!drawio_project_id || typeof drawio_project_id !== 'string') {
+            throw new Error('drawio_project_id 不能为空');
+          }
+          if (!diagram_id || typeof diagram_id !== 'string') {
+            throw new Error('diagram_id 不能为空');
+          }
+          const style: { strokeColor?: string; strokeWidth?: number } = {};
+          if (stroke_color) style.strokeColor = stroke_color;
+          if (stroke_width) style.strokeWidth = stroke_width;
+          const opts: DrawioAddConnectorOptions = {
+            drawioProjectId: drawio_project_id.trim(),
+            diagramId: diagram_id.trim(),
+            fromShapeId: from_shape_id.trim(),
+            toShapeId: to_shape_id.trim(),
+            label,
+            connectorType: connector_type,
+            arrowStart: arrow_start,
+            arrowEnd: arrow_end,
+            style: Object.keys(style).length > 0 ? style : undefined,
+            agentId,
+            logFn: log,
+          };
+          const connectorId = await addConnector(opts);
+          return {
+            content: [{ type: 'text' as const, text: `已连接 ${from_shape_id} → ${to_shape_id}，connector_id: ${connectorId}` }]
+          };
+        }
+      ),
+
+      tool(
+        'drawio_download_diagram',
+        '将图表导出为 PNG/SVG/PDF 并下载到本地 output 目录（仅 engineer 可用）。',
+        {
+          drawio_project_id: z.string().describe('drawio_project_id'),
+          diagram_id: z.string().describe('diagram_id'),
+          filename: z.string().optional().describe('输出文件名（含扩展名）'),
+          format: z.enum(['png', 'svg', 'pdf', 'xml']).optional().default('png').describe('导出格式'),
+          scale: z.number().optional().default(1.0).describe('PNG 缩放比例'),
+        },
+        async ({ drawio_project_id, diagram_id, filename, format, scale }) => {
+          if (!drawio_project_id || typeof drawio_project_id !== 'string') {
+            throw new Error('drawio_project_id 不能为空');
+          }
+          if (!diagram_id || typeof diagram_id !== 'string') {
+            throw new Error('diagram_id 不能为空');
+          }
+          const pathModule = await import('path');
+          const localOutputDir = pathModule.resolve(__dirname, '..', 'output', scopedProjectId, 'diagrams');
+          const opts: DownloadDiagramOptions = {
+            drawioProjectId: drawio_project_id.trim(),
+            diagramId: diagram_id.trim(),
+            localOutputDir,
+            filename,
+            format,
+            agentId,
+            logFn: log,
+          };
+          const { localPath, sizeBytes } = await downloadDiagram(opts);
+          return {
+            content: [{
+              type: 'text' as const,
+              text: `图表已导出到：${localPath} (${sizeBytes} bytes)`,
+            }]
           };
         }
       ),
