@@ -51,6 +51,7 @@ services:
       - MINIO_USE_SSL=false
       - MINIO_BUCKET=game-files
       - CREATOR_SERVICE_URL=http://creator:8080
+      - DRAWIO_SERVICE_URL=http://drawio-service:8082
       - SCANNER_SERVICE_URL=http://scanner:8081
       - STAR_OFFICE_JOIN_KEY=${STAR_OFFICE_JOIN_KEY:-ocj_example_team_01}
       - SONARQUBE_HOST=http://sonarqube:9000
@@ -66,6 +67,8 @@ services:
       sonarqube:
         condition: service_healthy
       creator:
+        condition: service_started
+      drawio-service:
         condition: service_started
       scanner:
         condition: service_started
@@ -111,6 +114,47 @@ services:
       timeout: 10s
       retries: 5
       start_period: 30s
+
+  drawio-service:
+    build:
+      context: ./drawio-service
+      dockerfile: Dockerfile
+    environment:
+      - DRAWIO_SERVICE_PORT=8082
+      - DRAWIO_EXPORT_URL=http://drawio-export:8080/export
+    ports:
+      - "8082:8082"
+    volumes:
+      - drawio-data:/app/data
+    networks:
+      - default
+    depends_on:
+      drawio-export:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  drawio-export:
+    image: jgraph/drawio:latest
+    environment:
+      - DRAWIO_VIEWER=false
+      - DRAWIO_RELATIVE_URL=false
+      - DRAWIO_SAVE_URL=false
+      - DRAWIO_DISABLED_EXPORT=false
+      - JGRAPH_URL_BASE=http://drawio-export:8080
+    ports:
+      - "8083:8080"
+    networks:
+      - default
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   scanner:
     build:
@@ -205,3 +249,4 @@ volumes:
   sonarqube-data:
   sonarqube-logs:
   sonarqube-extensions:
+  drawio-data:
