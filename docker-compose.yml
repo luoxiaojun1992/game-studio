@@ -46,6 +46,7 @@ services:
       - MINIO_USE_SSL=false
       - MINIO_BUCKET=game-files
       - CREATOR_SERVICE_URL=http://creator:8080
+      - DRAWIO_SERVICE_URL=http://drawio-service:8082
       - SCANNER_SERVICE_URL=http://scanner:8081
       - SONARQUBE_HOST=http://sonarqube:9000
       - SONARQUBE_USER=admin
@@ -61,6 +62,8 @@ services:
       sonarqube:
         condition: service_healthy
       creator:
+        condition: service_started
+      drawio-service:
         condition: service_started
       scanner:
         condition: service_started
@@ -164,6 +167,50 @@ services:
       start_period: 30s
     restart: unless-stopped
 
+  # Draw.io 图表微服务（FastAPI）
+  drawio-service:
+    build:
+      context: ./drawio-service
+      dockerfile: Dockerfile
+    container_name: game-studio-drawio-service
+    ports:
+      - "${DRAWIO_SERVICE_PORT:-8082}:8082"
+    environment:
+      - DRAWIO_SERVICE_PORT=8082
+      - DRAWIO_EXPORT_URL=http://drawio-export:8080/export
+    volumes:
+      - drawio-data:/app/data
+    networks:
+      - game-studio-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  # Draw.io Export Server（官方 jgraph/drawio 镜像）
+  drawio-export:
+    image: jgraph/drawio:latest
+    container_name: game-studio-drawio-export
+    ports:
+      - "${DRAWIO_EXPORT_PORT:-8083}:8080"
+    environment:
+      - DRAWIO_VIEWER=false
+      - DRAWIO_RELATIVE_URL=false
+      - DRAWIO_SAVE_URL=false
+      - DRAWIO_DISABLED_EXPORT=false
+      - JGRAPH_URL_BASE=http://drawio-export:8080
+    networks:
+      - game-studio-network
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
   # Sonar Scanner 微服务（SonarScanner CLI + FastAPI）
   scanner:
     build:
@@ -199,6 +246,8 @@ volumes:
   creator-data:
     driver: local
   scanner-data:
+    driver: local
+  drawio-data:
     driver: local
   sonarqube-data:
     driver: local
