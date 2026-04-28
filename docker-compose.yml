@@ -182,6 +182,9 @@ services:
       - drawio-data:/app/data
     networks:
       - game-studio-network
+    depends_on:
+      drawio-export:
+        condition: service_started
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8082/health"]
       interval: 30s
