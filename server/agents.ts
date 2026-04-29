@@ -84,7 +84,7 @@ const TOOLS_OVERVIEW = `
 | \`split_dev_test_tasks\` | 将需求拆分为开发任务和测试任务 | **engineer** |
 | \`get_tasks\` | 查询任务看板任务 | 全员 |
 | \`update_task_status\` | 更新任务看板状态（遵循状态流转约束） | **engineer** |
-| \`submit_proposal\` | 提交策划案或方案文档 | 全员 |
+| \`submit_proposal\` | 提交策划案或方案文档（支持通过 attachment_storage_ids 关联最多 10 个图表附件） | 全员 |
 | \`submit_game\` | 提交游戏成品（支持 HTML 文本或文件打包模式） | **engineer** |
 | \`get_agents\` | 查询所有 Agent 信息（含 agent_id） | 全员 |
 | \`get_proposals\` | 查询已有的提案列表 | 全员 |
@@ -100,6 +100,13 @@ const TOOLS_OVERVIEW = `
 
 | \`blender_download_model_file\` | 从 creator service 下载模型文件到本地 output 目录 | **engineer** |
 | \`blender_delete_model_file\` | 删除 creator 远程模型文件（幂等） | **engineer** |
+| \`drawio_create_project\` | 创建 draw.io 图表 project（调用 drawio service） | 全员 |
+| \`drawio_list_projects\` | 列出当前项目下所有 draw.io 图表 project | 全员 |
+| \`drawio_delete_project\` | 删除 draw.io 图表 project（幂等） | 全员 |
+| \`drawio_create_diagram\` | 在图表 project 中创建新图表，返回 diagram_id | 全员 |
+| \`drawio_add_shape\` | 向图表添加形状（矩形/椭圆/菱形/六边形/圆柱/云等） | 全员 |
+| \`drawio_add_connector\` | 将两个形状用连接线连接起来（支持直线/肘形/曲线） | 全员 |
+| \`drawio_download_diagram\` | 导出图表为 PNG/SVG/PDF/XML 并**自动上传到 MinIO**，返回 file_storage_id（可传入 submit_proposal 的 attachment_storage_ids） | 全员 |
 
 这些工具会自动执行，无需人工审批。请根据工作需要主动使用它们。
 

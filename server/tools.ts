@@ -40,13 +40,11 @@ import {
   createDiagram,
   addShape,
   addConnector,
-  downloadDiagram,
   type CreateDrawioProjectOptions,
   type DeleteDrawioProjectOptions,
   type DrawioCreateDiagramOptions,
   type DrawioAddShapeOptions,
   type DrawioAddConnectorOptions,
-  type DownloadDiagramOptions,
 } from './drawio-service.js';
 
 /**
@@ -398,15 +396,16 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
       ),
       tool(
         'submit_proposal',
-        '提交一份策划案或方案文档（如游戏策划案、商业策划案、技术方案等）。提案提交后将通知管理者进行审批。',
+        '提交一份策划案或方案文档（如游戏策划案、商业策划案、技术方案等）。提案提交后将通知管理者进行审批。可通过 attachment_storage_ids 参数关联最多 10 个图表附件（来自 drawio_download_diagram 返回的 file_storage_id）。',
         {
           type: z.enum(db.PROPOSAL_TYPES).describe(
             '提案类型：game_design=游戏策划, biz_design=商业策划, tech_arch=架构方案, tech_impl=技术方案'
           ),
           title: singleLineTitleSchema('title').describe('提案标题'),
-          content: requiredTextSchema('content').describe('提案的完整内容（Markdown 格式）')
+          content: requiredTextSchema('content').describe('提案的完整内容（Markdown 格式）'),
+          attachment_storage_ids: z.array(z.string().uuid()).max(10).optional().describe('关联的附件 file_storage_id 列表（最多 10 个），来自 drawio_download_diagram 返回的 file_storage_id')
         },
-        async ({ type, title, content }) => {
+        async ({ type, title, content, attachment_storage_ids }) => {
           if (type === 'game_design') {
             validateAgentPermission(['game_designer'], '提交游戏策划案');
           } else if (type === 'biz_design') {
@@ -418,6 +417,12 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           } else if (type === 'ceo_review') {
             validateAgentPermission(['ceo'], '提交 CEO 评审结论');
           }
+
+          // 校验附件数量
+          if (attachment_storage_ids && attachment_storage_ids.length > 10) {
+            return { content: [{ type: 'text' as const, text: '附件数量不能超过 10 个' }] };
+          }
+
           const now = new Date().toISOString();
           const proposal = db.createProposal({
             id: uuidv4(),
@@ -436,11 +441,36 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
             created_at: now,
             updated_at: now
           });
+
+          // 关联附件
+          if (attachment_storage_ids && attachment_storage_ids.length > 0) {
+            for (const storageId of attachment_storage_ids) {
+              const storage = db.getFileStorage(storageId.trim());
+              if (!storage) {
+                log(agentId, '关联附件', `file_storage_id ${storageId} 不存在，跳过`, 'warn');
+                continue;
+              }
+              try {
+                db.createProposalAttachment({
+                  id: uuidv4(),
+                  proposal_id: proposal.id,
+                  file_storage_id: storageId.trim(),
+                  source_type: 'drawio_export',
+                  custom_name: null,
+                  created_at: now,
+                });
+              } catch (error: any) {
+                log(agentId, '关联附件', `创建附件记录失败: ${error?.message || String(error)}`, 'warn');
+              }
+            }
+            log(agentId, '关联附件', `已关联 ${attachment_storage_ids.length} 个附件到提案 ${proposal.id.slice(0, 8)}`, 'success');
+          }
+
           const filePath = db.saveProposalToFile(proposal);
           sseBroadcaster.broadcast({ type: 'proposal_created', proposal, filePath }, scopedProjectId);
           log(agentId, '提交提案', `提案: ${title}${filePath ? ' → 已保存' : ''}`, 'success');
           return {
-            content: [{ type: 'text' as const, text: `提案已提交 (ID: ${proposal.id.slice(0, 8)})，等待审批。` }]
+            content: [{ type: 'text' as const, text: `提案已提交 (ID: ${proposal.id.slice(0, 8)})，等待审批。${attachment_storage_ids?.length ? ` 已关联 ${attachment_storage_ids.length} 个附件。` : ''}` }]
           };
         }
       ),
@@ -1179,11 +1209,11 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         }
       ),
 
-      // ---- Draw.io / 图表工具（仅 engineer 可用）----
+      // ---- Draw.io / 图表工具（全员可用）----
 
       tool(
         'drawio_create_project',
-        '创建 draw.io 图表 project（仅 engineer 可用）。在 backend 数据库创建记录，然后调用 drawio service 创建项目目录，返回 drawio_project_id。',
+        '创建 draw.io 图表 project。在 backend 数据库创建记录，然后调用 drawio service 创建项目目录，返回 drawio_project_id。',
         {
           name: z.string().min(1).max(50).describe('图表 project 名称'),
         },
@@ -1206,7 +1236,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
       tool(
         'drawio_list_projects',
-        '列出当前 studio project 下所有图表 project（仅 engineer 可用）。',
+        '列出当前 studio project 下所有图表 project。',
         {
           limit: z.number().min(1).max(50).optional().default(20).describe('返回条数上限'),
         },
@@ -1224,7 +1254,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
       tool(
         'drawio_delete_project',
-        '删除图表 project（仅 engineer 可用）。先调用 drawio service 删除远程目录（幂等），再删除 backend DB 记录。',
+        '删除图表 project。先调用 drawio service 删除远程目录（幂等），再删除 backend DB 记录。',
         {
           drawio_project_id: z.string().describe('drawio_project_id（来自 drawio_create_project 的返回值）'),
         },
@@ -1247,7 +1277,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
       tool(
         'drawio_create_diagram',
-        '在图表 project 中创建一个新图表（仅 engineer 可用）。返回 diagram_id，后续 add_shape/add_connector 需要用到。',
+        '在图表 project 中创建一个新图表。返回 diagram_id，后续 add_shape/add_connector 需要用到。',
         {
           drawio_project_id: z.string().describe('drawio_project_id'),
           name: z.string().min(1).max(100).describe('图表名称'),
@@ -1274,7 +1304,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
       tool(
         'drawio_add_shape',
-        '向图表添加一个形状（仅 engineer 可用）。支持矩形、椭圆、菱形、六边形、圆柱、云形等多种形状类型。返回 shape_id，后续 add_connector 需要用到。',
+        '向图表添加一个形状。支持矩形、椭圆、菱形、六边形、圆柱、云形等多种形状类型。返回 shape_id，后续 add_connector 需要用到。',
         {
           drawio_project_id: z.string().describe('drawio_project_id'),
           diagram_id: z.string().describe('diagram_id（来自 drawio_create_diagram）'),
@@ -1323,7 +1353,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
       tool(
         'drawio_add_connector',
-        '将两个形状用连接线连接起来（仅 engineer 可用）。支持直线、肘形、曲线等多种连接线类型，可设置箭头。',
+        '将两个形状用连接线连接起来。支持直线、肘形、曲线等多种连接线类型，可设置箭头。',
         {
           drawio_project_id: z.string().describe('drawio_project_id'),
           diagram_id: z.string().describe('diagram_id'),
@@ -1369,7 +1399,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
       tool(
         'drawio_download_diagram',
-        '将图表导出为 PNG/SVG/PDF 并下载到本地 output 目录（仅 engineer 可用）。',
+        '将图表导出为 PNG/SVG/PDF/XML 并下载到本地 output 目录，同时自动上传到 MinIO 存储（object_key: design/{project_id}/{UUID}.{format}），返回 file_storage_id。可在提交策划案时作为附件传入 attachment_storage_ids。',
         {
           drawio_project_id: z.string().describe('drawio_project_id'),
           diagram_id: z.string().describe('diagram_id'),
@@ -1377,7 +1407,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           format: z.enum(['png', 'svg', 'pdf', 'xml']).optional().default('png').describe('导出格式'),
           scale: z.number().optional().default(1.0).describe('PNG 缩放比例'),
         },
-        async ({ drawio_project_id, diagram_id, filename, format, scale }) => {
+        async ({ drawio_project_id, diagram_id, filename, format }) => {
           if (!drawio_project_id || typeof drawio_project_id !== 'string') {
             throw new Error('drawio_project_id 不能为空');
           }
@@ -1385,21 +1415,56 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
             throw new Error('diagram_id 不能为空');
           }
           const pathModule = await import('path');
+          const fsModule = await import('fs');
           const localOutputDir = pathModule.resolve(__dirname, '..', 'output', scopedProjectId, 'diagrams');
-          const opts: DownloadDiagramOptions = {
+
+          // 1. 调用 drawio service 导出图表 Buffer
+          const { exportDiagram } = await import('./drawio-service.js');
+          const effectiveFormat = format || 'png';
+          const safeFilename = (filename || `${diagram_id}.${effectiveFormat}`).trim();
+          const fileUuid = uuidv4();
+          const objectKey = `design/${fileUuid}.${effectiveFormat}`;
+
+          const buffer = await exportDiagram({
             drawioProjectId: drawio_project_id.trim(),
             diagramId: diagram_id.trim(),
-            localOutputDir,
-            filename,
-            format,
-            agentId,
-            logFn: log,
-          };
-          const { localPath, sizeBytes } = await downloadDiagram(opts);
+            format: effectiveFormat,
+          });
+
+          // 2. 保存到本地 output 目录
+          if (!fsModule.existsSync(localOutputDir)) {
+            fsModule.mkdirSync(localOutputDir, { recursive: true });
+          }
+          const localPath = pathModule.resolve(localOutputDir, safeFilename);
+          fsModule.writeFileSync(localPath, buffer);
+
+          // 3. 上传到 MinIO（内部函数，不走外部 API）
+          let fileStorageId: string;
+          const contentType = effectiveFormat === 'png' ? 'image/png'
+            : effectiveFormat === 'svg' ? 'image/svg+xml'
+            : effectiveFormat === 'pdf' ? 'application/pdf'
+            : 'application/xml';
+          try {
+            const { storage, fullObjectKey } = await createFileStorageRecord({
+              project_id: scopedProjectId,
+              object_key: objectKey,
+              file_name: safeFilename,
+              file_size: buffer.length,
+              content_type: contentType,
+            });
+            fileStorageId = storage.id;
+            await uploadBuffer(buffer, fullObjectKey, contentType);
+            log(agentId, '图表上传 MinIO', `design 文件已上传: ${fullObjectKey}`, 'success');
+          } catch (error: any) {
+            return {
+              content: [{ type: 'text' as const, text: `图表已保存到本地 ${localPath}，但上传 MinIO 失败：${error?.message || String(error)}` }]
+            };
+          }
+
           return {
             content: [{
               type: 'text' as const,
-              text: `图表已导出到：${localPath} (${sizeBytes} bytes)`,
+              text: `图表已导出到：${localPath} (${buffer.length} bytes)，已上传 MinIO (file_storage_id: ${fileStorageId})。在提交策划案时传入 attachment_storage_ids: ["${fileStorageId}"] 可将此图表作为附件关联到策划案。`,
             }]
           };
         }

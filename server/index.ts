@@ -10,6 +10,7 @@ import { sseBroadcaster } from './sse-broadcaster.js';
 import { starOfficeSyncService } from './star-office-sync.js';
 import { StreamEvent } from './agent-manager.js';
 import fileStorageRouter from './file-storage.js';
+import proposalAttachmentsRouter from './proposal-attachments-api.js';
 import { globalTokenManager, SonarQubeClient } from './lint/checkers/sonar/sonarqube.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -922,6 +923,7 @@ db.ensureOutputDir();
 
 // FileStorage API（MinIO 对象管理）
 app.use('/api/file-storage', fileStorageRouter);
+app.use('/api/proposals', proposalAttachmentsRouter);
 
 app.use('/output', express.static(path.join(__dirname, '..', 'output'), {
   setHeaders: (res, filePath) => {

@@ -41,6 +41,24 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ decision, comment })
     }).then(r => r.json()),
+  getProposalAttachments: (proposalId: string) =>
+    fetch(`${API_BASE}/api/proposals/${proposalId}/attachments`).then(r => r.json()),
+  uploadProposalAttachment: (proposalId: string, file: File, customName?: string) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (customName) formData.append('custom_name', customName);
+    return fetch(`${API_BASE}/api/proposals/${proposalId}/attachments`, {
+      method: 'POST',
+      body: formData,
+    }).then(r => r.json());
+  },
+  getProposalAttachmentDownloadUrl: async (proposalId: string, attachmentId: string) => {
+    const res = await fetch(`${API_BASE}/api/proposals/${proposalId}/attachments/${attachmentId}/download`);
+    if (!res.ok) throw new Error('获取下载链接失败');
+    return res.json() as Promise<{ downloadUrl: string; fileName: string | null; file_size: number | null }>;
+  },
+  deleteProposalAttachment: (proposalId: string, attachmentId: string) =>
+    fetch(`${API_BASE}/api/proposals/${proposalId}/attachments/${attachmentId}`, { method: 'DELETE' }).then(r => r.json()),
   getGames: (projectId?: string) => {
     const params = new URLSearchParams();
     if (projectId) params.set('projectId', projectId);
