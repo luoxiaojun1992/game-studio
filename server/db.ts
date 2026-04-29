@@ -290,6 +290,20 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS idx_drawio_projects_project ON drawio_projects(project_id);
+
+  -- 策划案附件表（关联策划案与 MinIO 存储文件）
+  CREATE TABLE IF NOT EXISTS proposal_attachments (
+    id TEXT PRIMARY KEY,
+    proposal_id TEXT NOT NULL,
+    file_storage_id TEXT NOT NULL,
+    source_type TEXT NOT NULL DEFAULT 'drawio_export',
+    custom_name TEXT,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (proposal_id) REFERENCES proposals(id) ON DELETE CASCADE,
+    FOREIGN KEY (file_storage_id) REFERENCES file_storages(id) ON DELETE CASCADE
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_proposal_attachments_proposal ON proposal_attachments(proposal_id);
 `);
 ensureProject('default');
 export interface DbAgentSession {
@@ -422,6 +436,32 @@ export interface DbDrawioProject {
   name: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface DbProposalAttachment {
+  id: string;
+  proposal_id: string;
+  file_storage_id: string;
+  source_type: 'drawio_export' | 'manual_upload';
+  custom_name: string | null;
+  created_at: string;
+}
+
+const MAX_CUSTOM_NAME_LENGTH = 200;
+const CUSTOM_NAME_PATTERN = /^[^\x00-\x1f<>:"|?*\x80-\x9f]{1,200}$/;
+
+export function validateCustomName(value: unknown, fieldName = 'custom_name'): string | null {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== 'string') throw new Error(`${fieldName} 必须是字符串`);
+  const text = value.trim();
+  if (!text) return null;
+  if (text.length > MAX_CUSTOM_NAME_LENGTH) {
+    throw new Error(`${fieldName} 长度不能超过 ${MAX_CUSTOM_NAME_LENGTH} 字符`);
+  }
+  if (!CUSTOM_NAME_PATTERN.test(text)) {
+    throw new Error(`${fieldName} 包含非法字符（不允许 <>:"|?* 及控制字符）`);
+  }
+  return text;
 }
 
 export interface DbTaskBoardTask {
@@ -1502,4 +1542,58 @@ export function deleteDrawioProject(id: string): boolean {
   const stmt = db.prepare('DELETE FROM drawio_projects WHERE id = ?');
   const result = stmt.run(id);
   return result.changes > 0;
+}
+
+// ============================================================================
+// ProposalAttachment CRUD（策划案附件，关联 proposal 与 file_storage）
+// ============================================================================
+
+export function createProposalAttachment(data: {
+  id: string;
+  proposal_id: string;
+  file_storage_id: string;
+  source_type: 'drawio_export' | 'manual_upload';
+  custom_name?: string | null;
+  created_at: string;
+}): DbProposalAttachment {
+  const normalizedProposalId = normalizeAndValidateRequiredText(data.proposal_id, 'proposal_id');
+  const normalizedFileStorageId = normalizeAndValidateRequiredText(data.file_storage_id, 'file_storage_id');
+  const validatedSourceType = validateEnumValue(data.source_type, 'source_type', ['drawio_export', 'manual_upload']);
+  const normalizedCustomName = validateCustomName(data.custom_name ?? null, 'custom_name');
+  const stmt = db.prepare(`
+    INSERT INTO proposal_attachments (id, proposal_id, file_storage_id, source_type, custom_name, created_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `);
+  stmt.run(data.id, normalizedProposalId, normalizedFileStorageId, validatedSourceType, normalizedCustomName, data.created_at);
+  return {
+    id: data.id,
+    proposal_id: normalizedProposalId,
+    file_storage_id: normalizedFileStorageId,
+    source_type: validatedSourceType as 'drawio_export' | 'manual_upload',
+    custom_name: normalizedCustomName,
+    created_at: data.created_at,
+  };
+}
+
+export function getProposalAttachments(proposalId: string): DbProposalAttachment[] {
+  const stmt = db.prepare('SELECT * FROM proposal_attachments WHERE proposal_id = ? ORDER BY created_at ASC');
+  return stmt.all(proposalId) as DbProposalAttachment[];
+}
+
+export function countProposalAttachments(proposalId: string): number {
+  const stmt = db.prepare('SELECT COUNT(*) as cnt FROM proposal_attachments WHERE proposal_id = ?');
+  const row = stmt.get(proposalId) as { cnt: number };
+  return row.cnt;
+}
+
+export function deleteProposalAttachment(id: string): boolean {
+  const stmt = db.prepare('DELETE FROM proposal_attachments WHERE id = ?');
+  const result = stmt.run(id);
+  return result.changes > 0;
+}
+
+export function deleteProposalAttachmentsByProposal(proposalId: string): number {
+  const stmt = db.prepare('DELETE FROM proposal_attachments WHERE proposal_id = ?');
+  const result = stmt.run(proposalId);
+  return result.changes;
 }

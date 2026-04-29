@@ -51,6 +51,29 @@ export interface Proposal {
   created_at: string;
   updated_at: string;
 }
+
+export type AttachmentSourceType = 'drawio_export' | 'manual_upload';
+
+export interface ProposalAttachment {
+  id: string;
+  proposal_id: string;
+  file_storage_id: string;
+  source_type: AttachmentSourceType;
+  custom_name: string | null;
+  created_at: string;
+}
+
+export interface FileStorage {
+  id: string;
+  project_id: string;
+  object_key: string;
+  file_name: string | null;
+  file_size: number | null;
+  content_type: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Game {
   id: string;
   project_id: string;
