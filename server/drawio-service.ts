@@ -292,3 +292,70 @@ export async function downloadDiagram(opts: DownloadDiagramOptions): Promise<{ l
   log(agentId, '下载图表', `${safeFilename} -> ${localPath}`, 'success');
   return { localPath, sizeBytes: buffer.length };
 }
+
+// ---------------------------------------------------------------------------
+// 元素列表
+// ---------------------------------------------------------------------------
+
+export interface DiagramElementInfo {
+  elementId: string;
+  elementType: 'shape' | 'connector';
+  label: string;
+  style: string;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  sourceId?: string;
+  targetId?: string;
+}
+
+export interface ListElementsResult {
+  elements: DiagramElementInfo[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export async function listDiagramElements(opts: {
+  drawioProjectId: string;
+  diagramId: string;
+  page?: number;
+  pageSize?: number;
+  elementType?: 'shape' | 'connector';
+}): Promise<ListElementsResult> {
+  const { drawioProjectId: dpId, diagramId, page = 1, pageSize = 20, elementType } = opts;
+
+  const params = new URLSearchParams({
+    page: String(page),
+    page_size: String(pageSize),
+  });
+  if (elementType) {
+    params.set('element_type', elementType);
+  }
+
+  const res = await drawioFetch(
+    `/api/diagrams/${dpId}/${diagramId}/elements?${params}`,
+  );
+
+  // 将 snake_case 转为 camelCase
+  const elements: DiagramElementInfo[] = (res?.elements || []).map((e: any) => ({
+    elementId: e.element_id,
+    elementType: e.element_type,
+    label: e.label,
+    style: e.style,
+    x: e.x,
+    y: e.y,
+    width: e.width,
+    height: e.height,
+    sourceId: e.source_id,
+    targetId: e.target_id,
+  }));
+
+  return {
+    elements,
+    total: res?.total ?? 0,
+    page: res?.page ?? page,
+    pageSize: res?.page_size ?? pageSize,
+  };
+}

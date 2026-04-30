@@ -5,15 +5,17 @@ All routes validate project_id before calling into Blender.
 """
 
 import os
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Query, status
 
 from app.schemas import (
     AddMaterialRequest,
     AddModifierRequest,
+    BlenderObjectInfo,
     BlenderOperationResponse,
     BooleanRequest,
     CreateMeshRequest,
     ExportRequest,
+    ListObjectsResponse,
     _validate_project_id,
 )
 from app.blender import BlenderError, execute_script
@@ -23,6 +25,7 @@ from app.operations import (
     boolean_operation,
     create_mesh,
     export_model,
+    list_objects,
 )
 
 router = APIRouter(prefix="/api/blender", tags=["blender"])
@@ -178,4 +181,51 @@ async def blender_export(req: ExportRequest, project_id: str) -> BlenderOperatio
         raise _blender_error(e)
 
 
+@router.get(
+    "/list_objects",
+    response_model=ListObjectsResponse,
+    summary="List all objects in the Blender scene",
+)
+async def blender_list_objects(
+    project_id: str,
+    page: int = Query(default=1, ge=1, description="Page number (1-based)"),
+    page_size: int = Query(default=20, ge=1, le=100, description="Items per page"),
+    object_type: str | None = Query(default=None, description="Filter by object type, e.g. MESH"),
+) -> ListObjectsResponse:
+    """List all objects in the current Blender scene with type and location."""
+    validated_pid = _validate_project_id(project_id)
+    path = _project_path(validated_pid)
+    if not os.path.isdir(path):
+        raise HTTPException(status_code=404, detail=f"Project not found: {project_id}")
 
+    try:
+        script = list_objects()
+        stdout = execute_script(script, path)
+
+        # Parse JSON from stdout
+        all_objects: list[dict] = []
+        for line in stdout.splitlines():
+            if line.startswith("LIST_OBJECTS="):
+                payload = line[len("LIST_OBJECTS="):]
+                import json
+                data = json.loads(payload)
+                all_objects = data.get("objects", [])
+                break
+
+        # Filter by type
+        if object_type:
+            all_objects = [o for o in all_objects if o.get("type") == object_type]
+
+        total = len(all_objects)
+        offset = (page - 1) * page_size
+        page_objects = all_objects[offset:offset + page_size]
+
+        return ListObjectsResponse(
+            project_id=project_id,
+            objects=[BlenderObjectInfo(**o) for o in page_objects],
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
+    except BlenderError as e:
+        raise _blender_error(e)

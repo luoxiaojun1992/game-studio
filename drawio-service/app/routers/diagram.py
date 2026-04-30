@@ -4,7 +4,9 @@ Diagram management routes for Drawio Service.
 
 import os
 import uuid
-from fastapi import APIRouter, HTTPException, status
+import xml.etree.ElementTree as ET
+from typing import Optional
+from fastapi import APIRouter, HTTPException, Query, status
 
 from app.schemas import (
     AddConnectorRequest,
@@ -12,7 +14,9 @@ from app.schemas import (
     ConnectorResponse,
     CreateDiagramRequest,
     DiagramCreateResponse,
+    DiagramElement,
     DiagramInfo,
+    ListElementsResponse,
     ShapeResponse,
     _validate_project_id,
 )
@@ -183,3 +187,94 @@ async def add_connector(project_id: str, diagram_id: str, req: AddConnectorReque
     _write_diagram_xml(validated_project, diagram_id, xml_content)
 
     return ConnectorResponse(connector_id=connector_id)
+
+
+# ---------------------------------------------------------------------------
+# Element listing
+# ---------------------------------------------------------------------------
+
+NAMESPACES = {
+    "mx": "http://schemas.microsoft.com/office/drawing/2010/main",
+}
+# draw.io 不强制命名空间，用通配方式查找 mxCell
+
+
+def _parse_diagram_elements(xml_content: str) -> list[dict]:
+    """Parse .drawio XML and extract all mxCell elements as plain dicts."""
+    root = ET.fromstring(xml_content)
+    cells = []
+
+    # 递归搜索所有 mxCell 标签（可能在 mxGraphModel > root > mxCell 路径下）
+    for cell_elem in root.iter("mxCell"):
+        cell_id = cell_elem.get("id", "")
+        if cell_id in ("0", "1"):
+            # 跳过根 cell 和默认 layer cell
+            continue
+
+        is_vertex = cell_elem.get("vertex") == "1"
+        is_edge = cell_elem.get("edge") == "1"
+
+        entry = {
+            "element_id": cell_id,
+            "label": cell_elem.get("value", "") or "",
+            "style": cell_elem.get("style", "") or "",
+        }
+
+        if is_vertex:
+            entry["element_type"] = "shape"
+            geo = cell_elem.find("mxGeometry")
+            if geo is not None:
+                entry["x"] = float(geo.get("x", 0))
+                entry["y"] = float(geo.get("y", 0))
+                entry["width"] = float(geo.get("width", 0))
+                entry["height"] = float(geo.get("height", 0))
+        elif is_edge:
+            entry["element_type"] = "connector"
+            entry["source_id"] = cell_elem.get("source", "") or None
+            entry["target_id"] = cell_elem.get("target", "") or None
+        else:
+            # 未知类型也作为 shape 展示
+            entry["element_type"] = "shape"
+
+        cells.append(entry)
+
+    return cells
+
+
+@router.get(
+    "/{project_id}/{diagram_id}/elements",
+    response_model=ListElementsResponse,
+    summary="List all elements (shapes & connectors) in a diagram",
+)
+async def list_diagram_elements(
+    project_id: str,
+    diagram_id: str,
+    page: int = Query(default=1, ge=1, description="Page number (1-based)"),
+    page_size: int = Query(default=20, ge=1, le=100, description="Items per page"),
+    element_type: Optional[str] = Query(default=None, description="Filter: 'shape' or 'connector'"),
+) -> ListElementsResponse:
+    """Parse diagram XML and return paginated list of elements."""
+    validated_project = _validate_project_id(project_id)
+    validated_diagram = _validate_diagram_id(diagram_id)
+
+    xml_content = _read_diagram_xml(validated_project, validated_diagram)
+
+    all_cells = _parse_diagram_elements(xml_content)
+
+    # Filter by type
+    if element_type:
+        all_cells = [c for c in all_cells if c.get("element_type") == element_type]
+
+    total = len(all_cells)
+    offset = (page - 1) * page_size
+    page_cells = all_cells[offset:offset + page_size]
+
+    elements = [DiagramElement(**c) for c in page_cells]
+
+    return ListElementsResponse(
+        diagram_id=diagram_id,
+        elements=elements,
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
