@@ -120,3 +120,30 @@ class ExportQuery(BaseModel):
     format: EXPORT_FORMATS = "png"
     scale: Optional[float] = Field(default=1.0, ge=0.1, le=10.0)
     transparent: Optional[bool] = Field(default=False)
+
+
+# ---------------------------------------------------------------------------
+# Element list schemas
+# ---------------------------------------------------------------------------
+
+class DiagramElement(BaseModel):
+    element_id: str = Field(..., description="Element cell ID")
+    element_type: str = Field(..., description="'shape' or 'connector'")
+    label: str = Field(default="", description="Display label/value")
+    style: str = Field(default="", description="mxGraph style string")
+    # shape-specific geometry
+    x: Optional[float] = Field(default=None, description="X coordinate (shape only)")
+    y: Optional[float] = Field(default=None, description="Y coordinate (shape only)")
+    width: Optional[float] = Field(default=None, description="Width (shape only)")
+    height: Optional[float] = Field(default=None, description="Height (shape only)")
+    # connector-specific references
+    source_id: Optional[str] = Field(default=None, description="Source shape ID (connector only)")
+    target_id: Optional[str] = Field(default=None, description="Target shape ID (connector only)")
+
+
+class ListElementsResponse(BaseModel):
+    diagram_id: str
+    elements: list[DiagramElement]
+    total: int
+    page: int
+    page_size: int

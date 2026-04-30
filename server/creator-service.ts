@@ -277,3 +277,53 @@ export async function deleteModelFile(opts: DeleteModelFileOptions): Promise<voi
 
   log(agentId, '删除模型文件', `blender_project_id=${bpId}, filename=${safeFilename}`, 'success');
 }
+
+// ---------------------------------------------------------------------------
+// 对象列表
+// ---------------------------------------------------------------------------
+
+export interface BlenderObjectInfo {
+  name: string;
+  type: string;
+  location: [number, number, number];
+}
+
+export interface ListObjectsResult {
+  objects: BlenderObjectInfo[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export async function blenderListObjects(opts: {
+  blenderProjectId: string;
+  page?: number;
+  pageSize?: number;
+  objectType?: string;
+}): Promise<ListObjectsResult> {
+  const { blenderProjectId: bpId, page = 1, pageSize = 20, objectType } = opts;
+
+  const params = new URLSearchParams({
+    page: String(page),
+    page_size: String(pageSize),
+  });
+  if (objectType) {
+    params.set('object_type', objectType);
+  }
+
+  const res = await creatorFetch(`/api/blender/list_objects?project_id=${bpId}&${params}`);
+
+  // convert snake_case to camelCase
+  const objects: BlenderObjectInfo[] = (res?.objects || []).map((o: any) => ({
+    name: o.name,
+    type: o.type,
+    location: o.location,
+  }));
+
+  return {
+    objects,
+    total: res?.total ?? 0,
+    page: res?.page ?? page,
+    pageSize: res?.page_size ?? pageSize,
+  };
+}

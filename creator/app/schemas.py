@@ -136,3 +136,17 @@ class BlenderOperationResponse(BaseModel):
     success: bool = True
     output: str = Field(default="", description="stdout from Blender")
     message: str = Field(default="Operation completed")
+
+
+class BlenderObjectInfo(BaseModel):
+    name: str = Field(..., description="Object name in Blender scene")
+    type: str = Field(..., description="Object type (MESH, LIGHT, CAMERA, etc.)")
+    location: list[float] = Field(..., description="[x, y, z] location")
+
+
+class ListObjectsResponse(BaseModel):
+    project_id: str
+    objects: list[BlenderObjectInfo]
+    total: int
+    page: int
+    page_size: int

@@ -278,6 +278,28 @@ elif fmt == 'ply':
 elif fmt == 'usd':
     bpy.ops.wm.usd_export(filepath=path)
 
-print(f"EXPORTED={{'{{'}}path{{'}}'}}")
+    print(f"EXPORTED={{'{{'}}path{{'}}'}}")
 """
+    return script.strip()
+
+
+def list_objects() -> str:
+    """
+    List all objects in the current Blender scene with type and location.
+    Outputs JSON to stdout for parsing.
+    """
+    return '''
+import bpy
+import json
+
+objects = []
+for obj in bpy.data.objects:
+    loc = obj.location
+    objects.append({
+        "name": obj.name,
+        "type": obj.type,
+        "location": [loc.x, loc.y, loc.z],
+    })
+print("LIST_OBJECTS=" + json.dumps({"objects": objects}))
+'''
     return script.strip()

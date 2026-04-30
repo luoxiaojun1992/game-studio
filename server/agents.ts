@@ -100,6 +100,7 @@ const TOOLS_OVERVIEW = `
 
 | \`blender_download_model_file\` | 从 creator service 下载模型文件到本地 output 目录 | **engineer** |
 | \`blender_delete_model_file\` | 删除 creator 远程模型文件（幂等） | **engineer** |
+| \`blender_list_objects\` | 分页列出 Blender 场景中的对象（供 add_material/export 引用 object_name） | **engineer** |
 | \`drawio_create_project\` | 创建 draw.io 图表 project（调用 drawio service） | 全员 |
 | \`drawio_list_projects\` | 列出当前项目下所有 draw.io 图表 project | 全员 |
 | \`drawio_delete_project\` | 删除 draw.io 图表 project（幂等） | 全员 |
@@ -107,6 +108,7 @@ const TOOLS_OVERVIEW = `
 | \`drawio_add_shape\` | 向图表添加形状（矩形/椭圆/菱形/六边形/圆柱/云等） | 全员 |
 | \`drawio_add_connector\` | 将两个形状用连接线连接起来（支持直线/肘形/曲线） | 全员 |
 | \`drawio_download_diagram\` | 导出图表为 PNG/SVG/PDF/XML 并**自动上传到 MinIO**，返回 file_storage_id（可传入 submit_proposal 的 attachment_storage_ids） | 全员 |
+| \`drawio_list_elements\` | 分页列出 draw.io 图表中的所有元素（形状和连接线），供后续 add_connector 等操作引用 | 全员 |
 
 这些工具会自动执行，无需人工审批。请根据工作需要主动使用它们。
 

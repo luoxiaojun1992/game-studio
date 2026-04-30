@@ -1233,6 +1233,47 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         }
       ),
 
+      tool(
+        'blender_list_objects',
+        '分页列出 Blender 场景中的所有对象（网格、灯光等），供 agent 引用 object_name 用于 add_material/export 等操作',
+        {
+          blender_project_id: z.string().describe('blender_project_id（来自 blender_create_project）'),
+          page: z.number().int().min(1).optional().default(1).describe('页码（从 1 开始）'),
+          page_size: z.number().int().min(1).max(100).optional().default(20).describe('每页条数'),
+          object_type: z.string().optional().describe('按对象类型筛选，如 MESH、LIGHT、CAMERA'),
+        },
+        async ({ blender_project_id, page, page_size, object_type }) => {
+          if (!blender_project_id || typeof blender_project_id !== 'string') {
+            throw new Error('blender_project_id 不能为空');
+          }
+          const { blenderListObjects } = await import('./creator-service.js');
+          const result = await blenderListObjects({
+            blenderProjectId: blender_project_id.trim(),
+            page,
+            pageSize: page_size,
+            objectType: object_type,
+          });
+
+          const lines: string[] = [];
+          const totalPages = Math.ceil(result.total / result.pageSize);
+          lines.push(`第 ${result.page} 页 / 共 ${totalPages} 页（共 ${result.total} 个对象）`);
+
+          if (result.objects.length > 0) {
+            lines.push('');
+            for (const o of result.objects) {
+              const loc = o.location?.map((n: number) => n.toFixed(2)).join(', ') ?? '0, 0, 0';
+              lines.push(`  [${o.name}] ${o.type} @(${loc})`);
+            }
+          } else {
+            lines.push('（无对象）');
+          }
+
+          return {
+            content: [{ type: 'text' as const, text: lines.join('\n') }]
+          };
+        }
+      ),
+
       // ---- Draw.io / 图表工具（全员可用）----
 
       tool(
@@ -1490,6 +1531,65 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
               type: 'text' as const,
               text: `图表已导出到：${localPath} (${buffer.length} bytes)，已上传 MinIO (file_storage_id: ${fileStorageId})。在提交策划案时传入 attachment_storage_ids: ["${fileStorageId}"] 可将此图表作为附件关联到策划案。`,
             }]
+          };
+        }
+      ),
+      tool(
+        'drawio_list_elements',
+        '分页列出 draw.io 图表中的所有元素（形状和连接线），供 agent 引用 element_id 用于 add_connector 等操作',
+        {
+          drawio_project_id: z.string().describe('drawio_project_id（来自 drawio_create_project）'),
+          diagram_id: z.string().describe('diagram_id（来自 drawio_create_diagram）'),
+          page: z.number().int().min(1).optional().default(1).describe('页码（从 1 开始）'),
+          page_size: z.number().int().min(1).max(100).optional().default(20).describe('每页条数'),
+          element_type: z.enum(['shape', 'connector']).optional().describe('按类型筛选：shape 或 connector'),
+        },
+        async ({ drawio_project_id, diagram_id, page, page_size, element_type }) => {
+          if (!drawio_project_id || typeof drawio_project_id !== 'string') {
+            throw new Error('drawio_project_id 不能为空');
+          }
+          if (!diagram_id || typeof diagram_id !== 'string') {
+            throw new Error('diagram_id 不能为空');
+          }
+
+          const { listDiagramElements } = await import('./drawio-service.js');
+          const result = await listDiagramElements({
+            drawioProjectId: drawio_project_id.trim(),
+            diagramId: diagram_id.trim(),
+            page,
+            pageSize: page_size,
+            elementType: element_type,
+          });
+
+          // 格式化输出
+          const lines: string[] = [];
+          lines.push(`第 ${result.page} 页 / 共 ${Math.ceil(result.total / result.pageSize)} 页（共 ${result.total} 个元素）`);
+
+          const shapes = result.elements.filter(e => e.elementType === 'shape');
+          const connectors = result.elements.filter(e => e.elementType === 'connector');
+
+          if (shapes.length > 0) {
+            lines.push('');
+            lines.push(`形状 (${shapes.length})：`);
+            for (const s of shapes) {
+              lines.push(`  [${s.elementId}] "${s.label}" @(${s.x ?? 0},${s.y ?? 0} ${s.width ?? 0}x${s.height ?? 0})`);
+            }
+          }
+
+          if (connectors.length > 0) {
+            lines.push('');
+            lines.push(`连接线 (${connectors.length})：`);
+            for (const c of connectors) {
+              lines.push(`  [${c.elementId}] "${c.label}" ${c.sourceId} → ${c.targetId}`);
+            }
+          }
+
+          if (result.elements.length === 0) {
+            lines.push('（无元素）');
+          }
+
+          return {
+            content: [{ type: 'text' as const, text: lines.join('\n') }]
           };
         }
       ),
