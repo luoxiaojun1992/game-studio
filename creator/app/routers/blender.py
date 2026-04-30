@@ -7,6 +7,8 @@ All routes validate project_id before calling into Blender.
 import os
 from fastapi import APIRouter, HTTPException, Query, status
 
+from app.safe_path import resolve_safe_path
+
 from app.schemas import (
     AddMaterialRequest,
     AddModifierRequest,
@@ -34,11 +36,11 @@ PROJECTS_ROOT = "/app/data/projects"
 
 
 def _project_path(project_id: str) -> str:
-    root = os.path.realpath(PROJECTS_ROOT)
-    candidate = os.path.realpath(os.path.join(root, project_id))
-    if os.path.commonpath([root, candidate]) != root:
-        raise HTTPException(status_code=400, detail="Invalid project path")
-    return candidate
+    """Resolve project directory with path traversal protection."""
+    try:
+        return resolve_safe_path(PROJECTS_ROOT, project_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 def _blender_result(stdout: str, message: str = "Operation completed") -> BlenderOperationResponse:

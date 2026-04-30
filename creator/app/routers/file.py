@@ -7,6 +7,8 @@ from datetime import datetime
 from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import FileResponse, JSONResponse
 
+from app.safe_path import resolve_safe_path
+
 from app.schemas import FileItem, FileListResponse, _validate_project_id
 
 router = APIRouter(prefix="/api/files", tags=["files"])
@@ -14,13 +16,20 @@ router = APIRouter(prefix="/api/files", tags=["files"])
 PROJECTS_ROOT = "/app/data/projects"
 
 
+def _project_path(project_id: str) -> str:
+    """Resolve project directory with path traversal protection."""
+    try:
+        return resolve_safe_path(PROJECTS_ROOT, project_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 def _safe_join(base: str, filename: str) -> str:
     """Join base and filename, then verify result is inside base (path traversal guard)."""
-    base = os.path.realpath(base)
-    result = os.path.realpath(os.path.join(base, filename))
-    if not result.startswith(base + os.sep):
-        raise HTTPException(status_code=400, detail="Invalid filename (path traversal detected)")
-    return result
+    try:
+        return resolve_safe_path(base, filename)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get(
@@ -31,7 +40,7 @@ def _safe_join(base: str, filename: str) -> str:
 async def list_files(project_id: str) -> FileListResponse:
     """Return the list of files in the project directory."""
     validated_pid = _validate_project_id(project_id)
-    project_path = os.path.join(PROJECTS_ROOT, validated_pid)
+    project_path = _project_path(validated_pid)
     if not os.path.isdir(project_path):
         raise HTTPException(status_code=404, detail=f"Project not found: {project_id}")
 
@@ -57,7 +66,7 @@ async def list_files(project_id: str) -> FileListResponse:
 async def download_file(project_id: str, filename: str) -> FileResponse:
     """Download a file from the project directory."""
     validated_pid = _validate_project_id(project_id)
-    project_path = os.path.join(PROJECTS_ROOT, validated_pid)
+    project_path = _project_path(validated_pid)
     if not os.path.isdir(project_path):
         raise HTTPException(status_code=404, detail=f"Project not found: {project_id}")
 
@@ -95,7 +104,7 @@ async def delete_file(project_id: str, filename: str) -> None:
     Idempotent: returns 204 even if the file does not exist.
     """
     validated_pid = _validate_project_id(project_id)
-    project_path = os.path.join(PROJECTS_ROOT, validated_pid)
+    project_path = _project_path(validated_pid)
     if not os.path.isdir(project_path):
         # Treat missing project as already deleted
         return None

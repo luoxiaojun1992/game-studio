@@ -6,6 +6,8 @@ import os
 from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import JSONResponse
 
+from app.safe_path import resolve_safe_path
+
 from app.schemas import ProjectCreateResponse, ProjectInfo, _validate_project_id
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
@@ -14,7 +16,11 @@ PROJECTS_ROOT = "/app/data/projects"
 
 
 def _project_path(project_id: str) -> str:
-    return os.path.join(PROJECTS_ROOT, project_id)
+    """Resolve project directory with path traversal protection."""
+    try:
+        return resolve_safe_path(PROJECTS_ROOT, project_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.post(
