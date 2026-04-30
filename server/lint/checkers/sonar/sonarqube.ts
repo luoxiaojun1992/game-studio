@@ -30,20 +30,20 @@ export type { SonarQubeIssue };
 export { globalTokenManager } from './sonarqube-token.js';
 export { SonarQubeClient } from './sonarqube-client.js';
 
-// ====== Module 级 Raw Issues 缓存 ======
-// 目的：避免 lintZipBuffer 对同一 projectKey 重复 scan；submit_game 可直接复用
+// ====== Module 级扫描防重复 ======
+// 目的：避免 lintZipBuffer 对同一 projectKey 重复扫描（extraPayloads 只产生一次）
 
-const sonarIssuesCache = new Map<string, SonarQubeIssue[]>();
+const scannedProjects = new Set<string>();
 
-export function getCachedSonarIssues(projectKey: string): SonarQubeIssue[] | undefined {
-  return sonarIssuesCache.get(projectKey);
-}
-
-export function clearCachedSonarIssues(projectKey?: string): void {
+/**
+ * 重置扫描历史，允许对同一 projectKey 重新发起扫描
+ * submit_game 在读取 extraPayloads 后调用此函数
+ */
+export function resetSonarScanHistory(projectKey?: string): void {
   if (projectKey) {
-    sonarIssuesCache.delete(projectKey);
+    scannedProjects.delete(projectKey);
   } else {
-    sonarIssuesCache.clear();
+    scannedProjects.clear();
   }
 }
 
@@ -105,17 +105,10 @@ export const sonarqubeChecker: LintChecker = {
 
     console.error(`[SonarQube checker] 开始扫描 project=${projectKey} contentLength=${content?.length ?? 0} fileName=${context?.fileName ?? 'unknown'}`);
 
-    // 命中缓存：同一 projectKey 在同一 lintZipBuffer 流程中不重复 scan
-    if (sonarIssuesCache.has(projectKey)) {
-      const cached = sonarIssuesCache.get(projectKey)!;
-      console.error(`[SonarQube checker] 命中缓存 project=${projectKey} issues=${cached.length}`);
-      return cached.map(si => ({
-        ruleId: `sonarqube:${si.rule}`,
-        level: ['BLOCKER', 'CRITICAL', 'MAJOR'].includes(si.severity) ? 'error' : 'warn',
-        message: si.message,
-        line: si.line,
-        checkerId: cid,
-      }));
+    // 同一 projectKey 在同一 lintZipBuffer 流程中不重复扫描
+    if (scannedProjects.has(projectKey)) {
+      console.error(`[SonarQube checker] 跳过重复扫描 project=${projectKey}`);
+      return [];
     }
 
     // scanner 微服务 unavailable → graceful degrade（sonar 扫描可选，不阻断提交）
@@ -165,8 +158,16 @@ export const sonarqubeChecker: LintChecker = {
       console.error(`[SonarQube checker] 拉取 issues project=${projectKey}`);
       const sonarIssues = await client.getProjectIssues(projectKey);
 
-      // 缓存 raw issues，供 submit_game 复用（按 projectKey 隔离）
-      sonarIssuesCache.set(projectKey, sonarIssues);
+      // 标记已扫描，防止同一 lintZipBuffer 流程重复扫描
+      scannedProjects.add(projectKey);
+
+      // 写入 extraPayloads，供 submit_game 直接读取并上传到 MinIO
+      if (context?.__extraPayloads) {
+        context.__extraPayloads['sonar-report'] = {
+          version: '1.0',
+          issues: sonarIssues,
+        };
+      }
 
       const errors = sonarIssues.filter(si => ['BLOCKER', 'CRITICAL', 'MAJOR'].includes(si.severity));
       console.error(`[SonarQube checker] 扫描完成 project=${projectKey} totalIssues=${sonarIssues.length} errors=${errors.length} issues=${JSON.stringify(sonarIssues.map(i => ({ rule: i.rule, severity: i.severity, message: i.message })))}`);

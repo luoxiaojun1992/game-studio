@@ -112,13 +112,15 @@ export class LintRunner {
    */
   async run(content: string, context?: LintContext): Promise<LintResult> {
     const allIssues: LintIssue[] = [];
+    const extraPayloads: Record<string, unknown> = {};
+    const enrichedContext: LintContext = { ...context, __extraPayloads: extraPayloads };
 
     for (const [id, checker] of this.checkers) {
       // 跳过被禁用的检查器
       if (this.disabledIds.has(id)) continue;
 
       try {
-        const result = checker.check(content, context);
+        const result = checker.check(content, enrichedContext);
         const issues = result instanceof Promise ? await result : result;
         allIssues.push(...issues);
       } catch (error: any) {
@@ -141,6 +143,7 @@ export class LintRunner {
       errors,
       warnings,
       summary: buildSummary(errors, warnings),
+      extraPayloads: Object.keys(extraPayloads).length > 0 ? extraPayloads : undefined,
     };
   }
 }
@@ -198,13 +201,21 @@ export async function lintZipBuffer(zipBuffer: Buffer, context?: LintContext): P
   const runner = createLintRunner();
   runner.registerAll(builtInCheckers);
 
+  // 收集 extraPayloads（由首个触发扫描的 HTML 文件产生）
+  let collectedExtraPayloads: Record<string, unknown> | undefined;
+
   // 按文件逐一检查，发现第一个 error 即停
   for (const file of htmlFiles) {
     const content = await file.buffer();
     const text = content.toString('utf-8');
     // 统一传递 context（包含 zipBuffer），供 sonarqubeChecker 直接扫描原 ZIP
-    const checkerContext = { ...context, fileName: file.path };
+    const checkerContext = { ...context, fileName: file.path, zipBuffer };
     const result = await runner.run(text, checkerContext);
+
+    // 收集 extraPayloads（第一个有值的）
+    if (result.extraPayloads && !collectedExtraPayloads) {
+      collectedExtraPayloads = result.extraPayloads;
+    }
 
     if (!result.passed) {
       // 第一个 error 文件，直接返回
@@ -214,6 +225,7 @@ export async function lintZipBuffer(zipBuffer: Buffer, context?: LintContext): P
         errors: result.errors,
         warnings: result.warnings,
         summary: result.summary.replace('❌', `❌ [${file.path}] `),
+        extraPayloads: collectedExtraPayloads,
       };
     }
 
@@ -233,5 +245,6 @@ export async function lintZipBuffer(zipBuffer: Buffer, context?: LintContext): P
     errors: [],
     warnings: [],
     summary: '✅ lint 检查通过',
+    extraPayloads: collectedExtraPayloads,
   };
 }

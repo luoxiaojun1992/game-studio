@@ -10,7 +10,7 @@ import * as db from './db.js';
 import { AGENT_IDS, AgentRole, getAllAgents } from './agents.js';
 import { sseBroadcaster } from './sse-broadcaster.js';
 import { lintGameContent, lintZipBuffer, type LintIssue } from './lint/index.js';
-import { getCachedSonarIssues, clearCachedSonarIssues, globalTokenManager } from './lint/checkers/sonar/sonarqube.js';
+import { resetSonarScanHistory, globalTokenManager, type SonarQubeIssue } from './lint/checkers/sonar/sonarqube.js';
 import {
   createFileStorageRecord,
   uploadBuffer,
@@ -600,13 +600,13 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
                 log(agentId, '提交游戏-lint', `警告: ${zipLintResult.warnings.map(w => w.message).join('; ')}`, 'warn');
               }
 
-              // === Sonar 报告生成：复用 lintZipBuffer 缓存的 raw issues ===
-              const scopedProjectKey = `game-${scopedProjectId}`;
-              const cachedSonarIssues = getCachedSonarIssues(scopedProjectKey) ?? [];
+              // === Sonar 报告生成：从 lint 结果中读取 extraPayloads ===
+              const sonarPayload = zipLintResult.extraPayloads?.['sonar-report'] as { version: string; issues: SonarQubeIssue[] } | undefined;
+              const sonarIssues = sonarPayload?.issues ?? [];
 
               // 使用 yazl 将 sonar-issues.json 追加到 ZIP（不改变原文件内容）
               const sonarReportBuffer = Buffer.from(
-                JSON.stringify({ version: '1.0', issues: cachedSonarIssues }, null, 2),
+                JSON.stringify({ version: '1.0', issues: sonarIssues }, null, 2),
                 'utf-8'
               );
               const finalZipBuffer = await new Promise<Buffer>((resolve, reject) => {
@@ -622,8 +622,8 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
               });
               const finalFileSize = finalZipBuffer.length;
 
-              // 清理 lint 缓存
-              clearCachedSonarIssues(scopedProjectKey);
+              // 重置扫描历史，允许后续 submit_game 重新扫描
+              resetSonarScanHistory(`game-${scopedProjectId}`);
 
               try {
                 // 创建游戏文件存储记录
@@ -710,6 +710,30 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
             log(agentId, '提交游戏-lint', `警告: ${lintResult.warnings.map((w: LintIssue) => w.message).join('; ')}`, 'warn');
           }
 
+          // === Sonar 报告上传：从 lint 结果中读取 extraPayloads ===
+          const htmlSonarPayload = lintResult.extraPayloads?.['sonar-report'] as { version: string; issues: SonarQubeIssue[] } | undefined;
+          let htmlSonarStorageId: string | null = null;
+          if (htmlSonarPayload && htmlSonarPayload.issues.length > 0) {
+            try {
+              const sonarReportBuffer = Buffer.from(JSON.stringify(htmlSonarPayload, null, 2), 'utf-8');
+              const sonarId = uuidv4();
+              const sonarObjectKey = `sonar/${scopedProjectId}_${sonarId}.json`;
+              const { storage: sonarStorage } = await createFileStorageRecord({
+                project_id: scopedProjectId,
+                object_key: sonarObjectKey,
+                file_name: `${scopedProjectId}_${sonarId}-sonar-issues.json`,
+                file_size: sonarReportBuffer.length,
+                content_type: 'application/json',
+              });
+              htmlSonarStorageId = sonarStorage.id;
+              await uploadBuffer(sonarReportBuffer, sonarObjectKey, 'application/json');
+            } catch (uploadError: any) {
+              log(agentId, '提交游戏-sonar', `Sonar 报告上传失败: ${uploadError?.message}`, 'warn');
+            }
+          }
+          // 重置扫描历史，允许后续 submit_game 重新扫描
+          resetSonarScanHistory(`game-${scopedProjectId}`);
+
           const now = new Date().toISOString();
           let game: db.DbGame;
           try {
@@ -723,7 +747,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
               version: version || '1.0.0',
               status: 'draft',
               file_storage_id: null,
-              sonar_storage_id: null,
+              sonar_storage_id: htmlSonarStorageId,
               created_at: now,
               updated_at: now
             });
