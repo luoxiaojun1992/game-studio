@@ -31,6 +31,11 @@ export interface LintContext {
    * 避免"提取 HTML → 重新打包"的往返开销。
    */
   zipBuffer?: Buffer;
+  /**
+   * 内部字段：Runner 自动创建的额外负载收集器
+   * checker 通过此字段将非 LintIssue 的原始数据（如 sonar 扫描报告）传回给调用方
+   */
+  __extraPayloads?: Record<string, unknown>;
   /** 扩展字段，供各 checker 自由使用 */
   [key: string]: unknown;
 }
@@ -47,6 +52,8 @@ export interface LintResult {
   warnings: LintIssue[];
   /** 人类可读的汇总文本（用于 tool 调用失败返回） */
   summary: string;
+  /** 额外数据负载：checker 可在检查过程中附加非 issue 数据（如 sonar 原始扫描报告） */
+  extraPayloads?: Record<string, unknown>;
 }
 
 /**
