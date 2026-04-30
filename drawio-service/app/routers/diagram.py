@@ -8,6 +8,8 @@ import xml.etree.ElementTree as ET
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Query, status
 
+from app.safe_path import resolve_safe_path
+
 from app.schemas import (
     AddConnectorRequest,
     AddShapeRequest,
@@ -33,7 +35,11 @@ PROJECTS_ROOT = "/app/data/projects"
 
 
 def _project_path(project_id: str) -> str:
-    return os.path.join(PROJECTS_ROOT, project_id)
+    """Resolve project directory with path traversal protection."""
+    try:
+        return resolve_safe_path(PROJECTS_ROOT, project_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 def _diagram_path(project_id: str, diagram_id: str) -> str:
