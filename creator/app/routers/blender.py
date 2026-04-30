@@ -34,7 +34,11 @@ PROJECTS_ROOT = "/app/data/projects"
 
 
 def _project_path(project_id: str) -> str:
-    return os.path.join(PROJECTS_ROOT, project_id)
+    root = os.path.realpath(PROJECTS_ROOT)
+    candidate = os.path.realpath(os.path.join(root, project_id))
+    if os.path.commonpath([root, candidate]) != root:
+        raise HTTPException(status_code=400, detail="Invalid project path")
+    return candidate
 
 
 def _blender_result(stdout: str, message: str = "Operation completed") -> BlenderOperationResponse:
