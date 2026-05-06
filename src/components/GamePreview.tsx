@@ -60,6 +60,24 @@ export default function GamePreview({ game, onClose }: Props) {
     }
   };
 
+  const handleDownloadSonarReport = async () => {
+    if (!fullGame?.sonarStorageId || downloading) return;
+    setDownloading(true);
+    try {
+      const res = await fetch(`/api/file-storage/${fullGame.sonarStorageId}/download`);
+      if (res.ok) {
+        const data = await res.json() as { downloadUrl: string };
+        window.open(data.downloadUrl, '_blank');
+      } else {
+        alert(l('获取下载链接失败', 'Failed to get download URL'));
+      }
+    } catch {
+      alert(l('获取下载链接失败', 'Failed to get download URL'));
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   return (
     <div className="bg-gray-900 rounded-xl border border-gray-800 flex flex-col h-full">
       <div className="px-5 py-3 border-b border-gray-800 flex items-center justify-between shrink-0">
@@ -78,6 +96,15 @@ export default function GamePreview({ game, onClose }: Props) {
               className="text-xs bg-blue-600/20 hover:bg-blue-600/40 border border-blue-600/40 text-blue-300 rounded-lg px-3 py-1.5 transition-all disabled:opacity-50"
             >
               {downloading ? l('下载中...', 'Downloading...') : l('📦 下载文件', '📦 Download File')}
+            </button>
+          )}
+          {fullGame?.sonarStorageId && (
+            <button
+              onClick={handleDownloadSonarReport}
+              disabled={downloading}
+              className="text-xs bg-green-600/20 hover:bg-green-600/40 border border-green-600/40 text-green-300 rounded-lg px-3 py-1.5 transition-all disabled:opacity-50"
+            >
+              {downloading ? l('下载中...', 'Downloading...') : l('📊 下载 Sonar 报告', '📊 Download Sonar Report')}
             </button>
           )}
           <a

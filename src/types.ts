@@ -84,6 +84,7 @@ export interface Game {
   version: string;
   status: 'draft' | 'published';
   fileStorageId?: string | null;
+  sonarStorageId?: string | null;
   created_at: string;
   updated_at: string;
   hasContent?: boolean;

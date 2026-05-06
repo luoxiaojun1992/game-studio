@@ -441,14 +441,15 @@ app.get('/api/games', (req, res) => {
     ...g,
     html_content: undefined,
     hasContent: !!g.html_content,
-    fileStorageId: g.file_storage_id || null
+    fileStorageId: g.file_storage_id || null,
+    sonarStorageId: g.sonar_storage_id || null,
   }));
   res.json({ games });
 });
 app.get('/api/games/:id', (req, res) => {
   const game = db.getGame(req.params.id);
   if (!game) return res.status(404).json({ error: '游戏不存在' });
-  res.json({ game: { ...game, fileStorageId: game.file_storage_id || null } });
+  res.json({ game: { ...game, fileStorageId: game.file_storage_id || null, sonarStorageId: game.sonar_storage_id || null } });
 });
 app.get('/api/games/:id/preview', (req, res) => {
   const game = db.getGame(req.params.id);
