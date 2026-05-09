@@ -14,6 +14,7 @@ This guide is based on the current repository implementation and focuses on real
 - AI orchestration: `agent-manager.ts` + `tools.ts` + Agent SDK
 - Studio integration: `star-office-sync.ts` (agent registration, state sync, health checks)
 - 3D modeling integration: `creator-service.ts` + `creator/` (Blender FastAPI service)
+- Diagram integration: `drawio-service.ts` + `drawio-service/` (draw.io FastAPI service + export)
 - Data layer: SQLite (`server/db.ts`)
 - Static analysis: extensible Lint framework (`server/lint/`)
 - Real-time observability: SSE (`/api/observe` + `sse-broadcaster.ts`)
@@ -33,6 +34,7 @@ server/
   agent-manager.ts       # Agent states, message sending, permission requests
   tools.ts               # MCP custom tool definitions and permission rules
   creator-service.ts     # Creator service integration for Blender modeling tools
+  drawio-service.ts      # Draw.io service integration for diagram tools
   lint/                  # Extensible Lint framework (LintRunner, pluggable checkers)
   agents.ts              # Role definitions, system prompts, tool usage constraints
   star-office-sync.ts    # Star-Office-UI registration and state sync
@@ -56,7 +58,9 @@ Core tables (`server/db.ts`):
 - `proposals`: proposals and approval states
 - `games`: game artifacts (`html_content` or `file_storage_id`)
 - `blender_projects`: Blender modeling project records (`project_id` ↔ `blender_project_id`)
+- `drawio_projects`: Draw.io diagram project records
 - `file_storages`: packaged artifact metadata for MinIO objects
+- `proposal_attachments`: proposal attachment records (linked to MinIO file storage)
 - `logs`: unified logs (system + agent output, distinguished by `log_type`)
 - `commands`: command execution records
 - `permission_requests`: tool permission requests and responses
@@ -80,6 +84,7 @@ Recommendations:
 - Observability: `GET /api/observe` (SSE)
 - Agents: query, pause/resume, command send (team_builder cannot pause/resume or receive manual commands)
 - Proposals: create, query, review, user decision
+- Proposal attachments: upload, list, delete, download
 - Games: submit, query, preview, status update
 - Tasks: create, query, status update
 - Handoffs: create, accept, confirm, complete, reject, cancel
@@ -144,8 +149,17 @@ Each role includes:
 - `blender_create_mesh`
 - `blender_add_material`
 - `blender_export_model`
+- `blender_list_objects`
 - `blender_download_model_file`
 - `blender_delete_model_file`
+- `drawio_create_project`
+- `drawio_list_projects`
+- `drawio_delete_project`
+- `drawio_create_diagram`
+- `drawio_add_shape`
+- `drawio_add_connector`
+- `drawio_download_diagram`
+- `drawio_list_elements`
 - `get_project_latest_info` (team_builder only)
 
 Key constraints:
@@ -211,7 +225,7 @@ The lint framework uses a **pluggable registration architecture** (`server/lint/
 5. Error-level issues **block** `submit_game`; warn-level issues are logged only
 6. `LintChecker.check()` supports both sync and async return values (`LintIssue[] | Promise<LintIssue[]>`)
 7. HTML mode checks `html_content`; ZIP mode checks every HTML file inside the package and stops on the first error, while passing the original ZIP buffer to checkers through `LintContext.zipBuffer`
-8. SonarQube checker: submits ZIP to scanner microservice (`sonar-scanner-service/`) → background scan → polls status → fetches issues from SonarQube REST API → caches raw issues by projectKey → appends `sonar-issues.json` to final ZIP
+8. SonarQube checker: submits ZIP to scanner microservice (`sonar-scanner-service/`) → background scan → polls status → fetches issues from SonarQube REST API → writes raw report into `extraPayloads['sonar-report']` for upload and `games.sonar_storage_id` linking
 
 ## 8. Local Development and Build
 
@@ -234,6 +248,7 @@ npm run build
 - Backend sync URL: `STAR_OFFICE_UI_URL` (default `http://127.0.0.1:19000`)
 - Agent join key: `STAR_OFFICE_JOIN_KEY`
 - Creator service URL: `CREATOR_SERVICE_URL` (default `http://localhost:8080`)
+- Draw.io service URL: `DRAWIO_SERVICE_URL` (default `http://localhost:8082`)
 
 ## 9. Debugging Tips
 

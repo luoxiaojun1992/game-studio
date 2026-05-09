@@ -26,6 +26,9 @@
 - `logs`、`commands`、`permission_requests` 持久化字段统一包含 `updated_at`
 - 新增 `get_games`（列表）与 `get_game_info`（详情）用于按项目查询游戏；文件模式详情返回 MinIO 预签名下载链接
 - Blender 建模工具（`blender_*`）通过 `creator-service.ts` 调用 creator 微服务，模型文件下载/删除带安全路径校验
+- draw.io 图表工具（`drawio_*`、`drawio_list_elements`）通过 `drawio-service.ts` 调用微服务，项目记录存放于 `drawio_projects`
+- 策划案附件记录在 `proposal_attachments`，附件文件存储在 MinIO
+- SonarQube 报告上传后写入 `games.sonar_storage_id`，前端可下载扫描报告
 
 ### E2E 测试关键
 - 选择器不匹配 → 前端加 `data-testid` → 测试用属性选

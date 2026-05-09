@@ -13,6 +13,7 @@
 - AI 编排：`agent-manager.ts` + `tools.ts` + Agent SDK
 - Studio 联动：`star-office-sync.ts`（Agent 注册、状态同步、健康巡检）
 - 3D 建模集成：`creator-service.ts` + `creator/`（Blender FastAPI 服务）
+- 图表集成：`drawio-service.ts` + `drawio-service/`（draw.io FastAPI 服务与导出）
 - 数据层：SQLite（`server/db.ts`）
 - 静态分析：可扩展 Lint 框架（`server/lint/`）
 - 实时观测：SSE（`/api/observe` + `sse-broadcaster.ts`）
@@ -32,6 +33,7 @@ server/
   agent-manager.ts       # Agent 状态、消息发送、权限请求
   tools.ts               # MCP 自定义工具定义与权限规则
   creator-service.ts     # Creator 服务集成（Blender 建模工具调用）
+  drawio-service.ts      # Draw.io 服务集成（图表工具调用）
   lint/                  # 可扩展 Lint 框架（LintRunner、可插拔检查器）
   agents.ts              # 角色定义、系统提示词、工具使用约束
   star-office-sync.ts    # Star-Office-UI 注册与状态同步
@@ -55,7 +57,9 @@ src/
 - `proposals`：提案与审批状态
 - `games`：游戏成品（`html_content` 或 `file_storage_id`）
 - `blender_projects`：Blender 建模项目记录（`project_id` ↔ `blender_project_id`）
+- `drawio_projects`：Draw.io 图表项目记录
 - `file_storages`：打包产物在 MinIO 的元数据
+- `proposal_attachments`：提案附件记录（关联 MinIO 文件）
 - `logs`：统一日志（系统日志 + Agent 输出日志，通过 `log_type` 区分）
 - `commands`：指令执行记录
 - `permission_requests`：工具权限审批请求与响应记录
@@ -79,6 +83,7 @@ src/
 - 观测：`GET /api/observe`（SSE）
 - Agent：查询、暂停/恢复、发送指令（team_builder 不支持暂停/恢复与手动指令）
 - 提案：创建、查询、评审、用户决策
+- 提案附件：上传、列表、删除、下载
 - 游戏：提交、查询、预览、状态更新
 - 任务：创建、查询、状态更新
 - 交接：创建、接受、确认执行、完成、拒绝、取消
@@ -143,8 +148,17 @@ src/
 - `blender_create_mesh`
 - `blender_add_material`
 - `blender_export_model`
+- `blender_list_objects`
 - `blender_download_model_file`
 - `blender_delete_model_file`
+- `drawio_create_project`
+- `drawio_list_projects`
+- `drawio_delete_project`
+- `drawio_create_diagram`
+- `drawio_add_shape`
+- `drawio_add_connector`
+- `drawio_download_diagram`
+- `drawio_list_elements`
 - `get_project_latest_info`（仅 team_builder 可用）
 
 关键约束：
@@ -206,10 +220,11 @@ Lint 框架采用**可插拔注册式架构**（`server/lint/`）：
 1. 在 `server/lint/checkers/*.ts` 创建新文件
 2. 实现 `LintChecker` 接口（id、name、description、`check()` 方法）
 3. 在 `server/lint/checkers/index.ts` 注册（加入 `builtInCheckers` 数组）
-4. 内置检查器：`html-structure`（6 条 error 规则）+ `http-method`（HTTP 方法安全，error 级）+ `js-security`（4 条 warn 规则）+ `sonarqube`（代码质量扫描，服务不可用时降级为 warn）
+4. 内置检查器：`html-structure`（6 条 error 规则）+ `http-method`（HTTP 方法安全，error 级）+ `js-security`（4 条 warn 规则）+ `sonarqube`（代码质量扫描，scanner 异常会被 LintRunner 转为 error issue，阻断提交）
 5. error 级别 issue **阻断** `submit_game`，warn 级别仅记录日志
 6. `LintChecker.check()` 支持同步/异步返回（`LintIssue[] | Promise<LintIssue[]>`）
 7. HTML 模式检查 `html_content`；ZIP 模式会逐个检查包内 HTML，遇到首个 error 即阻断，并通过 `LintContext.zipBuffer` 传递原始 ZIP 给检查器复用
+8. SonarQube 扫描会将原始报告写入 `extraPayloads`，供 `submit_game` 上传 MinIO 并回写 `games.sonar_storage_id`
 
 ## 8. 本地开发与构建
 
@@ -232,6 +247,7 @@ npm run build
 - 后端同步地址：`STAR_OFFICE_UI_URL`（默认 `http://127.0.0.1:19000`）
 - Agent 注册密钥：`STAR_OFFICE_JOIN_KEY`
 - Creator 服务地址：`CREATOR_SERVICE_URL`（默认 `http://localhost:8080`）
+- Draw.io 服务地址：`DRAWIO_SERVICE_URL`（默认 `http://localhost:8082`）
 
 ## 9. 调试建议
 

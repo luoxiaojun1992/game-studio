@@ -5,7 +5,7 @@
 
 ## 项目概述
 
-Game Dev Studio 是一个基于 CodeBuddy Agent SDK 的多 Agent 游戏研发工作台，提供团队协作、提案评审、任务看板、任务交接、游戏产出、运行观测与 Star-Office-UI 联动能力。
+Game Dev Studio 是一个基于 CodeBuddy Agent SDK 的多 Agent 游戏研发工作台，提供团队协作、提案评审与附件、任务看板、任务交接、游戏产出、draw.io 图表、运行观测与 Star-Office-UI 联动能力。
 
 ## 技术栈
 
@@ -18,6 +18,7 @@ Game Dev Studio 是一个基于 CodeBuddy Agent SDK 的多 Agent 游戏研发工
 | AI SDK | `@tencent-ai/agent-sdk` |
 | 测试 | Playwright (E2E) |
 | 代码质量 | SonarQube (scanner 微服务 + REST API) |
+| 图表 | draw.io (drawio-service + export) |
 
 ## 架构核心原则
 
@@ -46,6 +47,7 @@ export const AGENT_IDS = ['engineer', 'architect', 'game_designer', 'biz_designe
 - 工具通过 `mcpServers` 参数传给 `query()`
 - 工具名前缀为 `mcp__studio_tools__`（下划线）
 - 建模工具已并入单一 studio-tools（`blender_*`），并仅对 `engineer` 角色开放
+- draw.io 工具（`drawio_*`）覆盖图表 CRUD/导出，`drawio_list_elements` 支持元素分页检索
 - 记忆通过 `getMemorySummaryForPrompt()` 注入 systemPrompt
 
 ### 4. 关键文件位置
@@ -56,8 +58,10 @@ export const AGENT_IDS = ['engineer', 'architect', 'game_designer', 'biz_designe
 | Agent 定义 | `server/agents.ts` |
 | 自定义工具 | `server/tools.ts` |
 | Creator 集成 | `server/creator-service.ts`、`creator/` |
+| Draw.io 集成 | `server/drawio-service.ts`、`drawio-service/` |
 | 数据库操作 | `server/db.ts` |
 | 文件存储 | `server/file-storage.ts`、`server/minio-client.ts` |
+| 提案附件 API | `server/proposal-attachments-api.ts` |
 | Lint 框架 | `server/lint/`（LintRunner + 可插拔检查器，含 SonarQube） |
 | SonarQube 客户端 | `server/lint/checkers/sonar/sonarqube-client.ts`、`server/lint/checkers/sonar/sonarqube-token.ts` |
 | Scanner 服务客户端 | `server/sonar-scanner-service.ts` |
@@ -113,6 +117,7 @@ STAR_OFFICE_UI_URL=http://127.0.0.1:19000  # Star-Office-UI 地址
 SONARQUBE_PORT=9002                        # SonarQube 服务端口
 SONARQUBE_TOKEN=sonarpass                  # SonarQube 检查器访问 token（未配时使用默认值）
 SCANNER_SERVICE_URL=http://localhost:8081  # SonarQube scanner 微服务地址
+DRAWIO_SERVICE_URL=http://localhost:8082   # Draw.io 服务地址
 ```
 
 ## 修改约束

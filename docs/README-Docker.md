@@ -53,6 +53,8 @@ docker compose logs -f creator
 - **Star Office UI**: http://localhost:19000
 - **SonarQube**: http://localhost:9002
 - **Creator Service Health**: http://localhost:8080/health
+- **Draw.io Service Health**: http://localhost:8082/health
+- **Draw.io Export Server**: http://localhost:8083
 
 ### 5. Stop Services
 
@@ -74,10 +76,13 @@ docker compose down -v
 └─────────────────┘     └─────────┬────────┘     └─────────────────┘
                                    │
                                    ├──────────────▶ creator (FastAPI + Blender)
-                                   │
-                                   ▼
-                            ┌──────────────┐
-                            │   SQLite DB  │
+                                   ├──────────────▶ drawio-service (FastAPI)
+                                   │                    │
+                                   │                    └────────────▶ drawio-export (jgraph/drawio)
+                                    │
+                                    ▼
+                             ┌──────────────┐
+                             │   SQLite DB  │
                             │   (Volume)   │
                             └──────────────┘
 ```
@@ -90,6 +95,7 @@ Data is persisted using Docker volumes:
 - `studio-output`: Game output files
 - `star-office-data`: Star Office UI data
 - `creator-data`: Creator service Blender workspace data
+- `drawio-data`: Draw.io service workspace data
 - `sonarqube-data`: SonarQube data
 - `sonarqube-logs`: SonarQube logs
 - `sonarqube-extensions`: SonarQube plugins/extensions
@@ -117,6 +123,8 @@ docker volume inspect game-dev-studio_studio-data
 | `ASSET_DRAWER_PASS` | `secure-pass-1234` | Star Office asset drawer password |
 | `CREATOR_PORT` | 8080 | Creator service exposed port |
 | `CREATOR_SERVICE_URL` | `http://creator:8080` | Backend-to-creator internal service URL |
+| `DRAWIO_SERVICE_PORT` | 8082 | Draw.io service exposed port |
+| `DRAWIO_EXPORT_PORT` | 8083 | Draw.io export service exposed port |
 | `SONARQUBE_PORT` | 9002 | SonarQube service port (mapped to container 9000) |
 | `SONARQUBE_TOKEN` | `sonarpass` | SonarQube token used by backend `sonarqube` lint checker |
 

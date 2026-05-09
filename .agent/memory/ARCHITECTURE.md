@@ -9,6 +9,7 @@
 - `server/db.ts` - SQLite 所有数据操作
 - `server/tools.ts` - SDK Custom Tools（MCP 自定义工具）
 - `server/creator-service.ts` - Creator 服务调用封装（Blender 项目/文件生命周期）
+- `server/drawio-service.ts` - Draw.io 服务调用封装（图表 CRUD/导出）
 - `server/lint/` - 可扩展静态检查框架（LintRunner + 可插拔 checker）
 - `server/lint/types.ts` - 核心类型：LintChecker 接口、LintIssue、LintResult
 - `server/lint/index.ts` - LintRunner 运行时 + lintGameContent()/lintZipBuffer() 便捷入口
@@ -38,6 +39,7 @@
 - zod 依赖用于定义工具的参数 schema
 - 内置工具覆盖记忆、任务拆分、任务看板、交接、提案、游戏提交、日志查询等核心流程（以 `server/tools.ts` 为准）
 - Blender 建模工具（`blender_*`）已并入同一 studio-tools server，由 `creator-service.ts` 统一调用 creator API
+- draw.io 工具（`drawio_*`、`drawio_list_elements`）由 `drawio-service.ts` 调用 draw.io 微服务
 - 工具 schema 已移除 `project_id` 入参，项目作用域由工具服务初始化时注入 scopedProjectId 并在工具内部执行
 
 ## Agent 角色
@@ -89,6 +91,7 @@ game-dev-studio/
 │   └── i18n.ts           # 国际化支持
 ├── star-office-ui/       # Star‑Office‑UI 子模块（用于同步）
 ├── creator/              # Blender Creator 微服务（FastAPI + Blender 运行时）
+├── drawio-service/        # Draw.io 图表微服务（FastAPI）
 ├── sonar-scanner-service/ # SonarQube Scanner 微服务（FastAPI + sonar-scanner CLI）
 ├── tests/                # 测试文件
 │   ├── ui/               # UI E2E 测试（Playwright）
@@ -120,6 +123,7 @@ game-dev-studio/
 - `games` 已移除 `author_agent_id`，提交链路不再要求该字段。
 - `logs`、`commands`、`permission_requests` 已统一包含 `updated_at`。
 - 提供原子化的增删改查函数，以及文件导出功能（`saveProposalToFile`、`saveGameToFile`）。
+- `drawio_projects` 记录 draw.io 图表项目，`proposal_attachments` 记录策划案附件并关联 MinIO 文件。
 
 #### 3. 工具定义 (`server/tools.ts`)
 - 通过 `createSdkMcpServer` 创建 MCP Server，暴露覆盖完整工作流的自定义工具：
@@ -127,9 +131,10 @@ game-dev-studio/
   - `get_memories`：获取指定 Agent 的记忆。
   - `create_handoff`：创建任务交接（来源、目标、标题、描述、上下文、优先级）。
   - `submit_proposal`：提交提案（类型、标题、内容、作者）。
-  - `submit_game`：支持双模式提交游戏（`html_content` 或 `file_path`，文件模式会打包 ZIP 并上传 MinIO）。
-  - `get_games`：按时间倒序获取当前项目游戏列表，返回基础元信息与模式标记。
-  - `get_game_info`：按游戏 ID 获取详情；HTML 模式返回完整 HTML，文件模式返回 MinIO 预签名下载链接。
+- `submit_game`：支持双模式提交游戏（`html_content` 或 `file_path`，文件模式会打包 ZIP 并上传 MinIO）。
+- `get_games`：按时间倒序获取当前项目游戏列表，返回基础元信息与模式标记。
+- `get_game_info`：按游戏 ID 获取详情；HTML 模式返回完整 HTML，文件模式返回 MinIO 预签名下载链接。
+- `drawio_*`：draw.io 项目与图表 CRUD、导出与元素列表；`blender_list_objects`：按类型分页查询 Blender 对象。
   - `get_proposals`：获取当前项目的提案列表。
   - `get_pending_handoffs`：获取待处理的交接任务。
 - **项目隔离**：工具不再接收 `project_id` 入参，统一依赖初始化注入的 `scopedProjectId` 实现项目内隔离与拒绝跨项目。
