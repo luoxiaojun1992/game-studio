@@ -225,7 +225,7 @@ The lint framework uses a **pluggable registration architecture** (`server/lint/
 5. Error-level issues **block** `submit_game`; warn-level issues are logged only
 6. `LintChecker.check()` supports both sync and async return values (`LintIssue[] | Promise<LintIssue[]>`)
 7. HTML mode checks `html_content`; ZIP mode checks every HTML file inside the package and stops on the first error, while passing the original ZIP buffer to checkers through `LintContext.zipBuffer`
-8. SonarQube checker: submits ZIP to scanner microservice (`sonar-scanner-service/`) → background scan → polls status → fetches issues from SonarQube REST API → writes raw report into `extraPayloads` for upload and `games.sonar_storage_id` linking
+8. SonarQube checker: submits ZIP to scanner microservice (`sonar-scanner-service/`) → background scan → polls status → fetches issues from SonarQube REST API → writes raw report into `extraPayloads['sonar-report']` for upload and `games.sonar_storage_id` linking
 
 ## 8. Local Development and Build
 

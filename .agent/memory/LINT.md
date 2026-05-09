@@ -119,7 +119,7 @@ const result = await lintGameContent(htmlContent, { fileName: 'snake.html' });
 - Backend 通过 `sonar-scanner-service.ts` 提交 ZIP 并轮询状态，扫描完成后从 SonarQube REST API 拉取 issues
 - `SonarQubeClient`（`sonarqube-client.ts`）负责查询 issues 和创建项目；`TokenManager`（`sonarqube-token.ts`）动态生成 USER_TOKEN
 - ZIP 模式优先复用 `LintContext.zipBuffer`，避免"解压后再打包"的重复开销
-- `scannedProjects`（module 级 Set）用于避免同一 projectKey 重复扫描
+- `scannedProjects`（module 级 Set）用于避免同一 projectKey 重复扫描，首个扫描产生的 `extraPayloads['sonar-report']` 会被 lintZipBuffer 复用到后续文件检查流程
 - 扫描完成后将报告写入 `extraPayloads['sonar-report']`，由 `submit_game` 上传 MinIO 并记录 `games.sonar_storage_id`
 - Scanner 服务任何异常（含 auth 失败）均 `throw err`，由 LintRunner 转为 error issue 阻断提交
 - 默认连接：`http://localhost:9002`，studio-backend 认证：`SONARQUBE_USER/PASSWORD`；scanner 微服务认证：`SONAR_USER/PASSWORD`
