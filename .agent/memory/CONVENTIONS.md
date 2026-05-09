@@ -87,8 +87,8 @@
 | SonarQube 扫描异常被静默吞掉 | `sonarqubeChecker.check()` 的 catch 块若 `return []` 会静默跳过所有错误（含 auth 失败）；必须 `throw err` 让 LintRunner 转为 error issue 阻断提交 | sonar auth 失败但游戏仍提交成功，质量问题漏过 |
 | SonarQube Web 分析器非确定性检测 | 相同 HTML 在不同 projectKey 下扫描，SonarQube Web 规则（如 `Web:S5254`）可能随机报 issue；mock HTML 应添加 `lang` 属性消除不确定性 | UI-007/008 相同 HTML 但扫描结果不一致，测试 flaky |
 | `sonarqube:community` 优于硬编码版本 | `sonarqube:community`（无版本号）指向最新 LTS，优于 `10.6-community` 等硬编码；`wget` 不在镜像中，healthcheck 必须用 `curl -sf` | 镜像版本过时或 healthcheck 永远失败 |
-| `sonarIssuesCache` 按 projectKey 隔离 | Module 级 Map 缓存 raw issues 供 `lintZipBuffer` → `submit_game` 复用；同一 projectKey 多次调用 scanner 时首次实际 scan，后续命中缓存 | 避免 ZIP 模式重复扫描同一项目 |
-| `sonar_storage_id` 持久化到 games 表 | 扫描完成后将 `sonar-issues.json` 独立上传 MinIO，并在 `games` 表记录 `sonar_storage_id` | 支持后续查询和展示扫描报告 |
+| `scannedProjects` 防重复扫描 | Module 级 Set 避免同一 projectKey 重复触发扫描；首次扫描后通过 `extraPayloads` 复用报告 | 避免 ZIP 模式重复扫描同一项目 |
+| `sonar_storage_id` 持久化到 games 表 | 扫描完成后将 Sonar 报告上传 MinIO，并在 `games` 表记录 `sonar_storage_id` | 支持后续查询和展示扫描报告 |
 
 ## Session ↔ Project 关系
 - **Session 不会跨 project**：每次 `sendMessage(projectId, agentId, ...)` 都会创建全新的 SDK session，session 与 project 一一对应

@@ -29,10 +29,12 @@ graph TB
         MinIO["MinIO<br/>Object Storage"]
         Sonar["SonarQube<br/>Code Quality"]
         StarOffice["Star-Office-UI"]
+        DrawioExport["Draw.io Export<br/>jgraph/drawio"]
     end
 
     subgraph "Microservices"
         Creator["Creator Service<br/>FastAPI + Blender"]
+        Drawio["Draw.io Service<br/>FastAPI"]
         Scanner["Scanner Service<br/>FastAPI + sonar-scanner CLI"]
     end
 
@@ -45,11 +47,13 @@ graph TB
     Browser -->|SSE /api/observe| BE
 
     BE -->|HTTP| Creator
+    BE -->|HTTP| Drawio
     BE -->|Upload / Download| MinIO
     BE -->|SQL| SQLite
     BE -->|File I/O| Output
     BE -->|HTTP API| Scanner
     BE -.->|Sync| StarOffice
+    Drawio -->|Export| DrawioExport
 
     Scanner -->|sonar-scanner CLI| Sonar
     Sonar -->|Issues / Quality Gate| Scanner
@@ -74,6 +78,7 @@ graph TB
 - `file-storage.ts`: shared file storage APIs/internal upload helpers
 - `minio-client.ts`: MinIO object operations and presigned URL helpers
 - `creator-service.ts`: creator HTTP client, Blender project lifecycle/model file operations, and safe-path validation
+- `drawio-service.ts`: draw.io HTTP client, diagram CRUD/export, safe-path validation
 - `lint/`: extensible lint framework (LintRunner, pluggable checkers, local rules + SonarQube quality scan checker)
 - `agents.ts`: role declarations, prompts, and handoff constraints
 - `db.ts`: SQLite schema (DDL-first initialization) and read/write operations
@@ -89,6 +94,7 @@ graph TB
 - **Handoffs**: cross-role ownership transfer and confirmation flow
 - **Games**: HTML artifact submission or packaged artifact submission, listing, preview, and file download
 - **Modeling**: Blender project management, mesh/material/export, and model file pullback
+- **Diagrams/Attachments**: draw.io diagrams, exports, and proposal attachment lifecycle
 - **Lint/Quality**: extensible static analysis framework with pluggable checkers (HTML structure, HTTP method safety, JS security, SonarQube quality scan), including async checker support
 - **Memories**: long-term memory records scoped by role/project
 - **Logs/Observability**: runtime logs and stream events
@@ -104,9 +110,11 @@ graph TB
   - `proposals`
   - `task_board_tasks`
   - `handoffs`
-  - `games`
-  - `blender_projects`
-  - `file_storages`
+- `games`
+- `blender_projects`
+- `drawio_projects`
+- `file_storages`
+- `proposal_attachments`
   - `agent_memories`
   - `logs`
   - `commands`
@@ -145,6 +153,7 @@ graph TB
 - Tool schemas do not require `project_id`; runtime scope is injected by backend and enforced internally
 - SSE broadcaster skips emission when `projectId` is missing to avoid cross-project event leakage
 - Model file download/delete enforces safe-path constraints inside `output/{project_id}/models`
+- Creator and draw.io services resolve project paths with safe-path helpers to prevent traversal
 - Controlled route namespaces under `/api/*`
 - Output files are constrained to managed output directories
 - Tool usage is constrained by role and workflow rules
@@ -152,7 +161,7 @@ graph TB
 ## 9. Deployment Topology
 
 - Local development: single-node backend + frontend dev server
-- Docker deployment: frontend/backend + creator service + SonarQube + scanner microservice containerized (see `README-Docker.md`)
+- Docker deployment: frontend/backend + creator service + draw.io service + draw.io export + SonarQube + scanner microservice containerized (see `README-Docker.md`)
 - Runtime directories:
   - `data/` for SQLite DB
   - `output/` for generated artifacts

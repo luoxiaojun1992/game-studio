@@ -30,6 +30,7 @@ submit_game (tools.ts)
   → ZIP 模式: lintZipBuffer(zipBuffer, { projectId })   ← ZIP 内 HTML 逐一检查，首个 error 立即阻断，并把原始 zipBuffer 注入 context
   │   ├─ passed=true  → 继续执行 db.createGame()
   │   └─ passed=false → return { content: error text }  // 直接返回，不写 DB
+  → 从 LintResult.extraPayloads 读取 Sonar 报告并上传 MinIO，回写 `sonar_storage_id`
   → db.createGame()（ZIP 模式写入 file_storage_id）
   → HTML 模式落盘 output；ZIP 模式上传 MinIO
 ```
@@ -61,6 +62,7 @@ interface LintResult {
   errors: LintIssue[];           // 仅 error
   warnings: LintIssue[];         // 仅 warn
   summary: string;               // 人类可读汇总（直接用于错误返回）
+  extraPayloads?: Record<string, unknown>; // 额外负载（如 Sonar 扫描报告）
 }
 ```
 
@@ -117,8 +119,8 @@ const result = await lintGameContent(htmlContent, { fileName: 'snake.html' });
 - Backend 通过 `sonar-scanner-service.ts` 提交 ZIP 并轮询状态，扫描完成后从 SonarQube REST API 拉取 issues
 - `SonarQubeClient`（`sonarqube-client.ts`）负责查询 issues 和创建项目；`TokenManager`（`sonarqube-token.ts`）动态生成 USER_TOKEN
 - ZIP 模式优先复用 `LintContext.zipBuffer`，避免"解压后再打包"的重复开销
-- `sonarIssuesCache`（module 级 Map）按 projectKey 缓存 raw issues，供 `lintZipBuffer` → `submit_game` 复用
-- 扫描完成后将 `sonar-issues.json` 追加到 ZIP 包并独立上传 MinIO，`games` 表记录 `sonar_storage_id`
+- `scannedProjects`（module 级 Set）用于避免同一 projectKey 重复扫描
+- 扫描完成后将报告写入 `extraPayloads['sonar-report']`，由 `submit_game` 上传 MinIO 并记录 `games.sonar_storage_id`
 - Scanner 服务任何异常（含 auth 失败）均 `throw err`，由 LintRunner 转为 error issue 阻断提交
 - 默认连接：`http://localhost:9002`，studio-backend 认证：`SONARQUBE_USER/PASSWORD`；scanner 微服务认证：`SONAR_USER/PASSWORD`
 

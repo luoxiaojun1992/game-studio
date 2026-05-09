@@ -52,6 +52,8 @@ docker compose logs -f creator
 - **Star Office UI**: http://localhost:19000
 - **SonarQube**: http://localhost:9002
 - **Creator 服务健康检查**: http://localhost:8080/health
+- **Draw.io 服务健康检查**: http://localhost:8082/health
+- **Draw.io 导出服务**: http://localhost:8083
 
 ### 5. 停止服务
 
@@ -71,12 +73,15 @@ docker compose down -v
 │    (Nginx)       │     │   (Node.js)      │     │   (Flask)       │
 │    :5173         │     │    :3000         │     │    :19000       │
 └─────────────────┘     └─────────┬────────┘     └─────────────────┘
-                                   │
-                                   ├──────────────▶ creator (FastAPI + Blender)
-                                   │
-                                   ▼
-                            ┌──────────────┐
-                            │   SQLite DB  │
+                                    │
+                                    ├──────────────▶ creator (FastAPI + Blender)
+                                    ├──────────────▶ drawio-service (FastAPI)
+                                    │                    │
+                                    │                    └────────────▶ drawio-export (jgraph/drawio)
+                                    │
+                                    ▼
+                             ┌──────────────┐
+                             │   SQLite DB  │
                             │   (Volume)   │
                             └──────────────┘
 ```
@@ -89,6 +94,7 @@ docker compose down -v
 - `studio-output`: 游戏输出文件
 - `star-office-data`: Star Office UI 数据
 - `creator-data`: Creator 服务 Blender 工作目录数据
+- `drawio-data`: Draw.io 服务工作目录数据
 - `sonarqube-data`: SonarQube 数据
 - `sonarqube-logs`: SonarQube 日志
 - `sonarqube-extensions`: SonarQube 插件与扩展目录
@@ -116,6 +122,8 @@ docker volume inspect game-dev-studio_studio-data
 | `ASSET_DRAWER_PASS` | `secure-pass-1234` | Star Office 资源面板密码 |
 | `CREATOR_PORT` | 8080 | Creator 服务对外端口 |
 | `CREATOR_SERVICE_URL` | `http://creator:8080` | 后端访问 Creator 的内部服务地址 |
+| `DRAWIO_SERVICE_PORT` | 8082 | Draw.io 服务对外端口 |
+| `DRAWIO_EXPORT_PORT` | 8083 | Draw.io 导出服务对外端口 |
 | `SONARQUBE_PORT` | 9002 | SonarQube 服务端口（映射到容器 9000） |
 | `SONARQUBE_TOKEN` | `sonarpass` | 后端 `sonarqube` 检查器访问 SonarQube 使用的 Token |
 

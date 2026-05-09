@@ -13,9 +13,12 @@
 - 任务交接（跨角色移交、确认执行、完成回传）
 - 项目设置（自动交接开关）
 - 提案管理（创建、评审、人工决策）
+- 提案附件（支持手动上传或 draw.io 图表导出并存储到 MinIO）
 - 游戏成品管理（支持 HTML 成品或打包文件提交、预览下载、版本状态）
 - Blender 建模链路（creator service + `blender_*` 工具，覆盖 project/几何体/材质/导出/文件操作）
+- Draw.io 图表链路（drawio-service + drawio-export，支持图表 CRUD 与导出）
 - 静态分析（可扩展 Lint 框架，支持 HTML 结构、HTTP 方法安全、JS 安全、SonarQube 质量扫描等可插拔检查器，覆盖 HTML 模式与 ZIP 模式）
+- 游戏预览支持下载 SonarQube 扫描报告
 - Agent 长期记忆（保存/查询/清理）
 - 项目隔离（按 `project_id` 隔离数据与观测流）
 
@@ -111,6 +114,7 @@ npm run server
 | `SONARQUBE_PORT` | 9002 | 本地 SonarQube 服务端口（供 lint 检查器访问） |
 | `SONARQUBE_TOKEN` | `sonarpass` | `sonarqube` 检查器使用的 SonarQube Token |
 | `SCANNER_SERVICE_URL` | `http://localhost:8081` | SonarQube scanner 微服务地址 |
+| `DRAWIO_SERVICE_URL` | `http://localhost:8082` | Draw.io 服务基础地址（图表工具调用） |
 
 ## Docker 部署
 
@@ -135,6 +139,7 @@ game-studio/
 │   └── types.ts            # 前后端共享业务类型
 ├── star-office-ui/         # Star-Office-UI Docker 构建资源
 ├── creator/                # Blender creator 微服务（FastAPI + Blender 运行时）
+├── drawio-service/          # Draw.io 图表微服务（FastAPI + draw.io export）
 ├── sonar-scanner-service/  # SonarQube scanner 微服务（FastAPI + sonar-scanner CLI）
 ├── docs/images/            # README 预览图片
 ├── data/                   # SQLite 数据文件目录（运行时生成）
@@ -161,7 +166,7 @@ game-studio/
 
 - 基础：`/health` `/models` `/check-login` `/observe`
 - Agent：`/agents` `/agents/:agentId/command` `/agents/:agentId/pause` `/agents/:agentId/resume`
-- 提案：`/proposals` `/proposals/:id` `/proposals`(POST) `/proposals/:id/review` `/proposals/:id/decide`
+- 提案：`/proposals` `/proposals/:id` `/proposals`(POST) `/proposals/:id/review` `/proposals/:id/decide` `/proposals/:id/attachments`(GET/POST) `/proposals/:id/attachments/:attachmentId`(DELETE) `/proposals/:id/attachments/:attachmentId/download`
 - 游戏：`/games` `/games/:id` `/games`(POST) `/games/:id/preview` `/games/:id`(PATCH)
 - 文件存储：`/file-storage` `/file-storage/:id` `/file-storage/:id/download`
 - 项目：`/projects`(GET/POST) `/projects/switch`(POST) `/projects/:id/settings`(GET/PATCH)
@@ -187,7 +192,9 @@ game-studio/
 - `get_game_info` 对 HTML 模式返回完整 HTML 内容，对文件模式返回 MinIO 预签名下载链接。
 - Blender 建模项目通过 `blender_projects` 表管理，并绑定 `project_id` 与 `blender_project_id`。
 - `blender_download_model_file` / `blender_delete_model_file` 内置安全路径校验，防止路径穿越。
+- Draw.io 图表项目记录在 `drawio_projects`；提案附件记录在 `proposal_attachments` 并存储于 MinIO。
 - 打包模式会将 ZIP 上传至 MinIO，并在 `file_storages` 表记录元数据。
+- SonarQube 扫描报告上传至 MinIO，并通过 `games.sonar_storage_id` 关联；`/api/games` 与 `/api/games/:id` 会返回 `sonarStorageId` 便于下载。
 - `/output` 提供静态访问（HTML 以 `text/html; charset=utf-8` 返回）。
 
 ## 二次开发

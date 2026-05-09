@@ -14,9 +14,12 @@ A multi-agent game development workspace built on the CodeBuddy Agent SDK, provi
 - Task handoff (cross-role transfer, acceptance, execution confirmation, completion callback)
 - Project settings (auto-handoff toggle)
 - Proposal management (create, review, and human decision)
+- Proposal attachments (manual uploads or draw.io diagram exports stored in MinIO)
 - Game artifact management (submit HTML artifacts or packaged files, preview, download, and version status)
 - Blender modeling pipeline (creator service + `blender_*` tools for project/mesh/material/export/file operations)
+- Draw.io diagram workflow (drawio-service + drawio-export for diagram CRUD and export)
 - Static analysis (extensible lint framework with pluggable checkers for HTML structure/HTTP method safety/JS security/SonarQube quality scan, supports HTML mode and ZIP package mode)
+- Sonar report download in game preview when scan artifacts are available
 - Long-term agent memory (save/query/clear)
 - Project isolation (data and observability streams isolated by `project_id`)
 
@@ -112,6 +115,7 @@ npm run server
 | `SONARQUBE_PORT` | 9002 | Local SonarQube service port used by lint checker |
 | `SONARQUBE_TOKEN` | `sonarpass` | SonarQube token used by `sonarqube` lint checker |
 | `SCANNER_SERVICE_URL` | `http://localhost:8081` | SonarQube scanner microservice URL |
+| `DRAWIO_SERVICE_URL` | `http://localhost:8082` | Draw.io service base URL used by diagram tools |
 
 ## Docker Deployment
 
@@ -136,6 +140,7 @@ game-studio/
 │   └── types.ts            # Shared business types
 ├── star-office-ui/         # Star-Office-UI Docker build resources
 ├── creator/                # Blender creator service (FastAPI + Blender runtime)
+├── drawio-service/          # Draw.io diagram service (FastAPI + draw.io export)
 ├── sonar-scanner-service/  # SonarQube scanner microservice (FastAPI + sonar-scanner CLI)
 ├── docs/images/            # README preview images
 ├── data/                   # SQLite database files (runtime-generated)
@@ -162,7 +167,7 @@ Main endpoints (prefix `/api`):
 
 - Basic: `/health` `/models` `/check-login` `/observe`
 - Agents: `/agents` `/agents/:agentId/command` `/agents/:agentId/pause` `/agents/:agentId/resume`
-- Proposals: `/proposals` `/proposals/:id` `/proposals`(POST) `/proposals/:id/review` `/proposals/:id/decide`
+- Proposals: `/proposals` `/proposals/:id` `/proposals`(POST) `/proposals/:id/review` `/proposals/:id/decide` `/proposals/:id/attachments`(GET/POST) `/proposals/:id/attachments/:attachmentId`(DELETE) `/proposals/:id/attachments/:attachmentId/download`
 - Games: `/games` `/games/:id` `/games`(POST) `/games/:id/preview` `/games/:id`(PATCH)
 - File storage: `/file-storage` `/file-storage/:id` `/file-storage/:id/download`
 - Projects: `/projects`(GET/POST) `/projects/switch`(POST) `/projects/:id/settings`(GET/PATCH)
@@ -188,7 +193,9 @@ Main endpoints (prefix `/api`):
 - `get_game_info` returns full HTML content for HTML-mode games, or a MinIO presigned download URL for file-mode games.
 - Blender modeling projects are tracked in `blender_projects`, bound to `project_id` and `blender_project_id`.
 - `blender_download_model_file` / `blender_delete_model_file` use safe path validation to prevent path traversal.
+- Draw.io diagram projects are tracked in `drawio_projects`; proposal attachments are tracked in `proposal_attachments` and stored in MinIO.
 - Packaged mode stores ZIP assets in MinIO and keeps metadata in `file_storages`.
+- SonarQube reports are stored in MinIO and linked via `games.sonar_storage_id`; `/api/games` and `/api/games/:id` expose `sonarStorageId` for downloads.
 - `/output` is served as static content (HTML returned with `text/html; charset=utf-8`).
 
 ## Extension Development
