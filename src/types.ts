@@ -178,6 +178,7 @@ export interface ProjectInfo {
 export interface ProjectSettings {
   project_id: string;
   autopilot_enabled: boolean;
+  team_builder_model: string;
 }
 export interface SSEInitEvent {
   type: 'init';

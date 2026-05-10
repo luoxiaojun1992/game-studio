@@ -385,25 +385,52 @@ app.get('/api/projects/:id/settings', (req, res) => {
   res.json({
     settings: {
       project_id: settings.project_id,
-      autopilot_enabled: settings.autopilot_enabled === 1
+      autopilot_enabled: settings.autopilot_enabled === 1,
+      team_builder_model: settings.team_builder_model
     }
   });
 });
 
-app.patch('/api/projects/:id/settings', (req, res) => {
+app.patch('/api/projects/:id/settings', async (req, res) => {
   const projectId = normalizeProjectId(req.params.id);
   db.ensureProject(projectId);
-  const { autopilot_enabled } = req.body as { autopilot_enabled?: boolean };
-  if (autopilot_enabled === undefined) {
-    return res.status(400).json({ error: '缺少可更新字段：autopilot_enabled' });
+  const { autopilot_enabled, team_builder_model } = req.body as { autopilot_enabled?: boolean; team_builder_model?: string };
+  if (autopilot_enabled === undefined && team_builder_model === undefined) {
+    return res.status(400).json({ error: '缺少可更新字段：autopilot_enabled 或 team_builder_model' });
   }
-  const settings = db.updateProjectSettings(projectId, {
-    autopilot_enabled: autopilot_enabled ? 1 : 0
-  });
+
+  // 校验 team_builder_model
+  if (team_builder_model !== undefined) {
+    const validModels = ['glm-5.0', 'glm-5.0-turbo', 'kimi-k2.5', 'deepseek-v3-2-volc'];
+    try {
+      const q = new Query('', CODEBUDDY_BASE_URL ? { endpoint: CODEBUDDY_BASE_URL } : {});
+      const models = await q.supportedModels();
+      if (models && models.length > 0) {
+        const validIds = models.map((m: any) => m.modelId || m.id || m.model).filter(Boolean);
+        if (validIds.length > 0) {
+          validModels.length = 0;
+          validModels.push(...validIds);
+        }
+      }
+    } catch { /* 降级：使用静态内置列表 */ }
+    if (!validModels.includes(team_builder_model)) {
+      return res.status(400).json({ error: `不支持的模型：${team_builder_model}` });
+    }
+  }
+
+  const dbUpdates: Partial<db.DbProjectSettings> = {};
+  if (autopilot_enabled !== undefined) {
+    dbUpdates.autopilot_enabled = autopilot_enabled ? 1 : 0;
+  }
+  if (team_builder_model !== undefined) {
+    dbUpdates.team_builder_model = team_builder_model;
+  }
+  const settings = db.updateProjectSettings(projectId, dbUpdates);
   res.json({
     settings: {
       project_id: settings.project_id,
-      autopilot_enabled: settings.autopilot_enabled === 1
+      autopilot_enabled: settings.autopilot_enabled === 1,
+      team_builder_model: settings.team_builder_model
     }
   });
 });

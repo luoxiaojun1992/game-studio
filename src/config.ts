@@ -81,7 +81,7 @@ export const api = {
     }).then(r => r.json()),
   getProjectSettings: (projectId: string) =>
     fetch(`${API_BASE}/api/projects/${projectId}/settings`).then(r => r.json()),
-  updateProjectSettings: (projectId: string, data: { autopilot_enabled: boolean }) =>
+  updateProjectSettings: (projectId: string, data: { autopilot_enabled?: boolean; team_builder_model?: string }) =>
     fetch(`${API_BASE}/api/projects/${projectId}/settings`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },

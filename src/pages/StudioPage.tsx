@@ -54,7 +54,8 @@ export default function StudioPage() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [handoffs, setHandoffs] = useState<Handoff[]>([]);
   const [tasks, setTasks] = useState<TaskBoardTask[]>([]);
-  const [projectSettings, setProjectSettings] = useState<ProjectSettings>({ project_id: DEFAULT_PROJECT_ID, autopilot_enabled: false });
+  const [projectSettings, setProjectSettings] = useState<ProjectSettings>({ project_id: DEFAULT_PROJECT_ID, autopilot_enabled: false, team_builder_model: 'glm-5.0' });
+  const [models, setModels] = useState<any[]>([]);
   const [projects, setProjects] = useState<ProjectInfo[]>([{ id: DEFAULT_PROJECT_ID, name: DEFAULT_PROJECT_ID }]);
   const [selectedProjectId, setSelectedProjectIdState] = useState<string>(DEFAULT_PROJECT_ID);
   const prevProjectIdRef = useRef<string>(DEFAULT_PROJECT_ID);
@@ -293,6 +294,11 @@ export default function StudioPage() {
       connectedRef.current = false;
     };
   }, [connectSSE, selectedProjectId]);
+  useEffect(() => {
+    fetch('/api/models').then(r => r.json()).then(data => {
+      if (data.models) setModels(data.models);
+    }).catch(() => {});
+  }, []);
   const handlePermissionResponse = async (requestId: string, behavior: 'allow' | 'deny', message?: string, updatedInput?: Record<string, unknown>) => {
     await api.respondPermission(requestId, behavior, message, selectedProjectId, updatedInput);
     setPendingPermissions(prev => prev.filter(p => p.requestId !== requestId));
@@ -343,6 +349,12 @@ export default function StudioPage() {
 
   const handleToggleAutoHandoff = async (enabled: boolean) => {
     const data = await api.updateProjectSettings(selectedProjectId, { autopilot_enabled: enabled });
+    if (data?.settings) {
+      setProjectSettings(data.settings);
+    }
+  };
+  const handleTeamBuilderModelChange = async (model: string) => {
+    const data = await api.updateProjectSettings(selectedProjectId, { team_builder_model: model });
     if (data?.settings) {
       setProjectSettings(data.settings);
     }
@@ -905,6 +917,30 @@ export default function StudioPage() {
                 >
                   {projectSettings.autopilot_enabled ? l('已开启', 'Enabled') : l('已关闭', 'Disabled')}
                 </button>
+              </div>
+
+              <div className="flex items-center justify-between rounded-lg border border-gray-800 bg-gray-900/60 px-4 py-3 mt-3">
+                <div>
+                  <div className="text-sm text-white font-medium">🧠 {l('团队建设 Agent 模型', 'Team Building Model')}</div>
+                  <div className="text-xs text-gray-400 mt-1">
+                    {l('选择团队建设 Agent 使用的 AI 模型', 'Select the AI model for team building agent')}
+                  </div>
+                </div>
+                <select
+                  value={projectSettings.team_builder_model}
+                  onChange={(e) => handleTeamBuilderModelChange(e.target.value)}
+                  className="text-xs bg-gray-800 text-gray-200 border border-gray-700 rounded-lg px-3 py-2"
+                >
+                  {models.map(m => {
+                    const id = m.modelId || m.model || m.id;
+                    const label = m.name || m.model || m.modelId || id;
+                    return (
+                      <option key={id} value={id}>
+                        {label}{id === (models[0]?.modelId || models[0]?.id || models[0]?.model) ? ` ${l('(推荐)', '(Recommended)')}` : ''}
+                      </option>
+                    );
+                  })}
+                </select>
               </div>
             </div>
           </div>

@@ -80,6 +80,7 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS project_settings (
     project_id TEXT PRIMARY KEY,
     autopilot_enabled INTEGER NOT NULL DEFAULT 0,
+    team_builder_model TEXT NOT NULL DEFAULT 'glm-5.0',
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
     FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
@@ -485,6 +486,7 @@ const CEO_AGENT_ID = 'ceo' as const;
 export interface DbProjectSettings {
   project_id: string;
   autopilot_enabled: number;
+  team_builder_model: string;
   created_at: string;
   updated_at: string;
 }
@@ -1138,14 +1140,15 @@ function createDefaultProjectSettings(projectId: string): DbProjectSettings {
   const settings: DbProjectSettings = {
     project_id: projectId,
     autopilot_enabled: 0,
+    team_builder_model: 'glm-5.0',
     created_at: now,
     updated_at: now
   };
   const stmt = db.prepare(`
-    INSERT INTO project_settings (project_id, autopilot_enabled, created_at, updated_at)
-    VALUES (?, ?, ?, ?)
+    INSERT INTO project_settings (project_id, autopilot_enabled, team_builder_model, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?)
   `);
-  stmt.run(settings.project_id, settings.autopilot_enabled, settings.created_at, settings.updated_at);
+  stmt.run(settings.project_id, settings.autopilot_enabled, settings.team_builder_model, settings.created_at, settings.updated_at);
   return settings;
 }
 
@@ -1159,7 +1162,7 @@ export function getProjectSettings(projectId: string): DbProjectSettings {
 
 export function updateProjectSettings(
   projectId: string,
-  updates: Partial<Pick<DbProjectSettings, 'autopilot_enabled'>>
+  updates: Partial<Pick<DbProjectSettings, 'autopilot_enabled' | 'team_builder_model'>>
 ): DbProjectSettings {
   const safeProjectId = normalizeProjectId(projectId);
   getProjectSettings(safeProjectId);
@@ -1168,6 +1171,10 @@ export function updateProjectSettings(
   if (updates.autopilot_enabled !== undefined) {
     fields.push('autopilot_enabled = ?');
     values.push(updates.autopilot_enabled);
+  }
+  if (updates.team_builder_model !== undefined) {
+    fields.push('team_builder_model = ?');
+    values.push(updates.team_builder_model);
   }
   if (fields.length === 0) {
     return getProjectSettings(safeProjectId);
