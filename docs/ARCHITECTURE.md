@@ -33,7 +33,8 @@ graph TB
     end
 
     subgraph "Microservices"
-        Creator["Creator Service<br/>FastAPI + Blender"]
+        Creator["Creator Service<br/>FastAPI"]
+        Blender["Blender<br/>3D Engine"]
         Drawio["Draw.io Service<br/>FastAPI"]
         Scanner["Scanner Service<br/>FastAPI + sonar-scanner CLI"]
     end
@@ -53,6 +54,7 @@ graph TB
     BE -->|File I/O| Output
     BE -->|HTTP API| Scanner
     BE -.->|Sync| StarOffice
+    Creator -->|subprocess| Blender
     Drawio -->|Export| DrawioExport
 
     Scanner -->|sonar-scanner CLI| Sonar
@@ -84,6 +86,8 @@ graph TB
 - `db.ts`: SQLite schema (DDL-first initialization) and read/write operations
 - `sse-broadcaster.ts`: SSE client management and event broadcast
 - `star-office-sync.ts`: Star-Office registration/state sync/health checks
+- `proposal-attachments-api.ts`: proposal attachment CRUD and file-storage binding
+- `/creator/app/safe_path.py` & `/drawio-service/app/safe_path.py`: path traversal protection utility (resolves user-supplied paths within trusted base directory)
 
 ## 4. Core Business Domains
 
@@ -92,13 +96,14 @@ graph TB
 - **Proposals**: creation, review workflow, decision states
 - **Tasks**: development/testing decomposition and status transitions
 - **Handoffs**: cross-role ownership transfer and confirmation flow
-- **Games**: HTML artifact submission or packaged artifact submission, listing, preview, and file download
-- **Modeling**: Blender project management, mesh/material/export, and model file pullback
-- **Diagrams/Attachments**: draw.io diagrams, exports, and proposal attachment lifecycle
-- **Lint/Quality**: extensible static analysis framework with pluggable checkers (HTML structure, HTTP method safety, JS security, SonarQube quality scan), including async checker support
+- **Games**: HTML artifact submission or packaged artifact submission, listing, preview, file download, and **Sonar report download**
+- **Modeling**: Blender project management, mesh/material/export, model file pullback, **and scene object listing**
+- **Diagrams/Attachments**: draw.io diagrams, exports, proposal attachment lifecycle, **and diagram element listing**
+- **Lint/Quality**: extensible static analysis framework with pluggable checkers (HTML structure, HTTP method safety, JS security, SonarQube quality scan), including async checker support; Sonar report stored as game attachment via `games.sonar_storage_id`
 - **Memories**: long-term memory records scoped by role/project
 - **Logs/Observability**: runtime logs and stream events
 - **Permissions**: tool execution approval lifecycle and response callbacks
+- **Settings**: project-level settings including autopilot toggle and **team builder model selection**
 
 ## 5. Data and Storage
 
@@ -114,13 +119,15 @@ graph TB
 - `blender_projects`
 - `drawio_projects`
 - `file_storages`
-- `proposal_attachments`
+  - `proposal_attachments`
   - `agent_memories`
   - `logs`
   - `commands`
   - `permission_requests`
 - Proposal artifacts and HTML-mode game artifacts are written under `output/{project_id}/...`
 - Packaged game artifacts are uploaded to MinIO and linked through `games.file_storage_id`
+- Sonar quality reports are stored in MinIO and linked through `games.sonar_storage_id` (downloadable from the game preview page)
+- `project_settings` stores `autopilot_enabled` and `team_builder_model` (project-scoped)
 - Data and outputs are isolated by `project_id`
 - `games` no longer stores `author_agent_id`; author attribution should be tracked from workflow context if needed.
 - `logs`, `commands`, and `permission_requests` include `updated_at` for state transition tracking.
@@ -153,7 +160,7 @@ graph TB
 - Tool schemas do not require `project_id`; runtime scope is injected by backend and enforced internally
 - SSE broadcaster skips emission when `projectId` is missing to avoid cross-project event leakage
 - Model file download/delete enforces safe-path constraints inside `output/{project_id}/models`
-- Creator and draw.io services resolve project paths with safe-path helpers to prevent traversal
+- Creator and draw.io services resolve project paths with `safe_path.resolve_safe_path()` utility to prevent traversal
 - Controlled route namespaces under `/api/*`
 - Output files are constrained to managed output directories
 - Tool usage is constrained by role and workflow rules

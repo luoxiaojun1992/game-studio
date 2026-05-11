@@ -33,7 +33,8 @@ graph TB
     end
 
     subgraph "微服务"
-        Creator["Creator Service<br/>FastAPI + Blender"]
+        Creator["Creator Service<br/>FastAPI"]
+        Blender["Blender<br/>3D 引擎"]
         Drawio["Draw.io Service<br/>FastAPI"]
         Scanner["Scanner Service<br/>FastAPI + sonar-scanner CLI"]
     end
@@ -53,6 +54,7 @@ graph TB
     BE -->|文件读写| Output
     BE -->|HTTP API| Scanner
     BE -.->|同步| StarOffice
+    Creator -->|subprocess| Blender
     Drawio -->|导出| DrawioExport
 
     Scanner -->|sonar-scanner CLI| Sonar
@@ -84,6 +86,8 @@ graph TB
 - `db.ts`：SQLite 表结构（DDL 优先初始化）与读写逻辑
 - `sse-broadcaster.ts`：SSE 客户端管理与事件广播
 - `star-office-sync.ts`：Star-Office 注册/同步/健康巡检
+- `proposal-attachments-api.ts`：策划案附件 CRUD 与文件存储绑定
+- `/creator/app/safe_path.py` 与 `/drawio-service/app/safe_path.py`：路径穿越防护工具函数（将用户提供的路径段解析到受信任的基础目录内）
 
 ## 4. 核心业务域
 
@@ -92,13 +96,14 @@ graph TB
 - **提案（Proposals）**：提案创建、评审流转、决策状态
 - **任务（Tasks）**：开发/测试任务拆分与状态流转
 - **交接（Handoffs）**：跨角色任务移交与确认执行
-- **产物（Games）**：支持 HTML 成品或打包产物提交，支持列表、预览与文件下载
-- **建模（Modeling）**：Blender project 管理、几何体/材质/导出与模型文件回传
-- **图表/附件（Diagrams/Attachments）**：draw.io 图表管理、导出与策划案附件
-- **静态分析（Lint/Quality）**：可扩展静态检查框架，支持 HTML 结构、HTTP 方法安全、JS 安全、SonarQube 质量扫描等可插拔检查器，并支持异步检查器
+- **产物（Games）**：支持 HTML 成品或打包产物提交，支持列表、预览、文件下载与 **Sonar 报告下载**
+- **建模（Modeling）**：Blender project 管理、几何体/材质/导出、模型文件回传与**场景对象列表**
+- **图表/附件（Diagrams/Attachments）**：draw.io 图表管理、导出、策划案附件与**图表元素列表**
+- **静态分析（Lint/Quality）**：可扩展静态检查框架，支持 HTML 结构、HTTP 方法安全、JS 安全、SonarQube 质量扫描等可插拔检查器，支持异步检查器；Sonar 报告通过 `games.sonar_storage_id` 关联到游戏成品
 - **记忆（Memories）**：按角色/项目组织的长期记忆
 - **观测（Logs/Events）**：运行日志与事件流
 - **权限（Permissions）**：工具执行审批流与回调响应
+- **设置（Settings）**：项目级别配置，包括自动驾驶开关与 **Team Building Agent 模型选择**
 
 ## 5. 数据与存储
 
@@ -114,13 +119,15 @@ graph TB
 - `blender_projects`
 - `drawio_projects`
 - `file_storages`
-- `proposal_attachments`
+  - `proposal_attachments`
   - `agent_memories`
   - `logs`
   - `commands`
   - `permission_requests`
 - 提案与 HTML 模式游戏产物写入 `output/{project_id}/...`
 - 打包模式游戏产物上传 MinIO，并通过 `games.file_storage_id` 关联
+- Sonar 质量报告存入 MinIO，通过 `games.sonar_storage_id` 关联（可在游戏预览页面下载）
+- `project_settings` 存储 `autopilot_enabled` 和 `team_builder_model`（按项目隔离）
 - 数据与产物按 `project_id` 隔离
 - `games` 已移除 `author_agent_id`，如需追溯作者应从工作流上下文中获取。
 - `logs`、`commands`、`permission_requests` 均包含 `updated_at`，用于状态变更追踪。
@@ -153,7 +160,7 @@ graph TB
 - 工具 schema 不再要求 `project_id` 入参；后端注入运行时项目作用域并在内部执行隔离校验
 - SSE 广播在缺失 `projectId` 时直接跳过，避免跨项目事件泄露
 - 模型文件下载/删除仅允许操作 `output/{project_id}/models` 安全路径，防止路径穿越
-- Creator 与 draw.io 服务统一使用安全路径工具避免路径穿越
+- Creator 与 draw.io 服务统一使用 `safe_path.resolve_safe_path()` 工具函数避免路径穿越
 - 路由统一在 `/api/*` 命名空间下管理
 - 产物文件受限于受管控的输出目录
 - 工具调用受角色权限与工作流规则约束
