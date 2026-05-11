@@ -33,7 +33,8 @@ graph TB
     end
 
     subgraph "微服务"
-        Creator["Creator Service<br/>FastAPI + Blender"]
+        Creator["Creator Service<br/>FastAPI"]
+        Blender["Blender<br/>3D 引擎"]
         Drawio["Draw.io Service<br/>FastAPI"]
         Scanner["Scanner Service<br/>FastAPI + sonar-scanner CLI"]
     end
@@ -53,6 +54,7 @@ graph TB
     BE -->|文件读写| Output
     BE -->|HTTP API| Scanner
     BE -.->|同步| StarOffice
+    Creator -->|subprocess| Blender
     Drawio -->|导出| DrawioExport
 
     Scanner -->|sonar-scanner CLI| Sonar

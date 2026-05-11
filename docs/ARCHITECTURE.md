@@ -33,7 +33,8 @@ graph TB
     end
 
     subgraph "Microservices"
-        Creator["Creator Service<br/>FastAPI + Blender"]
+        Creator["Creator Service<br/>FastAPI"]
+        Blender["Blender<br/>3D Engine"]
         Drawio["Draw.io Service<br/>FastAPI"]
         Scanner["Scanner Service<br/>FastAPI + sonar-scanner CLI"]
     end
@@ -53,6 +54,7 @@ graph TB
     BE -->|File I/O| Output
     BE -->|HTTP API| Scanner
     BE -.->|Sync| StarOffice
+    Creator -->|subprocess| Blender
     Drawio -->|Export| DrawioExport
 
     Scanner -->|sonar-scanner CLI| Sonar
