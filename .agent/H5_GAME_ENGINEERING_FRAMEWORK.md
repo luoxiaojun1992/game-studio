@@ -57,7 +57,7 @@ game/
 ## 生命周期与契约（强约束）
 框架必须提供统一的游戏生命周期接口，供系统与业务逻辑同时使用：
 
-```
+```ts
 GameApp
   init(config)
   start()
@@ -112,7 +112,7 @@ GameApp
 - 禁止 `eval`、`new Function`。
 - 禁止 `javascript:` URL。
 - 禁止 `innerHTML` 直接写入（UI 使用模板/DOM API）。
-- 禁止 `POST/PUT/DELETE/PATCH` 等写操作请求，仅允许 GET。
+- 禁止 `POST/PUT/DELETE/PATCH` 等写操作请求, 仅允许 GET。
 - 禁止外部远程脚本动态加载（必须随包提交）。
 
 ## 提交与验收边界
