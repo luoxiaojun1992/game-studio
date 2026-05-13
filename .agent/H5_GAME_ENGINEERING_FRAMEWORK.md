@@ -40,6 +40,7 @@
 ```
 game/
   index.html
+  metadata.json
   src/
     main.ts                # 框架入口（固定）
     engine/                # 框架层（固定边界）
@@ -70,7 +71,7 @@ GameApp
 ### 要求
 - 生命周期由框架掌控，业务逻辑通过注册/订阅方式扩展。
 - 业务逻辑**不得**直接操作 DOM 结构（允许只在 `ui/` 中创建 Overlay）。
-- `GameApp` 必须可被测试框架调用（建议挂载到 `window.__GAME__`）。
+- `GameApp` 必须可被测试框架调用，并挂载到 `window.__GAME__`。
 
 ## 模块边界（不限制业务逻辑）
 ### 允许的自由扩展
@@ -89,7 +90,7 @@ GameApp
 - 便于自动化测试确认资源完整性。
 
 ### 游戏元信息（必需）
-`game/manifest.json`：
+`game/metadata.json`：
 - `title` / `version` / `resolution` / `orientation` / `entry`
 - 用于系统验收与测试环境配置。
 
@@ -112,7 +113,7 @@ GameApp
 - 禁止 `eval`、`new Function`。
 - 禁止 `javascript:` URL。
 - 禁止 `innerHTML` 直接写入（UI 使用模板/DOM API）。
-- 禁止 `POST/PUT/DELETE/PATCH` 等写操作请求, 仅允许 GET。
+- 禁止 `POST/PUT/DELETE/PATCH` 等写操作请求，仅允许 GET。
 - 禁止外部远程脚本动态加载（必须随包提交）。
 
 ## 提交与验收边界
