@@ -14,18 +14,22 @@
 
 ### 渲染层
 - **PixiJS**（Canvas/WebGL 自动选择）
+- 最低版本：`>=7.4.0`
 - 原因：轻量、成熟、兼容性好、适配 2D 小游戏主流需求
 
 ### 物理（可选）
 - **Matter.js**
+- 最低版本：`>=0.19.0`
 - 原因：简单、可控、易于与 PixiJS 结合
 
 ### 动画与补间
 - **@tweenjs/tween.js**
+- 最低版本：`>=20.0.0`
 - 原因：轻量、与渲染层无强耦合
 
 ### 音频
 - **Howler.js**
+- 最低版本：`>=2.2.4`
 - 原因：H5 音频兼容性好，能统一音效/背景音乐管理
 
 ### 输入与交互
@@ -59,19 +63,30 @@ game/
 框架必须提供统一的游戏生命周期接口，供系统与业务逻辑同时使用：
 
 ```ts
-GameApp
-  init(config)
-  start()
-  pause()
-  resume()
-  resize(width, height)
-  destroy()
+export interface GameConfig {
+  width: number;
+  height: number;
+  resolution?: number;
+  orientation?: 'landscape' | 'portrait';
+  canvasId?: string;
+  assetsManifest: string;
+  [key: string]: unknown;
+}
+
+export interface GameApp {
+  init(config: GameConfig): Promise<void> | void;
+  start(): void;
+  pause(): void;
+  resume(): void;
+  resize(width: number, height: number): void;
+  destroy(): void;
+}
 ```
 
 ### 要求
 - 生命周期由框架掌控，业务逻辑通过注册/订阅方式扩展。
 - 业务逻辑**不得**直接操作 DOM 结构（允许只在 `ui/` 中创建 Overlay）。
-- `GameApp` 必须可被测试框架调用，并挂载到 `window.__GAME__`。
+- `GameApp` 必须可被测试框架调用，并在开发/测试构建中挂载到 `window.__GAME__`（验收环境必须开启）。
 
 ## 模块边界（不限制业务逻辑）
 ### 允许的自由扩展
@@ -113,7 +128,7 @@ GameApp
 - 禁止 `eval`、`new Function`。
 - 禁止 `javascript:` URL。
 - 禁止 `innerHTML` 直接写入（UI 使用模板/DOM API）。
-- 禁止 `POST/PUT/DELETE/PATCH` 等写操作请求，仅允许 GET。
+- 禁止 `POST/PUT/DELETE/PATCH` 等写操作请求；默认不需要网络访问。如需 GET，仅允许读取公开资源/配置，并提供离线降级。
 - 禁止外部远程脚本动态加载（必须随包提交）。
 
 ## 提交与验收边界
@@ -125,7 +140,7 @@ GameApp
 ### 系统验证预期
 - 可通过静态 lint 规则（HTML 结构 + JS 安全）。
 - 可被自动化测试调用生命周期。
-- 可通过资源清单检查（manifest.json）。
+- 可通过资源清单检查（`assets/manifest.json`）。
 
 ## 非目标（明确不做）
 - 不规定玩法、规则、关卡内容与复杂度。
