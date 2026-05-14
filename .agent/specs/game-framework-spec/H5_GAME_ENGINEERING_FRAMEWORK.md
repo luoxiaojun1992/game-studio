@@ -374,7 +374,7 @@ export interface LintContext {
 
 **新增游戏类型的步骤：**
 1. 在公共规范中注册新的 `game_type` 值。
-2. 创建对应的 `<GAMETYPE>_GAME_ENGINEERING_FRAMEWORK.md`，放入 `specs/game-framework-spec/` 目录，引用公共规范。
+2. 创建对应的 `<GAMETYPE>_GAME_ENGINEERING_FRAMEWORK.md`，放入 `.agent/specs/game-framework-spec/` 目录，引用公共规范。
 3. 在 `get_game_spec` 工具的 `SPEC_FILES` 映射中添加新类型。
 4. 在 LintRunner 的规则选择逻辑中，为 `gameType` 注册新的 checkers。
 
