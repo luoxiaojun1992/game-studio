@@ -23,7 +23,8 @@
 ## 详细方案
 
 ### 1) 数据库与数据模型
-- **DDL**：`games` 表删除 `html_content` 列；`description` 设置为必填字段（`TEXT NOT NULL DEFAULT ''`），以避免旧库因缺省值导致写入失败。
+- **DDL**：`games` 表删除 `html_content` 列；`description` 设置为必填字段（`TEXT NOT NULL`），新提交必须显式提供非空值。
+- **旧库兼容**：不做迁移的前提下，读取路径需对缺失/空值做兜底（例如读取时视为空描述），但写入路径仍强制校验非空。
 - **DB 层**：
   - `DbGame` 类型移除 `html_content`。
   - `createGame` / `updateGame` / `saveGameToFile` 等与 `html_content` 相关的校验与落盘逻辑移除或改为仅处理 `description`/文件存储信息。
@@ -44,9 +45,10 @@
   - 移除“按成品类型选择 lint 入口”的分支逻辑。
 
 ### 3) XSS 校验与转义（可复用 util）
-- 新增 `sanitizeHtml` / `validateHtmlSafe` 工具（`server/utils/*`）：
-  - 过滤 `<script>` 标签、`on*` 事件属性、`javascript:` URL、`data:text/javascript` 等高危内容，明确禁止内联事件处理器。
-  - 先执行清洗/转义；若清洗结果与原文不一致，则判定 XSS 校验失败并**拒绝提交**（保持“允许纯 HTML、禁止脚本”的一致性）。
+- 新增 `sanitizeHtml` / `validateHtmlSafe` 工具（`server/utils/*`），**优先使用成熟 HTML 清洗库**（如 sanitize-html / DOMPurify + JSDOM）并采用 allowlist 策略：
+  - 禁止 `<script>` 标签、`on*` 事件属性、`javascript:`/`data:text/javascript` URL 等高危内容，明确禁止内联事件处理器。
+  - 校验阶段返回**明确错误信息**（例如“禁止 script 标签/事件处理器/JS URL”）；随后对通过的内容执行清洗/转义并保存。
+  - 若清洗库发现并移除不安全内容，应返回带原因的校验错误与提示，而非无提示拒绝或静默通过。
   - 该 util 在 `submit_game` 与 DB 校验中复用，便于未来扩展。
 
 ### 4) Lint 框架调整
