@@ -28,7 +28,7 @@
 - **DB 层**：
   - `DbGame` 类型移除 `html_content`。
   - `createGame` / `updateGame` / `saveGameToFile` 等与 `html_content` 相关的校验与落盘逻辑移除或改为仅处理 `description`/文件存储信息。
-  - `MIN_GAME_HTML_LENGTH` 等仅服务于 HTML 模式的常量移除或替换为 `MAX_GAME_DESCRIPTION_LENGTH = 2000` 等新约束 (新提交必须非空且不超过 2000 字符)。
+  - `MIN_GAME_HTML_LENGTH` 等仅服务于 HTML 模式的常量移除或替换为 `MAX_GAME_DESCRIPTION_LENGTH = 2000` 等新约束 (命名与 `MIN_GAME_HTML_LENGTH` 保持一致；新提交必须非空且不超过 2000 字符)。
 - **API 返回**：`/api/games`、`/api/games/:id` 不再返回 `html_content` 或 `hasContent` 相关字段。
 
 ### 2) submit_game 工具与提示词
@@ -46,6 +46,8 @@
 
 ### 3) XSS 校验与转义（可复用 util）
 - 新增 `sanitizeHtml` / `validateHtmlSafe` 工具（`server/utils/*`）， **优先使用成熟 HTML 清洗库**（如 sanitize-html / DOMPurify + JSDOM）并采用 allowlist 策略：
+  - **允许标签**：`p`、`br`、`strong`、`em`、`ul`、`ol`、`li`、`code`、`pre`、`a`、`span`、`div`。
+  - **允许属性**：仅 `a[href|title|target|rel]`；其余标签不允许 `style`/`on*`/`src` 等属性。
   - 禁止 `<script>` 标签、`on*` 事件属性、`javascript:`/`data:text/javascript` URL 等高危内容，明确禁止内联事件处理器。
   - 校验阶段返回**明确错误信息**（例如“禁止 script 标签/事件处理器/JS URL”）；随后对通过的内容执行清洗/转义并保存。
   - 若清洗库发现并移除不安全内容，应返回带原因的校验错误与提示，而非无提示拒绝或静默通过。
@@ -62,7 +64,7 @@
 
 ### 5) API 与前端展示
 - **后端**：
-  - `/api/games/:id/preview` 失去 HTML 来源，可移除或改为返回说明内容。
+  - `/api/games/:id/preview` 失去 HTML 来源，**明确移除该接口**；前端不再使用该 endpoint。
   - `GamePreview` 相关接口字段调整为 `description` 与文件下载信息。
 - **前端**：
   - `GamePreview` 去掉 iframe 预览与源码展示；改为渲染 `description`。
