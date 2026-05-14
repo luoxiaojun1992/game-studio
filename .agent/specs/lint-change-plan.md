@@ -24,7 +24,7 @@
 
 ### 1) 数据库与数据模型
 - **DDL**：`games` 表删除 `html_content` 列；`description` 设置为必填字段（`TEXT NOT NULL`），新提交必须显式提供非空值。
-- **旧库兼容**：不做迁移的前提下，读取路径需对缺失/空值做兜底（例如读取时视为空描述），但写入路径仍强制校验非空。
+- 读取路径不做兜底处理；写入路径仍强制校验非空字符串。
 - **DB 层**：
   - `DbGame` 类型移除 `html_content`。
   - `createGame` / `updateGame` / `saveGameToFile` 等与 `html_content` 相关的校验与落盘逻辑移除或改为仅处理 `description`/文件存储信息。
@@ -70,6 +70,7 @@
 - **前端**：
   - `GamePreview` 去掉 iframe 预览与源码展示；改为渲染 `description`。
   - `Game` 类型移除 `html_content`，保持 `description` 为必填展示字段。
+  - `description` 为空时直接展示为空，不做兜底补值。
 
 ### 6) UI 测试与 Mock
 - 更新 `tests/mock-server/codebuddy-sdk-mock-server.mjs` 或 UI 测试用例：
@@ -84,3 +85,4 @@
 - 任何 ZIP 解压不再发生在 Lint Runner 层。
 - 前端不再显示 HTML 预览，改为展示 `description`。
 - UI E2E mock 按新 schema 可顺利提交游戏成品。
+- 提交代码前必须跑通 UI test。优先通过环境/依赖配置修复问题。仅为解决网络/依赖导致测试无法运行而做的临时代码改动属于 workaround，提交前必须回滚；修复业务逻辑或测试缺陷的正式改动应一并提交。
