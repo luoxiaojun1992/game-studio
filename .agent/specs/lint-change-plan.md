@@ -28,7 +28,7 @@
 - **DB 层**：
   - `DbGame` 类型移除 `html_content`。
   - `createGame` / `updateGame` / `saveGameToFile` 等与 `html_content` 相关的校验与落盘逻辑移除或改为仅处理 `description`/文件存储信息。
-  - `MIN_GAME_HTML_LENGTH` 等仅服务于 HTML 模式的常量移除或替换为 `MAX_GAME_DESCRIPTION_LENGTH = 2000` 等新约束 (命名遵循现有 SCREAMING_SNAKE_CASE 规则；新提交必须非空且不超过 2000 字符)。
+  - `MIN_GAME_HTML_LENGTH` 等仅服务于 HTML 模式的常量移除或替换为 `MAX_DESCRIPTION_LENGTH = 2000` 等新约束 (命名遵循现有 SCREAMING_SNAKE_CASE 规则；新提交必须非空且不超过 2000 字符)。
 - **API 返回**：`/api/games`、`/api/games/:id` 不再返回 `html_content` 或 `hasContent` 相关字段。
 
 ### 2) submit_game 工具与提示词
@@ -45,10 +45,10 @@
   - 移除“按成品类型选择 lint 入口”的分支逻辑。
 
 ### 3) XSS 校验与转义（可复用 util）
-- 新增 `sanitizeHtml` / `validateHtmlSafe` 工具（`server/utils/*`）， **优先使用成熟 HTML 清洗库**（如 sanitize-html / DOMPurify + JSDOM）并采用 allowlist 策略：
+- 新增 `sanitizeHtml` / `validateHtmlSafe` 工具（`server/utils/*`）， **优先使用成熟 HTML 清洗库**（推荐 sanitize-html 等服务端库；如需 DOMPurify + JSDOM，必须禁用脚本执行与外部资源加载）并采用 allowlist 策略：
   - `validateHtmlSafe` 负责校验与报错（识别禁止标签/属性/URL）；`sanitizeHtml` 负责实际清洗并返回可存储的 HTML。
   - **允许标签**：`p`、`br`、`strong`、`em`、`ul`、`ol`、`li`、`code`、`pre`、`a`、`span`、`div`。
-  - **允许属性**：仅 `a[href|title|target|rel]`；其余标签不允许 `style`/`on*`/`src` 等属性。若 `target="_blank"`，必须强制 `rel` 含 `noopener noreferrer`。
+  - **允许属性**：仅 `a[href|title|target|rel]`；其余标签不允许 `style`/`on*`/`src` 等属性。`href` 仅允许 `http://` / `https://`，明确禁止 `javascript:` / `data:` / `vbscript:`。若 `target="_blank"`，必须强制 `rel` 含 `noopener noreferrer`。
   - 禁止 `<script>` 标签、`on*` 事件属性、`javascript:`/`data:text/javascript` URL 等高危内容，明确禁止内联事件处理器。
   - 校验阶段返回**明确错误信息**（例如“禁止 script 标签/事件处理器/JS URL”）；随后对通过的内容执行清洗/转义并保存。
   - 若清洗库发现并移除不安全内容，应返回带原因的校验错误与提示，而非无提示拒绝或静默通过。
