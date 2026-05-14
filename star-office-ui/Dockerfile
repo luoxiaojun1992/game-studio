@@ -28,9 +28,10 @@ RUN set -eu; \
     # 校验解析出的引用
     echo "${RELEASE_REF}" | grep -Eq '^v?[0-9]+\.[0-9]+\.[0-9]+([-.][A-Za-z0-9.]+)?$' || { echo "Error: invalid release reference in STAR_OFFICE_UI_RELEASE_URL"; exit 1; }; \
     \
-    # 下载
+    # 下载（最多重试 3 次，每次超时 60 秒）
     echo "Downloading Star Office UI from ${RELEASE_URL}..."; \
-    curl -fsSL "${RELEASE_URL}" -o /tmp/star-office-ui.zip; \
+    curl -fsSL --connect-timeout 30 --max-time 120 --retry 3 --retry-delay 10 "${RELEASE_URL}" -o /tmp/star-office-ui.zip; \
+    echo "Download complete, file size: $(stat -c%s /tmp/star-office-ui.zip 2>/dev/null || stat -f%z /tmp/star-office-ui.zip 2>/dev/null) bytes"; \
     \
     # 解压
     unzip -q /tmp/star-office-ui.zip -d /tmp/star-office-ui-src; \
