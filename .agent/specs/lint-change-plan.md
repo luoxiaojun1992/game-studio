@@ -24,7 +24,7 @@
 
 ### 1) 数据库与数据模型
 - **DDL**：`games` 表删除 `html_content` 列；`description` 设置为必填字段（`TEXT NOT NULL`），新提交必须显式提供非空值。
-- 读取路径不做兜底处理；写入路径仍强制校验非空字符串。
+- 不做数据迁移或兜底；若现有记录 `description` 为空字符串，读取/展示保持为空；写入路径仍强制校验非空字符串。
 - **DB 层**：
   - `DbGame` 类型移除 `html_content`。
   - `createGame` / `updateGame` / `saveGameToFile` 等与 `html_content` 相关的校验与落盘逻辑移除或改为仅处理 `description`/文件存储信息。
@@ -85,4 +85,4 @@
 - 任何 ZIP 解压不再发生在 Lint Runner 层。
 - 前端不再显示 HTML 预览，改为展示 `description`。
 - UI E2E mock 按新 schema 可顺利提交游戏成品。
-- 提交代码前必须跑通 UI test。优先通过环境/依赖配置修复问题；如需临时改动代码用于本地排障或验证，提交前必须回滚，禁止将此类变更提交到代码库。
+- 提交代码前必须跑通 UI test。优先通过环境/依赖配置修复问题；临时用于排障/验证的网络或依赖 workaround 必须在提交前回滚，禁止提交；真实代码修复应随测试结果一并提交。
