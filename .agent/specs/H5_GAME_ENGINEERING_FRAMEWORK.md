@@ -236,16 +236,8 @@ for (const item of data.resources) {
 | `html-body` | html-structure | error | 公共 | MUST 包含 `<body>` 标签 |
 | `html-charset` | html-structure | error | 公共 | `<head>` 中 MUST 包含 `<meta charset="utf-8">` |
 | `html-body-not-empty` | html-structure | error | 公共 | `<body>` MUST 有可见内容 |
-| `js-eval` | js-security | warn | 公共 | MUST NOT 使用 `eval()` |
-| `js-function-constructor` | js-security | warn | 公共 | MUST NOT 使用 `new Function()` |
-| `js-js-url` | js-security | warn | 公共 | MUST NOT 使用 `javascript:` 协议 URL |
-| `js-inner-html-write` | js-security | warn | 公共 | MUST NOT 使用 `innerHTML` 写入 |
-| `http-fetch-method` | http-method | error | 公共 | MUST NOT 使用 POST/PUT/DELETE/PATCH |
-| `http-xhr-method` | http-method | error | 公共 | MUST NOT 使用 POST/PUT/DELETE/PATCH |
 | `metadata-exists` | game-asset | error | 公共 | MUST 存在 `metadata.json` |
 | `metadata-schema` | game-asset | error | 公共 | metadata.json MUST 完整且 game_type 已注册 |
-| `js-document-write` | js-security-ext | error | 公共 | MUST NOT 使用 `document.write()` |
-| `js-dynamic-script` | js-security-ext | error | 公共 | MUST NOT 动态创建远程 `<script>` |
 | `lifecycle-exports` | game-lifecycle | error | H5 特有 | MUST 实现 GameApp 全部 6 个生命周期方法 |
 | `lifecycle-window-global` | game-lifecycle | error | H5 特有 | MUST 挂载 GameApp 实例到 `window.__GAME__` |
 | `lifecycle-script-tag` | game-lifecycle | error | H5 特有 | index.html MUST 包含 `<script>` 标签 |
@@ -278,8 +270,7 @@ for (const item of data.resources) {
                ▼
 ┌─────────────────────────────────────────────────────────┐
 │                    LintRunner                             │
-│  1. 公共 checkers（html-structure, js-security,           │
-│     http-method, game-asset(部分), js-security-ext）     │
+│  1. 公共 checkers（html-structure, game-asset(元信息)）     │
 │     → 无条件运行                                          │
 │  2. H5 checkers（game-lifecycle, asset扩展）              │
 │     → 仅在 game_type === "h5" 时运行                     │
@@ -370,9 +361,6 @@ export interface LintContext {
 | Checker | 条件 | 说明 |
 |---------|------|------|
 | html-structure | 始终运行 | 公共规则 |
-| js-security | 始终运行 | 公共规则 |
-| http-method | 始终运行 | 公共规则 |
-| js-security-ext | 始终运行 | 公共规则 |
 | metadata-exists | 始终运行 | 公共规则 |
 | metadata-schema | 始终运行 | 公共规则 |
 | game-lifecycle | `gameType === "h5"` 时运行 | H5 特有 |

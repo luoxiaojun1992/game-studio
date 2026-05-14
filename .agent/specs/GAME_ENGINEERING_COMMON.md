@@ -46,9 +46,6 @@
 | 规则分类 | 说明 |
 |---------|------|
 | HTML 结构 | DOCTYPE、html/head/body 标签、charset、body 非空 |
-| JS 安全 | 禁止 eval / Function 构造 / javascript: URL / innerHTML |
-| HTTP 方法安全 | 禁止 POST/PUT/DELETE/PATCH |
-| JS 安全增强 | 禁止 document.write / 动态远程脚本 |
 | 元信息 | metadata.json 必须存在且字段完整 |
 
 详细规则描述见附录。
@@ -205,110 +202,9 @@ const passed = !hasHead || RE_CHARSET_META.test(content);
 
 ---
 
-### A.2 JS 安全检查器（js-security）
+### A.2 元信息检查器（game-asset）
 
-**预处理：** 所有规则匹配前先剔除注释：
-```typescript
-const sanitized = content
-  .replace(/\/\/.*$/gm, '')
-  .replace(/\/\*[^]*?\*\//g, '')
-  .replace(/<!--[^]*?-->/g, '');
-```
-
-#### A.2.1 js-eval
-
-| 属性 | 值 |
-|------|-----|
-| ruleId | `js-eval` |
-| level | `warn` |
-| 描述 | MUST NOT 使用 `eval()` |
-
-**判定逻辑：** `/\beval\s*\(/gi`
-
-**错误消息：** `检测到 eval() 调用。建议使用 JSON.parse 或更安全的替代方案。`
-
----
-
-#### A.2.2 js-function-constructor
-
-| 属性 | 值 |
-|------|-----|
-| ruleId | `js-function-constructor` |
-| level | `warn` |
-| 描述 | MUST NOT 使用 `new Function()` / `Function()` |
-
-**判定逻辑：** `/(?:new\s+)?Function\s*\(/g`
-
-**错误消息：** `检测到 Function() 构造函数调用。动态生成函数存在安全风险。`
-
----
-
-#### A.2.3 js-js-url
-
-| 属性 | 值 |
-|------|-----|
-| ruleId | `js-js-url` |
-| level | `warn` |
-| 描述 | MUST NOT 使用 `javascript:` 协议 URL |
-
-**判定逻辑：** `/javascript\s*:/gi`
-
-**错误消息：** `检测到 javascript: 协议 URL。建议使用事件监听处理交互。`
-
----
-
-#### A.2.4 js-inner-html-write
-
-| 属性 | 值 |
-|------|-----|
-| ruleId | `js-inner-html-write` |
-| level | `warn` |
-| 描述 | MUST NOT 使用 `innerHTML` 写入 |
-
-**判定逻辑：** `/\.innerHTML\s*[\+]?=/g`
-
-**错误消息：** `检测到 innerHTML 赋值操作。建议使用 textContent 或 DOM API。`
-
----
-
-### A.3 HTTP 方法安全检查器（http-method）
-
-#### A.3.1 http-fetch-method
-
-| 属性 | 值 |
-|------|-----|
-| ruleId | `http-fetch-method` |
-| level | `error` |
-| 描述 | fetch() 中 MUST NOT 使用 POST/PUT/DELETE/PATCH |
-
-**判定逻辑：**
-```typescript
-const RE_FETCH_METHOD = /fetch\s*\(\s*[^)]+\s*,\s*\{[^}]*?\bmethod\s*:\s*["']([A-Za-z]+)["']/gi;
-const allowedMethods = new Set(['GET', 'OPTIONS', 'HEAD', 'CONNECT', 'TRACE']);
-```
-method 值转大写后比对 allowedMethods。
-
-**错误消息：** `检测到非安全 HTTP 方法 [{method}]。游戏仅允许 GET/OPTIONS 请求。`
-
----
-
-#### A.3.2 http-xhr-method
-
-| 属性 | 值 |
-|------|-----|
-| ruleId | `http-xhr-method` |
-| level | `error` |
-| 描述 | XMLHttpRequest.open() 中 MUST NOT 使用 POST/PUT/DELETE/PATCH |
-
-**判定逻辑：** `/\.open\s*\(\s*["']([A-Za-z]+)["']\s*,/gi`，同 A.3.1 比对逻辑。
-
-**错误消息：** `检测到 XMLHttpRequest.open() 中的非安全 HTTP 方法 [{method}]。`
-
----
-
-### A.4 元信息检查器（game-asset）
-
-#### A.4.1 metadata-exists
+#### A.2.1 metadata-exists
 
 | 属性 | 值 |
 |------|-----|
@@ -322,7 +218,7 @@ method 值转大写后比对 allowedMethods。
 
 ---
 
-#### A.4.2 metadata-schema
+#### A.2.2 metadata-schema
 
 | 属性 | 值 |
 |------|-----|
@@ -364,41 +260,6 @@ const requiredFields: Record<string, (v: any) => boolean> = {
 
 ---
 
-### A.5 增强安全检查器（js-security-ext）
-
-#### A.5.1 js-document-write
-
-| 属性 | 值 |
-|------|-----|
-| ruleId | `js-document-write` |
-| level | `error` |
-| 描述 | MUST NOT 使用 `document.write()` |
-
-**判定逻辑：** `/document\.write\s*\(/gi`
-
-**错误消息：** `检测到 document.write() 调用。建议使用 DOM API 操作。`
-
----
-
-#### A.5.2 js-dynamic-script
-
-| 属性 | 值 |
-|------|-----|
-| ruleId | `js-dynamic-script` |
-| level | `error` |
-| 描述 | MUST NOT 动态创建 `<script>` 标签加载远程脚本 |
-
-**判定逻辑：**
-```typescript
-const RE_CREATE_SCRIPT = /createElement\s*\(\s*["']script["']\s*\)/gi;
-const RE_SET_SRC = /\.src\s*=\s*["']https?:\/\//gi;
-const passed = !(RE_CREATE_SCRIPT.test(sanitized) && RE_SET_SRC.test(sanitized));
-```
-
-**错误消息：** `检测到动态创建远程脚本。所有脚本 MUST 随包提交。`
-
----
-
 ## 附录 B：规则总览表
 
 | ruleId | checker | level | 适用范围 | 描述 |
@@ -409,13 +270,5 @@ const passed = !(RE_CREATE_SCRIPT.test(sanitized) && RE_SET_SRC.test(sanitized))
 | `html-body` | html-structure | error | 全部 | MUST 包含 `<body>` 标签 |
 | `html-charset` | html-structure | error | 全部 | `<head>` 中 MUST 包含 `<meta charset="utf-8">` |
 | `html-body-not-empty` | html-structure | error | 全部 | `<body>` MUST 有可见内容 |
-| `js-eval` | js-security | warn | 全部 | MUST NOT 使用 `eval()` |
-| `js-function-constructor` | js-security | warn | 全部 | MUST NOT 使用 `new Function()` / `Function()` |
-| `js-js-url` | js-security | warn | 全部 | MUST NOT 使用 `javascript:` 协议 URL |
-| `js-inner-html-write` | js-security | warn | 全部 | MUST NOT 使用 `innerHTML` 写入 |
-| `http-fetch-method` | http-method | error | 全部 | MUST NOT 使用 POST/PUT/DELETE/PATCH（fetch） |
-| `http-xhr-method` | http-method | error | 全部 | MUST NOT 使用 POST/PUT/DELETE/PATCH（XHR） |
 | `metadata-exists` | game-asset | error | 全部 | MUST 存在 `metadata.json` |
 | `metadata-schema` | game-asset | error | 全部 | metadata.json MUST 包含必填字段且 game_type 已注册 |
-| `js-document-write` | js-security-ext | error | 全部 | MUST NOT 使用 `document.write()` |
-| `js-dynamic-script` | js-security-ext | error | 全部 | MUST NOT 动态创建远程 `<script>` |
