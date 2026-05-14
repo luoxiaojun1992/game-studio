@@ -70,7 +70,7 @@
 - **前端**：
   - `GamePreview` 去掉 iframe 预览与源码展示；改为渲染 `description`。
   - `Game` 类型移除 `html_content`，保持 `description` 为必填展示字段。
-  - `description` 为空时直接展示为空，不做兜底补值（仅用于异常数据场景）。
+  - `description` 为空时直接展示为空，不做兜底补值。
 
 ### 6) UI 测试与 Mock
 - 更新 `tests/mock-server/codebuddy-sdk-mock-server.mjs` 或 UI 测试用例：
@@ -85,4 +85,4 @@
 - 任何 ZIP 解压不再发生在 Lint Runner 层。
 - 前端不再显示 HTML 预览，改为展示 `description`。
 - UI E2E mock 按新 schema 可顺利提交游戏成品。
-- 提交代码前必须跑通 UI test。优先通过环境/依赖配置修复问题。临时用于排障/验证的网络或依赖 workaround 必须在提交前回滚。真实代码修复应随测试结果一并提交。
+- 提交代码前必须跑通 UI test。优先通过环境/依赖配置修复问题。仅为解决网络/依赖导致测试无法运行而做的临时代码改动属于 workaround，提交前必须回滚；修复业务逻辑或测试缺陷的正式改动应随测试结果一并提交。
