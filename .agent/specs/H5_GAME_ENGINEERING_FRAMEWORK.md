@@ -1,4 +1,4 @@
-# H5 小游戏工程规范（Engineering Agent）
+# H5 小游戏工程规范
 
 ## 概述
 
