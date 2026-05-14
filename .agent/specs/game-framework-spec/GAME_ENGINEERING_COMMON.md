@@ -18,7 +18,7 @@
 
 | game_type | 描述 | 对应规范文档 |
 |-----------|------|------------|
-| `h5` | H5 小游戏（浏览器运行） | `specs/game-framework-spec/H5_GAME_ENGINEERING_FRAMEWORK.md` + 公共部分 |
+| `h5` | H5 小游戏（浏览器运行） | `.agent/specs/game-framework-spec/H5_GAME_ENGINEERING_FRAMEWORK.md` + 公共部分 |
 | （后续扩展） | ... | ... |
 
 ## 元信息规范（所有游戏类型通用）
