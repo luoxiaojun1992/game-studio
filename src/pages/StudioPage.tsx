@@ -295,7 +295,7 @@ export default function StudioPage() {
     };
   }, [connectSSE, selectedProjectId]);
   useEffect(() => {
-    fetch('/api/models').then(r => r.json()).then(data => {
+    api.getModels().then(data => {
       if (data.models) setModels(data.models);
     }).catch(() => {});
   }, []);
