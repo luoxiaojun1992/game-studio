@@ -57,7 +57,7 @@
 ### 4) Lint 框架调整
 - **检查器注册**：`builtInCheckers` 仅保留 `sonarqube`。
 - **统一 lint 入口**：
-  - 新增/改造单一入口（例如 `lintGameArtifact`），统一供 `submit_game` 调用。
+  - 新增/改造单一入口（例如 `lintGameArtifact`）， 统一供 `submit_game` 调用。
   - 入口仅传递 `zipBuffer`/context， 不区分 HTML/ZIP。
 - **解压职责下沉**：
   - 移除 `lintZipBuffer` 中的 unzip 逻辑。
