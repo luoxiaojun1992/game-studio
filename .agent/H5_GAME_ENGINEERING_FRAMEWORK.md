@@ -1006,3 +1006,32 @@ document.head.appendChild(s);
 - 此规则的目的是阻止运行时从外部加载未经验证的脚本，不是阻止所有动态脚本。
 
 **错误消息：** `检测到动态创建远程脚本。所有脚本 MUST 随包提交，禁止运行时从远程加载。`
+
+---
+
+## 附录 B：规则总览表
+
+| ruleId | checker | level | 简短描述 |
+|--------|---------|-------|---------|
+| `html-doctype` | html-structure ✅ | error | MUST 包含 `<!DOCTYPE html>` |
+| `html-root` | html-structure ✅ | error | MUST 包含 `<html>` 根标签 |
+| `html-head` | html-structure ✅ | error | MUST 包含 `<head>` 标签 |
+| `html-body` | html-structure ✅ | error | MUST 包含 `<body>` 标签 |
+| `html-charset` | html-structure ✅ | error | `<head>` 中 MUST 包含 `<meta charset="utf-8">` |
+| `html-body-not-empty` | html-structure ✅ | error | `<body>` MUST 有可见内容 |
+| `js-eval` | js-security ✅ | warn | MUST NOT 使用 `eval()` |
+| `js-function-constructor` | js-security ✅ | warn | MUST NOT 使用 `new Function()` / `Function()` |
+| `js-js-url` | js-security ✅ | warn | MUST NOT 使用 `javascript:` 协议 URL |
+| `js-inner-html-write` | js-security ✅ | warn | MUST NOT 使用 `innerHTML` 写入 |
+| `http-fetch-method` | http-method ✅ | error | MUST NOT 使用 POST/PUT/DELETE/PATCH（fetch） |
+| `http-xhr-method` | http-method ✅ | error | MUST NOT 使用 POST/PUT/DELETE/PATCH（XHR） |
+| `lifecycle-exports` | game-lifecycle ✋ | error | MUST 实现 GameApp 全部 6 个生命周期方法 |
+| `lifecycle-window-global` | game-lifecycle ✋ | error | MUST 挂载 GameApp 实例到 `window.__GAME__` |
+| `lifecycle-script-tag` | game-lifecycle ✋ | error | index.html MUST 包含 `<script>` 标签 |
+| `metadata-exists` | game-asset ✋ | error | MUST 存在 `metadata.json` |
+| `metadata-schema` | game-asset ✋ | error | metadata.json MUST 包含必填字段且类型正确 |
+| `manifest-exists` | game-asset ✋ | error | MUST 存在 `assets/manifest.json` |
+| `manifest-schema` | game-asset ✋ | error | manifest.json MUST 是合法 JSON 且包含 resources 数组 |
+| `resource-relative-path` | game-asset ✋ | error | 资源路径 MUST 使用相对路径 |
+| `js-document-write` | js-security-ext ✋ | error | MUST NOT 使用 `document.write()` |
+| `js-dynamic-script` | js-security-ext ✋ | error | MUST NOT 动态创建远程 `<script>` |
