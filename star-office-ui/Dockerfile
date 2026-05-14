@@ -18,10 +18,11 @@ RUN set -eu; \
     echo "${STAR_OFFICE_UI_RELEASE_VERSION}" | grep -Eq '^v?[0-9]+\.[0-9]+\.[0-9]+([-.][A-Za-z0-9.]+)?$' || { echo "Error: invalid STAR_OFFICE_UI_RELEASE_VERSION format"; exit 1; }; \
     \
     # 解析 release URL
-    RELEASE_URL="${STAR_OFFICE_UI_RELEASE_URL:-https://codeload.github.com/ringhyacinth/Star-Office-UI/zip/refs/tags/${STAR_OFFICE_UI_RELEASE_VERSION}}"; \
+    RELEASE_URL="${STAR_OFFICE_UI_RELEASE_URL:-https://github.com/ringhyacinth/Star-Office-UI/archive/refs/tags/${STAR_OFFICE_UI_RELEASE_VERSION}.zip}"; \
     case "${RELEASE_URL}" in \
       https://codeload.github.com/ringhyacinth/Star-Office-UI/zip/refs/tags/*) RELEASE_REF="${RELEASE_URL#https://codeload.github.com/ringhyacinth/Star-Office-UI/zip/refs/tags/}" ;; \
       https://api.github.com/repos/ringhyacinth/Star-Office-UI/zipball/*) RELEASE_REF="${RELEASE_URL#https://api.github.com/repos/ringhyacinth/Star-Office-UI/zipball/}" ;; \
+      https://github.com/ringhyacinth/Star-Office-UI/archive/refs/tags/*) RELEASE_REF="${RELEASE_URL#https://github.com/ringhyacinth/Star-Office-UI/archive/refs/tags/}" && RELEASE_REF="${RELEASE_REF%.zip}" ;; \
       *) echo "Error: unsupported release URL. Please use official ringhyacinth/Star-Office-UI release zip URL."; exit 1 ;; \
     esac; \
     \
