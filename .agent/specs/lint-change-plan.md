@@ -23,17 +23,17 @@
 ## 详细方案
 
 ### 1) 数据库与数据模型
-- **DDL**：`games` 表删除 `html_content` 列；`description` 设置为必填字段（`TEXT NOT NULL`）。
+- **DDL**：`games` 表删除 `html_content` 列；`description` 设置为必填字段（`TEXT NOT NULL DEFAULT ''`），以避免旧库因缺省值导致写入失败。
 - **DB 层**：
   - `DbGame` 类型移除 `html_content`。
   - `createGame` / `updateGame` / `saveGameToFile` 等与 `html_content` 相关的校验与落盘逻辑移除或改为仅处理 `description`/文件存储信息。
-  - `MIN_GAME_HTML_LENGTH` 等仅服务于 HTML 模式的常量移除或替换为 `MAX_GAME_DESCRIPTION_LENGTH` 等新约束。
+  - `MIN_GAME_HTML_LENGTH` 等仅服务于 HTML 模式的常量移除或替换为 `MAX_GAME_DESCRIPTION_LENGTH = 2000` 等新约束（新提交必须非空且不超过 2000 字符）。
 - **API 返回**：`/api/games`、`/api/games/:id` 不再返回 `html_content` 或 `hasContent` 相关字段。
 
 ### 2) submit_game 工具与提示词
 - **工具参数**：
   - 移除 `html_content`。
-  - `file_path` 必填，且**只接受目录**（不再接受单文件路径）。
+  - `file_path` 必填，且**只接受目录**（不再接受单文件路径）；通过 `fs.statSync(...).isDirectory()` 强校验，若为文件则直接报错。
   - 新增/强化 `description` 为必填：非空、长度限制、XSS 校验/转义。
 - **提示词/工具说明**：
   - 删除“单文件 HTML 模式”描述。
@@ -45,8 +45,8 @@
 
 ### 3) XSS 校验与转义（可复用 util）
 - 新增 `sanitizeHtml` / `validateHtmlSafe` 工具（`server/utils/*`）：
-  - 过滤 `<script>` 标签、`on*` 事件属性、`javascript:` URL 等高危内容。
-  - 对不安全内容执行转义或拒绝（与需求一致：**允许纯 HTML**，不允许脚本）。
+  - 过滤 `<script>` 标签、`on*` 事件属性、`javascript:` URL、`data:text/javascript` 等高危内容，明确禁止内联事件处理器。
+  - 先执行清洗/转义；若清洗结果与原文不一致，则判定 XSS 校验失败并**拒绝提交**（保持“允许纯 HTML、禁止脚本”的一致性）。
   - 该 util 在 `submit_game` 与 DB 校验中复用，便于未来扩展。
 
 ### 4) Lint 框架调整
