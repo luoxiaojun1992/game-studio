@@ -89,6 +89,7 @@
 | `sonarqube:community` 优于硬编码版本 | `sonarqube:community`（无版本号）指向最新 LTS，优于 `10.6-community` 等硬编码；`wget` 不在镜像中，healthcheck 必须用 `curl -sf` | 镜像版本过时或 healthcheck 永远失败 |
 | `scannedProjects` 防重复扫描 | Module 级内存 Set 避免同一 projectKey 重复触发扫描；首次扫描后通过 `extraPayloads` 复用报告（进程重启或 `resetSonarScanHistory` 会清空） | 避免 ZIP 模式重复扫描同一项目 |
 | `sonar_storage_id` 持久化到 games 表 | 扫描完成后将 Sonar 报告上传 MinIO，并在 `games` 表记录 `sonar_storage_id` | 支持后续查询和展示扫描报告 |
+| 在前端组件中直接使用 `fetch('/api/...')` 调用后端 API | 必须使用 `config.ts` 中 `api.*` 封装函数（如 `api.getModels()`），它们通过 `VITE_API_BASE` 解析到正确的后端地址 | 生产构建（nginx）中 `/api/*` 被当作静态文件请求，返回 404 |
 
 ## Session ↔ Project 关系
 - **Session 不会跨 project**：每次 `sendMessage(projectId, agentId, ...)` 都会创建全新的 SDK session，session 与 project 一一对应
