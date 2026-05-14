@@ -264,15 +264,19 @@ for (const item of data.resources) {
 ┌─────────────────────────────────────────────────────────┐
 │                    submit_game (tools.ts)                 │
 │  1. 解析 metadata.json → game_type                       │
-│  2. 将 game_type 传入 lintGameContent()                   │
+│  2. HTML 模式 → lintGameContent()                         │
+│  3. ZIP 模式 → lintZipBuffer()                            │
 └──────────────┬──────────────────────────────────────────┘
                │
                ▼
 ┌─────────────────────────────────────────────────────────┐
 │                    LintRunner                             │
-│  1. 公共 checkers（html-structure, game-asset(元信息)）     │
-│     → 无条件运行                                          │
-│  2. H5 checkers（game-lifecycle, asset扩展）              │
+│  1. 通用 checkers（html-structure, http-method, js-security │
+│     , game-asset(元信息)）                                │
+│     → HTML / ZIP 成品均运行                               │
+│  2. SonarQube checker（sonarqube）                         │
+│     → 仅 ZIP 类型游戏成品                                 │
+│  3. H5 checkers（game-lifecycle, asset 扩展）              │
 │     → 仅在 game_type === "h5" 时运行                     │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -291,12 +295,12 @@ tool(
   },
   async ({ game_type }) => {
     const SPEC_FILES: Record<string, string> = {
-      'h5': '.agent/specs/H5_GAME_ENGINEERING_FRAMEWORK.md',
+      'h5': '.agent/specs/game-framework-spec/H5_GAME_ENGINEERING_FRAMEWORK.md',
     };
-    const specFile = SPEC_FILES[game_type] || '.agent/specs/GAME_ENGINEERING_COMMON.md';
+    const specFile = SPEC_FILES[game_type] || '.agent/specs/game-framework-spec/GAME_ENGINEERING_COMMON.md';
     const specContent = await fs.promises.readFile(path.resolve(__dirname, '..', specFile), 'utf-8');
     const commonContent = await fs.promises.readFile(
-      path.resolve(__dirname, '..', '.agent/specs/GAME_ENGINEERING_COMMON.md'), 'utf-8'
+      path.resolve(__dirname, '..', '.agent/specs/game-framework-spec/GAME_ENGINEERING_COMMON.md'), 'utf-8'
     );
     return {
       content: [
@@ -370,7 +374,7 @@ export interface LintContext {
 
 **新增游戏类型的步骤：**
 1. 在公共规范中注册新的 `game_type` 值。
-2. 创建对应的 `<GAMETYPE>_GAME_ENGINEERING_FRAMEWORK.md`，放入 `specs/` 目录，引用公共规范。
+2. 创建对应的 `<GAMETYPE>_GAME_ENGINEERING_FRAMEWORK.md`，放入 `.agent/specs/game-framework-spec/` 目录，引用公共规范。
 3. 在 `get_game_spec` 工具的 `SPEC_FILES` 映射中添加新类型。
 4. 在 LintRunner 的规则选择逻辑中，为 `gameType` 注册新的 checkers。
 

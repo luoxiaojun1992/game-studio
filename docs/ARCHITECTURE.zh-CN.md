@@ -25,6 +25,14 @@ graph TB
         BE["后端<br/>Express + TypeScript"]
     end
 
+    subgraph "Lint 框架"
+        LintRunner["LintRunner"]
+        HtmlChecker["html-structure<br/>（HTML + ZIP）"]
+        HttpChecker["http-method<br/>（HTML + ZIP）"]
+        JsChecker["js-security<br/>（HTML + ZIP）"]
+        SonarChecker["sonarqube<br/>（仅 ZIP 成品）"]
+    end
+
     subgraph "外部服务"
         MinIO["MinIO<br/>对象存储"]
         Sonar["SonarQube<br/>代码质量"]
@@ -52,10 +60,16 @@ graph TB
     BE -->|上传 / 下载| MinIO
     BE -->|SQL| SQLite
     BE -->|文件读写| Output
+    BE -->|submit_game lint| LintRunner
     BE -->|HTTP API| Scanner
     BE -.->|同步| StarOffice
     Creator -->|subprocess| Blender
     Drawio -->|导出| DrawioExport
+
+    LintRunner --> HtmlChecker
+    LintRunner --> HttpChecker
+    LintRunner --> JsChecker
+    LintRunner --> SonarChecker
 
     Scanner -->|sonar-scanner CLI| Sonar
     Sonar -->|Issues / 质量门禁| Scanner

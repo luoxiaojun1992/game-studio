@@ -25,6 +25,14 @@ graph TB
         BE["Backend<br/>Express + TypeScript"]
     end
 
+    subgraph "Lint Framework"
+        LintRunner["LintRunner"]
+        HtmlChecker["html-structure<br/>(HTML + ZIP)"]
+        HttpChecker["http-method<br/>(HTML + ZIP)"]
+        JsChecker["js-security<br/>(HTML + ZIP)"]
+        SonarChecker["sonarqube<br/>(ZIP only)"]
+    end
+
     subgraph "External Services"
         MinIO["MinIO<br/>Object Storage"]
         Sonar["SonarQube<br/>Code Quality"]
@@ -52,10 +60,16 @@ graph TB
     BE -->|Upload / Download| MinIO
     BE -->|SQL| SQLite
     BE -->|File I/O| Output
+    BE -->|submit_game lint| LintRunner
     BE -->|HTTP API| Scanner
     BE -.->|Sync| StarOffice
     Creator -->|subprocess| Blender
     Drawio -->|Export| DrawioExport
+
+    LintRunner --> HtmlChecker
+    LintRunner --> HttpChecker
+    LintRunner --> JsChecker
+    LintRunner --> SonarChecker
 
     Scanner -->|sonar-scanner CLI| Sonar
     Sonar -->|Issues / Quality Gate| Scanner
