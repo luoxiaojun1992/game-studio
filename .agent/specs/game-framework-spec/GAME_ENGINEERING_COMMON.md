@@ -8,7 +8,7 @@
 - 按 `game_type` 区分不同游戏类型的工程规范。
 
 ## 适用范围
-- 所有通过 `submit_game` 提交的游戏成品。
+- 所有提交的游戏成品。
 - 按 `metadata.json` 中的 `game_type` 字段选择对应的类型规范。
 - 本文档中 **MUST** / **MUST NOT** / **SHOULD** 遵循 RFC 2119 定义。
 
@@ -49,6 +49,10 @@
 | 元信息 | metadata.json 必须存在且字段完整 |
 
 详细规则描述见附录。
+
+## 工程规范检查器
+
+工程规范检查器用于按 `game_type` 选择规则集并执行静态校验，详见 [GAME_ENGINEERING_FRAMEWORK_CHECKER.md](./GAME_ENGINEERING_FRAMEWORK_CHECKER.md)。
 
 ---
 
