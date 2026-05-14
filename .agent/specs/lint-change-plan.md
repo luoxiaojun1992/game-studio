@@ -24,7 +24,7 @@
 
 ### 1) 数据库与数据模型
 - **DDL**：`games` 表删除 `html_content` 列；`description` 设置为必填字段（`TEXT NOT NULL`），新提交必须显式提供非空值。
-- 不做数据迁移或兜底；若现有记录 `description` 为空字符串，读取/展示保持为空；写入路径仍强制校验非空字符串。
+- 不做数据迁移或兜底；若现有记录 `description` 为空字符串，读取/展示保持为空并保留；写入路径仍强制校验非空字符串，仅影响新提交。
 - **DB 层**：
   - `DbGame` 类型移除 `html_content`。
   - `createGame` / `updateGame` / `saveGameToFile` 等与 `html_content` 相关的校验与落盘逻辑移除或改为仅处理 `description`/文件存储信息。
