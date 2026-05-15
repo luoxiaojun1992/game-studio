@@ -1153,10 +1153,11 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
             }
           }).describe('游戏名称（导出到该游戏的目录下）'),
           object_name: z.string().min(1).max(64).describe('要导出的物体名称'),
+          output_filename: z.string().min(1).max(128).describe('输出文件名（含扩展名，如 model.glb）'),
           path: z.string().max(256).optional().default('assets').describe('导出路径（相对于 game 目录，如 assets/models 或 models）'),
           format: z.enum(['glb', 'fbx', 'obj', 'ply', 'usd']).optional().default('glb').describe('导出格式'),
         },
-        async ({ blender_project_id, game_name, object_name, path, format }) => {
+        async ({ blender_project_id, game_name, object_name, output_filename, path, format }) => {
           if (!blender_project_id || typeof blender_project_id !== 'string') {
             throw new Error('blender_project_id 不能为空');
           }
@@ -1165,7 +1166,6 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           const pathModule = await import('path');
           const gameDir = pathModule.resolve(__dirname, '..', 'output', scopedProjectId, 'games', game_name);
           const outputDir = pathModule.resolve(gameDir, path || 'assets');
-          const outputFilename = `${object_name}.${format || 'glb'}`;
 
           // 安全检查：确保输出路径在 game 目录下
           if (!outputDir.startsWith(gameDir + pathModule.sep)) {
@@ -1177,7 +1177,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           const opts: BlenderExportModelOptions = {
             blenderProjectId: blender_project_id.trim(),
             objectName: object_name,
-            outputFilename,
+            outputFilename: output_filename,
             outputDir,
             format,
             agentId,
@@ -1185,7 +1185,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           };
           const output = await blenderExportModel(opts);
           return {
-            content: [{ type: 'text' as const, text: `已导出 "${object_name}" 为 ${format || 'glb'} 格式到 games/${game_name}/${path || 'assets'}/${outputFilename}。${output}` }]
+            content: [{ type: 'text' as const, text: `已导出 "${object_name}" 为 ${format || 'glb'} 格式到 games/${game_name}/${path || 'assets'}/${output_filename}。${output}` }]
           };
         }
       ),
