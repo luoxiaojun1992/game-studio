@@ -59,10 +59,9 @@
 - **工具定位**：MCP 工具（通过 `createSdkMcpServer` 注册），**非 SDK 内置 `Write` 工具**。
 - **原因**：CI/测试环境中只有 mock server（模拟 `/chat/completions`），无 CodeBuddy 运行时，内置 `Write`/`Bash` 等工具无法执行。MCP 工具由 agent-sdk 本地执行，不依赖 CodeBuddy 运行时。
 - **参数**：
-  - `name`（必填）：游戏名称，与后续 `submit_game` 的 `name` 保持一致。
-  - `content`（必填）：游戏 HTML 文件内容。
-  - `files`（可选）：额外文件数组，每项包含 `name`（文件名）和 `content`（内容），用于 JS/CSS 等。
-- **写入路径**：`output/{projectId}/games/{name}/index.html`，与 `submit_game` 的 `file_path` 基准路径一致。
+  - `path`（必填）：文件路径（相对于 `games/latest/`）。
+  - `content`（必填）：文件内容。
+- **写入路径**：`output/{projectId}/games/latest/{path}`，与 `submit_game` 读取路径一致。
 - **权限**：仅 engineer 可用，自动放行。
 - **注册位置**：
   - `server/tools.ts`：工具定义（`tool('write_game_file', ...)`）。
@@ -103,8 +102,8 @@
 ### 6) UI 测试与 Mock
 - 更新 `tests/ui/e2e/studio.spec.ts`：
   - engineer mock sequence：`submit_proposal` → `write_game_file` → `submit_game` → `save_memory` → text。
-  - `write_game_file` mock 传 `name` + `content`（游戏 HTML），不传 `file_path`。
-  - `submit_game` mock 传 `file_path`（目录）+ `description` + `name` + `version`。
+  - `write_game_file` mock 传 `path` + `content`（写入 `games/latest/`）。
+  - `submit_game` mock 传 `description`（不需要 `game_name`，从 `games/latest/` 读取）。
   - 确保 mock `toolCalls.arguments` 与工具 schema 完全一致。
 - **注意**：不可 mock SDK 内置工具（`Write`/`Bash`），CI 中无 CodeBuddy 运行时执行；必须使用 MCP 工具（如 `write_game_file`），由 agent-sdk 本地执行。
 

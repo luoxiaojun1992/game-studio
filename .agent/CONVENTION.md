@@ -33,9 +33,9 @@ console.log(`DEBUG: something`);
 
 ```typescript
 // ✅ 好日志：包含关键上下文
-console.error(`[DEBUG submit_game] START projectId=${scopedProjectId} gameName=${name} resolvedPath=${resolvedFilePath}`);
+console.error(`[DEBUG submit_game] START projectId=${scopedProjectId} resolvedPath=${resolvedFilePath}`);
 console.error(`[DEBUG submit_game] targetPath=${targetPath} exists=${exists} isDirectory=${isDirectory}`);
-console.error(`[DEBUG submit_game] SUCCESS game_submitted broadcasted gameId=${game.id}`);
+console.error(`[DEBUG submit_game] SUCCESS game_submitted broadcasted gameId=${game.id} versionNumber=${game.version_number}`);
 
 // ❌ 差日志：信息不足或冗余
 console.error("DEBUG: starting submit_game");
@@ -230,7 +230,7 @@ grep "\[permission\]" workflow-logs.txt
 
 ```typescript
 // 完整示例
-console.error(`[DEBUG submit_game] START projectId=${projectId} gameName=${name}`);
+console.error(`[DEBUG submit_game] START projectId=${projectId} resolvedPath=${resolvedFilePath}`);
 
 try {
   // 操作前

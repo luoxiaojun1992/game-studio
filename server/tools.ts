@@ -477,40 +477,32 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
       tool(
         'write_game_file',
-        '将游戏文件写入到游戏产出目录。engineer 应先调用此工具写入游戏文件，再调用 submit_game 提交。文件写入路径: output/{当前项目ID}/games/{name}/{path}',
+        '将游戏文件写入到游戏产出目录。engineer 应先调用此工具写入游戏文件，再调用 submit_game 提交。文件写入路径: output/{当前项目ID}/games/latest/{path}',
         {
-          name: z.string().transform((value, ctx) => {
-            try {
-              return db.normalizeAndValidateGameName(value, 'name');
-            } catch (error: any) {
-              ctx.addIssue({ code: 'custom', message: error?.message || 'name 验证失败' });
-              return z.NEVER;
-            }
-          }).describe('游戏名称（与 submit_game 的 name 一致）'),
           path: z.string().min(1).max(256).describe('文件路径（相对于 game 目录，如 index.html、assets/models/player.glb）'),
           content: z.string().describe('文件内容'),
         },
-        async ({ name, path, content }) => {
+        async ({ path, content }) => {
           validateAgentPermission(['engineer'], '写入游戏文件');
 
-          console.error("[DEBUG write_game_file] START agentId=" + agentId + " projectId=" + scopedProjectId + " gameName=" + name + " path=" + path + " contentLength=" + content.length);
+          console.error("[DEBUG write_game_file] START agentId=" + agentId + " projectId=" + scopedProjectId + " path=" + path + " contentLength=" + content.length);
 
           const pathModule = await import('path');
           const fsModule = await import('fs');
           const outputDir = pathModule.resolve(__dirname, '..', 'output', scopedProjectId);
-          const gameDir = pathModule.join(outputDir, 'games', name);
-          const filePath = pathModule.join(gameDir, path);
+          const latestDir = pathModule.join(outputDir, 'games', 'latest');
+          const filePath = pathModule.join(latestDir, path);
 
-          // 安全检查：确保路径在 game 目录下（防止路径越权）
+          // 安全检查：确保路径在 latest 目录下（防止路径越权）
           const resolvedPath = pathModule.resolve(filePath);
-          if (!resolvedPath.startsWith(gameDir + pathModule.sep) && resolvedPath !== gameDir) {
-            console.error("[DEBUG write_game_file] 路径越权 gameDir=" + gameDir + " resolvedPath=" + resolvedPath);
+          if (!resolvedPath.startsWith(latestDir + pathModule.sep) && resolvedPath !== latestDir) {
+            console.error("[DEBUG write_game_file] 路径越权 latestDir=" + latestDir + " resolvedPath=" + resolvedPath);
             return {
               content: [{ type: 'text' as const, text: '写入游戏文件失败：路径越权，只能写入 game 目录下。' }]
             };
           }
 
-          console.error("[DEBUG write_game_file] gameDir=" + gameDir + " filePath=" + filePath + " resolvedPath=" + resolvedPath);
+          console.error("[DEBUG write_game_file] latestDir=" + latestDir + " filePath=" + filePath + " resolvedPath=" + resolvedPath);
 
           try {
             // 创建目录
@@ -521,9 +513,9 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
             fsModule.writeFileSync(resolvedPath, content, 'utf-8');
             console.error("[DEBUG write_game_file] SUCCESS wrote " + resolvedPath);
 
-            log(agentId, '写入游戏文件', '游戏: ' + name + ' | 路径: ' + path + ' | 大小: ' + content.length + ' bytes', 'success');
+            log(agentId, '写入游戏文件', '路径: ' + path + ' | 大小: ' + content.length + ' bytes', 'success');
             return {
-              content: [{ type: 'text' as const, text: '游戏文件已写入到 output/' + scopedProjectId + '/games/' + name + '/' + path }]
+              content: [{ type: 'text' as const, text: '游戏文件已写入到 output/' + scopedProjectId + '/games/latest/' + path }]
             };
           } catch (error: any) {
             console.error("[DEBUG write_game_file] ERROR " + error.message);
@@ -537,18 +529,10 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
       tool(
         'submit_game',
-        `提交一个完成的游戏成品（仅 engineer 可用）。传入 game_name（游戏名称，与 write_game_file 的 name 一致）和 description（游戏简介）。游戏文件夹会被压缩为 ZIP 并上传到 MinIO 存储。
+        `提交一个完成的游戏成品（仅 engineer 可用）。从 games/latest/ 目录打包游戏，创建游戏记录（自动分配 version_number）。游戏文件夹会被压缩为 ZIP 并上传到 MinIO 存储。
 
 ⚠️ description 仅允许纯 HTML 文本，禁止包含 JS 脚本。`,
         {
-          name: z.string().transform((value, ctx) => {
-            try {
-              return db.normalizeAndValidateGameName(value, 'name');
-            } catch (error: any) {
-              ctx.addIssue({ code: 'custom', message: error?.message || 'name 验证失败' });
-              return z.NEVER;
-            }
-          }).describe('游戏名称（与 write_game_file 的 name 一致）'),
           description: z.string().min(1, 'description 不能为空').max(db.MAX_DESCRIPTION_LENGTH, `description 长度不能超过 ${db.MAX_DESCRIPTION_LENGTH}`).describe('游戏简介（纯 HTML，仅允许 p/br/strong/em/ul/ol/li/code/pre/a/span/div 标签，禁止 script 标签）'),
           version: z.preprocess(
             (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
@@ -563,14 +547,14 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           ).describe('版本号'),
           proposal_id: z.string().optional().describe('关联的策划案 ID（如果有）')
         },
-        async ({ name, description, version, proposal_id }) => {
+        async ({ description, version, proposal_id }) => {
           validateAgentPermission(['engineer'], '提交游戏成品');
 
-          // ========== 确定游戏路径（与 write_game_file 对齐）==========
-          const resolvedFilePath = `games/${name}`;
+          // ========== 确定游戏路径（从 games/latest 读取）==========
+          const resolvedFilePath = 'games/latest';
 
           // [DEBUG] 添加日志用于排查 UI-007
-          console.error(`[DEBUG submit_game] START projectId=${scopedProjectId} gameName=${name} resolvedPath=${resolvedFilePath}`);
+          console.error(`[DEBUG submit_game] START projectId=${scopedProjectId} resolvedPath=${resolvedFilePath}`);
 
           // ========== 校验 description 安全性 ==========
           const { validateHtmlSafe, sanitizeHtml } = await import('./utils/sanitize-html.js');
@@ -617,7 +601,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
             // [DEBUG] 添加日志用于排查 UI-007
             console.error(`[DEBUG submit_game] targetPath=${targetPath} exists=false error=${err}`);
             return {
-              content: [{ type: 'text' as const, text: `提交游戏失败：目录不存在（games/${name}）。请先调用 write_game_file 创建游戏文件。` }]
+              content: [{ type: 'text' as const, text: `提交游戏失败：目录不存在（games/latest）。请先调用 write_game_file 创建游戏文件。` }]
             };
           }
           if (!stat.isDirectory()) {
@@ -735,7 +719,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
               game = db.createGame({
                 id: uuidv4(),
                 project_id: scopedProjectId,
-                name,
+                version_number: 0, // 会由数据库自动生成
                 description: safeDescription,
                 proposal_id: proposal_id || null,
                 version: version || '1.0.0',
@@ -753,10 +737,10 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
             sseBroadcaster.broadcast({ type: 'game_submitted', game: { ...game, fileStorageId, sonarStorageId }, filePath: null }, scopedProjectId);
             // [DEBUG] 添加日志用于排查 UI-007
-            console.error(`[DEBUG submit_game] SUCCESS game_submitted broadcasted projectId=${scopedProjectId} gameId=${game.id} gameName=${name}`);
-            log(agentId, '提交游戏', `游戏: ${name} v${version || '1.0.0'} [文件模式，ZIP: ${zipName}，Sonar报告: sonar/${zipName}]`, 'success');
+            console.error(`[DEBUG submit_game] SUCCESS game_submitted broadcasted projectId=${scopedProjectId} gameId=${game.id} versionNumber=${game.version_number}`);
+            log(agentId, '提交游戏', `版本号: ${game.version_number} v${version || '1.0.0'} [文件模式，ZIP: ${zipName}，Sonar报告: sonar/${zipName}]`, 'success');
             return {
-              content: [{ type: 'text' as const, text: `游戏已提交 (ID: ${game.id.slice(0, 8)})，名称: ${name}，版本: ${version || '1.0.0'}，文件已上传到存储。` }]
+              content: [{ type: 'text' as const, text: `游戏已提交 (版本号: ${game.version_number})，版本: ${version || '1.0.0'}，文件已上传到存储。` }]
             };
           }
       ),
@@ -865,7 +849,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           const allGames = db.getAllGames().filter(g => g.project_id === scopedProjectId);
           const games = allGames.slice(0, limit || 20).map(g => ({
             id: g.id,
-            name: g.name,
+            version_number: g.version_number,
             description: g.description,
             version: g.version,
             status: g.status,
@@ -877,7 +861,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
             };
           }
           const lines = games.map(g =>
-            `[${g.status}] ${g.name} v${g.version} | ${g.created_at.slice(0, 10)}`
+            `[${g.status}] v${g.version} (#${g.version_number}) | ${g.created_at.slice(0, 10)} | ${g.description.slice(0, 50)}`
           ).join('\n');
           return {
             content: [{ type: 'text' as const, text: lines }]
@@ -889,13 +873,25 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         'get_game_info',
         '获取指定游戏的详细信息，返回 MinIO presigned 下载链接。',
         {
-          game_id: z.string().describe('游戏 ID')
+          game_id: z.string().optional().describe('游戏 ID'),
+          version_number: z.number().int().positive().optional().describe('版本号（整数）')
         },
-        async ({ game_id }) => {
-          const game = db.getGame(game_id);
+        async ({ game_id, version_number }) => {
+          let game: db.DbGame | undefined;
+
+          // 优先通过 version_number 查询
+          if (version_number !== undefined) {
+            game = db.getGameByVersionNumber(version_number);
+          } else if (game_id) {
+            game = db.getGame(game_id);
+          } else {
+            // 如果都没有，返回最新版本
+            game = db.getLatestGame(scopedProjectId);
+          }
+
           if (!game) {
             return {
-              content: [{ type: 'text' as const, text: `游戏不存在：${game_id}` }]
+              content: [{ type: 'text' as const, text: version_number !== undefined ? `游戏不存在（版本号: ${version_number}）` : `游戏不存在：${game_id}` }]
             };
           }
           if (game.project_id !== scopedProjectId) {
@@ -926,7 +922,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           }
           const result = {
             id: game.id,
-            name: game.name,
+            version_number: game.version_number,
             description: game.description,
             version: game.version,
             status: game.status,
@@ -1126,35 +1122,27 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         '将 Blender 场景中的物体导出为模型文件（GLB/FBX/OBJ/PLY/USD）到游戏目录下（仅 engineer 可用）。导出路径限制为 game 目录下的指定路径。',
         {
           blender_project_id: z.string().describe('blender_project_id'),
-          game_name: z.string().transform((value, ctx) => {
-            try {
-              return db.normalizeAndValidateGameName(value, 'game_name');
-            } catch (error: any) {
-              ctx.addIssue({ code: 'custom', message: error?.message || 'game_name 验证失败' });
-              return z.NEVER;
-            }
-          }).describe('游戏名称（导出到该游戏的目录下）'),
           object_name: z.string().min(1).max(64).describe('要导出的物体名称'),
           output_filename: z.string().min(1).max(128).describe('输出文件名（含扩展名，如 model.glb）'),
           path: z.string().max(256).optional().default('assets').describe('导出路径（相对于 game 目录，如 assets/models 或 models）'),
           format: z.enum(['glb', 'fbx', 'obj', 'ply', 'usd']).optional().default('glb').describe('导出格式'),
         },
-        async ({ blender_project_id, game_name, object_name, output_filename, path, format }) => {
+        async ({ blender_project_id, object_name, output_filename, path, format }) => {
           if (!blender_project_id || typeof blender_project_id !== 'string') {
             throw new Error('blender_project_id 不能为空');
           }
 
-          // 限制导出路径为 game 目录下
+          // 限制导出路径为 games/latest 目录下
           const pathModule = await import('path');
-          const gameDir = pathModule.resolve(__dirname, '..', 'output', scopedProjectId, 'games', game_name);
-          const outputDir = pathModule.resolve(gameDir, path || 'assets');
+          const latestDir = pathModule.resolve(__dirname, '..', 'output', scopedProjectId, 'games', 'latest');
+          const outputDir = pathModule.resolve(latestDir, path || 'assets');
 
-          // 安全检查：确保输出路径在 game 目录下
-          if (!outputDir.startsWith(gameDir + pathModule.sep)) {
+          // 安全检查：确保输出路径在 latest 目录下
+          if (!outputDir.startsWith(latestDir + pathModule.sep)) {
             throw new Error('导出路径越权：只能导出到 game 目录下');
           }
 
-          console.error(`[DEBUG blender_export_model] gameName=${game_name} objectName=${object_name} outputDir=${outputDir}`);
+          console.error(`[DEBUG blender_export_model] objectName=${object_name} outputDir=${outputDir}`);
 
           const opts: BlenderExportModelOptions = {
             blenderProjectId: blender_project_id.trim(),
@@ -1167,7 +1155,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           };
           const output = await blenderExportModel(opts);
           return {
-            content: [{ type: 'text' as const, text: `已导出 "${object_name}" 为 ${format || 'glb'} 格式到 games/${game_name}/${path || 'assets'}/${output_filename}。${output}` }]
+            content: [{ type: 'text' as const, text: `已导出 "${object_name}" 为 ${format || 'glb'} 格式到 games/latest/${path || 'assets'}/${output_filename}。${output}` }]
           };
         }
       ),

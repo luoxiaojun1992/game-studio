@@ -46,12 +46,12 @@
 
 | 工具 | 最终解析路径 |
 |------|-------------|
-| `write_game_file` | `output/{projectId}/games/{name}/index.html` |
-| `submit_game` | 打包 `output/{projectId}/games/{name}/` 目录 |
+| `write_game_file` | `output/{projectId}/games/latest/{path}` |
+| `submit_game` | 打包 `output/{projectId}/games/latest/` 目录 |
 
 **关键说明**：
-- `write_game_file` 和 `submit_game` 使用相同的路径基准
-- `name` 参数校验规则: 字母/数字/中文/下划线/连字符，长度≤50，禁止路径穿越
+- `write_game_file` 和 `submit_game` 使用 `games/latest/` 作为工作目录
+- 游戏提交后自动生成 `version_number`（整数自增），用于唯一标识
 - 不再依赖 agent-sdk 内置 Write 工具（CI 环境不可用）
 
 ## Agent 角色
@@ -146,12 +146,10 @@ game-dev-studio/
   - `get_memories`：获取指定 Agent 的记忆。
   - `create_handoff`：创建任务交接（来源、目标、标题、描述、上下文、优先级）。
   - `submit_proposal`：提交提案（类型、标题、内容、作者）。
-- `submit_game(name, description)`：提交游戏成品。engineer 先通过 `write_game_file(name, content)` 将 HTML 写入，后调 `submit_game(name, description)` 提交同一目录。后端打包 ZIP → lint(SonarQube) → 上传 MinIO → 持久化 DB 记录。
-  - `name` 参数与 `write_game_file` 的 `name` 必须一致
-  - `name` 校验: 字母/数字/中文/下划线/连字符，长度≤50，禁止路径穿越
-> **注意**：`write_game_file` 是 MCP 工具，由 agent-sdk 本地执行，路径自动构建为 `games/{name}/`
+- `submit_game(description, version)`：提交游戏成品。engineer 先通过 `write_game_file(path, content)` 写入 `games/latest/`，后调 `submit_game` 提交。后端打包 ZIP → lint(SonarQube) → 上传 MinIO → 持久化 DB 记录，返回 `version_number`。
+  - 游戏使用 `version_number`（整数自增）作为唯一标识
 - `get_games`：按时间倒序获取当前项目游戏列表，返回基础元信息与文件模式标记。
-- `get_game_info`：按游戏 ID 获取详情，返回 MinIO 预签名下载链接。
+- `get_game_info`：按游戏 ID 或 `version_number` 获取详情，支持获取最新版本，返回 MinIO 预签名下载链接。
 - `drawio_*`：draw.io 项目与图表 CRUD、导出与元素列表；`blender_list_objects`：按类型分页查询 Blender 对象。
   - `get_proposals`：获取当前项目的提案列表。
   - `get_pending_handoffs`：获取待处理的交接任务。

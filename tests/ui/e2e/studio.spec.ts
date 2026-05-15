@@ -149,8 +149,6 @@ interface WorkflowOptions {
   testId: string;
   /** Enable autopilot mode (auto-accepts handoffs internally) */
   autopilot: boolean;
-  /** Game name to assert in final verification */
-  gameName: string;
 }
 
 const runFullWorkflowTest = async (
@@ -336,15 +334,14 @@ const runFullWorkflowTest = async (
 
   // 通过 mock 模拟大模型输出，调用 write_game_file MCP 工具在 backend 服务器端写入游戏文件
   // 注意：使用 MCP 工具而非 SDK 内置 Write 工具，因为 CI 环境无 CodeBuddy 运行时执行内置工具
-  const gameDir = `games/${opts.gameName}`;
-  log(`mocks:queueing-write-game-file for ${projectId}/${gameDir}...`);
+  log(`mocks:queueing-write-game-file for ${projectId}/games/latest...`);
   await setMockExpectation(projectId, 'engineer', {
     content: '正在写入游戏文件...',
     toolCalls: [{
       name: 'write_game_file',
       arguments: {
-        name: opts.gameName,
-        content: `<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><title>${opts.gameName}</title></head><body><h1>${opts.gameName}</h1><p>游戏说明。</p></body></html>`
+        path: 'index.html',
+        content: `<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><title>RPG游戏</title></head><body><h1>RPG游戏</h1><p>游戏说明。</p></body></html>`
       }
     }]
   });
@@ -352,7 +349,7 @@ const runFullWorkflowTest = async (
 
   await setMockExpectation(projectId, 'engineer', {
     content: '游戏已提交。',
-    toolCalls: [{ name: 'submit_game', arguments: { name: opts.gameName, description: '一款RPG游戏' } }]
+    toolCalls: [{ name: 'submit_game', arguments: { description: '一款RPG游戏' } }]
   });
   await setMockExpectation(projectId, 'engineer', {
     content: '记忆已保存。',
@@ -460,8 +457,7 @@ const runFullWorkflowTest = async (
       const gameItems = page.locator('[data-testid^="game-card-"]');
       const gc = await gameItems.count();
       expect(gc).toBeGreaterThanOrEqual(1);
-      await expect(gameItems.first()).toHaveAttribute('data-game-name', new RegExp(opts.gameName));
-
+      // 游戏名已移除，验证游戏卡片存在即可
       log(`${opts.testId} COMPLETE ✅`, { totalCards: fc, totalGames: gc, elapsedSec: elapsed });
       return;
     }
@@ -483,7 +479,6 @@ test('[UI-007] should complete full workflow: game designer -> CEO -> architect 
   await runFullWorkflowTest(page, {
     testId: 'UI-007',
     autopilot: false,
-    gameName: '测试游戏',
   });
 });
 
@@ -496,7 +491,6 @@ test('[UI-008] should complete full workflow with autopilot and auto-handoff', a
   await runFullWorkflowTest(page, {
     testId: 'UI-008',
     autopilot: true,
-    gameName: '测试游戏',
   });
 });
 
