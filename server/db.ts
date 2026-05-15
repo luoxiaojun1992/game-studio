@@ -142,9 +142,9 @@ db.exec(`
 
   -- 游戏成品表
   CREATE TABLE IF NOT EXISTS games (
-    id TEXT UNIQUE NOT NULL,
+    id TEXT PRIMARY KEY,
     project_id TEXT NOT NULL DEFAULT 'default',
-    version_number INTEGER PRIMARY KEY AUTOINCREMENT,
+    version_number INTEGER NOT NULL,
     description TEXT NOT NULL,
     file_storage_id TEXT,
     sonar_storage_id TEXT,
@@ -689,13 +689,20 @@ export function createGame(game: DbGame): DbGame {
   const normalizedProposalId = normalizeOptionalText(game.proposal_id, 'proposal_id');
   const normalizedFileStorageId = normalizeOptionalText(game.file_storage_id, 'file_storage_id');
   const normalizedSonarStorageId = normalizeOptionalText(game.sonar_storage_id, 'sonar_storage_id');
+
+  // 计算下一个 version_number
+  const maxStmt = db.prepare('SELECT MAX(version_number) as max_vn FROM games WHERE project_id = ?');
+  const maxResult = maxStmt.get(normalizedProjectId) as { max_vn: number | null };
+  const nextVersionNumber = (maxResult.max_vn ?? 0) + 1;
+
   const stmt = db.prepare(`
-    INSERT INTO games (id, project_id, description, proposal_id, version, status, file_storage_id, sonar_storage_id, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO games (id, project_id, version_number, description, proposal_id, version, status, file_storage_id, sonar_storage_id, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   stmt.run(
     game.id,
     normalizedProjectId,
+    nextVersionNumber,
     normalizedDescription,
     normalizedProposalId,
     normalizedVersion,
@@ -705,13 +712,10 @@ export function createGame(game: DbGame): DbGame {
     game.created_at,
     game.updated_at
   );
-  // 获取自动生成的 version_number
-  const versionStmt = db.prepare('SELECT last_insert_rowid() as version_number');
-  const result = versionStmt.get() as { version_number: number };
   return {
     ...game,
     project_id: normalizedProjectId,
-    version_number: result.version_number,
+    version_number: nextVersionNumber,
     description: normalizedDescription,
     proposal_id: normalizedProposalId,
     version: normalizedVersion,
