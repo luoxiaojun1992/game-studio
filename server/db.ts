@@ -142,7 +142,7 @@ db.exec(`
 
   -- 游戏成品表
   CREATE TABLE IF NOT EXISTS games (
-    id TEXT PRIMARY KEY,
+    id TEXT UNIQUE NOT NULL,
     project_id TEXT NOT NULL DEFAULT 'default',
     version_number INTEGER PRIMARY KEY AUTOINCREMENT,
     description TEXT NOT NULL,
