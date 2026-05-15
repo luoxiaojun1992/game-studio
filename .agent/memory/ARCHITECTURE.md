@@ -40,6 +40,24 @@
 - draw.io 工具（`drawio_*`、`drawio_list_elements`）由 `drawio-service.ts` 调用 draw.io 微服务
 - 工具 schema 已移除 `project_id` 入参，项目作用域由工具服务初始化时注入 scopedProjectId 并在工具内部执行
 
+## Agent-SDK 工作目录与自定义工具基础路径设计
+
+agent-sdk 内置工具（如 `Write`）与自定义工具（如 `submit_game`）使用**不同的基础路径基准**，但最终解析到同一目录：
+
+| 工具 | 基准路径 | 传入的相对路径 | 最终解析路径 |
+|------|---------|---------------|-------------|
+| agent-sdk `Write`（或 `Bash`） | `query({ cwd: output/ })` | `{projectId}/games/{name}/index.html` | `output/{projectId}/games/{name}/index.html` |
+| 自定义 `submit_game` | `tools.ts` 内部 `outputDir = path.join(__dirname, '..', 'output', projectId)` | `games/{name}` | `output/{projectId}/games/{name}/` |
+
+**关键区别**：
+- agent-sdk 工具的工作目录（`cwd`）是 `output/`，所以路径需要以 `{projectId}/` 开头
+- 自定义工具的 `outputDir` 已包含 `output/{projectId}/`，所以路径从 `games/` 开始
+- 两者最终都指向 `output/{projectId}/games/{name}/`，路径一致
+
+**影响范围**：
+- 测试 mock 中 `Write` 传 `file_path: "{projectId}/games/{name}/index.html"`，而 `submit_game` 传 `file_path: "games/{name}"`，两者预期命中同一文件
+- 为自定义工具新增文件操作时，需注意路径基准的差异，选择合适的基准进行计算
+
 ## Agent 角色
 - 6 个 Agent: `game_designer`, `architect`, `engineer`, `biz_designer`, `ceo`, `team_builder`
 - `team_builder` 每个 agent 结束后运行，负责总结沉淀记忆，handoffTargets 为空数组
