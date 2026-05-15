@@ -18,6 +18,7 @@
  */
 
 import yazl from 'yazl';
+import crypto from 'crypto';
 
 import type { LintChecker, LintIssue, LintContext } from '../../types.js';
 import { submitScan, pollScanStatus } from '../../../sonar-scanner-service.js';
@@ -30,20 +31,82 @@ export type { SonarQubeIssue };
 export { globalTokenManager } from './sonarqube-token.js';
 export { SonarQubeClient } from './sonarqube-client.js';
 
-// ====== Module 级扫描防重复 ======
-// 目的：避免 lintZipBuffer 对同一 projectKey 重复扫描（extraPayloads 只产生一次）
+// ====== 扫描历史管理（基于 zipBuffer hash 去重 + LRU 淘汰） ======
+// 目的：根据 ZIP 内容 hash 判断是否需要扫描，相同内容不重复扫描
 
-const scannedProjects = new Set<string>();
+const MAX_CACHE_SIZE = 50;  // 最多缓存 50 个项目的扫描结果
+
+type ScanRecord = {
+  zipHash: string;  // ZIP 内容的 MD5 hash
+  issues: SonarQubeIssue[];  // 缓存的扫描结果
+};
+// LRU 缓存：按插入顺序排列，最新插入的在末尾，最久未使用的在头部
+const scanHistory: Map<string, ScanRecord> = new Map();
 
 /**
- * 重置扫描历史，允许对同一 projectKey 重新发起扫描
- * submit_game 在读取 extraPayloads 后调用此函数
+ * 计算 Buffer 的 MD5 hash（十六进制字符串）
+ */
+function computeZipHash(buffer: Buffer): string {
+  return crypto.createHash('md5').update(buffer).digest('hex');
+}
+
+/**
+ * LRU 淘汰：当缓存超过上限时，移除最旧的条目
+ */
+function evictOldestIfNeeded(): void {
+  if (scanHistory.size >= MAX_CACHE_SIZE) {
+    // 删除最旧的条目（Map 的第一个 key）
+    const oldestKey = scanHistory.keys().next().value;
+    scanHistory.delete(oldestKey);
+    console.error(`[SonarQube checker] LRU 淘汰 project=${oldestKey} 当前缓存大小=${scanHistory.size}`);
+  }
+}
+
+/**
+ * 获取扫描历史中的缓存 issues（zipBuffer 未变化时直接返回缓存）
+ */
+export function getCachedSonarIssues(projectKey: string, zipBuffer: Buffer): SonarQubeIssue[] | null {
+  const record = scanHistory.get(projectKey);
+  if (!record) return null;
+
+  const currentHash = computeZipHash(zipBuffer);
+  if (record.zipHash !== currentHash) {
+    // ZIP 内容变了，清除旧缓存
+    console.error(`[SonarQube checker] ZIP 内容已变化，清除旧缓存 project=${projectKey}`);
+    scanHistory.delete(projectKey);
+    return null;
+  }
+
+  // LRU 更新：将该条目移到末尾（标记为最近使用）
+  scanHistory.delete(projectKey);
+  scanHistory.set(projectKey, record);
+
+  console.error(`[SonarQube checker] 命中缓存，跳过扫描 project=${projectKey} issues=${record.issues.length}`);
+  return record.issues;
+}
+
+/**
+ * 保存扫描结果到历史缓存
+ */
+export function cacheSonarIssues(projectKey: string, zipBuffer: Buffer, issues: SonarQubeIssue[]): void {
+  evictOldestIfNeeded();  // 先检查是否需要淘汰
+  scanHistory.set(projectKey, {
+    zipHash: computeZipHash(zipBuffer),
+    issues,
+  });
+  console.error(`[SonarQube checker] 缓存扫描结果 project=${projectKey} 缓存大小=${scanHistory.size}`);
+}
+
+/**
+ * @deprecated 使用 getCachedSonarIssues + cacheSonarIssues 替代
  */
 export function resetSonarScanHistory(projectKey?: string): void {
   if (projectKey) {
-    scannedProjects.delete(projectKey);
+    scanHistory.delete(projectKey);
+    console.error(`[SonarQube checker] 重置扫描历史 project=${projectKey}`);
   } else {
-    scannedProjects.clear();
+    scanHistory.clear();
+    console.error(`[SonarQube checker] 重置全部扫描历史`);
   }
 }
 
@@ -105,12 +168,6 @@ export const sonarqubeChecker: LintChecker = {
 
     console.error(`[SonarQube checker] 开始扫描 project=${projectKey} contentLength=${content?.length ?? 0} fileName=${context?.fileName ?? 'unknown'}`);
 
-    // 同一 projectKey 在同一 lintZipBuffer 流程中不重复扫描
-    if (scannedProjects.has(projectKey)) {
-      console.error(`[SonarQube checker] 跳过重复扫描 project=${projectKey}`);
-      return [];
-    }
-
     // scanner 微服务 unavailable → graceful degrade（sonar 扫描可选，不阻断提交）
     try {
       const zipBuffer = context?.zipBuffer;
@@ -122,6 +179,21 @@ export const sonarqubeChecker: LintChecker = {
         // 有原始 ZIP：直接使用
         scanZipBuffer = zipBuffer;
         console.error(`[SonarQube checker] 使用原始 zipBuffer size=${zipBuffer.length}`);
+
+        // 先检查缓存（基于 hash 去重）
+        const cachedIssues = getCachedSonarIssues(projectKey, scanZipBuffer);
+        if (cachedIssues !== null) {
+          // 命中缓存，直接返回缓存的 issues
+          const errors = cachedIssues.filter(si => ['BLOCKER', 'CRITICAL', 'MAJOR'].includes(si.severity));
+          console.error(`[SonarQube checker] 命中缓存，跳过扫描 project=${projectKey} errors=${errors.length}`);
+          return cachedIssues.map(si => ({
+            ruleId: `sonarqube:${si.rule}`,
+            level: ['BLOCKER', 'CRITICAL', 'MAJOR'].includes(si.severity) ? 'error' : 'warn',
+            message: si.message,
+            line: si.line,
+            checkerId: cid,
+          }));
+        }
       } else {
         // 无原始 ZIP → 从 HTML content 打包
         scanZipBuffer = await buildZipBuffer(content, context);
@@ -158,8 +230,8 @@ export const sonarqubeChecker: LintChecker = {
       console.error(`[SonarQube checker] 拉取 issues project=${projectKey}`);
       const sonarIssues = await client.getProjectIssues(projectKey);
 
-      // 标记已扫描，防止同一 lintZipBuffer 流程重复扫描
-      scannedProjects.add(projectKey);
+      // 缓存扫描结果（基于 zipBuffer hash）
+      cacheSonarIssues(projectKey, scanZipBuffer, sonarIssues);
 
       // 写入 extraPayloads，供 submit_game 直接读取并上传到 MinIO
       if (context?.__extraPayloads) {
