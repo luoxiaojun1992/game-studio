@@ -539,9 +539,9 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
       tool(
         'submit_game',
-        '提交一个完成的游戏成品（仅 engineer 可用）。传入 game_name（游戏名称，与 write_game_file 的 name 一致）和 description（游戏简介）。游戏文件夹会被压缩为 ZIP 并上传到 MinIO 存储。
+        `提交一个完成的游戏成品（仅 engineer 可用）。传入 game_name（游戏名称，与 write_game_file 的 name 一致）和 description（游戏简介）。游戏文件夹会被压缩为 ZIP 并上传到 MinIO 存储。
 
-⚠️ description 仅允许纯 HTML 文本，禁止包含 JS 脚本。',
+⚠️ description 仅允许纯 HTML 文本，禁止包含 JS 脚本。`,
         {
           name: z.string().transform((value, ctx) => {
             try {
