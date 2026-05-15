@@ -554,7 +554,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           const resolvedFilePath = 'games/latest';
 
           // [DEBUG] 添加日志用于排查 UI-007
-          console.error(`[DEBUG submit_game] START projectId=${scopedProjectId} resolvedPath=${resolvedFilePath}`);
+          console.error(`[DEBUG submit_game] START projectId=${scopedProjectId} resolvedPath=${resolvedFilePath} __dirname=${__dirname}`);
 
           // ========== 校验 description 安全性 ==========
           const { validateHtmlSafe, sanitizeHtml } = await import('./utils/sanitize-html.js');
@@ -590,6 +590,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
               content: [{ type: 'text' as const, text: `提交游戏失败：无效的路径。` }]
             };
           }
+          console.error(`[DEBUG submit_game] outputDir=${outputDir} targetPath=${targetPath}`);
 
           // 检查路径是否存在且为目录
           let stat: Stats;
@@ -610,10 +611,10 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
             };
           }
 
-            // 创建临时 ZIP 文件
-            const zipId = uuidv4();
-            const zipName = `${scopedProjectId}_${zipId}.zip`;
-            const zipTempPath = pathModule.join('/tmp', zipName);
+          // 创建临时 ZIP 文件
+          const zipId = uuidv4();
+          const zipName = `${scopedProjectId}_${zipId}.zip`;
+          const zipTempPath = pathModule.join('/tmp', zipName);
 
             try {
               // 切换到 output/{project_id} 目录执行 zip，保留相对路径
