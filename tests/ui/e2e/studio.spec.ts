@@ -352,7 +352,7 @@ const runFullWorkflowTest = async (
 
   await setMockExpectation(projectId, 'engineer', {
     content: '游戏已提交。',
-    toolCalls: [{ name: 'submit_game', arguments: { name: opts.gameName, file_path: gameDir, description: '一款RPG游戏' } }]
+    toolCalls: [{ name: 'submit_game', arguments: { name: opts.gameName, description: '一款RPG游戏' } }]
   });
   await setMockExpectation(projectId, 'engineer', {
     content: '记忆已保存。',
