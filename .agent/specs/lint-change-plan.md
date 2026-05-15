@@ -19,6 +19,7 @@
 6. 移除根据成品类型选择 lint 入口的策略；统一 lint 入口为一个。
 7. Lint Runner 不负责解压 ZIP；是否解压由具体 checker 自行决定。
 8. 更新 CodeBuddy UI 测试 mock：写入 HTML 到游戏成品输出目录，提交时传目录路径 + description。
+9. 同步清理伴生代码：SSE 广播中的 `html_content` 残留、`POST /api/games` REST 端点、`hasContent` 字段、`GamePreview` 中 `/preview` 调用。
 
 ## 详细方案
 
@@ -30,6 +31,10 @@
   - `createGame` / `updateGame` / `saveGameToFile` 等与 `html_content` 相关的校验与落盘逻辑移除或改为仅处理 `description`/文件存储信息。
   - `MIN_GAME_HTML_LENGTH` 等仅服务于 HTML 模式的常量移除或替换为 `MAX_DESCRIPTION_LENGTH = 2000` 等新约束 (默认上限 2000， 后续可按需求调整为配置项； 新提交必须非空且不超过上限)。
 - **API 返回**：`/api/games`、`/api/games/:id` 不再返回 `html_content` 或 `hasContent` 相关字段。
+- **SSE 广播**：以下 SSE 事件中移除 `html_content: undefined` 和 `hasContent` 字段：
+  - SSE init 事件的 games 列表映射（`index.ts`）
+  - `game_submitted` 事件（`tools.ts`）
+  - `game_updated` 事件（`index.ts`）
 
 ### 2) submit_game 工具与提示词
 - **工具参数**：
@@ -40,6 +45,10 @@
   - 删除“单文件 HTML 模式”描述。
   - 明确 `description` 必填与校验规则。
   - 明确禁止输出/提交任何 JS 脚本到 `description`。
+- **Agent 提示词**（`server/agents.ts`）：
+  - 删除 engineer 提示词中关于 HTML 结构检查（DOCTYPE/head/body/charset）、HTTP 方法安全（fetch/XHR）、JS 安全（eval/Function/innerHTML）的 lint 描述。
+  - 删除"HTML 模式"和"目录模式"二选一提交流程的描述。
+  - 同步更新 `TOOLS_OVERVIEW` 中 `submit_game` 的功能描述，移除"HTML 模式"字样。
 - **提交流程**：
   - 统一为：目录 → ZIP → lint → 上传 → 创建游戏记录。
   - 移除“按成品类型选择 lint 入口”的分支逻辑。
@@ -65,11 +74,13 @@
 
 ### 5) API 与前端展示
 - **后端**：
+  - `POST /api/games`（REST 端点）同步移除 `html_content` 参数与相关校验逻辑；与 `submit_game` 工具保持一致。
   - `/api/games/:id/preview` 失去 HTML 来源，**明确移除该接口**；前端不再使用该 endpoint。移除后返回 404，并在更新说明中标注为破坏性变更。
   - `GamePreview` 相关接口字段调整为 `description` 与文件下载信息。
 - **前端**：
   - `GamePreview` 去掉 iframe 预览与源码展示；改为渲染 `description`。
-  - `Game` 类型移除 `html_content`，保持 `description` 为必填展示字段。
+  - `GamePreview` 移除对 `api.getGamePreviewUrl(game.id)` 的调用（因为 `/api/games/:id/preview` 端点已移除）。
+  - `Game` 类型移除 `html_content` 和 `hasContent?` 字段，保持 `description` 为必填展示字段。
   - `description` 为空时直接展示为空，不做兜底补值。
 
 ### 6) UI 测试与 Mock
@@ -84,5 +95,8 @@
 - Lint 仅运行 SonarQube，且只有一个统一入口。
 - 任何 ZIP 解压不再发生在 Lint Runner 层。
 - 前端不再显示 HTML 预览，改为展示 `description`。
+- 前端 `Game` 类型无 `html_content` 和 `hasContent` 字段。
+- SSE 广播事件中无 `html_content` 或 `hasContent` 相关字段。
+- engineer Agent 提示词无 HTML 模式或已移除 checker 的描述。
 - UI E2E mock 按新 schema 可顺利提交游戏成品。
 - 提交代码前必须跑通 UI test。优先通过环境/依赖配置修复问题。仅为解决网络/依赖导致测试无法运行而做的临时代码改动属于 workaround，提交前必须回滚；修复业务逻辑或测试缺陷的正式改动应一并提交。
