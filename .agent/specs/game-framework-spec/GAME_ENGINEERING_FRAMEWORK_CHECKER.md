@@ -39,6 +39,7 @@
 
 ## UI Test 验收规则
 
+- UI test 为静态校验通过后的补充验收步骤。
 - 本节为工程规范验收门禁要求，是静态检查之外的额外验收条件。
 - UI test 指 `tests/ui` 下的 Playwright E2E 用例，需全部通过。
 - 提交代码前必须跑通 UI test。
