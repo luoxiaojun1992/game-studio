@@ -39,9 +39,7 @@
 
 ## UI Test 验收规则
 
-- UI test 为静态校验通过后的补充验收步骤。
-- UI test 指 `tests/ui` 下的 Playwright E2E 用例，需全部通过。
-- 提交代码前必须跑通 UI test。
+- UI test 为静态校验通过后的补充验收步骤，指 `tests/ui` 下的 Playwright E2E 用例，提交代码前必须全部通过。
 - 如遇网络或依赖问题，优先修复环境或使用 mock/stub。
 - 允许的临时改动仅限本地绕过网络/依赖（如替换本地地址或临时 mock）。
 - 提交前必须全部回退。
