@@ -12,11 +12,8 @@
 - `server/drawio-service.ts` - Draw.io 服务调用封装（图表 CRUD/导出）
 - `server/lint/` - 可扩展静态检查框架（LintRunner + 可插拔 checker）
 - `server/lint/types.ts` - 核心类型：LintChecker 接口、LintIssue、LintResult
-- `server/lint/index.ts` - LintRunner 运行时 + lintGameContent()/lintZipBuffer() 便捷入口
-- `server/lint/checkers/html-structure.ts` - HTML 结构检查器（6 条 error 规则）
-- `server/lint/checkers/http-method-checker.ts` - HTTP 方法安全检查器（error 级，阻断非安全方法）
-- `server/lint/checkers/js-security.ts` - JS 安全检查器（4 条 warn 规则）
-- `server/lint/checkers/sonar/sonarqube.ts` - SonarQube 质量扫描检查器（支持 HTML/ZIP，scanner 微服务调用）
+- `server/lint/index.ts` - lintGameArtifact() 入口（ZIP 模式），已移除旧 HTML 内容模式检查
+- `server/lint/checkers/sonar/sonarqube.ts` - SonarQube 质量扫描检查器（仅 ZIP 模式，scanner 微服务调用）
 - `server/lint/checkers/sonar/sonarqube-client.ts` - SonarQube REST API 客户端（查询 issues、创建项目）
 - `server/lint/checkers/sonar/sonarqube-token.ts` - SonarQube TokenManager（动态生成 USER_TOKEN，Basic Auth）
 - `server/sonar-scanner-service.ts` - scanner 微服务 HTTP 客户端（提交 ZIP、轮询状态）
@@ -28,7 +25,8 @@
 - `src/components/CommandPanel.tsx` - 指令面板（含历史记录）
 - `src/components/HandoffPanel.tsx` - 交接面板（含确认流程）
 - `src/components/ProposalList.tsx` - 提案列表组件
-- `src/components/GameList.tsx` - 游戏成品列表组件
+- `src/components/GameList.tsx` - 游戏成品列表组件（展示描述信息，不再预览 HTML）
+- `src/components/GamePreview.tsx` - 游戏详情展示组件（展示描述 + MinIO 下载链接）
 - `src/pages/StudioPage.tsx` - 主页面（Tab 导航、项目管理、权限横幅、提案表单）
 
 ## SDK Custom Tools 架构
@@ -41,6 +39,24 @@
 - Blender 建模工具（`blender_*`）已并入同一 studio-tools server，由 `creator-service.ts` 统一调用 creator API
 - draw.io 工具（`drawio_*`、`drawio_list_elements`）由 `drawio-service.ts` 调用 draw.io 微服务
 - 工具 schema 已移除 `project_id` 入参，项目作用域由工具服务初始化时注入 scopedProjectId 并在工具内部执行
+
+## Agent-SDK 工作目录与自定义工具基础路径设计
+
+agent-sdk 内置工具（如 `Write`）与自定义工具（如 `submit_game`）使用**不同的基础路径基准**，但最终解析到同一目录：
+
+| 工具 | 基准路径 | 传入的相对路径 | 最终解析路径 |
+|------|---------|---------------|-------------|
+| agent-sdk `Write`（或 `Bash`） | `query({ cwd: output/ })` | `{projectId}/games/{name}/index.html` | `output/{projectId}/games/{name}/index.html` |
+| 自定义 `submit_game` | `tools.ts` 内部 `outputDir = path.join(__dirname, '..', 'output', projectId)` | `games/{name}` | `output/{projectId}/games/{name}/` |
+
+**关键区别**：
+- agent-sdk 工具的工作目录（`cwd`）是 `output/`，所以路径需要以 `{projectId}/` 开头
+- 自定义工具的 `outputDir` 已包含 `output/{projectId}/`，所以路径从 `games/` 开始
+- 两者最终都指向 `output/{projectId}/games/{name}/`，路径一致
+
+**影响范围**：
+- 测试 mock 中 `Write` 传 `file_path: "{projectId}/games/{name}/index.html"`，而 `submit_game` 传 `file_path: "games/{name}"`，两者预期命中同一文件
+- 为自定义工具新增文件操作时，需注意路径基准的差异，选择合适的基准进行计算
 
 ## Agent 角色
 - 6 个 Agent: `game_designer`, `architect`, `engineer`, `biz_designer`, `ceo`, `team_builder`
@@ -69,11 +85,14 @@ game-dev-studio/
 ├── output/               # 生成的游戏和提案文件
 ├── server/               # Express 后端
 │   ├── index.ts         # API 入口，SSE 流
-│   ├── db.ts            # 数据库模型与操作
-│   ├── tools.ts         # MCP 自定义工具定义
+│   ├── db.ts            # 数据库模型与操作（无 html_content 列，文件模式仅 ZIP+MinIO）
+│   ├── tools.ts         # MCP 自定义工具定义（submit_game 仅文件模式）
 │   ├── agent-manager.ts # Agent 状态管理与消息传递
 │   ├── sse-broadcaster.ts # SSE 广播服务
 │   ├── star-office-sync.ts # 与 Star‑Office‑UI 同步
+│   ├── file-storage.ts  # MinIO 文件存储（上传/预签名下载）
+│   ├── minio-client.ts  # MinIO 客户端封装
+│   ├── utils/sanitize-html.ts # description XSS 净化
 │   └── agents.ts        # Agent 角色定义与系统提示词
 ├── src/                  # React 前端
 │   ├── pages/StudioPage.tsx     # 主页面（多标签布局）
@@ -122,7 +141,7 @@ game-dev-studio/
 - 核心业务数据按 `project_id` 隔离；Agent 运行状态通过 `agent_sessions` 与项目关联。
 - `games` 已移除 `author_agent_id`，提交链路不再要求该字段。
 - `logs`、`commands`、`permission_requests` 已统一包含 `updated_at`。
-- 提供原子化的增删改查函数，以及文件导出功能（`saveProposalToFile`、`saveGameToFile`）。
+- 提供原子化的增删改查函数，以及文件导出功能（`saveProposalToFile`）。
 - `drawio_projects` 记录 draw.io 图表项目，`proposal_attachments` 记录策划案附件并关联 MinIO 文件。
 
 #### 3. 工具定义 (`server/tools.ts`)
@@ -131,9 +150,10 @@ game-dev-studio/
   - `get_memories`：获取指定 Agent 的记忆。
   - `create_handoff`：创建任务交接（来源、目标、标题、描述、上下文、优先级）。
   - `submit_proposal`：提交提案（类型、标题、内容、作者）。
-- `submit_game`：支持双模式提交游戏（`html_content` 或 `file_path`，文件模式会打包 ZIP 并上传 MinIO）。
-- `get_games`：按时间倒序获取当前项目游戏列表，返回基础元信息与模式标记。
-- `get_game_info`：按游戏 ID 获取详情；HTML 模式返回完整 HTML，文件模式返回 MinIO 预签名下载链接。
+- `submit_game`：提交游戏成品（仅文件模式）。engineer 先通过 MCP 工具 `write_game_file` 将 HTML 写入 `output/{project_id}/games/{name}/`，再调 `submit_game(file_path=目录, description)`。后端打包 ZIP → lint(SonarQube) → 上传 MinIO → 持久化 DB 记录。
+> **注意**：`write_game_file` 是 MCP 工具，由 agent-sdk 本地执行，而非 SDK 内置 `Write` 工具。CI/测试环境中无 CodeBuddy 运行时，内置工具不可用。
+- `get_games`：按时间倒序获取当前项目游戏列表，返回基础元信息与文件模式标记。
+- `get_game_info`：按游戏 ID 获取详情，返回 MinIO 预签名下载链接。
 - `drawio_*`：draw.io 项目与图表 CRUD、导出与元素列表；`blender_list_objects`：按类型分页查询 Blender 对象。
   - `get_proposals`：获取当前项目的提案列表。
   - `get_pending_handoffs`：获取待处理的交接任务。

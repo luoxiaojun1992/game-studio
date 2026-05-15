@@ -65,7 +65,6 @@ export const api = {
     return fetch(`${API_BASE}/api/games?${params}`).then(r => r.json());
   },
   getGame: (id: string) => fetch(`${API_BASE}/api/games/${id}`).then(r => r.json()),
-  getGamePreviewUrl: (id: string) => `${API_BASE}/api/games/${id}/preview`,
   getProjects: () => fetch(`${API_BASE}/api/projects`).then(r => r.json()),
   createProject: (data: { id: string; name?: string }) =>
     fetch(`${API_BASE}/api/projects`, {

@@ -8,8 +8,10 @@ const __dirname = path.dirname(__filename);
 export const PROJECT_ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
 export const MAX_PROJECT_ID_LENGTH = 64;
 export const MAX_FILENAME_LENGTH = 50;
+// 游戏名称：允许字母、数字、中文、下划线、连字符，不允许路径分隔符和特殊字符
+export const GAME_NAME_PATTERN = /^[a-zA-Z0-9_\-\u4e00-\u9fa5]+$/;
 export const MAX_VERSION_LENGTH = 30;
-export const MIN_GAME_HTML_LENGTH = 100;
+export const MAX_DESCRIPTION_LENGTH = 2000;
 export const SINGLE_LINE_TITLE_PATTERN = /^[^\r\n]*$/;
 export const PROPOSAL_TYPES = ['game_design', 'biz_design', 'tech_arch', 'tech_impl', 'ceo_review'] as const;
 export const PROPOSAL_STATUSES = ['pending_review', 'under_review', 'approved', 'rejected', 'revision_needed', 'user_approved', 'user_rejected'] as const;
@@ -58,6 +60,27 @@ export function normalizeAndValidateTitle(value: unknown, fieldName = 'title'): 
     throw new Error(`${fieldName} 不允许包含换行符`);
   }
   return title;
+}
+
+export function normalizeAndValidateGameName(value: unknown, fieldName = 'game_name'): string {
+  if (typeof value !== 'string') {
+    throw new Error(`${fieldName} 必须是字符串`);
+  }
+  const name = value.trim();
+  if (!name) {
+    throw new Error(`${fieldName} 不能为空`);
+  }
+  if (name.length > MAX_FILENAME_LENGTH) {
+    throw new Error(`${fieldName} 长度不能超过 ${MAX_FILENAME_LENGTH} 个字符`);
+  }
+  if (!GAME_NAME_PATTERN.test(name)) {
+    throw new Error(`${fieldName} 只允许包含字母、数字、中文、下划线和连字符`);
+  }
+  // 禁止路径穿越
+  if (name.includes('..') || name.includes('/') || name.includes('\\')) {
+    throw new Error(`${fieldName} 不允许包含路径分隔符或路径穿越字符`);
+  }
+  return name;
 }
 const dbPath = path.join(__dirname, '..', 'data', 'studio.db');
 const dataDir = path.dirname(dbPath);
@@ -122,8 +145,7 @@ db.exec(`
     id TEXT PRIMARY KEY,
     project_id TEXT NOT NULL DEFAULT 'default',
     name TEXT NOT NULL,
-    description TEXT,
-    html_content TEXT NOT NULL,
+    description TEXT NOT NULL,
     file_storage_id TEXT,
     sonar_storage_id TEXT,
     proposal_id TEXT,
@@ -340,8 +362,7 @@ export interface DbGame {
   id: string;
   project_id: string;
   name: string;
-  description: string | null;
-  html_content: string;
+  description: string;
   proposal_id: string | null;
   version: string;
   status: 'draft' | 'published';
@@ -639,33 +660,28 @@ export function getGame(id: string): DbGame | undefined {
 
 export function createGame(game: DbGame): DbGame {
   const normalizedProjectId = normalizeAndValidateRequiredText(game.project_id, 'project_id');
-  const normalizedName = normalizeAndValidateRequiredText(game.name, 'name');
-  if (normalizedName.length > MAX_FILENAME_LENGTH) {
-    throw new Error(`name 长度不能超过 ${MAX_FILENAME_LENGTH}`);
-  }
-  const normalizedHtmlContent = normalizeAndValidateRequiredText(game.html_content, 'html_content');
-  if (normalizedHtmlContent.length < MIN_GAME_HTML_LENGTH) {
-    throw new Error(`html_content 长度不能少于 ${MIN_GAME_HTML_LENGTH}`);
+  const normalizedName = normalizeAndValidateGameName(game.name, 'name');
+  const normalizedDescription = normalizeAndValidateRequiredText(game.description, 'description');
+  if (normalizedDescription.length > MAX_DESCRIPTION_LENGTH) {
+    throw new Error(`description 长度不能超过 ${MAX_DESCRIPTION_LENGTH}`);
   }
   const normalizedVersion = normalizeAndValidateRequiredText(game.version, 'version');
   if (normalizedVersion.length > MAX_VERSION_LENGTH) {
     throw new Error(`version 长度不能超过 ${MAX_VERSION_LENGTH}`);
   }
   const normalizedStatus = validateEnumValue(game.status, 'status', GAME_STATUSES);
-  const normalizedDescription = normalizeOptionalText(game.description, 'description');
   const normalizedProposalId = normalizeOptionalText(game.proposal_id, 'proposal_id');
   const normalizedFileStorageId = normalizeOptionalText(game.file_storage_id, 'file_storage_id');
   const normalizedSonarStorageId = normalizeOptionalText(game.sonar_storage_id, 'sonar_storage_id');
   const stmt = db.prepare(`
-    INSERT INTO games (id, project_id, name, description, html_content, proposal_id, version, status, file_storage_id, sonar_storage_id, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO games (id, project_id, name, description, proposal_id, version, status, file_storage_id, sonar_storage_id, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   stmt.run(
     game.id,
     normalizedProjectId,
     normalizedName,
     normalizedDescription,
-    normalizedHtmlContent,
     normalizedProposalId,
     normalizedVersion,
     normalizedStatus,
@@ -679,7 +695,6 @@ export function createGame(game: DbGame): DbGame {
     project_id: normalizedProjectId,
     name: normalizedName,
     description: normalizedDescription,
-    html_content: normalizedHtmlContent,
     proposal_id: normalizedProposalId,
     version: normalizedVersion,
     status: normalizedStatus,
@@ -691,21 +706,13 @@ export function createGame(game: DbGame): DbGame {
 export function updateGame(id: string, updates: Partial<DbGame>): boolean {
   const normalizedUpdates: Partial<DbGame> = { ...updates };
   if (normalizedUpdates.name !== undefined) {
-    const normalizedName = normalizeAndValidateRequiredText(normalizedUpdates.name, 'name');
-    if (normalizedName.length > MAX_FILENAME_LENGTH) {
-      throw new Error(`name 长度不能超过 ${MAX_FILENAME_LENGTH}`);
-    }
-    normalizedUpdates.name = normalizedName;
+    normalizedUpdates.name = normalizeAndValidateGameName(normalizedUpdates.name, 'name');
   }
   if (normalizedUpdates.description !== undefined) {
-    normalizedUpdates.description = normalizeOptionalText(normalizedUpdates.description, 'description');
-  }
-  if (normalizedUpdates.html_content !== undefined) {
-    const normalizedHtmlContent = normalizeAndValidateRequiredText(normalizedUpdates.html_content, 'html_content');
-    if (normalizedHtmlContent.length < MIN_GAME_HTML_LENGTH) {
-      throw new Error(`html_content 长度不能少于 ${MIN_GAME_HTML_LENGTH}`);
+    normalizedUpdates.description = normalizeAndValidateRequiredText(normalizedUpdates.description, 'description');
+    if (normalizedUpdates.description.length > MAX_DESCRIPTION_LENGTH) {
+      throw new Error(`description 长度不能超过 ${MAX_DESCRIPTION_LENGTH}`);
     }
-    normalizedUpdates.html_content = normalizedHtmlContent;
   }
   if (normalizedUpdates.version !== undefined) {
     const normalizedVersion = normalizeAndValidateRequiredText(normalizedUpdates.version, 'version');
@@ -725,7 +732,7 @@ export function updateGame(id: string, updates: Partial<DbGame>): boolean {
   }
   const fields: string[] = [];
   const values: any[] = [];
-  const allowed: (keyof DbGame)[] = ['name', 'description', 'html_content', 'status', 'version', 'file_storage_id', 'sonar_storage_id'];
+  const allowed: (keyof DbGame)[] = ['name', 'description', 'status', 'version', 'file_storage_id', 'sonar_storage_id'];
   for (const key of allowed) {
     if (normalizedUpdates[key] !== undefined) {
       fields.push(`${key} = ?`);
@@ -1307,23 +1314,6 @@ export function saveProposalToFile(proposal: DbProposal): string | null {
       (proposal.user_comment ? `## 用户审批意见\n\n${proposal.user_comment}\n\n` : '') +
       `## 策划案内容\n\n${proposal.content}\n`;
     fs.writeFileSync(filePath, content, 'utf-8');
-    return filePath;
-  } catch {
-    return null;
-  }
-}
-
-/**
- */
-export function saveGameToFile(game: DbGame): string | null {
-  const { gamesDir } = ensureProjectOutputDirs(game.project_id);
-
-  const safeName = sanitizeFilename(game.name, MAX_FILENAME_LENGTH);
-  const safeVersion = sanitizeFilename(game.version, MAX_VERSION_LENGTH);
-  const filePath = resolveSafePath(gamesDir, `${safeName}_v${safeVersion}_${game.id.slice(0, 8)}.html`);
-
-  try {
-    fs.writeFileSync(filePath, game.html_content, 'utf-8');
     return filePath;
   } catch {
     return null;

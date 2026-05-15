@@ -107,14 +107,25 @@ if (用户审批通过?) then (通过)
     - server/tools.ts:275-357 (update_task_status)
   end note
 
-  :engineer 提交游戏成品 submit_game;
+  :engineer 调用 write_game_file MCP 工具写入游戏 HTML 文件;
   note right
+    write_game_file 是 MCP 工具（由 SDK 本地执行）
+    文件写入路径: output/{projectId}/games/{name}/
     代码位置:
-    - server/agents.ts:173-179 (必须先 submit_game)
-    - server/tools.ts:407-482 (submit_game)
-    - server/db.ts:608-654 (createGame)
-    - server/db.ts:1279-1292 (saveGameToFile)
-    - server/index.ts:450-471 (/api/games, /api/games/:id/preview)
+    - server/tools.ts:new (write_game_file)
+    - 区别于内置 Write 工具（需 CodeBuddy 运行时，CI 不可用）
+  end note
+
+  :engineer 提交游戏成品 submit_game (file_path);
+  note right
+    submit_game 仅支持文件模式(file_path=目录)
+    打包 ZIP → lint 扫描(SonarQube) → 上传 MinIO → 创建 DB 记录
+    代码位置:
+    - server/tools.ts:479-689 (submit_game 工具注册+实现)
+    - server/db.ts:638-676 (createGame)
+    - server/file-storage.ts (MinIO 上传)
+    - server/lint/index.ts:36-72 (lintGameArtifact)
+    - server/sonar-scanner-service.ts (scanner 微服务客户端)
   end note
 
   stop

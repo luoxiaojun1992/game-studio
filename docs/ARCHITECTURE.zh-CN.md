@@ -26,10 +26,7 @@ graph TB
     end
 
     subgraph "Lint 框架"
-        LintRunner["LintRunner"]
-        HtmlChecker["html-structure<br/>（HTML + ZIP）"]
-        HttpChecker["http-method<br/>（HTML + ZIP）"]
-        JsChecker["js-security<br/>（HTML + ZIP）"]
+        LintRunner["lintGameArtifact()<br/>（ZIP 入口）"]
         SonarChecker["sonarqube<br/>（仅 ZIP 成品）"]
     end
 
@@ -66,9 +63,6 @@ graph TB
     Creator -->|subprocess| Blender
     Drawio -->|导出| DrawioExport
 
-    LintRunner --> HtmlChecker
-    LintRunner --> HttpChecker
-    LintRunner --> JsChecker
     LintRunner --> SonarChecker
 
     Scanner -->|sonar-scanner CLI| Sonar
@@ -110,7 +104,7 @@ graph TB
 - **提案（Proposals）**：提案创建、评审流转、决策状态
 - **任务（Tasks）**：开发/测试任务拆分与状态流转
 - **交接（Handoffs）**：跨角色任务移交与确认执行
-- **产物（Games）**：支持 HTML 成品或打包产物提交，支持列表、预览、文件下载与 **Sonar 报告下载**
+- **产物（Games）**：仅支持目录模式提交（file_path），支持列表、文件下载（MinIO）与 **Sonar 报告下载**
 - **建模（Modeling）**：Blender project 管理、几何体/材质/导出、模型文件回传与**场景对象列表**
 - **图表/附件（Diagrams/Attachments）**：draw.io 图表管理、导出、策划案附件与**图表元素列表**
 - **静态分析（Lint/Quality）**：可扩展静态检查框架，支持 HTML 结构、HTTP 方法安全、JS 安全、SonarQube 质量扫描等可插拔检查器，支持异步检查器；Sonar 报告通过 `games.sonar_storage_id` 关联到游戏成品
@@ -138,9 +132,8 @@ graph TB
   - `logs`
   - `commands`
   - `permission_requests`
-- 提案与 HTML 模式游戏产物写入 `output/{project_id}/...`
-- 打包模式游戏产物上传 MinIO，并通过 `games.file_storage_id` 关联
-- Sonar 质量报告存入 MinIO，通过 `games.sonar_storage_id` 关联（可在游戏预览页面下载）
+- 游戏产物先由 agent-sdk `Write` 工具写入 `output/{project_id}/games/{name}/`，再打包 ZIP 上传 MinIO，通过 `games.file_storage_id` 关联
+- Sonar 质量报告存入 MinIO，通过 `games.sonar_storage_id` 关联（可在游戏详情页面下载）
 - `project_settings` 存储 `autopilot_enabled` 和 `team_builder_model`（按项目隔离）
 - 数据与产物按 `project_id` 隔离
 - `games` 已移除 `author_agent_id`，如需追溯作者应从工作流上下文中获取。

@@ -46,8 +46,9 @@
 
 ## Mock 数据契约对齐（测试 ↔ 工具层）
 - 测试中 `setMockExpectation` 的 `toolCalls.arguments` 必须与 `tools.ts` 中 zod schema 完全匹配
-- `submit_game` 的 `html_content` 有最小长度限制（`MIN_GAME_HTML_LENGTH`），mock 值必须足够长
 - `submit_proposal` 的 `type` 必须是 `db.PROPOSAL_TYPES` 枚举值之一
+- **禁止在 UI 测试中直接写入后端文件系统**：Playwright 测试与后端服务不在同一容器/进程，`fs.mkdirSync` + `fs.writeFileSync` 写入的文件后端无法读取。
+- **禁止 mock 中模拟 SDK 内置工具（Write/Bash）**：CI 环境中仅部署 mock server，无 CodeBuddy 运行时，内置工具无法执行。必须通过 mock 返回 MCP 工具调用（如 `write_game_file`），由 agent-sdk 本地执行。
 - **经验**：工具 schema 变更后，同步检查测试 mock 数据，否则运行时报 zod 校验错误
 
 ## 被纠正的错误做法汇总
@@ -83,7 +84,7 @@
 | SonarQube 默认密码是 `admin:admin`，不是 `admin:sonarpass` | SonarQube 首次启动默认 credentials 是 `admin:admin`；`admin:sonarpass` 是 SonarQube 旧版本的默认值，容易混淆 | API 认证一直 401 Unauthorized，误以为是 network 或 token 问题 |
 | `/api/user_tokens/generate` 的 `type` 参数值必须是 `USER_TOKEN` | 官方文档或旧经验可能写成 `USER_API_TOKEN`，SonarQube 26.x 实际只接受 `USER_TOKEN`、`GLOBAL_ANALYSIS_TOKEN`、`PROJECT_ANALYSIS_TOKEN` | 一直报 type 参数校验错误，不提示正确枚举值 |
 | `/api/projects/show` 在 SonarQube 26.x 已被移除 | SonarQube 新版废弃了多个 `api/projects/*` 端点；获取项目信息应改用 `report-task.txt` 直接读取 taskId，或调 `/api/navigation/component` | 404 Unknown url，parse_report.py 无法获取项目信息 |
-| `git add -A` 前未检查暂存内容 | 大批量 `git add -A` 或 `git commit -a` 前，先 `git status --short` 或 `git diff --cached --stat` 确认只暂存目标文件；临时目录（`scanner-report/`、`__pycache__/`、`.scannerwork/`）应先确认已在 `.gitignore` 中 | 本地构建产物（zip、缓存、scanner-report）被误提交到源码仓库，污染 commit 历史；修复需 `git rm --cached` + force push 清理，且需要提醒 reviewer |
+| `git add -A` 前未检查暂存内容，导致构建产物被提交 | 以下文件类型**永远禁止提交**，必须确保已在 `.gitignore` 中覆盖：`__pycache__/`、`*.pyc`、`*.pyo`、`.scannerwork/`、`scanner-report/`、`.tsbuildinfo`、临时 zip 文件等。`git add -A` 前先 `git status --short` / `git diff --cached --stat` 确认只暂存目标文件。若已误提交，用 `git rm --cached` 取消跟踪 + 更新 `.gitignore`，并提醒 reviewer 注意 | 构建产物污染 commit 历史，后续 `git revert` 或 `git log` 都夹杂无效文件，增加维护成本 |
 | SonarQube 双认证路径混淆 | studio-backend 的 `SonarQubeClient` 用 `SONARQUBE_USER/PASSWORD`（调 REST API）；scanner 微服务用 `SONAR_USER/PASSWORD`（调 scanner CLI + token generate）；两者 env var 名不同，不可混用 | scanner 或 backend 一侧认证失败，导致扫描中断或 issues 拉取失败 |
 | SonarQube 扫描异常被静默吞掉 | `sonarqubeChecker.check()` 的 catch 块若 `return []` 会静默跳过所有错误（含 auth 失败）；必须 `throw err` 让 LintRunner 转为 error issue 阻断提交 | sonar auth 失败但游戏仍提交成功，质量问题漏过 |
 | SonarQube Web 分析器非确定性检测 | 相同 HTML 在不同 projectKey 下扫描，SonarQube Web 规则（如 `Web:S5254`）可能随机报 issue；mock HTML 应添加 `lang` 属性消除不确定性 | UI-007/008 相同 HTML 但扫描结果不一致，测试 flaky |
@@ -91,6 +92,8 @@
 | `scannedProjects` 防重复扫描 | Module 级内存 Set 避免同一 projectKey 重复触发扫描；首次扫描后通过 `extraPayloads` 复用报告（进程重启或 `resetSonarScanHistory` 会清空） | 避免 ZIP 模式重复扫描同一项目 |
 | `sonar_storage_id` 持久化到 games 表 | 扫描完成后将 Sonar 报告上传 MinIO，并在 `games` 表记录 `sonar_storage_id` | 支持后续查询和展示扫描报告 |
 | 在前端组件中直接使用 `fetch('/api/...')` 调用后端 API | 必须使用 `config.ts` 中 `api.*` 封装函数（如 `api.getModels()`），它们通过 `VITE_API_BASE` 解析到正确的后端地址 | 生产构建（nginx）中 `/api/*` 被当作静态文件请求，返回 404 |
+| UI 测试中 `fs.mkdirSync` + `fs.writeFileSync` 直接写入后端 `output/` 目录 | 通过 mock 返回 MCP 工具调用（如 `write_game_file`），由 agent-sdk 本地执行 | 测试与后端不在同一容器/进程，本地写入的文件后端无法读取 |
+| mock 模拟 `Write`/`Bash` 等 SDK 内置工具 | CI 中无 CodeBuddy 运行时，内置工具不可执行；必须使用 MCP 工具 | 工具调用静默失败，测试流程卡住 |
 
 ## Session ↔ Project 关系
 - **Session 不会跨 project**：每次 `sendMessage(projectId, agentId, ...)` 都会创建全新的 SDK session，session 与 project 一一对应

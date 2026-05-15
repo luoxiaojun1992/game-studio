@@ -26,10 +26,7 @@ graph TB
     end
 
     subgraph "Lint Framework"
-        LintRunner["LintRunner"]
-        HtmlChecker["html-structure<br/>(HTML + ZIP)"]
-        HttpChecker["http-method<br/>(HTML + ZIP)"]
-        JsChecker["js-security<br/>(HTML + ZIP)"]
+        LintRunner["lintGameArtifact()<br/>(ZIP entry)"]
         SonarChecker["sonarqube<br/>(ZIP only)"]
     end
 
@@ -66,9 +63,6 @@ graph TB
     Creator -->|subprocess| Blender
     Drawio -->|Export| DrawioExport
 
-    LintRunner --> HtmlChecker
-    LintRunner --> HttpChecker
-    LintRunner --> JsChecker
     LintRunner --> SonarChecker
 
     Scanner -->|sonar-scanner CLI| Sonar
@@ -110,7 +104,7 @@ graph TB
 - **Proposals**: creation, review workflow, decision states
 - **Tasks**: development/testing decomposition and status transitions
 - **Handoffs**: cross-role ownership transfer and confirmation flow
-- **Games**: HTML artifact submission or packaged artifact submission, listing, preview, file download, and **Sonar report download**
+- **Games**: directory-based artifact submission (file_path only), listing, file download via MinIO, and **Sonar report download**
 - **Modeling**: Blender project management, mesh/material/export, model file pullback, **and scene object listing**
 - **Diagrams/Attachments**: draw.io diagrams, exports, proposal attachment lifecycle, **and diagram element listing**
 - **Lint/Quality**: extensible static analysis framework with pluggable checkers (HTML structure, HTTP method safety, JS security, SonarQube quality scan), including async checker support; Sonar report stored as game attachment via `games.sonar_storage_id`
@@ -138,9 +132,8 @@ graph TB
   - `logs`
   - `commands`
   - `permission_requests`
-- Proposal artifacts and HTML-mode game artifacts are written under `output/{project_id}/...`
-- Packaged game artifacts are uploaded to MinIO and linked through `games.file_storage_id`
-- Sonar quality reports are stored in MinIO and linked through `games.sonar_storage_id` (downloadable from the game preview page)
+- Game artifacts are written to `output/{project_id}/games/{name}/` by the agent-sdk `Write` tool, then packaged as ZIP, uploaded to MinIO, and linked through `games.file_storage_id`
+- Sonar quality reports are stored in MinIO and linked through `games.sonar_storage_id` (downloadable from the game detail page)
 - `project_settings` stores `autopilot_enabled` and `team_builder_model` (project-scoped)
 - Data and outputs are isolated by `project_id`
 - `games` no longer stores `author_agent_id`; author attribution should be tracked from workflow context if needed.

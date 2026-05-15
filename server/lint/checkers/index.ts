@@ -6,9 +6,6 @@
  */
 
 import type { LintChecker } from '../types.js';
-import { htmlStructureChecker } from './html-structure.js';
-import { httpMethodChecker } from './http-method-checker.js';
-import { jsSecurityChecker } from './js-security.js';
 import { sonarqubeChecker } from './sonar/sonarqube.js';
 
 /**
@@ -18,8 +15,5 @@ import { sonarqubeChecker } from './sonar/sonarqube.js';
  * 如需自定义组合，可通过 createLintRunner().registerAll(...) 手动选择。
  */
 export const builtInCheckers: LintChecker[] = [
-  htmlStructureChecker,
-  httpMethodChecker,
-  jsSecurityChecker,
   sonarqubeChecker,
 ];
