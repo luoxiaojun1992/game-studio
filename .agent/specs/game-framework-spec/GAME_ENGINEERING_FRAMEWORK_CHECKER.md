@@ -35,3 +35,8 @@
 1. 在公共规范中注册新的 `game_type` 值。
 2. 新增对应的 `<GAMETYPE>_GAME_ENGINEERING_FRAMEWORK.md`，放入 `.agent/specs/game-framework-spec/` 目录。
 3. 在检查器规则选择逻辑中注册新的类型规则。
+
+## UI Test 验收规则
+
+- 提交代码前必须跑通 UI test。
+- 如遇网络或依赖问题，可临时修改代码以完成测试，但禁止提交这些临时变更。
