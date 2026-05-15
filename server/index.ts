@@ -22,7 +22,6 @@ const CODEBUDDY_BASE_URL = process.env.CODEBUDDY_BASE_URL?.trim() || undefined;
 const DEFAULT_PROJECT_ID = 'default';
 const PROJECT_ID_PATTERN = db.PROJECT_ID_PATTERN;
 const MAX_PROJECT_ID_LENGTH = db.MAX_PROJECT_ID_LENGTH;
-const MAX_GAME_NAME_LENGTH = db.MAX_FILENAME_LENGTH;
 const MAX_GAME_VERSION_LENGTH = db.MAX_VERSION_LENGTH;
 const PROPOSAL_TYPES = new Set<db.DbProposal['type']>(db.PROPOSAL_TYPES);
 const TASK_TYPES = new Set<db.DbTaskBoardTask['task_type']>(db.TASK_TYPES);
@@ -1033,16 +1032,13 @@ app.post('/api/proposals/:id/decide', (req, res) => {
 
 // Game submission API.
 app.post('/api/games', (req, res) => {
-  const { project_id, name, description, proposal_id, version, file_storage_id } = req.body;
+  const { project_id, description, proposal_id, version, file_storage_id } = req.body;
   const missing: string[] = [];
-  if (!name) missing.push('name');
   if (!file_storage_id) missing.push('file_storage_id');
   if (!description) missing.push('description');
   if (missing.length > 0) {
     return res.status(400).json({ error: `缺少必要字段：${missing.join(', ')}` });
   }
-  const nameValidation = validateRequiredTextInput(name, 'name');
-  if (!nameValidation.ok) return res.status(400).json({ error: nameValidation.error });
   const projectValidation = validateProjectIdInput(project_id, 'project_id');
   if (!projectValidation.ok) return res.status(400).json({ error: projectValidation.error });
   if (proposal_id !== undefined && proposal_id !== null && typeof proposal_id !== 'string') {
@@ -1071,10 +1067,6 @@ app.post('/api/games', (req, res) => {
   const descriptionValidation = validateOptionalTextInput(description, 'description');
   if (!descriptionValidation.ok) return res.status(400).json({ error: descriptionValidation.error });
   const normalizedProposalId = proposalIdValidation.text;
-  const normalizedName = nameValidation.text;
-  if (normalizedName.length > MAX_GAME_NAME_LENGTH) {
-    return res.status(400).json({ error: `name 长度不能超过 ${MAX_GAME_NAME_LENGTH}` });
-  }
   if (normalizedVersion && normalizedVersion.length > MAX_GAME_VERSION_LENGTH) {
     return res.status(400).json({ error: `version 长度不能超过 ${MAX_GAME_VERSION_LENGTH}` });
   }
@@ -1084,7 +1076,7 @@ app.post('/api/games', (req, res) => {
     game = db.createGame({
       id: uuidv4(),
       project_id: projectValidation.projectId,
-      name: normalizedName,
+      version_number: 0, // 会由数据库自动生成
       description: descriptionValidation.text || '',
       proposal_id: normalizedProposalId,
       version: normalizedVersion || '1.0.0',
@@ -1100,7 +1092,7 @@ app.post('/api/games', (req, res) => {
   db.ensureProject(game.project_id);
 
   sseBroadcaster.broadcast({ type: 'game_submitted', game: { ...game, fileStorageId: game.file_storage_id }, filePath: null }, game.project_id);
-  agentManager.addLog(game.project_id, 'api' as AgentRole, '提交游戏', `游戏: ${game.name} v${game.version} [文件模式]`, 'success');
+  agentManager.addLog(game.project_id, 'api' as AgentRole, '提交游戏', `游戏版本: ${game.version_number} v${game.version} [文件模式]`, 'success');
 
   res.json({ game, filePath: null });
 });
