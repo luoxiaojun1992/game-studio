@@ -333,9 +333,25 @@ const runFullWorkflowTest = async (
     content: '提案已提交。',
     toolCalls: [{ name: 'submit_proposal', arguments: { type: 'game_design', title: '最终技术方案', content: '# 技术架构方案' } }]
   });
+
+  // 在写入游戏文件到 output 目录后，submit_game 传 file_path（目录）+ description
+  const gameDir = `games/${opts.gameName}`;
+  log(`writing game files to output/${projectId}/${gameDir}...`);
+  const fs = await import('fs');
+  const path = await import('path');
+  const outputDir = path.resolve(`output/${projectId}`);
+  const fullGameDir = path.resolve(outputDir, gameDir);
+  fs.mkdirSync(fullGameDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(fullGameDir, 'index.html'),
+    `<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><title>${opts.gameName}</title></head><body><h1>${opts.gameName}</h1><p>游戏说明。</p></body></html>`,
+    'utf-8'
+  );
+  log('game files written');
+
   await setMockExpectation(projectId, 'engineer', {
     content: '游戏已提交。',
-    toolCalls: [{ name: 'submit_game', arguments: { name: opts.gameName, html_content: `<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><title>${opts.gameName}</title></head><body><h1>${opts.gameName}</h1><p>游戏说明。</p></body></html>` } }]
+    toolCalls: [{ name: 'submit_game', arguments: { name: opts.gameName, file_path: gameDir, description: '一款RPG游戏' } }]
   });
   await setMockExpectation(projectId, 'engineer', {
     content: '记忆已保存。',
