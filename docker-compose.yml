@@ -52,8 +52,8 @@ services:
       - SONARQUBE_USER=admin
       - SONARQUBE_PASSWORD=${SONARQUBE_PASSWORD:-admin}
     volumes:
-      - studio-data:/app/data
-      - studio-output:/app/output
+      - studio-data:/app/dist-server/data
+      - studio-output:/app/dist-server/output
     networks:
       - game-studio-network
     depends_on:

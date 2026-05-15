@@ -32,8 +32,8 @@ RUN npm ci --only=production
 # 复制编译后的代码
 COPY --from=builder /app/dist-server ./dist-server
 
-# 创建数据目录
-RUN mkdir -p data output
+# 创建数据目录（data 和 output 均由程序在首次使用时自动创建）
+
 
 # 暴露端口
 EXPOSE 3000
