@@ -78,8 +78,7 @@ export interface Game {
   id: string;
   project_id: string;
   name: string;
-  description: string | null;
-  html_content?: string;
+  description: string;
   proposal_id: string | null;
   version: string;
   status: 'draft' | 'published';
@@ -87,7 +86,6 @@ export interface Game {
   sonarStorageId?: string | null;
   created_at: string;
   updated_at: string;
-  hasContent?: boolean;
 }
 export type LogLevel = 'info' | 'warn' | 'error' | 'success';
 export type LogType = 'system' | 'text' | 'tool' | 'tool_result' | 'done' | 'error' | 'user_command';

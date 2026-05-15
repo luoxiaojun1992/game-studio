@@ -9,7 +9,7 @@ import { v4 as uuidv4 } from 'uuid';
 import * as db from './db.js';
 import { AGENT_IDS, AgentRole, getAllAgents } from './agents.js';
 import { sseBroadcaster } from './sse-broadcaster.js';
-import { lintGameContent, lintZipBuffer, type LintIssue } from './lint/index.js';
+import { lintZipBuffer, type LintIssue } from './lint/index.js';
 import { resetSonarScanHistory, globalTokenManager, type SonarQubeIssue } from './lint/checkers/sonar/sonarqube.js';
 import {
   createFileStorageRecord,
@@ -477,7 +477,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
       tool(
         'submit_game',
-        '提交一个完成的游戏成品（仅 engineer 可用）。支持两种模式：1) 单文件 HTML 模式（传入 html_content）；2) 文件打包模式（传入 file_path）。文件打包模式下，游戏文件夹会被压缩为 ZIP 并上传到 MinIO 存储。\n\n⚠️ 提交前请确保游戏通过以下 lint 检查（error 级别规则阻断提交）：\n- HTML 结构：必须包含 DOCTYPE、html/head/body 标签、UTF-8 编码声明，body 内容非空\n- HTTP 安全：fetch / XMLHttpRequest 仅允许 GET/OPTIONS/HEAD/CONNECT/TRACE 方法，禁止 POST/PUT/DELETE/PATCH 等\n- JS 安全（warn，不阻断）：eval、Function()、javascript: 协议、innerHTML 赋值等高风险模式需自查',
+        '提交一个完成的游戏成品（仅 engineer 可用）。传入 file_path（游戏成品目录）和 description（游戏简介）。游戏文件夹会被压缩为 ZIP 并上传到 MinIO 存储。\n\n⚠️ description 仅允许纯 HTML 文本，禁止包含 JS 脚本。',
         {
           name: z.string().max(db.MAX_FILENAME_LENGTH, `name 长度不能超过 ${db.MAX_FILENAME_LENGTH}`).transform((value, ctx) => {
             try {
@@ -487,16 +487,8 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
               return z.NEVER;
             }
           }).describe('游戏名称'),
-          html_content: z.string().min(db.MIN_GAME_HTML_LENGTH, `html_content 长度不能少于 ${db.MIN_GAME_HTML_LENGTH}`).transform((value, ctx) => {
-            try {
-              return db.normalizeAndValidateRequiredText(value, 'html_content');
-            } catch (error: any) {
-              ctx.addIssue({ code: 'custom', message: error?.message || 'html_content 验证失败' });
-              return z.NEVER;
-            }
-          }).describe('完整的游戏 HTML 代码（必须是包含所有 CSS/JS 的单文件 HTML）。与 file_path 二选一，不能同时为空。'),
-          file_path: z.string().optional().describe('游戏产出文件/文件夹路径（相对于 output/<当前项目ID>）。与 html_content 二选一，不能同时为空。例如：games/my-game 或 games/my-game/index.html'),
-          description: z.string().optional().describe('游戏简介'),
+          file_path: z.string().min(1, 'file_path 不能为空').describe('游戏产出目录（相对于 output/<当前项目ID>）。例如：games/my-game。仅接受目录，不接受单文件路径。'),
+          description: z.string().min(1, 'description 不能为空').max(db.MAX_DESCRIPTION_LENGTH, `description 长度不能超过 ${db.MAX_DESCRIPTION_LENGTH}`).describe('游戏简介（纯 HTML，仅允许 p/br/strong/em/ul/ol/li/code/pre/a/span/div 标签，禁止 script 标签）'),
           version: z.preprocess(
             (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
             z.string().max(db.MAX_VERSION_LENGTH, `version 长度不能超过 ${db.MAX_VERSION_LENGTH}`).transform((value, ctx) => {
@@ -510,53 +502,58 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           ).describe('版本号'),
           proposal_id: z.string().optional().describe('关联的策划案 ID（如果有）')
         },
-        async ({ name, html_content, file_path, description, version, proposal_id }) => {
+        async ({ name, file_path, description, version, proposal_id }) => {
           validateAgentPermission(['engineer'], '提交游戏成品');
 
-          const hasHtmlContent = typeof html_content === 'string' && html_content.length >= db.MIN_GAME_HTML_LENGTH;
-          const hasFilePath = typeof file_path === 'string' && file_path.trim().length > 0;
-
-          if (!hasHtmlContent && !hasFilePath) {
+          // ========== 校验 description 安全性 ==========
+          const { validateHtmlSafe, sanitizeHtml } = await import('./utils/sanitize-html.js');
+          const validationErrors = validateHtmlSafe(description);
+          if (validationErrors.length > 0) {
             return {
-              content: [{ type: 'text' as const, text: '提交游戏失败：html_content 或 file_path 至少需要提供一个。' }]
+              content: [{ type: 'text' as const, text: `提交游戏失败：description 存在安全问题：\n${validationErrors.map(e => `- ${e.message}${e.detail ? `（${e.detail}）` : ''}`).join('\n')}` }]
             };
           }
+          const safeDescription = sanitizeHtml(description);
 
           let fileStorageId: string | null = null;
           let sonarStorageId: string | null = null;
 
           // ========== 文件打包模式 ==========
-          if (hasFilePath) {
-            // 路径校验：只允许 output/{project_id} 下的路径
-            const { execSync } = await import('child_process');
-            const pathModule = await import('path');
-            const fsModule = await import('fs');
+          // 路径校验：只允许 output/{project_id} 下的路径
+          const { execSync } = await import('child_process');
+          const pathModule = await import('path');
+          const fsModule = await import('fs');
 
-            const outputDir = pathModule.resolve(pathModule.join(__dirname, '..', 'output', scopedProjectId));
-            let targetPath: string;
-            try {
-              targetPath = pathModule.resolve(outputDir, file_path);
-              // 检查路径是否在 output/{project_id} 下
-              if (!targetPath.startsWith(outputDir + pathModule.sep) && targetPath !== outputDir) {
-                return {
-                  content: [{ type: 'text' as const, text: `提交游戏失败：file_path 只能在 output/${scopedProjectId} 目录下。` }]
-                };
-              }
-            } catch (error: any) {
+          const outputDir = pathModule.resolve(pathModule.join(__dirname, '..', 'output', scopedProjectId));
+          let targetPath: string;
+          try {
+            targetPath = pathModule.resolve(outputDir, file_path);
+            // 检查路径是否在 output/{project_id} 下
+            if (!targetPath.startsWith(outputDir + pathModule.sep) && targetPath !== outputDir) {
               return {
-                content: [{ type: 'text' as const, text: `提交游戏失败：无效的 file_path。` }]
+                content: [{ type: 'text' as const, text: `提交游戏失败：file_path 只能在 output/${scopedProjectId} 目录下。` }]
               };
             }
+          } catch (error: any) {
+            return {
+              content: [{ type: 'text' as const, text: `提交游戏失败：无效的 file_path。` }]
+            };
+          }
 
-            // 检查路径是否存在
-            let stat: Stats;
-            try {
-              stat = fsModule.statSync(targetPath);
-            } catch {
-              return {
-                content: [{ type: 'text' as const, text: `提交游戏失败：file_path 不存在。` }]
-              };
-            }
+          // 检查路径是否存在且为目录
+          let stat: Stats;
+          try {
+            stat = fsModule.statSync(targetPath);
+          } catch {
+            return {
+              content: [{ type: 'text' as const, text: `提交游戏失败：file_path 不存在。` }]
+            };
+          }
+          if (!stat.isDirectory()) {
+            return {
+              content: [{ type: 'text' as const, text: `提交游戏失败：file_path 必须是目录路径，不支持单文件提交。` }]
+            };
+          }
 
             // 创建临时 ZIP 文件
             const zipId = uuidv4();
@@ -565,13 +562,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
             try {
               // 切换到 output/{project_id} 目录执行 zip，保留相对路径
-              const parentDir = stat.isDirectory() ? outputDir : pathModule.dirname(targetPath);
-              const entryName = stat.isDirectory() ? file_path : file_path;
-
-              // 使用 -j 保留相对路径打包
-              const zipCmd = stat.isDirectory()
-                ? `cd ${parentDir} && zip -r ${zipTempPath} ${entryName}`
-                : `cd ${parentDir} && zip ${zipTempPath} ${entryName}`;
+              const zipCmd = `cd "${outputDir}" && zip -r "${zipTempPath}" "${file_path}"`;
 
               execSync(zipCmd, { stdio: 'pipe' });
 
@@ -583,7 +574,6 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
               // 直接调用内部函数上传文件到 MinIO
               const objectKey = `games/${zipName}`;
-              const fileSize = fsModule.statSync(zipTempPath).size;
               const fileBuffer = fsModule.readFileSync(zipTempPath);
 
               // lint 检查：ZIP 内每个 HTML 逐一检查，遇第一个 error 即阻断
@@ -667,7 +657,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
               };
             }
 
-            // 创建游戏记录（使用 placeholder html_content）
+            // 创建游戏记录
             const now = new Date().toISOString();
             let game: db.DbGame;
             try {
@@ -675,8 +665,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
                 id: uuidv4(),
                 project_id: scopedProjectId,
                 name,
-                description: description || null,
-                html_content: 'FILE_ONLY',
+                description: safeDescription,
                 proposal_id: proposal_id || null,
                 version: version || '1.0.0',
                 status: 'draft',
@@ -691,40 +680,12 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
               };
             }
 
-            sseBroadcaster.broadcast({ type: 'game_submitted', game: { ...game, html_content: undefined as any, hasContent: false, fileStorageId, sonarStorageId }, filePath: null }, scopedProjectId);
+            sseBroadcaster.broadcast({ type: 'game_submitted', game: { ...game, fileStorageId, sonarStorageId }, filePath: null }, scopedProjectId);
             log(agentId, '提交游戏', `游戏: ${name} v${version || '1.0.0'} [文件模式，ZIP: ${zipName}，Sonar报告: sonar/${zipName}]`, 'success');
             return {
               content: [{ type: 'text' as const, text: `游戏已提交 (ID: ${game.id.slice(0, 8)})，名称: ${name}，版本: ${version || '1.0.0'}，文件已上传到存储。` }]
             };
           }
-
-          // ========== HTML 内容模式 ==========
-          // Lint 检查：在写入 DB 前对游戏 HTML 进行静态质量检查
-          const lintResult = await lintGameContent(html_content, { fileName: `${name}.html`, projectId: scopedProjectId });
-          if (!lintResult.passed) {
-            return {
-              content: [{ type: 'text' as const, text: `提交游戏失败：\n${lintResult.summary}` }]
-            };
-          }
-          if (lintResult.warnings.length > 0) {
-            log(agentId, '提交游戏-lint', `警告: ${lintResult.warnings.map((w: LintIssue) => w.message).join('; ')}`, 'warn');
-          }
-
-          // === Sonar 报告上传：从 lint 结果中读取 extraPayloads ===
-          const htmlSonarPayload = lintResult.extraPayloads?.['sonar-report'] as { version: string; issues: SonarQubeIssue[] } | undefined;
-          let htmlSonarStorageId: string | null = null;
-          if (htmlSonarPayload && htmlSonarPayload.issues.length > 0) {
-            try {
-              const sonarReportBuffer = Buffer.from(JSON.stringify(htmlSonarPayload, null, 2), 'utf-8');
-              const sonarId = uuidv4();
-              const sonarObjectKey = `sonar/${scopedProjectId}_${sonarId}.json`;
-              const { storage: sonarStorage } = await createFileStorageRecord({
-                project_id: scopedProjectId,
-                object_key: sonarObjectKey,
-                file_name: `${scopedProjectId}_${sonarId}-sonar-issues.json`,
-                file_size: sonarReportBuffer.length,
-                content_type: 'application/json',
-              });
               htmlSonarStorageId = sonarStorage.id;
               await uploadBuffer(sonarReportBuffer, sonarObjectKey, 'application/json');
             } catch (uploadError: any) {
@@ -734,34 +695,6 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           // 重置扫描历史，允许后续 submit_game 重新扫描
           resetSonarScanHistory(`game-${scopedProjectId}`);
 
-          const now = new Date().toISOString();
-          let game: db.DbGame;
-          try {
-            game = db.createGame({
-              id: uuidv4(),
-              project_id: scopedProjectId,
-              name,
-              description: description || null,
-              html_content,
-              proposal_id: proposal_id || null,
-              version: version || '1.0.0',
-              status: 'draft',
-              file_storage_id: null,
-              sonar_storage_id: htmlSonarStorageId,
-              created_at: now,
-              updated_at: now
-            });
-          } catch (error: any) {
-            return {
-              content: [{ type: 'text' as const, text: `提交游戏失败：${error?.message || String(error)}` }]
-            };
-          }
-          const filePath = db.saveGameToFile(game);
-          sseBroadcaster.broadcast({ type: 'game_submitted', game: { ...game, html_content: undefined as any, hasContent: true }, filePath }, scopedProjectId);
-          log(agentId, '提交游戏', `游戏: ${name} v${version || '1.0.0'}${filePath ? ' → 已保存' : ''}`, 'success');
-          return {
-            content: [{ type: 'text' as const, text: `游戏已提交 (ID: ${game.id.slice(0, 8)})，名称: ${name}，版本: ${version || '1.0.0'}。` }]
-          };
         }
       ),
       tool(

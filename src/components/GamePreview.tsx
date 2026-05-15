@@ -8,42 +8,12 @@ interface Props {
   onClose: () => void;
 }
 
-const AGENT_NAMES_ZH: Record<string, string> = {
-  engineer: '软件工程师',
-  architect: '架构师',
-  game_designer: '游戏策划',
-  biz_designer: '商业策划',
-  ceo: 'CEO',
-  team_builder: '团队建设',
-};
-
-const AGENT_NAMES_EN: Record<string, string> = {
-  engineer: 'Engineer',
-  architect: 'Architect',
-  game_designer: 'Game Designer',
-  biz_designer: 'Business Designer',
-  ceo: 'CEO',
-  team_builder: 'Team Building',
-};
-
 export default function GamePreview({ game, onClose }: Props) {
   const { l, isZh } = useI18n();
-  const [fullGame, setFullGame] = useState<Game | null>(null);
-  const [loading, setLoading] = useState(false);
   const [downloading, setDownloading] = useState(false);
 
-  useEffect(() => {
-    setLoading(true);
-    api.getGame(game.id).then(data => {
-      setFullGame(data.game);
-      setLoading(false);
-    }).catch(() => setLoading(false));
-  }, [game.id]);
-
-  const previewUrl = api.getGamePreviewUrl(game.id);
-
   const handleDownloadFile = async () => {
-    if (!fullGame?.fileStorageId || downloading) return;
+    if (!game.fileStorageId || downloading) return;
     setDownloading(true);
     try {
       const res = await fetch(`/api/file-storage/${game.fileStorageId}/download`);
@@ -61,10 +31,10 @@ export default function GamePreview({ game, onClose }: Props) {
   };
 
   const handleDownloadSonarReport = async () => {
-    if (!fullGame?.sonarStorageId || downloading) return;
+    if (!game.sonarStorageId || downloading) return;
     setDownloading(true);
     try {
-      const res = await fetch(`/api/file-storage/${fullGame.sonarStorageId}/download`);
+      const res = await fetch(`/api/file-storage/${game.sonarStorageId}/download`);
       if (res.ok) {
         const data = await res.json() as { downloadUrl: string };
         window.open(data.downloadUrl, '_blank');
@@ -89,7 +59,7 @@ export default function GamePreview({ game, onClose }: Props) {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {fullGame?.fileStorageId && (
+          {game.fileStorageId && (
             <button
               onClick={handleDownloadFile}
               disabled={downloading}
@@ -98,7 +68,7 @@ export default function GamePreview({ game, onClose }: Props) {
               {downloading ? l('下载中...', 'Downloading...') : l('📦 下载文件', '📦 Download File')}
             </button>
           )}
-          {fullGame?.sonarStorageId && (
+          {game.sonarStorageId && (
             <button
               onClick={handleDownloadSonarReport}
               disabled={downloading}
@@ -107,56 +77,22 @@ export default function GamePreview({ game, onClose }: Props) {
               {downloading ? l('下载中...', 'Downloading...') : l('📊 下载 Sonar 报告', '📊 Download Sonar Report')}
             </button>
           )}
-          <a
-            href={previewUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs bg-blue-600/20 hover:bg-blue-600/40 border border-blue-600/40 text-blue-300 rounded-lg px-3 py-1.5 transition-all"
-          >
-            {l('🔗 新窗口打开', '🔗 Open in New Window')}
-          </a>
           <button onClick={onClose} className="text-gray-600 hover:text-gray-400 text-xl">✕</button>
         </div>
       </div>
 
-      
-      {game.description && (
-        <div className="px-5 py-2 bg-gray-800/50 border-b border-gray-800 shrink-0">
-          <p className="text-sm text-gray-400">{game.description}</p>
-        </div>
-      )}
-
-      
-      <div className="flex-1 relative">
-        {loading ? (
-          <div className="absolute inset-0 flex items-center justify-center text-gray-500">
-            <div className="text-center">
-              <div className="text-3xl mb-2 animate-spin">⚙️</div>
-              <p className="text-sm">{l('加载游戏...', 'Loading game...')}</p>
-            </div>
+      {/* 游戏简介 */}
+      <div className="flex-1 overflow-y-auto p-5">
+        {game.description ? (
+          <div className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">
+            {game.description}
           </div>
         ) : (
-          <iframe
-            src={previewUrl}
-            className="w-full h-full border-0 rounded-b-xl"
-            title={game.name}
-            sandbox="allow-scripts allow-same-origin"
-          />
+          <div className="text-center text-gray-500 text-sm py-8">
+            {l('暂无游戏简介', 'No description available')}
+          </div>
         )}
       </div>
-
-      
-      {fullGame?.html_content && (
-        <details className="border-t border-gray-800 shrink-0">
-          <summary className="px-5 py-2 text-xs text-gray-500 cursor-pointer hover:text-gray-300 transition-colors">
-            {l('查看游戏源码', 'View Game Source')}
-          </summary>
-          <pre className="px-5 py-3 text-xs text-gray-400 font-mono overflow-x-auto max-h-48 bg-gray-950">
-            {fullGame.html_content.slice(0, 5000)}
-            {fullGame.html_content.length > 5000 && l('\n\n... (代码过长，已截断)', '\n\n... (code too long, truncated)')}
-          </pre>
-        </details>
-      )}
     </div>
   );
 }

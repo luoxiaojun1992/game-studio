@@ -85,7 +85,7 @@ const TOOLS_OVERVIEW = `
 | \`get_tasks\` | 查询任务看板任务 | 全员 |
 | \`update_task_status\` | 更新任务看板状态（遵循状态流转约束） | **engineer** |
 | \`submit_proposal\` | 提交策划案或方案文档（支持通过 attachment_storage_ids 关联最多 10 个图表附件） | 全员 |
-| \`submit_game\` | 提交游戏成品（支持 HTML 文本或文件打包模式） | **engineer** |
+| \`submit_game\` | 提交游戏成品（目录路径），自动打包上传 MinIO | **engineer** |
 | \`get_agents\` | 查询所有 Agent 信息（含 agent_id） | 全员 |
 | \`get_proposals\` | 查询已有的提案列表 | 全员 |
 | \`get_agent_logs\` | 查询当前项目下你自己的历史日志 | 全员 |
@@ -180,18 +180,15 @@ export const AGENT_DEFINITIONS: Record<AgentRole, AgentDefinition> = {
 
 根据游戏/应用的复杂度，由架构师在技术方案中评估并决定合适的技术形态：
 
-1. **单文件 HTML**：适合规则简单、代码量小（<2000行）、无外部依赖的轻量游戏
-2. **多文件 SPA**：适合需要模块化、组件复用、较大代码量的应用
-3. **复杂工程**：适合需要构建工具、第三方库、多文件资源的大型项目
+1. **多文件 SPA**：适合需要模块化、组件复用、较大代码量的应用
+2. **复杂工程**：适合需要构建工具、第三方库、多文件资源的大型项目
 
-技术方案必须包含推荐形态及理由。submit_game 时按实际技术形态选择：
-- 单文件 HTML → 传入 html_content 参数
-- 文件打包模式 → 传入 file_path 参数（系统自动上传 MinIO 并注册 file_storage_id）
+技术方案必须包含推荐形态及理由。submit_game 时传入 file_path 参数（系统自动打包上传 MinIO 并注册 file_storage_id）。
 
 ## 输出格式
 当完成游戏开发时，你必须：
 1. 提交技术方案文档（Markdown 格式）
-2. 按技术形态提交完整的游戏代码（单文件 HTML 或文件打包目录）
+2. 提交完整的游戏代码（目录路径）
 3. 提交测试报告
 
 ## 成品提交流程（必须遵守）
@@ -210,17 +207,7 @@ export const AGENT_DEFINITIONS: Record<AgentRole, AgentDefinition> = {
 
 重要：实现前仍需遵守方案审批流程；但成品完成后必须主动调用工具提交产物。
 
-## 游戏成品 Lint 规则（提交前自查）
-
-submit_game 时系统会自动执行以下检查，error 级别规则不通过则无法提交：
-
-| 检查器 | 级别 | 规则说明 |
-|--------|------|---------|
-| HTML 结构 | error | 必须包含 DOCTYPE、\`html\`/\`head\`/\`body\` 标签、UTF-8 编码声明，body 内容非空 |
-| HTTP 方法安全 | error | fetch / XMLHttpRequest 仅允许 GET/OPTIONS/HEAD/CONNECT/TRACE 方法，禁止 POST/PUT/DELETE/PATCH 等 |
-| JS 安全 | warn | eval、Function()、javascript: 协议、innerHTML 赋值存在风险，建议自查 |
-
-**提示**：仅纯 HTML 内容（html_content 参数）受 lint 检查约束；file_path 打包模式下的 ZIP 内 HTML 也逐一检查。${HANDOFF_INSTRUCTION}${MEMORY_INSTRUCTION}${TOOLS_OVERVIEW}`,
+${HANDOFF_INSTRUCTION}${MEMORY_INSTRUCTION}${TOOLS_OVERVIEW}`,
     handoffTargets: ['biz_designer']
   },
 
