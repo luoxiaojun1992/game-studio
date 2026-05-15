@@ -1,9 +1,9 @@
-# 游戏工程规范检查器与验收门禁（Game Engineering Framework Checker & Acceptance Gate）
+# 游戏工程规范检查器（Game Engineering Framework Checker）
 
 ## 目标
 - 基于工程规范对游戏成品进行静态校验。
 - 按 `game_type` 选择规则集并输出可追溯的 `ruleId` 结果。
-- 本文档包含静态校验规则及配套的工程验收门禁要求。
+- 本文档包含静态校验规则及 checker 功能验收规范。
 
 ## 输入
 - 提交产物目录或 ZIP。
@@ -37,10 +37,7 @@
 2. 新增对应的 `<GAMETYPE>_GAME_ENGINEERING_FRAMEWORK.md`，放入 `.agent/specs/game-framework-spec/` 目录。
 3. 在检查器规则选择逻辑中注册新的类型规则。
 
-## UI Test 验收规则
+## UI Test 验收规则（checker 功能验收）
 
-- UI test 为静态校验通过后的补充验收步骤，指 `tests/ui` 下的 Playwright E2E 用例，提交代码前必须全部通过。
-- 如遇网络或依赖问题，优先修复环境或使用 mock/stub。
-- 允许的临时改动仅限本地绕过网络/依赖（如替换本地地址或临时 mock）。
-- 提交前必须全部回退。
-- 禁止提交任何绕过依赖的变更或功能逻辑改动。
+提交代码前必须跑通ui test。
+如遇网络或依赖问题，可临时修改代码解决网络问题，但禁止提交为了解决网络依赖问题所做的变更。
