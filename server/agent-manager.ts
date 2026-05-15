@@ -471,8 +471,8 @@ class AgentManager extends EventEmitter {
         ...(autopilotEnabled ? ['create_handoff', 'submit_proposal'] : []),
         // submit_game 仅对 engineer 开放，且需要 UI 授权
         ...(isEngineer ? ['submit_game'] : []),
-        // write_game_file 仅对 engineer 开放，但不需要 UI 授权（仅写入本地 output 目录）
-        'write_game_file',
+        // write_game_file 仅对 engineer 开放，且不需要 UI 授权（仅写入本地 output 目录）
+        ...(isEngineer ? ['write_game_file'] : []),
         ...(isEngineer ? ['split_dev_test_tasks', 'update_task_status'] : []),
         // Blender / 建模工具 — 仅 engineer 可用（无外部副作用，仅容器存储）
         ...(isEngineer ? [
