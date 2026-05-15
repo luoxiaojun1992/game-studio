@@ -9,7 +9,6 @@ export const PROJECT_ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
 export const MAX_PROJECT_ID_LENGTH = 64;
 export const MAX_FILENAME_LENGTH = 50;
 export const MAX_VERSION_LENGTH = 30;
-export const MIN_GAME_HTML_LENGTH = 100;
 export const MAX_DESCRIPTION_LENGTH = 2000;
 export const SINGLE_LINE_TITLE_PATTERN = /^[^\r\n]*$/;
 export const PROPOSAL_TYPES = ['game_design', 'biz_design', 'tech_arch', 'tech_impl', 'ceo_review'] as const;
@@ -1303,12 +1302,6 @@ export function saveProposalToFile(proposal: DbProposal): string | null {
   } catch {
     return null;
   }
-}
-
-/**
- */
-export function saveGameToFile(game: DbGame): string | null {
-  return null;
 }
 
 // ============================================================================
