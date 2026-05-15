@@ -467,11 +467,9 @@ class AgentManager extends EventEmitter {
       // 2. 受 autopilot 控制：autopilot 开启时自动允许
       const AUTOPILOT_ALLOW = ['create_handoff', 'submit_proposal', 'submit_game'];
 
-      // 3. 仅 engineer 允许（无需 UI 授权，仅操作本地 output 目录）
-      const ENGINEER_LOCAL_ALLOW = ['write_game_file'];
-
-      // 4. 仅 engineer 允许（需要 UI 授权，有外部副作用）
-      const ENGINEER_CONTROLLED_ALLOW = [
+      // 3. 仅 engineer 允许（无需 UI 授权，有外部副作用）
+      const ENGINEER_ALLOW = [
+        'write_game_file',
         'split_dev_test_tasks', 'update_task_status',
         'blender_create_project', 'blender_list_projects', 'blender_delete_project',
         'blender_create_mesh', 'blender_add_material', 'blender_export_model',
@@ -482,8 +480,7 @@ class AgentManager extends EventEmitter {
       const CAN_AUTO_ALLOW = [
         ...ALWAYS_ALLOW,
         ...(autopilotEnabled ? AUTOPILOT_ALLOW : []),
-        ...(isEngineer ? ENGINEER_LOCAL_ALLOW : []),
-        ...(isEngineer ? ENGINEER_CONTROLLED_ALLOW : []),
+        ...(isEngineer ? ENGINEER_ALLOW : []),
       ];
       const STUDIO_TOOL_PREFIX = 'mcp__studio_tools__';
       const STUDIO_TOOL_NAMES = new Set<string>([

@@ -149,27 +149,26 @@ const CAN_AUTO_ALLOW = [
 
 ### 5.3 工具分类
 
-| 类型 | 条件 | 需要 UI 授权 | 示例 |
-|------|------|------------|------|
-| 始终允许 | 无条件 | ❌ | `save_memory`, `get_tasks` |
-| Autopilot 控制 | autopilot 开启 | ❌ | `submit_proposal`, `submit_game` |
-| Engineer 本地 | engineer | ❌ | `write_game_file` |
-| Engineer 受控 | engineer | ✅ | `submit_game`, `blender_*` |
+| 类型 | 条件 | 示例 |
+|------|------|------|
+| 始终允许 | 无条件 | `save_memory`, `get_tasks` |
+| Autopilot 控制 | autopilot 开启 | `submit_proposal`, `submit_game` |
+| Engineer 允许 | engineer | `write_game_file`, `blender_*` |
 
 ### 5.4 添加新授权工具的规则
 
 1. **确定调用权限**：哪些 Agent 可以调用（检查 `isEngineer` 等条件）
 2. **确定授权方式**：
-   - 需要 UI 授权：`...(isEngineer ? ['tool_name'] : [])`
-   - 无需 UI 授权：`'tool_name'`（直接添加）
+   - 受 autopilot 控制：加入 `AUTOPILOT_ALLOW` 数组
+   - 仅 engineer 可用：加入 `ENGINEER_ALLOW` 数组
 3. **在 `STUDIO_TOOL_NAMES` 中注册**：确保工具名被识别
 
 ```typescript
-// 需要 UI 授权（engineer 专用）
-...(isEngineer ? ['submit_game'] : []),
+// 受 autopilot 控制（autopilot 开启时自动允许）
+const AUTOPILOT_ALLOW = ['submit_game', ...];
 
-// 无需 UI 授权（engineer 专用，仅操作本地 output 目录）
-'write_game_file',
+// 仅 engineer 可用（无需 UI 授权）
+const ENGINEER_ALLOW = ['write_game_file', ...];
 ```
 
 ### 5.5 E2E 测试中处理授权弹窗
