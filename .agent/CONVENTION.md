@@ -115,7 +115,100 @@ npx playwright test --retain-on-failure
 
 ---
 
-## 4. 添加新调试日志的最佳实践
+## 5. UI 授权弹窗调试（Permission Request）
+
+### 5.1 背景
+
+当 Agent 调用某些工具时，后端会检查 `CAN_AUTO_ALLOW` 列表。如果工具不在列表中或需要额外验证，会触发 `permission_request` 事件，前端弹出授权对话框。
+
+### 5.2 权限配置位置
+
+权限配置在 `server/agent-manager.ts` 的 `CAN_AUTO_ALLOW` 数组中：
+
+```typescript
+const CAN_AUTO_ALLOW = [
+  // 读操作：所有 Agent 均可自动使用
+  'save_memory', 'get_memories', 'get_project_latest_info', ...
+  // 需要授权的工具：根据条件添加
+  ...(isEngineer ? ['submit_game'] : []),  // 需要 UI 授权
+  'write_game_file',  // 自动允许（见下方说明）
+];
+```
+
+### 5.3 工具分类
+
+| 类型 | 说明 | 示例 |
+|------|------|------|
+| 读操作 | 所有 Agent 可自动使用 | `save_memory`, `get_tasks` |
+| 受控操作 | 仅特定 Agent 可调用，需要 UI 授权 | `submit_game` |
+| 自动操作 | 仅特定 Agent 可调用，**无需 UI 授权** | `write_game_file` |
+
+### 5.4 添加新授权工具的规则
+
+1. **确定调用权限**：哪些 Agent 可以调用（检查 `isEngineer` 等条件）
+2. **确定授权方式**：
+   - 需要 UI 授权：`...(isEngineer ? ['tool_name'] : [])`
+   - 无需 UI 授权：`'tool_name'`（直接添加）
+3. **在 `STUDIO_TOOL_NAMES` 中注册**：确保工具名被识别
+
+```typescript
+// 需要 UI 授权（engineer 专用）
+...(isEngineer ? ['submit_game'] : []),
+
+// 无需 UI 授权（engineer 专用，仅操作本地 output 目录）
+'write_game_file',
+```
+
+### 5.5 E2E 测试中处理授权弹窗
+
+UI-007 等 E2E 测试必须正确处理所有授权弹窗。测试流程中如果 Agent 调用了需要授权的工具，测试需要：
+
+1. **监听授权弹窗**：检测到 `permission_request` 事件
+2. **自动批准**：`page.click('[data-testid="approve-button"]')` 或类似操作
+
+```typescript
+// 示例：监听并自动批准授权请求
+const handlePermissionRequest = async (page: Page) => {
+  // 等待授权弹窗出现
+  await page.waitForSelector('[data-testid="permission-dialog"]', { timeout: 5000 });
+  // 点击批准按钮
+  await page.click('[data-testid="approve-button"]');
+  // 等待弹窗关闭
+  await page.waitForSelector('[data-testid="permission-dialog"]', { state: 'hidden' });
+};
+```
+
+### 5.6 调试授权问题
+
+**症状**：Action 日志中缺少 `[DEBUG tool_name]` 日志，但测试应该调用了该工具。
+
+**可能原因**：
+1. 工具不在 `CAN_AUTO_ALLOW` 列表中，触发了授权弹窗
+2. E2E 测试没有正确处理授权弹窗，导致 Agent 等待超时
+3. 调用 Agent 不是工具允许的角色（如 `isEngineer` 检查）
+
+**排查步骤**：
+1. 检查 Action 日志中是否有 `[permission]` 日志
+2. 确认工具是否在 `CAN_AUTO_ALLOW` 列表中
+3. 确认调用 Agent 是否符合权限条件
+4. 如果工具不需要授权但仍在等待，检查是否在 `STUDIO_TOOL_NAMES` 中注册
+
+```bash
+# 搜索权限请求日志
+grep "\[permission\]" workflow-logs.txt
+```
+
+### 5.7 常见问题
+
+| 问题 | 原因 | 解决方案 |
+|------|------|----------|
+| 测试挂起，Agent 不响应 | 授权弹窗未处理 | 在测试中添加授权弹窗处理逻辑 |
+| `[DEBUG tool]` 日志未出现 | 工具需要授权但测试未批准 | 将工具加入 `CAN_AUTO_ALLOW` 或确保测试批准授权 |
+| "权限不足" 错误 | 调用 Agent 不是允许的角色 | 确认工具的 `isEngineer` 等条件 |
+
+---
+
+## 6. 添加新调试日志的最佳实践
 
 1. **明确目的**：每条日志都应有明确的调试目的
 2. **包含上下文**：打印关键变量值
