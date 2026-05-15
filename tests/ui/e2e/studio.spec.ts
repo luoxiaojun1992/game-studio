@@ -334,21 +334,21 @@ const runFullWorkflowTest = async (
     toolCalls: [{ name: 'submit_proposal', arguments: { type: 'game_design', title: '最终技术方案', content: '# 技术架构方案' } }]
   });
 
-  // 通过 mock 模拟大模型输出，调用 Write 工具在 backend 服务器端写入游戏文件
-  // 注意：这里不直接通过测试进程的 fs 写入，而是由 agent-sdk 在 backend 侧执行
+  // 通过 mock 模拟大模型输出，调用 write_game_file MCP 工具在 backend 服务器端写入游戏文件
+  // 注意：使用 MCP 工具而非 SDK 内置 Write 工具，因为 CI 环境无 CodeBuddy 运行时执行内置工具
   const gameDir = `games/${opts.gameName}`;
-  log(`mocks:queueing-write-file for ${projectId}/${gameDir}...`);
+  log(`mocks:queueing-write-game-file for ${projectId}/${gameDir}...`);
   await setMockExpectation(projectId, 'engineer', {
     content: '正在写入游戏文件...',
     toolCalls: [{
-      name: 'Write',
+      name: 'write_game_file',
       arguments: {
-        file_path: `${projectId}/games/${opts.gameName}/index.html`,
+        name: opts.gameName,
         content: `<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><title>${opts.gameName}</title></head><body><h1>${opts.gameName}</h1><p>游戏说明。</p></body></html>`
       }
     }]
   });
-  log('mock:write-file-queued');
+  log('mock:write-game-file-queued');
 
   await setMockExpectation(projectId, 'engineer', {
     content: '游戏已提交。',

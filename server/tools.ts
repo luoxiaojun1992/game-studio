@@ -476,6 +476,61 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
       ),
 
       tool(
+        'write_game_file',
+        '将游戏 HTML 内容写入到游戏产出目录。engineer 应先调用此工具写入游戏文件，再调用 submit_game 提交。文件写入路径: output/{当前项目ID}/games/{name}/index.html',
+        {
+          name: z.string().min(1).max(db.MAX_FILENAME_LENGTH).describe('游戏名称，与后续 submit_game 的 name 保持一致'),
+          content: z.string().min(1).describe('游戏 HTML 文件内容'),
+          files: z.array(z.object({
+            name: z.string().min(1).describe('文件名（如 script.js、style.css）'),
+            content: z.string().describe('文件内容')
+          })).optional().default([]).describe('额外文件（如 JS、CSS），可选')
+        },
+        async ({ name, content, files }) => {
+          validateAgentPermission(['engineer'], '写入游戏文件');
+
+          const pathModule = await import('path');
+          const fsModule = await import('fs');
+          const outputDir = pathModule.resolve(pathModule.join(__dirname, '..', 'output', scopedProjectId));
+          const gameDir = pathModule.join(outputDir, 'games', name);
+          const indexHtmlPath = pathModule.join(gameDir, 'index.html');
+
+          // 安全检查：确保路径在 output/{projectId} 下
+          if (!gameDir.startsWith(outputDir + pathModule.sep)) {
+            return {
+              content: [{ type: 'text' as const, text: `写入游戏文件失败：路径越权。` }]
+            };
+          }
+
+          try {
+            fsModule.mkdirSync(gameDir, { recursive: true });
+            fsModule.writeFileSync(indexHtmlPath, content, 'utf-8');
+
+            // 写入额外文件
+            for (const file of files || []) {
+              const filePath = pathModule.join(gameDir, file.name);
+              const resolvedPath = pathModule.resolve(filePath);
+              if (!resolvedPath.startsWith(gameDir + pathModule.sep)) {
+                return {
+                  content: [{ type: 'text' as const, text: `写入游戏文件失败：文件名 ${file.name} 导致路径越权。` }]
+                };
+              }
+              fsModule.writeFileSync(resolvedPath, file.content, 'utf-8');
+            }
+
+            log(agentId, '写入游戏文件', `游戏: ${name} | 文件数: ${1 + (files || []).length}`, 'success');
+            return {
+              content: [{ type: 'text' as const, text: `游戏文件已写入到 output/${scopedProjectId}/games/${name}/，共 ${1 + (files || []).length} 个文件。` }]
+            };
+          } catch (error: any) {
+            return {
+              content: [{ type: 'text' as const, text: `写入游戏文件失败：${error?.message || String(error)}` }]
+            };
+          }
+        }
+      ),
+
+      tool(
         'submit_game',
         '提交一个完成的游戏成品（仅 engineer 可用）。传入 file_path（游戏成品目录）和 description（游戏简介）。游戏文件夹会被压缩为 ZIP 并上传到 MinIO 存储。\n\n⚠️ description 仅允许纯 HTML 文本，禁止包含 JS 脚本。',
         {

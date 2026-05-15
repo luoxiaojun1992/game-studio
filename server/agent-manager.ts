@@ -471,6 +471,7 @@ class AgentManager extends EventEmitter {
         ...(autopilotEnabled ? ['create_handoff', 'submit_proposal'] : []),
         // submit_game 仅对 engineer 开放（无论是否 autopilot）
         ...(isEngineer ? ['submit_game'] : []),
+        ...(isEngineer ? ['write_game_file'] : []),
         ...(isEngineer ? ['split_dev_test_tasks', 'update_task_status'] : []),
         // Blender / 建模工具 — 仅 engineer 可用（无外部副作用，仅容器存储）
         ...(isEngineer ? [
@@ -491,6 +492,7 @@ class AgentManager extends EventEmitter {
         'update_task_status',
         'submit_proposal',
         'submit_game',
+        'write_game_file',
         // Blender tools
         'blender_create_project',
         'blender_list_projects',

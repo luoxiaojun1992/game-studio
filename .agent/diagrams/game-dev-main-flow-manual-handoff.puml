@@ -107,12 +107,13 @@ if (用户审批通过?) then (通过)
     - server/tools.ts:275-357 (update_task_status)
   end note
 
-  :engineer 调用 Write 工具写入游戏 HTML 文件;
+  :engineer 调用 write_game_file MCP 工具写入游戏 HTML 文件;
   note right
-    agent-sdk 执行内置 Write 工具
+    write_game_file 是 MCP 工具（由 SDK 本地执行）
     文件写入路径: output/{projectId}/games/{name}/
     代码位置:
-    - server/agent-manager.ts:566-574 (cwd=output, query cwd)
+    - server/tools.ts:new (write_game_file)
+    - 区别于内置 Write 工具（需 CodeBuddy 运行时，CI 不可用）
   end note
 
   :engineer 提交游戏成品 submit_game (file_path);

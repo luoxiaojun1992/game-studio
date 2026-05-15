@@ -150,7 +150,8 @@ game-dev-studio/
   - `get_memories`：获取指定 Agent 的记忆。
   - `create_handoff`：创建任务交接（来源、目标、标题、描述、上下文、优先级）。
   - `submit_proposal`：提交提案（类型、标题、内容、作者）。
-- `submit_game`：提交游戏成品（仅文件模式）。engineer 先通过 agent-sdk 内置 `Write` 工具将 HTML 写入 `output/{project_id}/games/{name}/`，再调 `submit_game(file_path=目录, description)`。后端打包 ZIP → lint(SonarQube) → 上传 MinIO → 持久化 DB 记录。
+- `submit_game`：提交游戏成品（仅文件模式）。engineer 先通过 MCP 工具 `write_game_file` 将 HTML 写入 `output/{project_id}/games/{name}/`，再调 `submit_game(file_path=目录, description)`。后端打包 ZIP → lint(SonarQube) → 上传 MinIO → 持久化 DB 记录。
+> **注意**：`write_game_file` 是 MCP 工具，由 agent-sdk 本地执行，而非 SDK 内置 `Write` 工具。CI/测试环境中无 CodeBuddy 运行时，内置工具不可用。
 - `get_games`：按时间倒序获取当前项目游戏列表，返回基础元信息与文件模式标记。
 - `get_game_info`：按游戏 ID 获取详情，返回 MinIO 预签名下载链接。
 - `drawio_*`：draw.io 项目与图表 CRUD、导出与元素列表；`blender_list_objects`：按类型分页查询 Blender 对象。
