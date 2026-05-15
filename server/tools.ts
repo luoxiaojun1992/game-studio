@@ -1141,28 +1141,51 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
       tool(
         'blender_export_model',
-        '将 Blender 场景中的物体导出为模型文件（GLB/FBX/OBJ/PLY/USD）（仅 engineer 可用）。',
+        '将 Blender 场景中的物体导出为模型文件（GLB/FBX/OBJ/PLY/USD）到游戏目录下（仅 engineer 可用）。导出路径限制为 game 目录下的指定路径。',
         {
           blender_project_id: z.string().describe('blender_project_id'),
+          game_name: z.string().transform((value, ctx) => {
+            try {
+              return db.normalizeAndValidateGameName(value, 'game_name');
+            } catch (error: any) {
+              ctx.addIssue({ code: 'custom', message: error?.message || 'game_name 验证失败' });
+              return z.NEVER;
+            }
+          }).describe('游戏名称（导出到该游戏的目录下）'),
           object_name: z.string().min(1).max(64).describe('要导出的物体名称'),
-          output_filename: z.string().min(1).max(128).describe('输出文件名（含扩展名，如 model.glb）'),
+          path: z.string().max(256).optional().default('assets').describe('导出路径（相对于 game 目录，如 assets/models 或 models）'),
           format: z.enum(['glb', 'fbx', 'obj', 'ply', 'usd']).optional().default('glb').describe('导出格式'),
         },
-        async ({ blender_project_id, object_name, output_filename, format }) => {
+        async ({ blender_project_id, game_name, object_name, path, format }) => {
           if (!blender_project_id || typeof blender_project_id !== 'string') {
             throw new Error('blender_project_id 不能为空');
           }
+
+          // 限制导出路径为 game 目录下
+          const pathModule = await import('path');
+          const gameDir = pathModule.resolve(__dirname, '..', 'output', scopedProjectId, 'games', game_name);
+          const outputDir = pathModule.resolve(gameDir, path || 'assets');
+          const outputFilename = `${object_name}.${format || 'glb'}`;
+
+          // 安全检查：确保输出路径在 game 目录下
+          if (!outputDir.startsWith(gameDir + pathModule.sep)) {
+            throw new Error('导出路径越权：只能导出到 game 目录下');
+          }
+
+          console.error(`[DEBUG blender_export_model] gameName=${game_name} objectName=${object_name} outputDir=${outputDir}`);
+
           const opts: BlenderExportModelOptions = {
             blenderProjectId: blender_project_id.trim(),
             objectName: object_name,
-            outputFilename: output_filename,
+            outputFilename,
+            outputDir,
             format,
             agentId,
             logFn: log,
           };
           const output = await blenderExportModel(opts);
           return {
-            content: [{ type: 'text' as const, text: `已导出 "${object_name}" 为 ${format || 'glb'} 格式：${output_filename}。${output}` }]
+            content: [{ type: 'text' as const, text: `已导出 "${object_name}" 为 ${format || 'glb'} 格式到 games/${game_name}/${path || 'assets'}/${outputFilename}。${output}` }]
           };
         }
       ),

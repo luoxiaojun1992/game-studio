@@ -176,24 +176,26 @@ export interface BlenderExportModelOptions {
   blenderProjectId: string;
   objectName: string;
   outputFilename: string;
+  outputDir?: string;  // 可选，指定输出目录（默认使用 creator service 的默认目录）
   format?: 'glb' | 'fbx' | 'obj' | 'ply' | 'usd';
   agentId: AgentRole;
   logFn?: (agentId: AgentRole, action: string, detail: string, level: 'info' | 'warn' | 'error' | 'success') => void;
 }
 
 export async function blenderExportModel(opts: BlenderExportModelOptions): Promise<string> {
-  const { blenderProjectId: bpId, objectName, outputFilename, format = 'glb', agentId, logFn } = opts;
+  const { blenderProjectId: bpId, objectName, outputFilename, outputDir, format = 'glb', agentId, logFn } = opts;
   const log = logFn || (() => {});
   const payload = {
     object_name: objectName.trim(),
     output_filename: outputFilename.trim(),
+    output_dir: outputDir,  // 可选，由 creator service 处理文件保存
     format,
   };
   const res = await creatorFetch(`/api/blender/export?project_id=${bpId}`, {
     method: 'POST',
     body: JSON.stringify(payload),
   });
-  log(agentId, 'Blender 导出模型', `${format} "${outputFilename}"`, 'success');
+  log(agentId, 'Blender 导出模型', `${format} "${outputFilename}" -> ${outputDir || 'default'}`, 'success');
   return res?.output || '';
 }
 
