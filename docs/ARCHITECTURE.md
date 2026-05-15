@@ -104,7 +104,7 @@ graph TB
 - **Proposals**: creation, review workflow, decision states
 - **Tasks**: development/testing decomposition and status transitions
 - **Handoffs**: cross-role ownership transfer and confirmation flow
-- **Games**: directory-based artifact submission (file_path only), listing, file download via MinIO, and **Sonar report download**
+- **Games**: directory-based artifact submission (using `name` parameter → `games/{name}`), listing, file download via MinIO, and **Sonar report download**
 - **Modeling**: Blender project management, mesh/material/export, model file pullback, **and scene object listing**
 - **Diagrams/Attachments**: draw.io diagrams, exports, proposal attachment lifecycle, **and diagram element listing**
 - **Lint/Quality**: extensible static analysis framework with pluggable checkers (HTML structure, HTTP method safety, JS security, SonarQube quality scan), including async checker support; Sonar report stored as game attachment via `games.sonar_storage_id`
@@ -132,7 +132,7 @@ graph TB
   - `logs`
   - `commands`
   - `permission_requests`
-- Game artifacts are written to `output/{project_id}/games/{name}/` by the agent-sdk `Write` tool, then packaged as ZIP, uploaded to MinIO, and linked through `games.file_storage_id`
+- Game artifacts are written to `output/{project_id}/games/{name}/` by the engineer calling `write_game_file` tool, then packaged as ZIP by `submit_game`, uploaded to MinIO, and linked through `games.file_storage_id`
 - Sonar quality reports are stored in MinIO and linked through `games.sonar_storage_id` (downloadable from the game detail page)
 - `project_settings` stores `autopilot_enabled` and `team_builder_model` (project-scoped)
 - Data and outputs are isolated by `project_id`

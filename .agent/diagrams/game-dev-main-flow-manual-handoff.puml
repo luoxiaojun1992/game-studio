@@ -116,16 +116,17 @@ if (用户审批通过?) then (通过)
     - 区别于内置 Write 工具（需 CodeBuddy 运行时，CI 不可用）
   end note
 
-  :engineer 提交游戏成品 submit_game (file_path);
+  :engineer 提交游戏成品 submit_game (name);
   note right
-    submit_game 仅支持文件模式(file_path=目录)
+    submit_game 使用 name 参数构建路径 games/{name}
     打包 ZIP → lint 扫描(SonarQube) → 上传 MinIO → 创建 DB 记录
+    name 参数校验: 字母/数字/中文/下划线/连字符，长度≤50，禁止路径穿越
     代码位置:
-    - server/tools.ts:479-689 (submit_game 工具注册+实现)
-    - server/db.ts:638-676 (createGame)
+    - server/tools.ts:540-743 (submit_game)
+    - server/db.ts:661-707 (createGame)
+    - server/db.ts:65-84 (normalizeAndValidateGameName)
     - server/file-storage.ts (MinIO 上传)
-    - server/lint/index.ts:36-72 (lintGameArtifact)
-    - server/sonar-scanner-service.ts (scanner 微服务客户端)
+    - server/lint/index.ts:lintZipBuffer (ZIP lint)
   end note
 
   stop
