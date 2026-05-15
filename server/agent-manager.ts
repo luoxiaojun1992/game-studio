@@ -455,36 +455,35 @@ class AgentManager extends EventEmitter {
       const autopilotEnabled = settings.autopilot_enabled === 1;
 
       const isEngineer = agentId === 'engineer';
+
+      // ====== 工具权限分组 ======
+      // 1. 始终允许的工具（所有 Agent）
+      const ALWAYS_ALLOW = [
+        'save_memory', 'get_memories', 'get_project_latest_info', 'get_agents',
+        'get_proposal', 'get_proposals', 'get_agent_logs', 'get_handoff',
+        'get_handoffs', 'get_pending_handoffs', 'get_task', 'get_tasks',
+      ];
+
+      // 2. 受 autopilot 控制：autopilot 开启时自动允许
+      const AUTOPILOT_ALLOW = ['create_handoff', 'submit_proposal', 'submit_game'];
+
+      // 3. 仅 engineer 允许（无需 UI 授权，仅操作本地 output 目录）
+      const ENGINEER_LOCAL_ALLOW = ['write_game_file'];
+
+      // 4. 仅 engineer 允许（需要 UI 授权，有外部副作用）
+      const ENGINEER_CONTROLLED_ALLOW = [
+        'split_dev_test_tasks', 'update_task_status',
+        'blender_create_project', 'blender_list_projects', 'blender_delete_project',
+        'blender_create_mesh', 'blender_add_material', 'blender_export_model',
+        'blender_download_model_file', 'blender_delete_model_file',
+      ];
+
+      // 合并最终允许列表
       const CAN_AUTO_ALLOW = [
-        'save_memory',
-        'get_memories',
-        'get_project_latest_info',
-        'get_agents',
-        'get_proposal',
-        'get_proposals',
-        'get_agent_logs',
-        'get_handoff',
-        'get_handoffs',
-        'get_pending_handoffs',
-        'get_task',
-        'get_tasks',
-        ...(autopilotEnabled ? ['create_handoff', 'submit_proposal'] : []),
-        // submit_game: autopilot 开启时自动允许，关闭时需要 UI 授权（仅 engineer 可用）
-        ...(autopilotEnabled || isEngineer ? ['submit_game'] : []),
-        // write_game_file 仅对 engineer 开放，且不需要 UI 授权（仅写入本地 output 目录）
-        ...(isEngineer ? ['write_game_file'] : []),
-        ...(isEngineer ? ['split_dev_test_tasks', 'update_task_status'] : []),
-        // Blender / 建模工具 — 仅 engineer 可用（无外部副作用，仅容器存储）
-        ...(isEngineer ? [
-          'blender_create_project',
-          'blender_list_projects',
-          'blender_delete_project',
-          'blender_create_mesh',
-          'blender_add_material',
-          'blender_export_model',
-          'blender_download_model_file',
-          'blender_delete_model_file',
-        ] : []),
+        ...ALWAYS_ALLOW,
+        ...(autopilotEnabled ? AUTOPILOT_ALLOW : []),
+        ...(isEngineer ? ENGINEER_LOCAL_ALLOW : []),
+        ...(isEngineer ? ENGINEER_CONTROLLED_ALLOW : []),
       ];
       const STUDIO_TOOL_PREFIX = 'mcp__studio_tools__';
       const STUDIO_TOOL_NAMES = new Set<string>([

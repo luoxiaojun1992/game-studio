@@ -121,27 +121,40 @@ npx playwright test --retain-on-failure
 
 当 Agent 调用某些工具时，后端会检查 `CAN_AUTO_ALLOW` 列表。如果工具不在列表中或需要额外验证，会触发 `permission_request` 事件，前端弹出授权对话框。
 
-### 5.2 权限配置位置
+### 5.2 权限配置位置和分组
 
-权限配置在 `server/agent-manager.ts` 的 `CAN_AUTO_ALLOW` 数组中：
+权限配置在 `server/agent-manager.ts` 中，使用分组管理：
 
 ```typescript
+// 1. 始终允许的工具（所有 Agent）
+const ALWAYS_ALLOW = ['save_memory', 'get_tasks', ...];
+
+// 2. 受 autopilot 控制：autopilot 开启时自动允许
+const AUTOPILOT_ALLOW = ['create_handoff', 'submit_proposal', 'submit_game'];
+
+// 3. 仅 engineer 允许（无需 UI 授权，仅操作本地 output 目录）
+const ENGINEER_LOCAL_ALLOW = ['write_game_file'];
+
+// 4. 仅 engineer 允许（需要 UI 授权，有外部副作用）
+const ENGINEER_CONTROLLED_ALLOW = ['split_dev_test_tasks', ...];
+
+// 合并最终允许列表
 const CAN_AUTO_ALLOW = [
-  // 读操作：所有 Agent 均可自动使用
-  'save_memory', 'get_memories', 'get_project_latest_info', ...
-  // 需要授权的工具：根据条件添加
-  ...(isEngineer ? ['submit_game'] : []),  // 需要 UI 授权
-  'write_game_file',  // 自动允许（见下方说明）
+  ...ALWAYS_ALLOW,
+  ...(autopilotEnabled ? AUTOPILOT_ALLOW : []),
+  ...(isEngineer ? ENGINEER_LOCAL_ALLOW : []),
+  ...(isEngineer ? ENGINEER_CONTROLLED_ALLOW : []),
 ];
 ```
 
 ### 5.3 工具分类
 
-| 类型 | 说明 | 示例 |
-|------|------|------|
-| 读操作 | 所有 Agent 可自动使用 | `save_memory`, `get_tasks` |
-| 受控操作 | 仅特定 Agent 可调用，需要 UI 授权 | `submit_game` |
-| 自动操作 | 仅特定 Agent 可调用，**无需 UI 授权** | `write_game_file` |
+| 类型 | 条件 | 需要 UI 授权 | 示例 |
+|------|------|------------|------|
+| 始终允许 | 无条件 | ❌ | `save_memory`, `get_tasks` |
+| Autopilot 控制 | autopilot 开启 | ❌ | `submit_proposal`, `submit_game` |
+| Engineer 本地 | engineer | ❌ | `write_game_file` |
+| Engineer 受控 | engineer | ✅ | `submit_game`, `blender_*` |
 
 ### 5.4 添加新授权工具的规则
 
