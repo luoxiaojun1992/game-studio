@@ -19,5 +19,5 @@ vite.config.d.ts
 # Build artifacts
 /scanner-report
 /.scannerwork
-/creator/app/__pycache__
-/creator/app/routers/__pycache__
+**/__pycache__
+**/*.pyc
