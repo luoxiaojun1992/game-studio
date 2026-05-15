@@ -57,8 +57,10 @@ function evictOldestIfNeeded(): void {
   if (scanHistory.size >= MAX_CACHE_SIZE) {
     // 删除最旧的条目（Map 的第一个 key）
     const oldestKey = scanHistory.keys().next().value;
-    scanHistory.delete(oldestKey);
-    console.error(`[SonarQube checker] LRU 淘汰 project=${oldestKey} 当前缓存大小=${scanHistory.size}`);
+    if (oldestKey) {
+      scanHistory.delete(oldestKey);
+      console.error(`[SonarQube checker] LRU 淘汰 project=${oldestKey} 当前缓存大小=${scanHistory.size}`);
+    }
   }
 }
 
