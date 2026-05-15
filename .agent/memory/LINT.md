@@ -5,168 +5,66 @@
 在 `submit_game` tool 层提供**可插拔的静态检查网关**，拦截不合规的游戏提交。
 - **可扩展**：新增检查器只需实现接口 + 一行注册，框架核心和 tools.ts 零改动
 - **两级阻断**：error 级别阻止提交，warn 级别仅记录日志
-- **核心规则轻依赖**：本地规则仍基于正则/字符串分析；另集成 SonarQube 作为外部质量扫描检查器
+- **核心规则轻依赖**：仅集成 SonarQube 作为外部质量扫描检查器；旧 HTML 模式本地检查器已全部移除
 
 ## 架构
 
 ```
 server/lint/
 ├── types.ts              ← 核心类型定义
-├── index.ts              ← LintRunner 运行时 + lintGameContent() 便捷入口
+├── index.ts              ← lintGameArtifact() ZIP 入口
 └── checkers/
-    ├── index.ts          ← 内置检查器注册表
-    ├── html-structure.ts ← HTML 结构检查器
-    ├── http-method-checker.ts ← HTTP 方法安全检查器
-    ├── js-security.ts    ← JS 安全检查器
-    └── sonarqube.ts      ← SonarQube 代码质量检查器（支持 HTML/ZIP）
+    ├── index.ts          ← 检查器注册表（仅剩 sonarqube）
+    └── sonarqube.ts      ← SonarQube 代码质量检查器（仅 ZIP 模式）
 ```
 
 ### 调用链路
 
 ```
 submit_game (tools.ts)
-  → validateAgentPermission()
-  → HTML 模式: lintGameContent(htmlContent, { fileName })
-  → ZIP 模式: lintZipBuffer(zipBuffer, { projectId })   ← ZIP 内 HTML 逐一检查，首个 error 立即阻断，并把原始 zipBuffer 注入 context
-  │   ├─ passed=true  → 继续执行 db.createGame()
-  │   └─ passed=false → return { content: error text }  // 直接返回，不写 DB
-  → 从 LintResult.extraPayloads 读取 Sonar 报告并上传 MinIO，回写 `sonar_storage_id`
-  → db.createGame()（ZIP 模式写入 file_storage_id）
-  → HTML 模式落盘 output；ZIP 模式上传 MinIO
+  -> validateAgentPermission()
+  -> 目录模式: 打包 ZIP -> lintGameArtifact(zipBuffer, { projectId })
+     -> SonarQube checker: scanner 微服务 -> sonar-scanner CLI -> SonarQube API
+  -> passed=true  -> db.createGame() + 上传 MinIO
+  -> passed=false -> return { content: error text }  // 不创建 DB 记录
+  -> LintResult.extraPayloads 携带 Sonar 报告 -> 上传 MinIO 写入 `sonar_storage_id`
+  -> db.createGame() 写入 ZIP 的 file_storage_id 和 Sonar 的 sonar_storage_id
 ```
 
-### 核心接口
+### 内置检查器
 
-```typescript
-// 每个检查器必须实现的接口
-interface LintChecker {
-  readonly id: string;           // 唯一标识，如 'html-structure'
-  readonly name: string;         // 显示名称
-  readonly description: string;  // 功能描述
-  check(content: string, context?: LintContext): LintIssue[] | Promise<LintIssue[]>;
-}
+| 检查器 | 级别 | 覆盖模式 | 说明 |
+|:---|:---|:---|:---|
+| `sonarqube` | error | ZIP | 通过 scanner 微服务调用 sonar-scanner CLI 对 ZIP 包做质量扫描；质量门未通过则阻断提交 |
 
-// issue 结构
-interface LintIssue {
-  ruleId: string;                // 如 'html-doctype', 'js-eval'
-  level: 'error' | 'warn';       // error=阻断, warn=仅记录
-  message: string;               // 中文描述
-  line?: number;                 // 可选行号
-  checkerId: string;             // 来源检查器
-}
-
-// 聚合结果
-interface LintResult {
-  passed: boolean;               // errors.length === 0
-  issues: LintIssue[];           // 全部（含 warn）
-  errors: LintIssue[];           // 仅 error
-  warnings: LintIssue[];         // 仅 warn
-  summary: string;               // 人类可读汇总（直接用于错误返回）
-  extraPayloads?: Record<string, unknown>; // 额外负载（如 Sonar 扫描报告）
-}
-```
-
-## LintRunner 运行时
-
-| 方法 | 说明 |
-|------|------|
-| `register(checker)` | 注册单个检查器（重复 ID 抛异常） |
-| `registerAll(checkers[])` | 批量注册 |
-| `disable(ids[])` | 按 ID 禁用（跳过执行，不删除） |
-| `enable(ids[])` | 重新启用 |
-| `run(content, context?)` | 执行所有启用中的检查器，聚合结果 |
-
-**容错设计**：单个检查器抛异常时自动降级为 error 级 issue，不会中断其他检查器。
-
-**便捷入口**：
-```typescript
-import { lintGameContent } from './lint/index.js';
-const result = await lintGameContent(htmlContent, { fileName: 'snake.html' });
-```
-
-## 内置检查器
-
-### html-structure — HTML 结构检查（6 条，全 error）
-
-| ruleId | 检查项 | 说明 |
-|--------|--------|------|
-| `html-doctype` | DOCTYPE 声明 | 必须包含 `<!DOCTYPE html>` |
-| `html-root` | `<html>` 根标签 | 必须存在 |
-| `html-head` | `<head>` 标签 | 必须存在 |
-| `html-body` | `<body>` 标签 | 必须存在 |
-| `html-charset` | 字符编码 | 必须有 `<meta charset="utf-8">` 或等效声明 |
-| `html-body-not-empty` | body 非空 | body 不能为空白 |
-
-### http-method — HTTP 方法安全检查（error）
-
-- 检测 `fetch` 与 `XMLHttpRequest.open` 中声明的方法
-- 阻断明显非安全写操作方法（如 `POST`、`PUT`、`DELETE`、`PATCH`）
-- 命中后按 error 级 issue 直接阻断 `submit_game`
-
-### js-security — JS 安全检查（4 条，全 warn）
-
-| ruleId | 检查项 | 说明 |
-|--------|--------|------|
-| `js-eval` | eval() 调用 | 检测 `eval(` 使用 |
-| `js-function` | Function() 构造函数 | 检测 `new Function(` / `Function(` |
-| `js-js-url` | javascript: 协议 | 检测 `javascript:` URL scheme |
-| `js-innerHTML` | innerHTML 写入 | 检测 `.innerHTML =` 赋值（含行号定位） |
-
-### sonarqube — SonarQube 质量扫描（warn/error 混合）
-
-- 通过独立 scanner 微服务（Python/FastAPI）上传 ZIP 并触发 sonar-scanner CLI 分析
-- Scanner 微服务自动解压 ZIP、创建 SonarQube 项目、执行扫描、轮询结果
-- Backend 通过 `sonar-scanner-service.ts` 提交 ZIP 并轮询状态，扫描完成后从 SonarQube REST API 拉取 issues
-- `SonarQubeClient`（`sonarqube-client.ts`）负责查询 issues 和创建项目；`TokenManager`（`sonarqube-token.ts`）动态生成 USER_TOKEN
-- ZIP 模式优先复用 `LintContext.zipBuffer`，避免"解压后再打包"的重复开销
-- `scannedProjects`（module 级 Set）用于避免同一 projectKey 重复扫描，首个扫描产生的 `extraPayloads['sonar-report']` 会被 lintZipBuffer 复用到后续文件检查流程
-- 扫描完成后将报告写入 `extraPayloads['sonar-report']`，由 `submit_game` 上传 MinIO 并记录 `games.sonar_storage_id`
-- Scanner 服务任何异常（含 auth 失败）均 `throw err`，由 LintRunner 转为 error issue 阻断提交
-- 默认连接：`http://localhost:9002`，studio-backend 认证：`SONARQUBE_USER/PASSWORD`；scanner 微服务认证：`SONAR_USER/PASSWORD`
+> **注意**：旧版 HTML 模式检查器（`html-structure.ts`、`http-method-checker.ts`、`js-security.ts`）已在重构中移除，因 `submit_game` 已不再支持内联 HTML 提交。
 
 ## 扩展指南
 
-新增检查器的标准步骤（以敏感词检测为例）：
+### 新增检查器步骤
+
+1. 在 `checkers/` 下新建文件，实现 `LintChecker` 接口
+2. 在 `checkers/index.ts` 的 `builtInCheckers` 数组中注册
+3. 检查器可返回 error（阻断）或 warn（仅日志）
 
 ```typescript
-// 1. 创建 server/lint/checkers/sensitive-words.ts
-export const sensitiveWordChecker: LintChecker = {
-  id: 'sensitive-words',
-  name: '敏感词检测',
-  description: '检测游戏内容中的敏感词汇',
-  check(content: string, context?: LintContext): LintIssue[] {
-    const words = loadSensitiveWords();
+import type { LintChecker } from '../types.js';
+
+const myChecker: LintChecker = {
+  name: 'my-checker',
+  description: '自定义检查规则',
+  supportedModes: ['zip'],
+  async check(context) {
     const issues: LintIssue[] = [];
-    for (const word of words) {
-      if (content.includes(word)) {
-        issues.push({ ruleId: 'sensitive-word', level: 'error', message: `发现敏感词: ${word}`, checkerId: 'sensitive-words' });
-      }
-    }
+    // 检查逻辑...
     return issues;
-  },
+  }
 };
-
-// 2. 在 server/lint/checkers/index.ts 的 builtInCheckers 数组中添加
-export const builtInCheckers: LintChecker[] = [
-  htmlStructureChecker,
-  httpMethodChecker,
-  jsSecurityChecker,
-  sensitiveWordChecker,     // ← 加这一行
-];
-
-// 完成！tools.ts、index.ts、types.ts 不需要任何修改
 ```
 
-## E2E 兼容性
+## 注意事项
 
-测试中 Mock Server 返回的 `submit_game` HTML 内容已包含完整 DOCTYPE + html/head/meta charset/body 骨架，不含受阻断的 HTTP 写操作方法，也不含 eval/innerHTML 等危险调用，**可通过现有内置规则**，无需调整测试数据或 mock 配置。
-
-## 工程决策与经验
-
-| 决策 | 原因 |
-|------|------|
-| 正则而非 DOM/AST 解析 | 保持零依赖；HTML 结构规则只需字符串匹配即可覆盖 |
-| error/warn 两级而非三级 | 简化语义：要么阻断要么提示，无"info"噪音 |
-| 框架层 catch 单检查器异常 | 一个 checker 崩溃不影响其他 checker 继续运行 |
-| context 对象传 fileName/projectId/zipBuffer | 支持按文件/项目策略检查，并允许 SonarQube 在 ZIP 模式复用原始包 |
-| LintResult.summary 直接作为 tool 返回文本 | 减少上层格式化逻辑，checker 报错信息直达用户 |
+- **仅 ZIP 模式**：所有路径校验、扫描均基于 ZIP Buffer 操作，不再支持未打包的内联 HTML 内容
+- **SonarQube 扫描**：通过独立 scanner 微服务执行（`sonar-scanner-service.ts`），backend 通过 HTTP API 调用，非进程内调用
+- **重复扫描防护**：`scannedProjects` 内存 Set 防止同一 ZIP 被重复扫描；进程重启或 `resetSonarScanHistory()` 会清空
+- **扫描结果复用**：Sonar 报告通过 `LintResult.extraPayloads` 返回，由 `submit_game` 上传 MinIO 并写入 `games.sonar_storage_id`
