@@ -686,16 +686,6 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
               content: [{ type: 'text' as const, text: `游戏已提交 (ID: ${game.id.slice(0, 8)})，名称: ${name}，版本: ${version || '1.0.0'}，文件已上传到存储。` }]
             };
           }
-              htmlSonarStorageId = sonarStorage.id;
-              await uploadBuffer(sonarReportBuffer, sonarObjectKey, 'application/json');
-            } catch (uploadError: any) {
-              log(agentId, '提交游戏-sonar', `Sonar 报告上传失败: ${uploadError?.message}`, 'warn');
-            }
-          }
-          // 重置扫描历史，允许后续 submit_game 重新扫描
-          resetSonarScanHistory(`game-${scopedProjectId}`);
-
-        }
       ),
       tool(
         'get_agent_logs',

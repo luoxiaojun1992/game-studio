@@ -334,20 +334,21 @@ const runFullWorkflowTest = async (
     toolCalls: [{ name: 'submit_proposal', arguments: { type: 'game_design', title: '最终技术方案', content: '# 技术架构方案' } }]
   });
 
-  // 在写入游戏文件到 output 目录后，submit_game 传 file_path（目录）+ description
+  // 通过 mock 模拟大模型输出，调用 Write 工具在 backend 服务器端写入游戏文件
+  // 注意：这里不直接通过测试进程的 fs 写入，而是由 agent-sdk 在 backend 侧执行
   const gameDir = `games/${opts.gameName}`;
-  log(`writing game files to output/${projectId}/${gameDir}...`);
-  const fs = await import('fs');
-  const path = await import('path');
-  const outputDir = path.resolve(`output/${projectId}`);
-  const fullGameDir = path.resolve(outputDir, gameDir);
-  fs.mkdirSync(fullGameDir, { recursive: true });
-  fs.writeFileSync(
-    path.join(fullGameDir, 'index.html'),
-    `<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><title>${opts.gameName}</title></head><body><h1>${opts.gameName}</h1><p>游戏说明。</p></body></html>`,
-    'utf-8'
-  );
-  log('game files written');
+  log(`mocks:queueing-write-file for ${projectId}/${gameDir}...`);
+  await setMockExpectation(projectId, 'engineer', {
+    content: '正在写入游戏文件...',
+    toolCalls: [{
+      name: 'Write',
+      arguments: {
+        file_path: `${projectId}/games/${opts.gameName}/index.html`,
+        content: `<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><title>${opts.gameName}</title></head><body><h1>${opts.gameName}</h1><p>游戏说明。</p></body></html>`
+      }
+    }]
+  });
+  log('mock:write-file-queued');
 
   await setMockExpectation(projectId, 'engineer', {
     content: '游戏已提交。',

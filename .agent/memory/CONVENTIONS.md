@@ -46,8 +46,8 @@
 
 ## Mock 数据契约对齐（测试 ↔ 工具层）
 - 测试中 `setMockExpectation` 的 `toolCalls.arguments` 必须与 `tools.ts` 中 zod schema 完全匹配
-- `submit_game` 的 `html_content` 有最小长度限制（`MIN_GAME_HTML_LENGTH`），mock 值必须足够长
 - `submit_proposal` 的 `type` 必须是 `db.PROPOSAL_TYPES` 枚举值之一
+- **禁止在 UI 测试中直接写入后端文件系统**：Playwright 测试与后端服务不在同一容器/进程，`fs.mkdirSync` + `fs.writeFileSync` 写入的文件后端无法读取。必须通过 mock 返回 `Write` 工具调用，由 agent-sdk 在后端侧执行文件写入（`setMockExpectation(projectId, 'engineer', { toolCalls: [{ name: 'Write', arguments: { file_path, content } }] })`）
 - **经验**：工具 schema 变更后，同步检查测试 mock 数据，否则运行时报 zod 校验错误
 
 ## 被纠正的错误做法汇总
@@ -91,6 +91,7 @@
 | `scannedProjects` 防重复扫描 | Module 级内存 Set 避免同一 projectKey 重复触发扫描；首次扫描后通过 `extraPayloads` 复用报告（进程重启或 `resetSonarScanHistory` 会清空） | 避免 ZIP 模式重复扫描同一项目 |
 | `sonar_storage_id` 持久化到 games 表 | 扫描完成后将 Sonar 报告上传 MinIO，并在 `games` 表记录 `sonar_storage_id` | 支持后续查询和展示扫描报告 |
 | 在前端组件中直接使用 `fetch('/api/...')` 调用后端 API | 必须使用 `config.ts` 中 `api.*` 封装函数（如 `api.getModels()`），它们通过 `VITE_API_BASE` 解析到正确的后端地址 | 生产构建（nginx）中 `/api/*` 被当作静态文件请求，返回 404 |
+| UI 测试中 `fs.mkdirSync` + `fs.writeFileSync` 直接写入后端 `output/` 目录 | 通过 mock 返回 `Write` 工具调用，由 agent-sdk 在后端侧执行文件写入 | 测试与后端不在同一容器/进程，本地写入的文件后端无法读取 |
 
 ## Session ↔ Project 关系
 - **Session 不会跨 project**：每次 `sendMessage(projectId, agentId, ...)` 都会创建全新的 SDK session，session 与 project 一一对应
