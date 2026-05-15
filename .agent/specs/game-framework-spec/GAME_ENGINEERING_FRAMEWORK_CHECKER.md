@@ -1,4 +1,4 @@
-# 游戏工程规范检查器（Game Engineering Framework Checker）
+# 游戏工程规范检查器与验收门禁（Game Engineering Framework Checker & Acceptance Gate）
 
 ## 目标
 - 基于工程规范对游戏成品进行静态校验。
