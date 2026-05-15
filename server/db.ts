@@ -8,6 +8,8 @@ const __dirname = path.dirname(__filename);
 export const PROJECT_ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
 export const MAX_PROJECT_ID_LENGTH = 64;
 export const MAX_FILENAME_LENGTH = 50;
+// 游戏名称：允许字母、数字、中文、下划线、连字符，不允许路径分隔符和特殊字符
+export const GAME_NAME_PATTERN = /^[a-zA-Z0-9_\-\u4e00-\u9fa5]+$/;
 export const MAX_VERSION_LENGTH = 30;
 export const MAX_DESCRIPTION_LENGTH = 2000;
 export const SINGLE_LINE_TITLE_PATTERN = /^[^\r\n]*$/;
@@ -58,6 +60,27 @@ export function normalizeAndValidateTitle(value: unknown, fieldName = 'title'): 
     throw new Error(`${fieldName} 不允许包含换行符`);
   }
   return title;
+}
+
+export function normalizeAndValidateGameName(value: unknown, fieldName = 'game_name'): string {
+  if (typeof value !== 'string') {
+    throw new Error(`${fieldName} 必须是字符串`);
+  }
+  const name = value.trim();
+  if (!name) {
+    throw new Error(`${fieldName} 不能为空`);
+  }
+  if (name.length > MAX_FILENAME_LENGTH) {
+    throw new Error(`${fieldName} 长度不能超过 ${MAX_FILENAME_LENGTH} 个字符`);
+  }
+  if (!GAME_NAME_PATTERN.test(name)) {
+    throw new Error(`${fieldName} 只允许包含字母、数字、中文、下划线和连字符`);
+  }
+  // 禁止路径穿越
+  if (name.includes('..') || name.includes('/') || name.includes('\\')) {
+    throw new Error(`${fieldName} 不允许包含路径分隔符或路径穿越字符`);
+  }
+  return name;
 }
 const dbPath = path.join(__dirname, '..', 'data', 'studio.db');
 const dataDir = path.dirname(dbPath);
@@ -637,10 +660,7 @@ export function getGame(id: string): DbGame | undefined {
 
 export function createGame(game: DbGame): DbGame {
   const normalizedProjectId = normalizeAndValidateRequiredText(game.project_id, 'project_id');
-  const normalizedName = normalizeAndValidateRequiredText(game.name, 'name');
-  if (normalizedName.length > MAX_FILENAME_LENGTH) {
-    throw new Error(`name 长度不能超过 ${MAX_FILENAME_LENGTH}`);
-  }
+  const normalizedName = normalizeAndValidateGameName(game.name, 'name');
   const normalizedDescription = normalizeAndValidateRequiredText(game.description, 'description');
   if (normalizedDescription.length > MAX_DESCRIPTION_LENGTH) {
     throw new Error(`description 长度不能超过 ${MAX_DESCRIPTION_LENGTH}`);
@@ -686,11 +706,7 @@ export function createGame(game: DbGame): DbGame {
 export function updateGame(id: string, updates: Partial<DbGame>): boolean {
   const normalizedUpdates: Partial<DbGame> = { ...updates };
   if (normalizedUpdates.name !== undefined) {
-    const normalizedName = normalizeAndValidateRequiredText(normalizedUpdates.name, 'name');
-    if (normalizedName.length > MAX_FILENAME_LENGTH) {
-      throw new Error(`name 长度不能超过 ${MAX_FILENAME_LENGTH}`);
-    }
-    normalizedUpdates.name = normalizedName;
+    normalizedUpdates.name = normalizeAndValidateGameName(normalizedUpdates.name, 'name');
   }
   if (normalizedUpdates.description !== undefined) {
     normalizedUpdates.description = normalizeAndValidateRequiredText(normalizedUpdates.description, 'description');

@@ -479,7 +479,14 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         'write_game_file',
         '将游戏 HTML 内容写入到游戏产出目录。engineer 应先调用此工具写入游戏文件，再调用 submit_game 提交。文件写入路径: output/{当前项目ID}/games/{name}/index.html',
         {
-          name: z.string().min(1).max(db.MAX_FILENAME_LENGTH).describe('游戏名称，与后续 submit_game 的 name 保持一致'),
+          name: z.string().transform((value, ctx) => {
+            try {
+              return db.normalizeAndValidateGameName(value, 'name');
+            } catch (error: any) {
+              ctx.addIssue({ code: 'custom', message: error?.message || 'name 验证失败' });
+              return z.NEVER;
+            }
+          }).describe('游戏名称（与 submit_game 的 name 一致）'),
           content: z.string().min(1).describe('游戏 HTML 文件内容'),
           files: z.array(z.object({
             name: z.string().min(1).describe('文件名（如 script.js、style.css）'),
@@ -532,17 +539,18 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
       tool(
         'submit_game',
-        '提交一个完成的游戏成品（仅 engineer 可用）。传入 file_path（游戏成品目录）和 description（游戏简介）。游戏文件夹会被压缩为 ZIP 并上传到 MinIO 存储。\n\n⚠️ description 仅允许纯 HTML 文本，禁止包含 JS 脚本。',
+        '提交一个完成的游戏成品（仅 engineer 可用）。传入 game_name（游戏名称，与 write_game_file 的 name 一致）和 description（游戏简介）。游戏文件夹会被压缩为 ZIP 并上传到 MinIO 存储。
+
+⚠️ description 仅允许纯 HTML 文本，禁止包含 JS 脚本。',
         {
-          name: z.string().max(db.MAX_FILENAME_LENGTH, `name 长度不能超过 ${db.MAX_FILENAME_LENGTH}`).transform((value, ctx) => {
+          name: z.string().transform((value, ctx) => {
             try {
-              return db.normalizeAndValidateRequiredText(value, 'name');
+              return db.normalizeAndValidateGameName(value, 'name');
             } catch (error: any) {
               ctx.addIssue({ code: 'custom', message: error?.message || 'name 验证失败' });
               return z.NEVER;
             }
-          }).describe('游戏名称'),
-          file_path: z.string().min(1, 'file_path 不能为空').describe('游戏产出目录（相对于 output/<当前项目ID>）。例如：games/my-game。仅接受目录，不接受单文件路径。'),
+          }).describe('游戏名称（与 write_game_file 的 name 一致）'),
           description: z.string().min(1, 'description 不能为空').max(db.MAX_DESCRIPTION_LENGTH, `description 长度不能超过 ${db.MAX_DESCRIPTION_LENGTH}`).describe('游戏简介（纯 HTML，仅允许 p/br/strong/em/ul/ol/li/code/pre/a/span/div 标签，禁止 script 标签）'),
           version: z.preprocess(
             (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
@@ -557,8 +565,11 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           ).describe('版本号'),
           proposal_id: z.string().optional().describe('关联的策划案 ID（如果有）')
         },
-        async ({ name, file_path, description, version, proposal_id }) => {
+        async ({ name, description, version, proposal_id }) => {
           validateAgentPermission(['engineer'], '提交游戏成品');
+
+          // ========== 确定游戏路径（与 write_game_file 对齐）==========
+          const resolvedFilePath = `games/${name}`;
 
           // ========== 校验 description 安全性 ==========
           const { validateHtmlSafe, sanitizeHtml } = await import('./utils/sanitize-html.js');
@@ -582,16 +593,16 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           const outputDir = pathModule.resolve(pathModule.join(__dirname, '..', 'output', scopedProjectId));
           let targetPath: string;
           try {
-            targetPath = pathModule.resolve(outputDir, file_path);
+            targetPath = pathModule.resolve(outputDir, resolvedFilePath);
             // 检查路径是否在 output/{project_id} 下
             if (!targetPath.startsWith(outputDir + pathModule.sep) && targetPath !== outputDir) {
               return {
-                content: [{ type: 'text' as const, text: `提交游戏失败：file_path 只能在 output/${scopedProjectId} 目录下。` }]
+                content: [{ type: 'text' as const, text: `提交游戏失败：路径只能在 output/${scopedProjectId} 目录下。` }]
               };
             }
           } catch (error: any) {
             return {
-              content: [{ type: 'text' as const, text: `提交游戏失败：无效的 file_path。` }]
+              content: [{ type: 'text' as const, text: `提交游戏失败：无效的路径。` }]
             };
           }
 
@@ -601,12 +612,12 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
             stat = fsModule.statSync(targetPath);
           } catch {
             return {
-              content: [{ type: 'text' as const, text: `提交游戏失败：file_path 不存在。` }]
+              content: [{ type: 'text' as const, text: `提交游戏失败：目录不存在（games/${name}）。请先调用 write_game_file 创建游戏文件。` }]
             };
           }
           if (!stat.isDirectory()) {
             return {
-              content: [{ type: 'text' as const, text: `提交游戏失败：file_path 必须是目录路径，不支持单文件提交。` }]
+              content: [{ type: 'text' as const, text: `提交游戏失败：路径必须是目录，不支持单文件提交。` }]
             };
           }
 
@@ -617,7 +628,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
             try {
               // 切换到 output/{project_id} 目录执行 zip，保留相对路径
-              const zipCmd = `cd "${outputDir}" && zip -r "${zipTempPath}" "${file_path}"`;
+              const zipCmd = `cd "${outputDir}" && zip -r "${zipTempPath}" "${resolvedFilePath}"`;
 
               execSync(zipCmd, { stdio: 'pipe' });
 

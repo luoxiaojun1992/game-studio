@@ -183,7 +183,7 @@ export const AGENT_DEFINITIONS: Record<AgentRole, AgentDefinition> = {
 1. **多文件 SPA**：适合需要模块化、组件复用、较大代码量的应用
 2. **复杂工程**：适合需要构建工具、第三方库、多文件资源的大型项目
 
-技术方案必须包含推荐形态及理由。submit_game 时传入 file_path 参数（系统自动打包上传 MinIO 并注册 file_storage_id）。
+技术方案必须包含推荐形态及理由。submit_game 时系统自动从 {project_id}/games/{name} 打包上传 MinIO 并注册 file_storage_id。
 
 ## 输出格式
 当完成游戏开发时，你必须：
