@@ -46,7 +46,8 @@ jobs:
       - name: Run UI tests in docker compose
         run: |
           mkdir -p tests/ui/artifacts
-          env UID="$(id -u)" GID="$(id -g)" docker compose -f docker-compose.ui-test.yml up --build --abort-on-container-exit --exit-code-from ui-e2e
+          env UID="$(id -u)" GID="$(id -g)" docker compose -f docker-compose.ui-test.yml build --no-cache
+          env UID="$(id -u)" GID="$(id -g)" docker compose -f docker-compose.ui-test.yml up --abort-on-container-exit --exit-code-from ui-e2e
 
       - name: Upload Allure report artifact
         if: always()
