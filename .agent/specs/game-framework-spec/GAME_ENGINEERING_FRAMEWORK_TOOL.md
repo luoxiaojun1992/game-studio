@@ -257,3 +257,8 @@ tool(
 3. **工具自动生效**：`get_game_types` 自动返回新类型，`get_game_framework_spec` 自动支持新类型查询。
 4. **同步更新 Checker**：在 `GAME_ENGINEERING_FRAMEWORK_CHECKER.md` 的规则选择逻辑中注册新类型的 checker。
 5. **无需修改工具代码**（除非需要新增字段或修改枚举校验逻辑）。
+
+## UI Test 验收规则（tool 功能验收）
+
+提交代码前必须跑通 ui test。
+如遇网络或依赖问题，可临时修改代码解决网络问题，但禁止提交为了解决网络依赖问题所做的变更。
