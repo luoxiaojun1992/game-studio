@@ -129,21 +129,21 @@ npx playwright test --retain-on-failure
 // 1. 始终允许的工具（所有 Agent）
 const ALWAYS_ALLOW = ['save_memory', 'get_tasks', ...];
 
-// 2. 受 autopilot 控制：autopilot 开启时自动允许
-const AUTOPILOT_ALLOW = ['create_handoff', 'submit_proposal', 'submit_game'];
+// 2. 受 autopilot 控制（autopilot 开启时所有 Agent 可用）
+const AUTOPILOT_ALLOW = ['create_handoff', 'submit_proposal'];
 
-// 3. 仅 engineer 允许（无需 UI 授权，仅操作本地 output 目录）
-const ENGINEER_LOCAL_ALLOW = ['write_game_file'];
+// 3. 仅 engineer 允许（autopilot 开启时可用）
+const ENGINEER_AUTOPILOT_ALLOW = ['submit_game'];
 
-// 4. 仅 engineer 允许（需要 UI 授权，有外部副作用）
-const ENGINEER_CONTROLLED_ALLOW = ['split_dev_test_tasks', ...];
+// 4. 仅 engineer 允许（无需 UI 授权）
+const ENGINEER_ALLOW = ['write_game_file', 'blender_*', ...];
 
 // 合并最终允许列表
 const CAN_AUTO_ALLOW = [
   ...ALWAYS_ALLOW,
   ...(autopilotEnabled ? AUTOPILOT_ALLOW : []),
-  ...(isEngineer ? ENGINEER_LOCAL_ALLOW : []),
-  ...(isEngineer ? ENGINEER_CONTROLLED_ALLOW : []),
+  ...(autopilotEnabled && isEngineer ? ENGINEER_AUTOPILOT_ALLOW : []),
+  ...(isEngineer ? ENGINEER_ALLOW : []),
 ];
 ```
 
@@ -152,24 +152,18 @@ const CAN_AUTO_ALLOW = [
 | 类型 | 条件 | 示例 |
 |------|------|------|
 | 始终允许 | 无条件 | `save_memory`, `get_tasks` |
-| Autopilot 控制 | autopilot 开启 | `submit_proposal`, `submit_game` |
+| Autopilot 控制 | autopilot 开启（不限 role） | `submit_proposal`, `create_handoff` |
+| Engineer + Autopilot | autopilot 开启 + engineer | `submit_game` |
 | Engineer 允许 | engineer | `write_game_file`, `blender_*` |
 
 ### 5.4 添加新授权工具的规则
 
 1. **确定调用权限**：哪些 Agent 可以调用（检查 `isEngineer` 等条件）
 2. **确定授权方式**：
-   - 受 autopilot 控制：加入 `AUTOPILOT_ALLOW` 数组
-   - 仅 engineer 可用：加入 `ENGINEER_ALLOW` 数组
+   - 受 autopilot 控制（不限 role）：加入 `AUTOPILOT_ALLOW`
+   - 受 autopilot + engineer 控制：加入 `ENGINEER_AUTOPILOT_ALLOW`
+   - 仅 engineer 可用：加入 `ENGINEER_ALLOW`
 3. **在 `STUDIO_TOOL_NAMES` 中注册**：确保工具名被识别
-
-```typescript
-// 受 autopilot 控制（autopilot 开启时自动允许）
-const AUTOPILOT_ALLOW = ['submit_game', ...];
-
-// 仅 engineer 可用（无需 UI 授权）
-const ENGINEER_ALLOW = ['write_game_file', ...];
-```
 
 ### 5.5 E2E 测试中处理授权弹窗
 

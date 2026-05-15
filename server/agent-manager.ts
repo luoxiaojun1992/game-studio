@@ -464,10 +464,13 @@ class AgentManager extends EventEmitter {
         'get_handoffs', 'get_pending_handoffs', 'get_task', 'get_tasks',
       ];
 
-      // 2. 受 autopilot 控制：autopilot 开启时自动允许
-      const AUTOPILOT_ALLOW = ['create_handoff', 'submit_proposal', 'submit_game'];
+      // 2. 受 autopilot 控制（autopilot 开启时所有 Agent 可用）
+      const AUTOPILOT_ALLOW = ['create_handoff', 'submit_proposal'];
 
-      // 3. 仅 engineer 允许（无需 UI 授权，有外部副作用）
+      // 3. 仅 engineer 允许（autopilot 开启时可用）
+      const ENGINEER_AUTOPILOT_ALLOW = ['submit_game'];
+
+      // 4. 仅 engineer 允许（无需 UI 授权）
       const ENGINEER_ALLOW = [
         'write_game_file',
         'split_dev_test_tasks', 'update_task_status',
@@ -480,6 +483,7 @@ class AgentManager extends EventEmitter {
       const CAN_AUTO_ALLOW = [
         ...ALWAYS_ALLOW,
         ...(autopilotEnabled ? AUTOPILOT_ALLOW : []),
+        ...(autopilotEnabled && isEngineer ? ENGINEER_AUTOPILOT_ALLOW : []),
         ...(isEngineer ? ENGINEER_ALLOW : []),
       ];
       const STUDIO_TOOL_PREFIX = 'mcp__studio_tools__';
