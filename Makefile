@@ -1,4 +1,4 @@
-.PHONY: help compose-build compose-up compose-down compose-ui-test-build compose-ui-test-up compose-ui-test-down
+.PHONY: help compose-build compose-up compose-down compose-ui-test-build compose-ui-test-up compose-ui-test-down compose-ui-test
 help:
 	@grep -E '^[a-zA-Z_-]+:' Makefile | grep -v '.PHONY' | sort | while read line; do \
 		printf "\033[1;32m%s\033[0m\n" "$$line"; done
@@ -8,7 +8,8 @@ help:
 # ============================================================
 
 compose-build:
-	docker compose -f docker-compose.yml up --build -d
+	docker compose -f docker-compose.yml build --no-cache
+	docker compose -f docker-compose.yml up -d
 
 compose-up:
 	docker compose -f docker-compose.yml up -d
@@ -21,7 +22,10 @@ compose-down:
 # ============================================================
 
 compose-ui-test-build:
-	docker compose -f docker-compose.ui-test.yml up --build --abort-on-container-exit --exit-code-from ui-e2e
+	docker compose -f docker-compose.ui-test.yml build --no-cache
+
+compose-ui-test:
+	docker compose -f docker-compose.ui-test.yml up --abort-on-container-exit --exit-code-from ui-e2e
 
 compose-ui-test-up:
 	docker compose -f docker-compose.ui-test.yml up --abort-on-container-exit --exit-code-from ui-e2e
