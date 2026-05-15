@@ -6,7 +6,7 @@
  *
  * 使用方式：
  * ```typescript
- * import { createLintRunner, lintGameArtifact } from './index.js';
+ * import { lintGameArtifact } from './index.js';
  *
  * // 统一入口：lint 游戏成品 ZIP
  * const result = await lintGameArtifact(zipBuffer, context);
@@ -18,10 +18,27 @@ export type { LintIssue } from './types.js';
 import { builtInCheckers } from './checkers/index.js';
 
 /**
- * 创建 LintRunner 实例
+ * LintRunner — 检查器容器与运行时
  */
-export function createLintRunner(): LintRunner {
-  return new LintRunner();
+class LintRunner {
+  private checkers = new Map<string, LintChecker>();
+  private disabledIds = new Set<string>();
+
+  registerAll(checks: Array<{ id: string; checker: LintChecker }>): void {
+    for (const { id, checker } of checks) {
+      this.checkers.set(id, checker);
+    }
+  }
+}
+
+/**
+ * 构建摘要文本
+ */
+function buildSummary(errors: LintIssue[], warnings: LintIssue[]): string {
+  const parts: string[] = [];
+  if (errors.length > 0) parts.push(`${errors.length} 个错误`);
+  if (warnings.length > 0) parts.push(`${warnings.length} 个警告`);
+  return parts.join('，') || '无问题';
 }
 
 /**

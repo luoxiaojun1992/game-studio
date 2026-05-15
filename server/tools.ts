@@ -797,8 +797,6 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
             version: g.version,
             status: g.status,
             created_at: g.created_at,
-            hasContent: g.html_content !== 'FILE_ONLY',
-            isFileOnly: g.html_content === 'FILE_ONLY'
           }));
           if (games.length === 0) {
             return {
@@ -806,7 +804,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
             };
           }
           const lines = games.map(g =>
-            `[${g.status}] ${g.name} v${g.version} | ${g.isFileOnly ? '文件模式' : 'HTML模式'} | ${g.created_at.slice(0, 10)}`
+            `[${g.status}] ${g.name} v${g.version} | ${g.created_at.slice(0, 10)}`
           ).join('\n');
           return {
             content: [{ type: 'text' as const, text: lines }]
@@ -816,7 +814,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
       tool(
         'get_game_info',
-        '获取指定游戏的详细信息。若为 HTML 模式游戏则返回完整 HTML 内容（可直接在浏览器预览）；若为文件模式游戏则返回 MinIO presigned 下载链接。',
+        '获取指定游戏的详细信息，返回 MinIO presigned 下载链接。',
         {
           game_id: z.string().describe('游戏 ID')
         },
@@ -832,24 +830,12 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
               content: [{ type: 'text' as const, text: '游戏不存在或无权限访问。' }]
             };
           }
-          // HTML 模式：直接返回完整内容
-          if (game.html_content !== 'FILE_ONLY') {
-            const result = {
-              id: game.id,
-              name: game.name,
-              description: game.description,
-              version: game.version,
-              status: game.status,
-              created_at: game.created_at,
-              hasContent: true,
-              isFileOnly: false,
-              html_content: game.html_content
-            };
+          // 仅有文件模式：生成 MinIO presigned 下载链接
+          if (!game.file_storage_id) {
             return {
-              content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }]
+              content: [{ type: 'text' as const, text: '该游戏尚未关联文件存储记录。' }]
             };
           }
-          // 文件模式：生成 MinIO presigned 下载链接
           const storage = db.getFileStorage(game.file_storage_id!);
           if (!storage) {
             return {
@@ -872,8 +858,6 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
             version: game.version,
             status: game.status,
             created_at: game.created_at,
-            hasContent: false,
-            isFileOnly: true,
             downloadUrl
           };
           return {
