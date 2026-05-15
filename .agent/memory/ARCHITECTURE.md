@@ -40,23 +40,19 @@
 - draw.io 工具（`drawio_*`、`drawio_list_elements`）由 `drawio-service.ts` 调用 draw.io 微服务
 - 工具 schema 已移除 `project_id` 入参，项目作用域由工具服务初始化时注入 scopedProjectId 并在工具内部执行
 
-## Agent-SDK 工作目录与自定义工具基础路径设计
+## 游戏文件路径设计
 
-agent-sdk 内置工具（如 `Write`）与自定义工具（如 `submit_game`）使用**不同的基础路径基准**，但最终解析到同一目录：
+游戏文件统一通过 MCP 工具 `write_game_file` 写入，由 `submit_game` 打包提交：
 
-| 工具 | 基准路径 | 传入的相对路径 | 最终解析路径 |
-|------|---------|---------------|-------------|
-| `write_game_file` MCP | `tools.ts` 内部 `outputDir = path.join(__dirname, '..', 'output', projectId)` | `games/{name}/index.html` | `output/{projectId}/games/{name}/index.html` |
-| `submit_game` | `tools.ts` 内部 `outputDir = path.join(__dirname, '..', 'output', projectId)` | `games/{name}` | `output/{projectId}/games/{name}/` |
+| 工具 | 最终解析路径 |
+|------|-------------|
+| `write_game_file` | `output/{projectId}/games/{name}/index.html` |
+| `submit_game` | 打包 `output/{projectId}/games/{name}/` 目录 |
 
 **关键说明**：
-- `write_game_file` 和 `submit_game` 现在使用相同的路径基准 `output/{projectId}/games/{name}/`
-- `write_game_file` 的 `name` 参数与 `submit_game` 的 `name` 参数必须一致
+- `write_game_file` 和 `submit_game` 使用相同的路径基准
 - `name` 参数校验规则: 字母/数字/中文/下划线/连字符，长度≤50，禁止路径穿越
-
-**影响范围**：
-- `write_game_file(name="my-game", content=...)` 写入文件
-- `submit_game(name="my-game", description=...)` 提交同一目录
+- 不再依赖 agent-sdk 内置 Write 工具（CI 环境不可用）
 
 ## Agent 角色
 - 6 个 Agent: `game_designer`, `architect`, `engineer`, `biz_designer`, `ceo`, `team_builder`
