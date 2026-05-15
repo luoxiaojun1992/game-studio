@@ -284,7 +284,18 @@ const server = http.createServer(async (req, res) => {
     if (hasIdentity) {
       const expected = matchExpectation(projectId, agentRole);
 
+      // [DEBUG] 添加日志用于排查 UI-007
+      console.error(`[mock-debug] /chat/completions matched expectation: ${expected ? 'YES' : 'NO'} agent=${agentRole} queue_before=${getQueue(projectId, agentRole).expectations.length + (expected ? 1 : 0)}`);
+
       if (expected) {
+        // [DEBUG] 添加日志用于排查 UI-007 - 显示期望详情
+        if (expected.toolCalls && Array.isArray(expected.toolCalls)) {
+          const toolNames = expected.toolCalls.map(tc => tc.name).join(',');
+          console.error(`[mock-debug] returning toolCalls=[${toolNames}] content="${expected.content || ''}"`);
+        } else {
+          console.error(`[mock-debug] returning text="${expected.content || ''}"`);
+        }
+
         // Build response from expectation
         if (expected.toolCalls && Array.isArray(expected.toolCalls)) {
           if (stream) {

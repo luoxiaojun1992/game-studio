@@ -496,11 +496,17 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         async ({ name, content, files }) => {
           validateAgentPermission(['engineer'], '写入游戏文件');
 
+          // [DEBUG] 添加日志用于排查 UI-007
+          console.error(`[DEBUG write_game_file] START agentId=${agentId} projectId=${scopedProjectId} gameName=${name} contentLength=${content.length}`);
+
           const pathModule = await import('path');
           const fsModule = await import('fs');
           const outputDir = pathModule.resolve(pathModule.join(__dirname, '..', 'output', scopedProjectId));
           const gameDir = pathModule.join(outputDir, 'games', name);
           const indexHtmlPath = pathModule.join(gameDir, 'index.html');
+
+          // [DEBUG] 添加日志用于排查 UI-007
+          console.error(`[DEBUG write_game_file] outputDir=${outputDir} gameDir=${gameDir} indexHtmlPath=${indexHtmlPath}`);
 
           // 安全检查：确保路径在 output/{projectId} 下
           if (!gameDir.startsWith(outputDir + pathModule.sep)) {
@@ -512,6 +518,16 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           try {
             fsModule.mkdirSync(gameDir, { recursive: true });
             fsModule.writeFileSync(indexHtmlPath, content, 'utf-8');
+            // [DEBUG] 添加日志用于排查 UI-007
+            console.error(`[DEBUG write_game_file] SUCCESS wrote index.html at ${indexHtmlPath}`);
+
+            // [DEBUG] 验证文件是否写入成功
+            if (fsModule.existsSync(indexHtmlPath)) {
+              const stat = fsModule.statSync(indexHtmlPath);
+              console.error(`[DEBUG write_game_file] VERIFIED file exists size=${stat.size}`);
+            } else {
+              console.error(`[DEBUG write_game_file] ERROR file not found after write!`);
+            }
 
             // 写入额外文件
             for (const file of files || []) {
@@ -571,6 +587,9 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           // ========== 确定游戏路径（与 write_game_file 对齐）==========
           const resolvedFilePath = `games/${name}`;
 
+          // [DEBUG] 添加日志用于排查 UI-007
+          console.error(`[DEBUG submit_game] START projectId=${scopedProjectId} gameName=${name} resolvedPath=${resolvedFilePath}`);
+
           // ========== 校验 description 安全性 ==========
           const { validateHtmlSafe, sanitizeHtml } = await import('./utils/sanitize-html.js');
           const validationErrors = validateHtmlSafe(description);
@@ -610,7 +629,11 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           let stat: Stats;
           try {
             stat = fsModule.statSync(targetPath);
-          } catch {
+            // [DEBUG] 添加日志用于排查 UI-007
+            console.error(`[DEBUG submit_game] targetPath=${targetPath} exists=true isDirectory=${stat.isDirectory()}`);
+          } catch (err) {
+            // [DEBUG] 添加日志用于排查 UI-007
+            console.error(`[DEBUG submit_game] targetPath=${targetPath} exists=false error=${err}`);
             return {
               content: [{ type: 'text' as const, text: `提交游戏失败：目录不存在（games/${name}）。请先调用 write_game_file 创建游戏文件。` }]
             };
@@ -747,6 +770,8 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
             }
 
             sseBroadcaster.broadcast({ type: 'game_submitted', game: { ...game, fileStorageId, sonarStorageId }, filePath: null }, scopedProjectId);
+            // [DEBUG] 添加日志用于排查 UI-007
+            console.error(`[DEBUG submit_game] SUCCESS game_submitted broadcasted projectId=${scopedProjectId} gameId=${game.id} gameName=${name}`);
             log(agentId, '提交游戏', `游戏: ${name} v${version || '1.0.0'} [文件模式，ZIP: ${zipName}，Sonar报告: sonar/${zipName}]`, 'success');
             return {
               content: [{ type: 'text' as const, text: `游戏已提交 (ID: ${game.id.slice(0, 8)})，名称: ${name}，版本: ${version || '1.0.0'}，文件已上传到存储。` }]

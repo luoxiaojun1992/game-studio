@@ -632,6 +632,8 @@ class AgentManager extends EventEmitter {
               } else if (block.type === 'tool_use') {
                 const toolId = block.id || uuidv4();
                 const toolInput = (block as any).input || {};
+                // [DEBUG] 添加日志用于排查 UI-007 - 追踪工具调用
+                console.error(`[DEBUG agent-tool-call] agentId=${agentId} toolName=${block.name} projectId=${scopedProjectId}`);
                 const toolCall = { id: toolId, name: block.name, input: toolInput, status: 'running' };
                 toolCalls.push(toolCall);
                 const inputSummary = this.summarizeToolInput(block.name, toolInput);
@@ -651,6 +653,8 @@ class AgentManager extends EventEmitter {
             const isError = block.is_error || false;
             const tool = toolCalls.find(t => t.id === toolId) || toolCalls[toolCalls.length - 1];
             if (!tool) continue;
+            // [DEBUG] 添加日志用于排查 UI-007 - 追踪工具结果
+            console.error(`[DEBUG agent-tool-result] agentId=${agentId} toolName=${tool.name} status=${isError ? 'error' : 'success'} projectId=${scopedProjectId}`);
             tool.status = isError ? 'error' : 'completed';
             tool.isError = isError;
             tool.result = typeof block.content === 'string' ? block.content : JSON.stringify(block.content ?? null);
