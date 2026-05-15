@@ -477,7 +477,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
       tool(
         'write_game_file',
-        '将游戏 HTML 内容写入到游戏产出目录。engineer 应先调用此工具写入游戏文件，再调用 submit_game 提交。文件写入路径: output/{当前项目ID}/games/{name}/index.html',
+        '将游戏文件写入到游戏产出目录。engineer 应先调用此工具写入游戏文件，再调用 submit_game 提交。文件写入路径: output/{当前项目ID}/games/{name}/{path}',
         {
           name: z.string().transform((value, ctx) => {
             try {
@@ -487,71 +487,53 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
               return z.NEVER;
             }
           }).describe('游戏名称（与 submit_game 的 name 一致）'),
-          content: z.string().min(1).describe('游戏 HTML 文件内容'),
-          files: z.array(z.object({
-            name: z.string().min(1).describe('文件名（如 script.js、style.css）'),
-            content: z.string().describe('文件内容')
-          })).optional().default([]).describe('额外文件（如 JS、CSS），可选')
+          path: z.string().min(1).max(256).describe('文件路径（相对于 game 目录，如 index.html、assets/models/player.glb）'),
+          content: z.string().describe('文件内容'),
         },
-        async ({ name, content, files }) => {
+        async ({ name, path, content }) => {
           validateAgentPermission(['engineer'], '写入游戏文件');
 
-          // [DEBUG] 添加日志用于排查 UI-007
-          console.error(`[DEBUG write_game_file] START agentId=${agentId} projectId=${scopedProjectId} gameName=${name} contentLength=${content.length}`);
+          console.error("[DEBUG write_game_file] START agentId=" + agentId + " projectId=" + scopedProjectId + " gameName=" + name + " path=" + path + " contentLength=" + content.length);
 
           const pathModule = await import('path');
           const fsModule = await import('fs');
-          const outputDir = pathModule.resolve(pathModule.join(__dirname, '..', 'output', scopedProjectId));
+          const outputDir = pathModule.resolve(__dirname, '..', 'output', scopedProjectId);
           const gameDir = pathModule.join(outputDir, 'games', name);
-          const indexHtmlPath = pathModule.join(gameDir, 'index.html');
+          const filePath = pathModule.join(gameDir, path);
 
-          // [DEBUG] 添加日志用于排查 UI-007
-          console.error(`[DEBUG write_game_file] outputDir=${outputDir} gameDir=${gameDir} indexHtmlPath=${indexHtmlPath}`);
-
-          // 安全检查：确保路径在 output/{projectId} 下
-          if (!gameDir.startsWith(outputDir + pathModule.sep)) {
+          // 安全检查：确保路径在 game 目录下（防止路径越权）
+          const resolvedPath = pathModule.resolve(filePath);
+          if (!resolvedPath.startsWith(gameDir + pathModule.sep) && resolvedPath !== gameDir) {
+            console.error("[DEBUG write_game_file] 路径越权 gameDir=" + gameDir + " resolvedPath=" + resolvedPath);
             return {
-              content: [{ type: 'text' as const, text: `写入游戏文件失败：路径越权。` }]
+              content: [{ type: 'text' as const, text: '写入游戏文件失败：路径越权，只能写入 game 目录下。' }]
             };
           }
 
+          console.error("[DEBUG write_game_file] gameDir=" + gameDir + " filePath=" + filePath + " resolvedPath=" + resolvedPath);
+
           try {
-            fsModule.mkdirSync(gameDir, { recursive: true });
-            fsModule.writeFileSync(indexHtmlPath, content, 'utf-8');
-            // [DEBUG] 添加日志用于排查 UI-007
-            console.error(`[DEBUG write_game_file] SUCCESS wrote index.html at ${indexHtmlPath}`);
+            // 创建目录
+            const dirPath = pathModule.dirname(resolvedPath);
+            fsModule.mkdirSync(dirPath, { recursive: true });
 
-            // [DEBUG] 验证文件是否写入成功
-            if (fsModule.existsSync(indexHtmlPath)) {
-              const stat = fsModule.statSync(indexHtmlPath);
-              console.error(`[DEBUG write_game_file] VERIFIED file exists size=${stat.size}`);
-            } else {
-              console.error(`[DEBUG write_game_file] ERROR file not found after write!`);
-            }
+            // 写入文件
+            fsModule.writeFileSync(resolvedPath, content, 'utf-8');
+            console.error("[DEBUG write_game_file] SUCCESS wrote " + resolvedPath);
 
-            // 写入额外文件
-            for (const file of files || []) {
-              const filePath = pathModule.join(gameDir, file.name);
-              const resolvedPath = pathModule.resolve(filePath);
-              if (!resolvedPath.startsWith(gameDir + pathModule.sep)) {
-                return {
-                  content: [{ type: 'text' as const, text: `写入游戏文件失败：文件名 ${file.name} 导致路径越权。` }]
-                };
-              }
-              fsModule.writeFileSync(resolvedPath, file.content, 'utf-8');
-            }
-
-            log(agentId, '写入游戏文件', `游戏: ${name} | 文件数: ${1 + (files || []).length}`, 'success');
+            log(agentId, '写入游戏文件', '游戏: ' + name + ' | 路径: ' + path + ' | 大小: ' + content.length + ' bytes', 'success');
             return {
-              content: [{ type: 'text' as const, text: `游戏文件已写入到 output/${scopedProjectId}/games/${name}/，共 ${1 + (files || []).length} 个文件。` }]
+              content: [{ type: 'text' as const, text: '游戏文件已写入到 output/' + scopedProjectId + '/games/' + name + '/' + path }]
             };
           } catch (error: any) {
+            console.error("[DEBUG write_game_file] ERROR " + error.message);
             return {
-              content: [{ type: 'text' as const, text: `写入游戏文件失败：${error?.message || String(error)}` }]
+              content: [{ type: 'text' as const, text: '写入游戏文件失败：' + (error?.message || String(error)) }]
             };
           }
         }
       ),
+
 
       tool(
         'submit_game',
