@@ -174,10 +174,7 @@ app.get('/api/observe', (req, res) => {
     projectId: project,
     agents: agentManager.getAllAgentStates(project),
     proposals: db.getAllProposals().filter(p => p.project_id === project),
-    games: db.getAllGames().filter(g => g.project_id === project).map(g => {
-      const { html_content, ...rest } = g;
-      return rest;
-    }),
+    games: db.getAllGames().filter(g => g.project_id === project),
     logs: db.getLogs(project, undefined, 1000),
     tasks: db.getTaskBoardTasks(project),
     pendingPermissions: agentManager.getPendingPermissions(project)
@@ -467,9 +464,8 @@ app.get('/api/games', (req, res) => {
   if (!projectValidation.ok) return res.status(400).json({ error: projectValidation.error });
   const project = projectValidation.projectId;
   const games = db.getAllGames().filter(g => g.project_id === project).map(g => {
-    const { html_content, ...rest } = g;
     return {
-      ...rest,
+      ...g,
       fileStorageId: g.file_storage_id || null,
       sonarStorageId: g.sonar_storage_id || null,
     };
@@ -479,8 +475,7 @@ app.get('/api/games', (req, res) => {
 app.get('/api/games/:id', (req, res) => {
   const game = db.getGame(req.params.id);
   if (!game) return res.status(404).json({ error: '游戏不存在' });
-  const { html_content, ...rest } = game;
-  res.json({ game: { ...rest, fileStorageId: game.file_storage_id || null, sonarStorageId: game.sonar_storage_id || null } });
+  res.json({ game: { ...game, fileStorageId: game.file_storage_id || null, sonarStorageId: game.sonar_storage_id || null } });
 });
 app.patch('/api/games/:id', (req, res) => {
   const { id } = req.params;
@@ -495,9 +490,8 @@ app.patch('/api/games/:id', (req, res) => {
 
   const game = db.getGame(id);
   if (!game) return res.status(500).json({ error: '游戏更新后读取失败' });
-  const { html_content: _, ...rest } = game;
-  sseBroadcaster.broadcast({ type: 'game_updated', game: { ...rest, fileStorageId: game.file_storage_id || null } }, game.project_id);
-  res.json({ success: true, game: rest });
+  sseBroadcaster.broadcast({ type: 'game_updated', game: { ...game, fileStorageId: game.file_storage_id || null } }, game.project_id);
+  res.json({ success: true, game: game });
 });
 
 // Audit/log retrieval and maintenance APIs.

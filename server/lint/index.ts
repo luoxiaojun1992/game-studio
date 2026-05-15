@@ -24,11 +24,18 @@ class LintRunner {
   private checkers = new Map<string, LintChecker>();
   private disabledIds = new Set<string>();
 
-  registerAll(checks: Array<{ id: string; checker: LintChecker }>): void {
-    for (const { id, checker } of checks) {
-      this.checkers.set(id, checker);
+  registerAll(checks: LintChecker[]): void {
+    for (const checker of checks) {
+      this.checkers.set(checker.id, checker);
     }
   }
+}
+
+/**
+ * 创建 LintRunner 实例
+ */
+function createLintRunner(): LintRunner {
+  return new LintRunner();
 }
 
 /**
