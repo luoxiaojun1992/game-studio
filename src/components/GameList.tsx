@@ -23,7 +23,6 @@ export default function GameList({ games, selectedId, onSelect }: Props) {
           <div
             key={game.id}
             data-testid={`game-card-${game.id}`}
-            data-game-name={game.name}
             onClick={() => onSelect(game)}
             className={`rounded-lg p-3 cursor-pointer transition-all border ${
               game.id === selectedId
@@ -34,6 +33,7 @@ export default function GameList({ games, selectedId, onSelect }: Props) {
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-1">
                 <span className="text-xs text-gray-500">v{game.version}</span>
+                <span className="text-xs text-gray-600">#{game.version_number}</span>
                 {game.fileStorageId && (
                   <span className="text-xs px-1 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-600/40" title={l('有打包文件', 'Has packaged file')}>
                     📦
@@ -48,7 +48,7 @@ export default function GameList({ games, selectedId, onSelect }: Props) {
                 {game.status === 'published' ? l('已发布', 'Published') : l('草稿', 'Draft')}
               </span>
             </div>
-            <p className="text-sm text-gray-200 font-medium">{game.name}</p>
+            <p className="text-sm text-gray-200 font-medium">游戏 #{game.version_number}</p>
             <p className="text-[11px] text-gray-500 mt-1">{l('项目', 'Project')}: {game.project_id}</p>
             {game.description && (
               <p className="text-xs text-gray-500 mt-1 line-clamp-2">{game.description}</p>

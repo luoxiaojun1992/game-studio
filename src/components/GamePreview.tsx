@@ -54,7 +54,7 @@ export default function GamePreview({ game, onClose }: Props) {
         <div className="flex items-center gap-3">
           <span className="text-xl">🎮</span>
           <div>
-            <h2 className="font-bold text-white text-base">{game.name}</h2>
+            <h2 className="font-bold text-white text-base">游戏 #{game.version_number}</h2>
             <div className="text-xs text-gray-500">v{game.version}</div>
           </div>
         </div>

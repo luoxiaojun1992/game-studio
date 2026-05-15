@@ -77,7 +77,7 @@ export interface FileStorage {
 export interface Game {
   id: string;
   project_id: string;
-  name: string;
+  version_number: number;
   description: string;
   proposal_id: string | null;
   version: string;
