@@ -1,6 +1,9 @@
 # Game Dev Studio 后端 Dockerfile
 FROM node:20-alpine AS builder
 
+# 安装 zip（用于 submit_game 打包游戏文件）
+RUN apk add --no-cache zip
+
 WORKDIR /app
 
 # 复制 package 文件
