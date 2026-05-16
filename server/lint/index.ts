@@ -48,6 +48,8 @@ function buildSummary(errors: LintIssue[], warnings: LintIssue[]): string {
   return parts.join('，') || '无问题';
 }
 
+const _lts = () => new Date().toISOString();
+
 /**
  * 使用所有内置检查器执行 lint 检查（统一入口函数）
  *
@@ -60,18 +62,27 @@ function buildSummary(errors: LintIssue[], warnings: LintIssue[]): string {
 export async function lintGameArtifact(zipBuffer: Buffer, context?: LintContext): Promise<LintResult> {
   const runner = createLintRunner();
   runner.registerAll(builtInCheckers);
+  console.error(`[LintFramework] ${_lts()} lintGameArtifact start zipSize=${zipBuffer.length} checkers=${builtInCheckers.length}`);
 
   const allIssues: LintIssue[] = [];
   const extraPayloads: Record<string, unknown> = {};
   const enrichedContext: LintContext = { ...context, __extraPayloads: extraPayloads, zipBuffer };
 
+  let checkerIndex = 0;
   for (const [id, checker] of runner['checkers']) {
-    if (runner['disabledIds'].has(id)) continue;
+    checkerIndex++;
+    console.error(`[LintFramework] ${_lts()} running checker ${checkerIndex}/${builtInCheckers.length} id=${id} name=${checker.name}`);
+    if (runner['disabledIds'].has(id)) {
+      console.error(`[LintFramework] ${_lts()} checker ${id} is disabled, skipping`);
+      continue;
+    }
     try {
       const result = checker.check('', enrichedContext);
       const issues = result instanceof Promise ? await result : result;
       allIssues.push(...issues);
+      console.error(`[LintFramework] ${_lts()} checker ${id} done issues=${issues.length}`);
     } catch (error: any) {
+      console.error(`[LintFramework] ${_lts()} checker ${id} error: ${error?.message || String(error)}`);
       allIssues.push({
         ruleId: `${id}-internal-error`,
         level: 'error',
@@ -83,6 +94,7 @@ export async function lintGameArtifact(zipBuffer: Buffer, context?: LintContext)
 
   const errors = allIssues.filter(i => i.level === 'error');
   const warnings = allIssues.filter(i => i.level === 'warn');
+  console.error(`[LintFramework] ${_lts()} lintGameArtifact done totalIssues=${allIssues.length} errors=${errors.length} warnings=${warnings.length} passed=${errors.length === 0}`);
 
   return {
     passed: errors.length === 0,

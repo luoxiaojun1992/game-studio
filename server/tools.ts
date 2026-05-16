@@ -86,6 +86,7 @@ const toSingleLinePreview = (content: string | null | undefined) =>
  */
 export function createStudioToolsServer(projectId: string, agentId: AgentRole, logFn?: ToolLogFn, onAutoHandoff?: AutoHandoffHook): SdkMcpServerResult {
   const log = logFn || (() => {});
+  const _tts = () => new Date().toISOString();  // timestamp helper for console.error logs
   // 安全锚点：来自 API 请求的权威 project_id，直接注入到所有工具作用域中
   const scopedProjectId = (projectId || 'default').trim() || 'default';
   const TASK_STATUS_FLOW: Record<string, string[]> = {
@@ -134,6 +135,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           source_task: z.string().optional().describe('关联的任务名称')
         },
         async ({ category, content, importance, source_task }) => {
+          console.error(`[Tool] ${_tts()} save_memory START agentId=${agentId} projectId=${scopedProjectId} category=${category} contentLength=${content.length}`);
           const now = new Date().toISOString();
           const memory = db.createAgentMemory({
             id: uuidv4(),
@@ -147,6 +149,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
             updated_at: now
           });
           log(agentId, '保存记忆', `类别: ${category} | 重要度: ${importance}`, 'info');
+          console.error(`[Tool] ${_tts()} save_memory DONE memoryId=${memory.id.slice(0, 8)}`);
           return {
             content: [{ type: 'text' as const, text: `记忆已保存 (ID: ${memory.id.slice(0, 8)})` }]
           };
@@ -197,13 +200,16 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           priority: z.enum(db.HANDOFF_PRIORITIES).optional().default('normal').describe('任务优先级')
         },
         async ({ to_agent_id, title, description, context, priority }) => {
+          console.error(`[Tool] ${_tts()} create_handoff START agentId=${agentId} projectId=${scopedProjectId} from=${agentId} to=${to_agent_id} title=${title}`);
           const allowedTargets = ALLOWED_HANDOFF_TARGETS[agentId] || [];
           if (!allowedTargets.includes(to_agent_id)) {
+            console.error(`[Tool] ${_tts()} create_handoff INVALID_TARGET agentId=${agentId} to=${to_agent_id} allowed=${allowedTargets.join(',') || 'none'}`);
             throw new Error(`交接目标不合法：${agentId} 仅可移交给 ${allowedTargets.join(' / ') || '无'}`);
           }
           const now = new Date().toISOString();
           const settings = db.getProjectSettings(scopedProjectId);
           const autoHandoffEnabled = settings.autopilot_enabled === 1;
+          console.error(`[Tool] ${_tts()} create_handoff autopilot=${autoHandoffEnabled}`);
           const handoff = db.createHandoff({
             id: uuidv4(),
             project_id: scopedProjectId,
@@ -221,8 +227,10 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
             created_at: now,
             updated_at: now,
           });
+          console.error(`[Tool] ${_tts()} create_handoff broadcast handoff_created handoffId=${handoff.id.slice(0, 8)}`);
           sseBroadcaster.broadcast({ type: 'handoff_created', handoff }, scopedProjectId);
           log(agentId, '创建交接', `${agentId} → ${to_agent_id}: ${title}`, 'success');
+          console.error(`[Tool] ${_tts()} create_handoff DONE handoffId=${handoff.id.slice(0, 8)} status=${autoHandoffEnabled ? 'working' : 'pending'}`);
           if (autoHandoffEnabled && onAutoHandoff) {
             try {
               await onAutoHandoff(handoff);
@@ -265,6 +273,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         },
         async ({ feature_title, development_description, testing_description, priority_hint }) => {
           validateAgentPermission(['engineer'], '拆分开发与测试任务');
+          console.error(`[Tool] ${_tts()} split_dev_test_tasks START agentId=${agentId} projectId=${scopedProjectId} feature=${feature_title}`);
           const now = new Date().toISOString();
           const devTask = db.createTaskBoardTask({
             id: uuidv4(),
@@ -301,6 +310,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           sseBroadcaster.broadcast({ type: 'task_created', task: devTask }, scopedProjectId);
           sseBroadcaster.broadcast({ type: 'task_created', task: testTask }, scopedProjectId);
           log(agentId, '拆分任务看板', `${feature_title} -> 开发+测试`, 'success');
+          console.error(`[Tool] ${_tts()} split_dev_test_tasks DONE devTaskId=${devTask.id.slice(0, 8)} testTaskId=${testTask.id.slice(0, 8)}`);
 
           return {
             content: [{
@@ -348,6 +358,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         },
         async ({ task_id, status }) => {
           validateAgentPermission(['engineer'], '更新任务看板状态');
+          console.error(`[Tool] ${_tts()} update_task_status START agentId=${agentId} taskId=${task_id} targetStatus=${status}`);
           const normalizedTaskId = task_id.trim();
           if (!UUID_PATTERN.test(normalizedTaskId)) {
             return { content: [{ type: 'text' as const, text: `任务 ID 格式非法: ${normalizedTaskId}。${TASK_ID_HELP_TEXT}` }] };
@@ -406,6 +417,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           attachment_storage_ids: z.array(z.string().uuid()).max(10).optional().describe('关联的附件 file_storage_id 列表（最多 10 个），来自 drawio_download_diagram 返回的 file_storage_id')
         },
         async ({ type, title, content, attachment_storage_ids }) => {
+          console.error(`[Tool] ${_tts()} submit_proposal START agentId=${agentId} projectId=${scopedProjectId} type=${type} title=${title} contentLength=${content.length}`);
           if (type === 'game_design') {
             validateAgentPermission(['game_designer'], '提交游戏策划案');
           } else if (type === 'biz_design') {
@@ -469,6 +481,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           const filePath = db.saveProposalToFile(proposal);
           sseBroadcaster.broadcast({ type: 'proposal_created', proposal, filePath }, scopedProjectId);
           log(agentId, '提交提案', `提案: ${title}${filePath ? ' → 已保存' : ''}`, 'success');
+          console.error(`[Tool] ${_tts()} submit_proposal DONE proposalId=${proposal.id.slice(0, 8)} status=pending_review filePath=${filePath || 'none'}`);
           return {
             content: [{ type: 'text' as const, text: `提案已提交 (ID: ${proposal.id.slice(0, 8)})，等待审批。${attachment_storage_ids?.length ? ` 已关联 ${attachment_storage_ids.length} 个附件。` : ''}` }]
           };
@@ -514,11 +527,13 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
             console.error("[DEBUG write_game_file] SUCCESS wrote " + resolvedPath);
 
             log(agentId, '写入游戏文件', '路径: ' + path + ' | 大小: ' + content.length + ' bytes', 'success');
+            console.error(`[Tool] ${_tts()} write_game_file DONE path=${path} size=${content.length}`);
             return {
               content: [{ type: 'text' as const, text: '游戏文件已写入到 output/' + scopedProjectId + '/games/latest/' + path }]
             };
           } catch (error: any) {
             console.error("[DEBUG write_game_file] ERROR " + error.message);
+            console.error(`[Tool] ${_tts()} write_game_file ERROR ${error.message}`);
             return {
               content: [{ type: 'text' as const, text: '写入游戏文件失败：' + (error?.message || String(error)) }]
             };
@@ -549,6 +564,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         },
         async ({ description, version, proposal_id }) => {
           validateAgentPermission(['engineer'], '提交游戏成品');
+          console.error(`[Tool] ${_tts()} submit_game START agentId=${agentId} projectId=${scopedProjectId} version=${version} proposalId=${proposal_id || 'none'}`);
 
           // ========== 确定游戏路径（从 games/latest 读取）==========
           const resolvedFilePath = 'games/latest';
@@ -633,9 +649,11 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
               const fileBuffer = fsModule.readFileSync(zipTempPath);
 
               // lint 检查：ZIP 内每个 HTML 逐一检查，遇第一个 error 即阻断
+              console.error(`[Tool] ${_tts()} submit_game calling lintZipBuffer zipSize=${fileBuffer.length}`);
               const zipLintResult = await lintZipBuffer(fileBuffer, {
                 projectId: scopedProjectId,
               });
+              console.error(`[Tool] ${_tts()} submit_game lintZipBuffer done passed=${zipLintResult.passed} errors=${zipLintResult.errors.length} warnings=${zipLintResult.warnings.length} summary=${zipLintResult.summary}`);
               if (!zipLintResult.passed) {
                 try { fsModule.unlinkSync(zipTempPath); } catch { /* ignore */ }
                 return {
@@ -740,6 +758,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
             // [DEBUG] 添加日志用于排查 UI-007
             console.error(`[DEBUG submit_game] SUCCESS game_submitted broadcasted projectId=${scopedProjectId} gameId=${game.id} versionNumber=${game.version_number}`);
             log(agentId, '提交游戏', `版本号: ${game.version_number} v${version || '1.0.0'} [文件模式，ZIP: ${zipName}，Sonar报告: sonar/${zipName}]`, 'success');
+            console.error(`[Tool] ${_tts()} submit_game DONE gameId=${game.id.slice(0, 8)} versionNumber=${game.version_number} fileStorageId=${fileStorageId ? fileStorageId.slice(0, 8) : 'none'} sonarStorageId=${sonarStorageId ? sonarStorageId.slice(0, 8) : 'none'}`);
             return {
               content: [{ type: 'text' as const, text: `游戏已提交 (版本号: ${game.version_number})，版本: ${version || '1.0.0'}，文件已上传到存储。` }]
             };
@@ -1132,6 +1151,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           if (!blender_project_id || typeof blender_project_id !== 'string') {
             throw new Error('blender_project_id 不能为空');
           }
+          console.error(`[Tool] ${_tts()} blender_export_model START agentId=${agentId} blenderProjectId=${blender_project_id} object=${object_name} format=${format || 'glb'}`);
 
           // 限制导出路径为 games/latest 目录下
           const pathModule = await import('path');
