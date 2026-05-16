@@ -1,11 +1,18 @@
 /**
  *
  */
+import { fileURLToPath } from 'url';
 import { z } from 'zod';
 import { tool, createSdkMcpServer, type SdkMcpServerResult } from '@tencent-ai/agent-sdk';
 import yazl from 'yazl';
 import type { Stats } from 'fs';
+import path from 'path';
+import { execSync } from 'child_process';
+import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
+
+// ===== ESM 兼容的 _toolsDirname =====
+const _toolsDirname = path.dirname(fileURLToPath(import.meta.url));
 import * as db from './db.js';
 import { AGENT_IDS, AgentRole, getAllAgents } from './agents.js';
 import { sseBroadcaster } from './sse-broadcaster.js';
@@ -495,41 +502,39 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           path: z.string().min(1).max(256).describe('文件路径（相对于 game 目录，如 index.html、assets/models/player.glb）'),
           content: z.string().describe('文件内容'),
         },
-        async ({ path, content }) => {
+        async ({ path: filePath, content }) => {
           validateAgentPermission(['engineer'], '写入游戏文件');
 
-          console.error("[DEBUG write_game_file] START agentId=" + agentId + " projectId=" + scopedProjectId + " path=" + path + " contentLength=" + content.length);
+          console.error("[DEBUG write_game_file] START agentId=" + agentId + " projectId=" + scopedProjectId + " path=" + filePath + " contentLength=" + content.length);
 
-          const pathModule = await import('path');
-          const fsModule = await import('fs');
-          const outputDir = pathModule.resolve(__dirname, '..', 'output', scopedProjectId);
-          const latestDir = pathModule.join(outputDir, 'games', 'latest');
-          const filePath = pathModule.join(latestDir, path);
+          const outputDir = path.resolve(_toolsDirname, '..', 'output', scopedProjectId);
+          const latestDir = path.join(outputDir, 'games', 'latest');
+          const fullPath = path.join(latestDir, filePath);
 
           // 安全检查：确保路径在 latest 目录下（防止路径越权）
-          const resolvedPath = pathModule.resolve(filePath);
-          if (!resolvedPath.startsWith(latestDir + pathModule.sep) && resolvedPath !== latestDir) {
+          const resolvedPath = path.resolve(fullPath);
+          if (!resolvedPath.startsWith(latestDir + path.sep) && resolvedPath !== latestDir) {
             console.error("[DEBUG write_game_file] 路径越权 latestDir=" + latestDir + " resolvedPath=" + resolvedPath);
             return {
               content: [{ type: 'text' as const, text: '写入游戏文件失败：路径越权，只能写入 game 目录下。' }]
             };
           }
 
-          console.error("[DEBUG write_game_file] latestDir=" + latestDir + " filePath=" + filePath + " resolvedPath=" + resolvedPath);
+          console.error("[DEBUG write_game_file] latestDir=" + latestDir + " filePath=" + fullPath + " resolvedPath=" + resolvedPath);
 
           try {
             // 创建目录
-            const dirPath = pathModule.dirname(resolvedPath);
-            fsModule.mkdirSync(dirPath, { recursive: true });
+            const dirPath = path.dirname(resolvedPath);
+            fs.mkdirSync(dirPath, { recursive: true });
 
             // 写入文件
-            fsModule.writeFileSync(resolvedPath, content, 'utf-8');
+            fs.writeFileSync(resolvedPath, content, 'utf-8');
             console.error("[DEBUG write_game_file] SUCCESS wrote " + resolvedPath);
 
-            log(agentId, '写入游戏文件', '路径: ' + path + ' | 大小: ' + content.length + ' bytes', 'success');
-            console.error(`[Tool] ${_tts()} write_game_file DONE path=${path} size=${content.length}`);
+            log(agentId, '写入游戏文件', '路径: ' + filePath + ' | 大小: ' + content.length + ' bytes', 'success');
+            console.error(`[Tool] ${_tts()} write_game_file DONE path=${filePath} size=${content.length}`);
             return {
-              content: [{ type: 'text' as const, text: '游戏文件已写入到 output/' + scopedProjectId + '/games/latest/' + path }]
+              content: [{ type: 'text' as const, text: '游戏文件已写入到 output/' + scopedProjectId + '/games/latest/' + filePath }]
             };
           } catch (error: any) {
             console.error("[DEBUG write_game_file] ERROR " + error.message);
@@ -563,6 +568,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           proposal_id: z.string().optional().describe('关联的策划案 ID（如果有）')
         },
         async ({ description, version, proposal_id }) => {
+          try {
           validateAgentPermission(['engineer'], '提交游戏成品');
           console.error(`[Tool] ${_tts()} submit_game START agentId=${agentId} projectId=${scopedProjectId} version=${version} proposalId=${proposal_id || 'none'}`);
 
@@ -570,33 +576,32 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           const resolvedFilePath = 'games/latest';
 
           // [DEBUG] 添加日志用于排查 UI-007
-          console.error(`[DEBUG submit_game] START projectId=${scopedProjectId} resolvedPath=${resolvedFilePath} __dirname=${__dirname}`);
+          console.error(`[DEBUG submit_game] START projectId=${scopedProjectId} resolvedPath=${resolvedFilePath} _toolsDirname=${_toolsDirname}`);
 
           // ========== 校验 description 安全性 ==========
           const { validateHtmlSafe, sanitizeHtml } = await import('./utils/sanitize-html.js');
           const validationErrors = validateHtmlSafe(description);
           if (validationErrors.length > 0) {
+            console.error(`[DEBUG submit_game] description 安全校验失败: ${validationErrors.map(e => e.message).join('; ')}`);
             return {
               content: [{ type: 'text' as const, text: `提交游戏失败：description 存在安全问题：\n${validationErrors.map(e => `- ${e.message}${e.detail ? `（${e.detail}）` : ''}`).join('\n')}` }]
             };
           }
           const safeDescription = sanitizeHtml(description);
+          console.error(`[DEBUG submit_game] description 安全校验通过`);
 
           let fileStorageId: string | null = null;
           let sonarStorageId: string | null = null;
 
           // ========== 文件打包模式 ==========
           // 路径校验：只允许 output/{project_id} 下的路径
-          const { execSync } = await import('child_process');
-          const pathModule = await import('path');
-          const fsModule = await import('fs');
-
-          const outputDir = pathModule.resolve(pathModule.join(__dirname, '..', 'output', scopedProjectId));
+          const outputDir = path.resolve(path.join(_toolsDirname, '..', 'output', scopedProjectId));
+          console.error(`[DEBUG submit_game] outputDir=${outputDir}`);
           let targetPath: string;
           try {
-            targetPath = pathModule.resolve(outputDir, resolvedFilePath);
+            targetPath = path.resolve(outputDir, resolvedFilePath);
             // 检查路径是否在 output/{project_id} 下
-            if (!targetPath.startsWith(outputDir + pathModule.sep) && targetPath !== outputDir) {
+            if (!targetPath.startsWith(outputDir + path.sep) && targetPath !== outputDir) {
               return {
                 content: [{ type: 'text' as const, text: `提交游戏失败：路径只能在 output/${scopedProjectId} 目录下。` }]
               };
@@ -611,7 +616,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           // 检查路径是否存在且为目录
           let stat: Stats;
           try {
-            stat = fsModule.statSync(targetPath);
+            stat = fs.statSync(targetPath);
             // [DEBUG] 添加日志用于排查 UI-007
             console.error(`[DEBUG submit_game] targetPath=${targetPath} exists=true isDirectory=${stat.isDirectory()}`);
           } catch (err) {
@@ -630,7 +635,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           // 创建临时 ZIP 文件
           const zipId = uuidv4();
           const zipName = `${scopedProjectId}_${zipId}.zip`;
-          const zipTempPath = pathModule.join('/tmp', zipName);
+          const zipTempPath = path.join('/tmp', zipName);
 
             try {
               // 切换到 output/{project_id} 目录执行 zip，保留相对路径
@@ -638,7 +643,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
               execSync(zipCmd, { stdio: 'pipe' });
 
-              if (!fsModule.existsSync(zipTempPath)) {
+              if (!fs.existsSync(zipTempPath)) {
                 return {
                   content: [{ type: 'text' as const, text: '提交游戏失败：ZIP 打包失败。' }]
                 };
@@ -646,7 +651,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
               // 直接调用内部函数上传文件到 MinIO
               const objectKey = `games/${zipName}`;
-              const fileBuffer = fsModule.readFileSync(zipTempPath);
+              const fileBuffer = fs.readFileSync(zipTempPath);
 
               // lint 检查：ZIP 内每个 HTML 逐一检查，遇第一个 error 即阻断
               console.error(`[Tool] ${_tts()} submit_game calling lintZipBuffer zipSize=${fileBuffer.length}`);
@@ -655,7 +660,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
               });
               console.error(`[Tool] ${_tts()} submit_game lintZipBuffer done passed=${zipLintResult.passed} errors=${zipLintResult.errors.length} warnings=${zipLintResult.warnings.length} summary=${zipLintResult.summary}`);
               if (!zipLintResult.passed) {
-                try { fsModule.unlinkSync(zipTempPath); } catch { /* ignore */ }
+                try { fs.unlinkSync(zipTempPath); } catch { /* ignore */ }
                 return {
                   content: [{ type: 'text' as const, text: `提交游戏失败：\n${zipLintResult.summary}` }]
                 };
@@ -721,11 +726,11 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
                 };
               } finally {
                 // 清理临时文件
-                try { fsModule.unlinkSync(zipTempPath); } catch { /* ignore */ }
+                try { fs.unlinkSync(zipTempPath); } catch { /* ignore */ }
               }
 
             } catch (error: any) {
-              try { fsModule.unlinkSync(zipTempPath); } catch { /* ignore */ }
+              try { fs.unlinkSync(zipTempPath); } catch { /* ignore */ }
               return {
                 content: [{ type: 'text' as const, text: `提交游戏失败：ZIP 打包失败 ${error?.message || String(error)}` }]
               };
@@ -762,7 +767,16 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
             return {
               content: [{ type: 'text' as const, text: `游戏已提交 (版本号: ${game.version_number})，版本: ${version || '1.0.0'}，文件已上传到存储。` }]
             };
+          } catch (error: any) {
+            const errMsg = error?.message || String(error);
+            const errStack = error?.stack || '';
+            console.error(`[Tool] ${_tts()} submit_game FATAL ERROR: ${errMsg}`);
+            console.error(`[Tool] ${_tts()} submit_game FATAL STACK: ${errStack}`);
+            return {
+              content: [{ type: 'text' as const, text: `提交游戏失败：系统内部错误 (${errMsg})` }]
+            };
           }
+        }
       ),
       tool(
         'get_agent_logs',
@@ -1155,7 +1169,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
           // 限制导出路径为 games/latest 目录下
           const pathModule = await import('path');
-          const latestDir = pathModule.resolve(__dirname, '..', 'output', scopedProjectId, 'games', 'latest');
+          const latestDir = pathModule.resolve(_toolsDirname, '..', 'output', scopedProjectId, 'games', 'latest');
           const outputDir = pathModule.resolve(latestDir, path || 'assets');
 
           // 安全检查：确保输出路径在 latest 目录下
@@ -1195,9 +1209,9 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           if (!filename || typeof filename !== 'string' || !filename.trim()) {
             throw new Error('filename 不能为空');
           }
-          // 使用动态 import 解析 __dirname（ESM）
+          // 使用动态 import 解析 _toolsDirname（ESM）
           const pathModule = await import('path');
-          const localOutputDir = pathModule.resolve(__dirname, '..', 'output', scopedProjectId, 'models');
+          const localOutputDir = pathModule.resolve(_toolsDirname, '..', 'output', scopedProjectId, 'models');
           const opts: DownloadModelFileOptions = {
             blenderProjectId: blender_project_id.trim(),
             filename: filename.trim(),
@@ -1230,7 +1244,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
             throw new Error('filename 不能为空');
           }
           const pathModule = await import('path');
-          const localOutputDir = pathModule.resolve(__dirname, '..', 'output', scopedProjectId, 'models');
+          const localOutputDir = pathModule.resolve(_toolsDirname, '..', 'output', scopedProjectId, 'models');
           const opts: DeleteModelFileOptions = {
             blenderProjectId: blender_project_id.trim(),
             filename: filename.trim(),
@@ -1493,7 +1507,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           }
           const pathModule = await import('path');
           const fsModule = await import('fs');
-          const localOutputDir = pathModule.resolve(__dirname, '..', 'output', scopedProjectId, 'diagrams');
+          const localOutputDir = pathModule.resolve(_toolsDirname, '..', 'output', scopedProjectId, 'diagrams');
 
           // 1. 调用 drawio service 导出图表 Buffer
           const { exportDiagram } = await import('./drawio-service.js');
@@ -1509,11 +1523,11 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           });
 
           // 2. 保存到本地 output 目录
-          if (!fsModule.existsSync(localOutputDir)) {
-            fsModule.mkdirSync(localOutputDir, { recursive: true });
+          if (!fs.existsSync(localOutputDir)) {
+            fs.mkdirSync(localOutputDir, { recursive: true });
           }
           const localPath = pathModule.resolve(localOutputDir, safeFilename);
-          fsModule.writeFileSync(localPath, buffer);
+          fs.writeFileSync(localPath, buffer);
 
           // 3. 上传到 MinIO（内部函数，不走外部 API）
           let fileStorageId: string;
