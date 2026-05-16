@@ -694,8 +694,10 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
               // 重置扫描历史，允许后续 submit_game 重新扫描
               resetSonarScanHistory(`game-${scopedProjectId}`);
 
+              console.error(`[DEBUG submit_game] 开始上传文件到 MinIO objectKey=${objectKey} finalFileSize=${finalFileSize}`);
               try {
                 // 创建游戏文件存储记录
+                console.error(`[DEBUG submit_game] createFileStorageRecord start objectKey=${objectKey}`);
                 const { storage: gameStorage } = await createFileStorageRecord({
                   project_id: scopedProjectId,
                   object_key: objectKey,
@@ -704,12 +706,16 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
                   content_type: 'application/zip'
                 });
                 fileStorageId = gameStorage.id;
+                console.error(`[DEBUG submit_game] createFileStorageRecord done fileStorageId=${fileStorageId.slice(0, 8)}`);
 
                 // 上传含 sonar 报告的最终 ZIP 到 MinIO
+                console.error(`[DEBUG submit_game] uploadBuffer start objectKey=${objectKey}`);
                 await uploadBuffer(finalZipBuffer, objectKey, 'application/zip');
+                console.error(`[DEBUG submit_game] uploadBuffer done`);
 
                 // 上传独立 sonar-issues.json 报告到 MinIO
                 const sonarObjectKey = `sonar/${zipName}`;
+                console.error(`[DEBUG submit_game] prepare sonar upload sonarObjectKey=${sonarObjectKey} sonarReportSize=${sonarReportBuffer.length}`);
                 const { storage: sonarStorage } = await createFileStorageRecord({
                   project_id: scopedProjectId,
                   object_key: sonarObjectKey,
@@ -718,9 +724,12 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
                   content_type: 'application/json'
                 });
                 sonarStorageId = sonarStorage.id;
+                console.error(`[DEBUG submit_game] sonar storage created sonarStorageId=${sonarStorageId.slice(0, 8)}`);
                 await uploadBuffer(sonarReportBuffer, sonarObjectKey, 'application/json');
+                console.error(`[DEBUG submit_game] sonar upload done`);
 
               } catch (error: any) {
+                console.error(`[DEBUG submit_game] 文件上传异常: ${error?.message || String(error)}`);
                 return {
                   content: [{ type: 'text' as const, text: `提交游戏失败：文件上传异常 ${error?.message || String(error)}` }]
                 };
@@ -739,6 +748,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
             // 创建游戏记录
             const now = new Date().toISOString();
             let game: db.DbGame;
+            console.error(`[DEBUG submit_game] 开始创建游戏记录 fileStorageId=${fileStorageId ? fileStorageId.slice(0, 8) : 'null'} sonarStorageId=${sonarStorageId ? sonarStorageId.slice(0, 8) : 'null'}`);
             try {
               game = db.createGame({
                 id: uuidv4(),
@@ -753,12 +763,15 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
                 created_at: now,
                 updated_at: now
               });
+              console.error(`[DEBUG submit_game] 游戏记录创建成功 gameId=${game.id.slice(0, 8)} versionNumber=${game.version_number}`);
             } catch (error: any) {
+              console.error(`[DEBUG submit_game] 游戏记录创建失败: ${error?.message || String(error)}`);
               return {
                 content: [{ type: 'text' as const, text: `提交游戏失败：${error?.message || String(error)}` }]
               };
             }
 
+            console.error(`[DEBUG submit_game] 广播 game_submitted SSE 事件`);
             sseBroadcaster.broadcast({ type: 'game_submitted', game: { ...game, fileStorageId, sonarStorageId }, filePath: null }, scopedProjectId);
             // [DEBUG] 添加日志用于排查 UI-007
             console.error(`[DEBUG submit_game] SUCCESS game_submitted broadcasted projectId=${scopedProjectId} gameId=${game.id} versionNumber=${game.version_number}`);
