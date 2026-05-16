@@ -23,6 +23,23 @@
 - **force: true 点击**：按钮被遮挡或 actionability check 失败时需要
 
 ## UI-007 Game Count = 0 根因
+
+### 第一轮：Docker builder 缺少 `zip` 命令
+- `docker-compose.ui-test.yml` 使用 `target: builder`，但 `Dockerfile.backend` 中 `apk add zip` 在生产阶段
+- builder 阶段没有 `zip` → `execSync('zip -r ...')` 抛 `command not found`
+- **影响**：submit_game 永远卡在 zip 打包这一步，返回"ZIP 打包失败"，lint 从未执行
+- **修复**：builder 阶段开头加 `RUN apk add --no-cache zip`
+- **日志特征**：无 `[LintFramework]` 日志，无 `[Tool] submit_game calling lintZipBuffer`
+
+### 第二轮：MinIO `putObject` 不自动创建 bucket
+- `submit_game` 通过 `uploadBuffer()` → `minio.putObject()` 上传文件到 MinIO
+- `putObject()` 未调用 `ensureBucket()`（`getPresignedUploadUrl` 和 `getPresignedDownloadUrl` 有调用）
+- 新鲜 MinIO 容器中 `game-files` bucket 不存在 → 抛 `bucket does not exist`
+- **影响**：lint 跑通了，但文件上传失败，catch 吞掉异常，返回"文件上传异常"，game 仍未被创建
+- **修复**：`putObject()` 和 `deleteObject()` 开头加 `await ensureBucket()`
+- **额外加固**：`server/index.ts` 启动时自动 `await ensureBucket()`，日志 `[Boot] MinIO bucket 已就绪`
+
+### 历史根因（已修复）
 - `submit_game`/`create_handoff`/`save_memory` 等 mock 若 `toolCalls.arguments` 与当前 schema 不一致（如继续传 `project_id`），会被工具 schema 直接拒绝
 - mock 若缺失当前 schema 的必填参数，同样会触发 zod 校验失败
 - 后果：工具执行失败，流程中断，目标项目收不到预期变更与 SSE 更新

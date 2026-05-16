@@ -6,13 +6,16 @@
 - 遇到问题必须先定位根因，再修复，不能猜测或碰运气
 - 验收标准中明确，提交代码前必须跑通ui test。如遇网络或依赖问题，可临时修改代码解决网络问题，但禁止提交为了解决网络依赖问题所做的变更。
 
-## 6 个 Bug 修复记录
+## 9 个 Bug 修复记录
 1. CommandPanel 历史记录丢失
 2. 产出持久化失败
 3. 交接确认流程缺失
 4. 清除聊天功能无效
 5. 长期记忆未生效
 6. 产出目录配置错误
+7. **Docker builder 缺少 zip**：`docker-compose.ui-test.yml` 使用 `target: builder`，但 builder 阶段未装 `zip` → `execSync('zip -r ...')` 抛 `command not found` → submit_game 永远卡在 zip 打包。修复：builder 开头加 `RUN apk add --no-cache zip`
+8. **MinIO putObject 不自动建 bucket**：`uploadBuffer()` 走 `minio.putObject()`，但 `putObject()` 未调用 `ensureBucket()`。新鲜容器中 `game-files` bucket 不存在→ `bucket does not exist` → 上传失败被 catch 吞掉 → game 不创建。修复：`putObject()` 和 `deleteObject()` 开头加 `await ensureBucket()`
+9. **submit_game 无顶层异常捕获**：路径解析、`__dirname` 引用、zip 打包等阶段若抛出异常，直接被 SDK 吞掉返回工具错误，无可见日志。修复：包裹 `try {} catch(error) {}`，输出 `[Tool] submit_game FATAL ERROR + STACK`
 
 ## Agent 选择状态持久化
 - 状态在 `StudioPage.commandTargetAgent` 与 `CommandPanel.selectedAgent` 之间采用“双向协同（两条单向更新链路）”
@@ -94,6 +97,9 @@
 | 在前端组件中直接使用 `fetch('/api/...')` 调用后端 API | 必须使用 `config.ts` 中 `api.*` 封装函数（如 `api.getModels()`），它们通过 `VITE_API_BASE` 解析到正确的后端地址 | 生产构建（nginx）中 `/api/*` 被当作静态文件请求，返回 404 |
 | UI 测试中 `fs.mkdirSync` + `fs.writeFileSync` 直接写入后端 `output/` 目录 | 通过 mock 返回 MCP 工具调用（如 `write_game_file`），由 agent-sdk 本地执行 | 测试与后端不在同一容器/进程，本地写入的文件后端无法读取 |
 | mock 模拟 `Write`/`Bash` 等 SDK 内置工具 | CI 中无 CodeBuddy 运行时，内置工具不可执行；必须使用 MCP 工具 | 工具调用静默失败，测试流程卡住 |
+| Docker builder 阶段未安装 `zip` | `docker-compose.ui-test.yml` 用 `target: builder`，但 builder 阶段没有 `apk add zip` → `execSync('zip -r ...')` 抛 `command not found` | submit_game 永远卡在打包，lint/上传/DB 创建全链路中断 |
+| `minio.putObject()` 未调用 `ensureBucket()` | 新鲜 MinIO 容器无预创建 bucket → `putObject` 抛 `bucket does not exist` 被 catch 吞掉 | lint 跑通了但文件上传失败，gameCount 始终为 0 |
+| `submit_game` handler 无顶层异常捕获 | 路径解析、`__dirname` 引用等阶段抛出异常被 SDK 静默吞掉，无可见日志 | 开发者和 CI 无法定位到具体失败行，浪费大量排查时间 |
 
 ## Session ↔ Project 关系
 - **Session 不会跨 project**：每次 `sendMessage(projectId, agentId, ...)` 都会创建全新的 SDK session，session 与 project 一一对应

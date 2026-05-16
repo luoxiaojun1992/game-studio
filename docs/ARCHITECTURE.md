@@ -139,6 +139,36 @@ graph TB
 - `games` no longer stores `author_agent_id`; author attribution should be tracked from workflow context if needed.
 - `logs`, `commands`, and `permission_requests` include `updated_at` for state transition tracking.
 
+### 5.1 submit_game Execution Flow
+
+```
+submit_game
+  ├─ 1. Permission check (engineer only)
+  ├─ 2. Validate output/{projectId}/games/latest/ exists (requires write_game_file first)
+  ├─ 3. ZIP package via execSync('zip -r ...')  ← requires `zip` CLI in container
+  ├─ 4. lintZipBuffer() → SonarQube scanner (synchronous polling, ~15s)
+  ├─ 5. createFileStorageRecord() + uploadBuffer() → MinIO  ← requires bucket to exist
+  ├─ 6. db.createGame() → SQLite record
+  ├─ 7. sseBroadcaster.broadcast('game_submitted')
+  └─ 8. Return success
+```
+
+### 5.2 MinIO Storage
+
+- Single bucket `game-files` (configurable via `MINIO_BUCKET` env)
+- `ensureBucket()` auto-creates the bucket at:
+  - System startup (`server/index.ts`, log `[Boot] MinIO bucket 已就绪`)
+  - Each `putObject()`, `deleteObject()`, `getPresignedUploadUrl()`, `getPresignedDownloadUrl()` call
+- Path convention: `{projectId}/{object_key}` (internal auto-concatenation)
+- Used by: game ZIP upload, sonar report upload, proposal attachments
+
+### 5.3 Docker Build Notes
+
+- `Dockerfile.backend` uses multi-stage build. The `builder` stage is used by `docker-compose.ui-test.yml`
+- **Critical**: `zip` CLI must be installed in the builder stage (`RUN apk add --no-cache zip`), otherwise `submit_game`'s `execSync('zip ...')` fails silently
+- Runtime is `tsx server/index.ts` (via `npm run server`), which is TypeScript source execution
+- `__dirname` is available in `tsx` but not in pure ESM (`node`). Use `fileURLToPath(import.meta.url)` for proper ESM compatibility.
+
 ## 6. Communication Model
 
 ### 6.1 Request/Response

@@ -54,6 +54,29 @@
 - 游戏提交后自动生成 `version_number`（整数自增），用于唯一标识
 - 不再依赖 agent-sdk 内置 Write 工具（CI 环境不可用）
 
+## submit_game 完整执行链
+1. 权限校验（仅 engineer）
+2. `games/latest/` 目录存在性检查
+3. `execSync('zip -r ...')` 打包 → **需要容器安装 `zip` 命令**
+4. `lintZipBuffer()` → SonarQube scanner 服务扫描（同步轮询等待）
+5. `createFileStorageRecord()` + `uploadBuffer()` → MinIO 上传（需 bucket 存在）
+6. `db.createGame()` → SQLite 游戏记录
+7. `sseBroadcaster.broadcast(game_submitted)` → 前端 SSE 更新
+8. 返回游戏提交成功消息
+
+## MinIO 文件存储
+- 所有文件存储在 MinIO `game-files` bucket（由 `MINIO_BUCKET` 环境变量控制）
+- `ensureBucket()` 自动创建 bucket（启动时 + 每次上传/下载/删除前调用）
+- 路径约定：`{projectId}/{object_key}`，由 `file-storage.ts` 内部拼接
+- `createFileStorageRecord()` 创建 DB 记录 + 返回 `fullObjectKey`
+- `uploadBuffer()` 直接调用 `minio.putObject()` 上传 Buffer
+
+## ESM 兼容性注意事项
+- 项目 `"type": "module"`，所有模块运行在 ESM 模式
+- `server/tools.ts` 之前直接引用 `__dirname`，在 ESM 中 `__dirname` 未定义
+- **修复**：用 `fileURLToPath(import.meta.url)` 定义 `_toolsDirname`
+- 同时将 `path`/`fs`/`child_process` 改为模块顶部静态导入，去掉 7 处 `await import()`
+
 ## Agent 角色
 - 6 个 Agent: `game_designer`, `architect`, `engineer`, `biz_designer`, `ceo`, `team_builder`
 - `team_builder` 每个 agent 结束后运行，负责总结沉淀记忆，handoffTargets 为空数组

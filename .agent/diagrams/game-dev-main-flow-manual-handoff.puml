@@ -110,23 +110,31 @@ if (用户审批通过?) then (通过)
   :engineer 调用 write_game_file MCP 工具写入游戏 HTML 文件;
   note right
     write_game_file 是 MCP 工具（由 SDK 本地执行）
-    文件写入路径: output/{projectId}/games/{name}/
+    文件写入路径: output/{projectId}/games/latest/{path}
     代码位置:
     - server/tools.ts:new (write_game_file)
     - 区别于内置 Write 工具（需 CodeBuddy 运行时，CI 不可用）
   end note
 
-  :engineer 提交游戏成品 submit_game (name);
+  :engineer 提交游戏成品 submit_game (description);
   note right
-    submit_game 使用 name 参数构建路径 games/{name}
-    打包 ZIP → lint 扫描(SonarQube) → 上传 MinIO → 创建 DB 记录
-    name 参数校验: 字母/数字/中文/下划线/连字符，长度≤50，禁止路径穿越
+    submit_game 完整执行链（8步）:
+    1. 权限校验（仅 engineer）
+    2. 检查 games/latest/ 目录存在
+    3. execSync('zip -r ...') 打包 ← 需容器装 zip
+    4. lintZipBuffer() → SonarQube scanner
+    5. createFileStorageRecord() + uploadBuffer()
+       → MinIO (需 ensureBucket 自动建 bucket)
+    6. db.createGame() → SQLite 记录
+    7. sseBroadcaster.broadcast('game_submitted')
+    8. 返回成功消息
     代码位置:
     - server/tools.ts:540-743 (submit_game)
     - server/db.ts:661-707 (createGame)
-    - server/db.ts:65-84 (normalizeAndValidateGameName)
     - server/file-storage.ts (MinIO 上传)
+    - server/minio-client.ts (ensureBucket)
     - server/lint/index.ts:lintZipBuffer (ZIP lint)
+    - Dockerfile.backend (apk add zip)
   end note
 
   stop

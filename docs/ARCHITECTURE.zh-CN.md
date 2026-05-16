@@ -139,6 +139,36 @@ graph TB
 - `games` 已移除 `author_agent_id`，如需追溯作者应从工作流上下文中获取。
 - `logs`、`commands`、`permission_requests` 均包含 `updated_at`，用于状态变更追踪。
 
+### 5.1 submit_game 执行流程
+
+```
+submit_game
+  ├─ 1. 权限校验（仅 engineer）
+  ├─ 2. 检查 output/{projectId}/games/latest/ 目录是否存在（必须先调用 write_game_file）
+  ├─ 3. 通过 execSync('zip -r ...') 打包 ZIP  ← 容器内必须安装 `zip` 命令
+  ├─ 4. lintZipBuffer() → SonarQube scanner（同步轮询等待，约 15 秒）
+  ├─ 5. createFileStorageRecord() + uploadBuffer() → MinIO  ← bucket 必须存在
+  ├─ 6. db.createGame() → SQLite 记录
+  ├─ 7. sseBroadcaster.broadcast('game_submitted')
+  └─ 8. 返回成功消息
+```
+
+### 5.2 MinIO 文件存储
+
+- 单 bucket `game-files`（可通过 `MINIO_BUCKET` 环境变量配置）
+- `ensureBucket()` 在以下时机自动创建 bucket：
+  - 系统启动时（`server/index.ts`，日志 `[Boot] MinIO bucket 已就绪`）
+  - 每次调用 `putObject()`、`deleteObject()`、`getPresignedUploadUrl()`、`getPresignedDownloadUrl()`
+- 路径约定：`{projectId}/{object_key}`（内部自动拼接）
+- 用于：游戏 ZIP 上传、Sonar 报告上传、提案附件上传
+
+### 5.3 Docker 构建注意事项
+
+- `Dockerfile.backend` 使用多阶段构建，`docker-compose.ui-test.yml` 使用 `builder` 阶段
+- **关键**：builder 阶段必须安装 `zip` 命令（`RUN apk add --no-cache zip`），否则 submit_game 的 `execSync('zip ...')` 静默失败
+- 运行时使用 `tsx server/index.ts`（通过 `npm run server`），即 TypeScript 源码直跑
+- `tsx` 环境下 `__dirname` 可用，但纯 ESM（`node`）中不可用。应使用 `fileURLToPath(import.meta.url)` 替代以保持 ESM 兼容性
+
 ## 6. 通信模型
 
 ### 6.1 请求-响应

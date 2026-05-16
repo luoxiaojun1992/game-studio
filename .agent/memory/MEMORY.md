@@ -15,6 +15,13 @@
 - **2026-04-18**: E2E 9/9 全通过，完成三层架构一致性审查；确立事件循环测试模式为 UI-007/008 共享标准模式
 - **2026-04-18**: 新增 UI-009 提案创建测试，补全 E2E 测试与 data-testid 对照文档
 - **2026-04-18**: 实现可扩展 Lint Framework（注册式架构，LintRunner + 可插拔 checker），第一期实现 HTML 结构 + JS 安全两个检查器，集成到 submit_game tool 拦截点
-- **2026-04-18**: 新增 UI-009 提案创建测试，补全 E2E 测试与 data-testid 对照文档
+- **2026-05-16**: 
+  - 修复 UI-007/008 游戏无法创建问题（gameCount=0）
+  - **根因 1**：Docker builder 阶段未装 `zip` → `execSync` 抛异常
+  - **根因 2**：`minio.putObject()` 未调用 `ensureBucket()` → bucket 不存在导致上传失败
+  - **修复**：builder 加 `apk add zip`、`putObject/deleteObject` 加 `ensureBucket()`、启动时自动创建 bucket
+  - 全局添加调试日志（tool/lint/SSE 各环节 + runFullWorkflowTest 每一步）
+  - `tools.ts` 替换 `__dirname` 为 ESM 兼容的 `_toolsDirname`
+  - 新增 submit_game 顶层 try/catch 异常捕获
 
 > **提示**: 查阅具体经验前先看 INDEX.md 快速定位。
