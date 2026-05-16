@@ -31,7 +31,7 @@ const setMockExpectation = async (
     throw new Error(`failed to set mock expectation for ${projectId}:${agentRole}: ${resp.status} ${await resp.text()}`);
   }
   const result = await resp.json() as { expectation: { id: string; queueSize: number; agent: string } };
-  console.log(`[mock-expect] queued for ${result.expectation.agent} id=${result.expectation.id}, depth=${result.expectation.queueSize}`);
+  process.stderr.write(`[mock-expect] ${new Date().toISOString()} queued for ${result.expectation.agent} id=${result.expectation.id}, depth=${result.expectation.queueSize}\n`);
 };
 
 /** Convenience: queue a create_handoff tool call response for a specific agent */
@@ -49,11 +49,13 @@ const expectText = (projectId: string, agentRole: string, text = '任务已完�
   setMockExpectation(projectId, agentRole, { content: text });
 
 test.beforeEach(async () => {
+  process.stderr.write(`[beforeEach] ${new Date().toISOString()} setup:resetting-mock-server\n`);
   // Reset mock server state
   const resetResp = await fetch(`${mockAdminBase}/__admin/reset`, { method: 'POST' });
   if (!resetResp.ok) {
     throw new Error(`failed to reset mock server: ${resetResp.status}`);
   }
+  process.stderr.write(`[beforeEach] ${new Date().toISOString()} setup:mock-server-reset-ok\n`);
 
   // Reset autopilot setting
   const resetSettingsResp = await fetch(`${studioApiBase}/api/projects/default/settings`, {
@@ -64,6 +66,7 @@ test.beforeEach(async () => {
   if (!resetSettingsResp.ok && resetSettingsResp.status !== 404) {
     console.warn(`[setup] failed to reset settings: ${resetSettingsResp.status}`);
   }
+  process.stderr.write(`[beforeEach] ${new Date().toISOString()} setup:done\n`);
 });
 
 // ═══════════════════════════════════════════
@@ -287,31 +290,51 @@ const runFullWorkflowTest = async (
   };
 
   // ── Setup: create project ──
+  log('setup:init-language');
   await page.addInitScript(() => localStorage.setItem('game_studio_ui_language', 'zh-CN'));
+  log('setup:goto-page');
   await page.goto('/');
+  log('setup:page-loaded', { url: page.url() });
 
   const projectId = `${opts.testId.toLowerCase()}_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
+  log('setup:fill-project-name', { projectId });
   await page.getByTestId('project-name-input').fill(projectId);
   const createBtn = page.getByTestId('project-create-btn');
+  log('setup:wait-create-btn-visible');
   await expect(createBtn).toBeVisible({ timeout: 10000 });
-  try { await createBtn.click({ timeout: 15000 }); } catch {
+  log('setup:click-create-btn');
+  try {
+    await createBtn.click({ timeout: 15000 });
+    log('setup:create-btn-clicked');
+  } catch {
+    log('setup:create-btn-fallback-to-api', { projectId });
     await createProjectViaApi(projectId);
     await switchProjectViaApi(projectId);
     await page.reload();
+    log('setup:page-reloaded-after-api-fallback', { url: page.url() });
   }
   const sel = page.getByTestId('project-select');
+  log('setup:verify-project-selected', { projectId });
   await expect(sel).toHaveValue(projectId, { timeout: 15000 });
+  log('setup:project-created-ok', { projectId });
 
   // ── Configure autopilot ──
+  log('setup:click-settings-tab');
   await page.getByTestId('tab-settings').click();
   if (opts.autopilot) {
+    log('setup:autopilot-try-enable');
     const autoOff = page.getByRole('button', { name: /已关闭|Disabled/ });
-    if (await autoOff.count()) await autoOff.click();
+    const autoOffCount = await autoOff.count();
+    log('setup:autopilot-off-btn-count', { count: autoOffCount });
+    if (autoOffCount) await autoOff.click();
     await expect(page.getByRole('button', { name: /已开启|Enabled/ })).toBeVisible();
     log('setup:autopilot-enabled');
   } else {
+    log('setup:autopilot-try-disable');
     const autoOn = page.getByRole('button', { name: /已开启|Enabled/ });
-    if (await autoOn.count()) await autoOn.click();
+    const autoOnCount = await autoOn.count();
+    log('setup:autopilot-on-btn-count', { count: autoOnCount });
+    if (autoOnCount) await autoOn.click();
     await expect(page.getByRole('button', { name: /已关闭|Disabled/ })).toBeVisible();
     log('setup:autopilot-disabled');
   }
@@ -324,9 +347,13 @@ const runFullWorkflowTest = async (
   //         confirm engineer → sendMessage → LLM → submit_proposal / submit_game / save_memory / text
   // Autopilot: same chain but auto-dispatched
   log('mocks:queueing-all');
+  log('mocks:queue-handoff-gd-to-ceo', { projectId, from: 'game_designer', to: 'ceo' });
   await expectHandoff(projectId, 'game_designer', 'ceo');
+  log('mocks:queue-handoff-ceo-to-architect', { projectId, from: 'ceo', to: 'architect' });
   await expectHandoff(projectId, 'ceo', 'architect');
+  log('mocks:queue-handoff-architect-to-engineer', { projectId, from: 'architect', to: 'engineer' });
   await expectHandoff(projectId, 'architect', 'engineer');
+  log('mocks:queue-submit-proposal', { projectId, agent: 'engineer' });
   await setMockExpectation(projectId, 'engineer', {
     content: '提案已提交。',
     toolCalls: [{ name: 'submit_proposal', arguments: { type: 'game_design', title: '最终技术方案', content: '# 技术架构方案' } }]
@@ -334,7 +361,7 @@ const runFullWorkflowTest = async (
 
   // 通过 mock 模拟大模型输出，调用 write_game_file MCP 工具在 backend 服务器端写入游戏文件
   // 注意：使用 MCP 工具而非 SDK 内置 Write 工具，因为 CI 环境无 CodeBuddy 运行时执行内置工具
-  log(`mocks:queueing-write-game-file for ${projectId}/games/latest...`);
+  log('mocks:queue-write-game-file', { projectId, path: 'index.html' });
   await setMockExpectation(projectId, 'engineer', {
     content: '正在写入游戏文件...',
     toolCalls: [{
@@ -345,26 +372,41 @@ const runFullWorkflowTest = async (
       }
     }]
   });
-  log('mock:write-game-file-queued');
+  log('mocks:write-game-file-queued');
 
+  log('mocks:queue-submit-game', { projectId });
   await setMockExpectation(projectId, 'engineer', {
     content: '游戏已提交。',
     toolCalls: [{ name: 'submit_game', arguments: { description: '一款RPG游戏' } }]
   });
+  log('mocks:submit-game-queued');
+
+  log('mocks:queue-save-memory', { projectId });
   await setMockExpectation(projectId, 'engineer', {
     content: '记忆已保存。',
     toolCalls: [{ name: 'save_memory', arguments: { category: 'achievement', content: '项目完成' } }]
   });
+  log('mocks:save-memory-queued');
+
+  log('mocks:queue-text-final', { projectId });
   await expectText(projectId, 'engineer', '开发任务全部完成。');
   log('mocks:all-queued');
 
   // ── Send the initial command to game_designer ──
+  log('command:switch-to-commands-tab');
   await page.getByTestId('tab-commands').click();
   await page.waitForTimeout(500);
+  log('command:click-game-designer-btn');
   const gdButton = page.locator('button').filter({ hasText: /游戏策划/ }).first();
+  log('command:gd-btn-exists', { exists: await gdButton.count().then(c => c > 0) });
   await gdButton.click();
+  log('command:gd-btn-clicked');
   const textarea = page.locator('textarea[placeholder*="下达指令"]').first();
-  await textarea.fill('请设计一个RPG游戏的核心玩法，包括战斗系统和角色成长机制');
+  log('command:textarea-exists', { exists: await textarea.count().then(c => c > 0) });
+  const commandText = '请设计一个RPG游戏的核心玩法，包括战斗系统和角色成长机制';
+  log('command:fill-text', { length: commandText.length });
+  await textarea.fill(commandText);
+  log('command:click-send-btn');
   await page.locator('button').filter({ hasText: /发送/ }).first().click();
   log('command-sent:game-designer');
 
@@ -419,7 +461,8 @@ const runFullWorkflowTest = async (
     // ── Step 3: Count handoff cards (helper switches tab) ──
     let cardCount = 0;
     try {
-      await switchTab('tab-handoffs');
+      const switched = await switchTab('tab-handoffs');
+      log(`step3:switch-tab-result`, { switched });
       cardCount = await page.locator('[data-testid^="handoff-card-"]').count();
       log(`step3:handoff-count`, { cardCount });
     } catch (e) {
@@ -429,7 +472,8 @@ const runFullWorkflowTest = async (
     // ── Step 4: Count games (helper switches tab) ──
     let gameCount = 0;
     try {
-      await switchTab('tab-games');
+      const switched = await switchTab('tab-games');
+      log(`step4:switch-tab-result`, { switched });
       const gameCards = page.locator('[data-testid^="game-card-"]');
       gameCount = await gameCards.count();
       log(`step4:game-count`, { gameCount });
@@ -446,19 +490,33 @@ const runFullWorkflowTest = async (
       log(`step5:target-reached`, { cardCount, gameCount });
 
       // Final verification with explicit assertions
+      log('verify:switch-to-handoffs');
       await switchTab('tab-handoffs');
       await page.waitForTimeout(500);
       const finalCards = page.locator('[data-testid^="handoff-card-"]');
       const fc = await finalCards.count();
+      log('verify:handoff-count', { count: fc, expectedAtLeast: TARGET_CARDS });
       expect(fc).toBeGreaterThanOrEqual(TARGET_CARDS);
+      log('verify:handoff-count-pass');
 
+      log('verify:switch-to-games');
       await switchTab('tab-games');
       await page.waitForTimeout(500);
       const gameItems = page.locator('[data-testid^="game-card-"]');
       const gc = await gameItems.count();
+      log('verify:game-count', { count: gc, expectedAtLeast: 1 });
       expect(gc).toBeGreaterThanOrEqual(1);
+      log('verify:game-count-pass');
       // 游戏名已移除，验证游戏卡片存在即可
-      log(`${opts.testId} COMPLETE ✅`, { totalCards: fc, totalGames: gc, elapsedSec: elapsed });
+      log(`verify:complete`, { totalCards: fc, totalGames: gc, elapsedSec: elapsed });
+      // 输出最终状态摘要
+      log(`step5:summary`, {
+        totalCards: fc,
+        totalGames: gc,
+        totalLoopIters: loopIter,
+        elapsedSec: elapsed,
+        autopilot: opts.autopilot
+      });
       return;
     }
 
@@ -467,7 +525,9 @@ const runFullWorkflowTest = async (
     await page.waitForTimeout(1000);
   }
 
-  throw new Error(`[${opts.testId}] Event loop timed out after ${LOOP_TIMEOUT_MS / 1000}s without reaching target state`);
+  const timeoutMsg = `[${opts.testId}] Event loop timed out after ${LOOP_TIMEOUT_MS / 1000}s (${loopIter} iterations) without reaching target state`;
+  log('loop:timeout', { loopIter, elapsedSec: Math.round(LOOP_TIMEOUT_MS / 1000) });
+  throw new Error(timeoutMsg);
 };
 
 // ═══════════════════════════════════════════
@@ -476,6 +536,7 @@ const runFullWorkflowTest = async (
 // ═══════════════════════════════════════════
 
 test('[UI-007] should complete full workflow: game designer -> CEO -> architect -> engineer (manual)', async ({ page }) => {
+  process.stderr.write(`[UI-007] ${new Date().toISOString()} test:starting (manual mode, autopilot disabled)\n`);
   await runFullWorkflowTest(page, {
     testId: 'UI-007',
     autopilot: false,
@@ -488,6 +549,7 @@ test('[UI-007] should complete full workflow: game designer -> CEO -> architect 
 // ═══════════════════════════════════════════
 
 test('[UI-008] should complete full workflow with autopilot and auto-handoff', async ({ page }) => {
+  process.stderr.write(`[UI-008] ${new Date().toISOString()} test:starting (autopilot mode)\n`);
   await runFullWorkflowTest(page, {
     testId: 'UI-008',
     autopilot: true,

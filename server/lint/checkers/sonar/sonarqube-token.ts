@@ -50,7 +50,7 @@ export class SonarTokenManager {
     }
 
     this.token = data.token;
-    console.log('[SonarTokenManager] Token generated, ttl:', this.ttlMs, 'ms');
+    console.error(`[SonarTokenManager] ${new Date().toISOString()} Token generated, ttl: ${this.ttlMs}ms`);
     return this.token;
   }
 

@@ -25,6 +25,8 @@ import { submitScan, pollScanStatus } from '../../../sonar-scanner-service.js';
 import { globalTokenManager } from './sonarqube-token.js';
 import { SonarQubeClient, type SonarQubeIssue } from './sonarqube-client.js';
 
+const _sqts = () => new Date().toISOString();
+
 // ====== SonarQube Raw Issue 类型 ======
 
 export type { SonarQubeIssue };
@@ -59,7 +61,7 @@ function evictOldestIfNeeded(): void {
     const oldestKey = scanHistory.keys().next().value;
     if (oldestKey) {
       scanHistory.delete(oldestKey);
-      console.error(`[SonarQube checker] LRU 淘汰 project=${oldestKey} 当前缓存大小=${scanHistory.size}`);
+      console.error(`[SonarQube checker] ${_sqts()} LRU 淘汰 project=${oldestKey} 当前缓存大小=${scanHistory.size}`);
     }
   }
 }
@@ -74,7 +76,7 @@ export function getCachedSonarIssues(projectKey: string, zipBuffer: Buffer): Son
   const currentHash = computeZipHash(zipBuffer);
   if (record.zipHash !== currentHash) {
     // ZIP 内容变了，清除旧缓存
-    console.error(`[SonarQube checker] ZIP 内容已变化，清除旧缓存 project=${projectKey}`);
+    console.error(`[SonarQube checker] ${_sqts()} ZIP 内容已变化，清除旧缓存 project=${projectKey}`);
     scanHistory.delete(projectKey);
     return null;
   }
@@ -83,7 +85,7 @@ export function getCachedSonarIssues(projectKey: string, zipBuffer: Buffer): Son
   scanHistory.delete(projectKey);
   scanHistory.set(projectKey, record);
 
-  console.error(`[SonarQube checker] 命中缓存，跳过扫描 project=${projectKey} issues=${record.issues.length}`);
+  console.error(`[SonarQube checker] ${_sqts()} 命中缓存，跳过扫描 project=${projectKey} issues=${record.issues.length}`);
   return record.issues;
 }
 
@@ -96,7 +98,7 @@ export function cacheSonarIssues(projectKey: string, zipBuffer: Buffer, issues: 
     zipHash: computeZipHash(zipBuffer),
     issues,
   });
-  console.error(`[SonarQube checker] 缓存扫描结果 project=${projectKey} 缓存大小=${scanHistory.size}`);
+  console.error(`[SonarQube checker] ${_sqts()} 缓存扫描结果 project=${projectKey} 缓存大小=${scanHistory.size}`);
 }
 
 /**
@@ -105,10 +107,10 @@ export function cacheSonarIssues(projectKey: string, zipBuffer: Buffer, issues: 
 export function resetSonarScanHistory(projectKey?: string): void {
   if (projectKey) {
     scanHistory.delete(projectKey);
-    console.error(`[SonarQube checker] 重置扫描历史 project=${projectKey}`);
+    console.error(`[SonarQube checker] ${_sqts()} 重置扫描历史 project=${projectKey}`);
   } else {
     scanHistory.clear();
-    console.error(`[SonarQube checker] 重置全部扫描历史`);
+    console.error(`[SonarQube checker] ${_sqts()} 重置全部扫描历史`);
   }
 }
 
@@ -168,7 +170,7 @@ export const sonarqubeChecker: LintChecker = {
     const { baseUrl, token, projectKey } = await resolveConfig(context);
     const client = new SonarQubeClient(baseUrl, token);
 
-    console.error(`[SonarQube checker] 开始扫描 project=${projectKey} contentLength=${content?.length ?? 0} fileName=${context?.fileName ?? 'unknown'}`);
+    console.error(`[SonarQube checker] ${_sqts()} 开始扫描 project=${projectKey} contentLength=${content?.length ?? 0} fileName=${context?.fileName ?? 'unknown'}`);
 
     // scanner 微服务 unavailable → graceful degrade（sonar 扫描可选，不阻断提交）
     try {
@@ -180,14 +182,14 @@ export const sonarqubeChecker: LintChecker = {
       if (zipBuffer) {
         // 有原始 ZIP：直接使用
         scanZipBuffer = zipBuffer;
-        console.error(`[SonarQube checker] 使用原始 zipBuffer size=${zipBuffer.length}`);
+        console.error(`[SonarQube checker] ${_sqts()} 使用原始 zipBuffer size=${zipBuffer.length}`);
 
         // 先检查缓存（基于 hash 去重）
         const cachedIssues = getCachedSonarIssues(projectKey, scanZipBuffer);
         if (cachedIssues !== null) {
           // 命中缓存，直接返回缓存的 issues
           const errors = cachedIssues.filter(si => ['BLOCKER', 'CRITICAL', 'MAJOR'].includes(si.severity));
-          console.error(`[SonarQube checker] 命中缓存，跳过扫描 project=${projectKey} errors=${errors.length}`);
+          console.error(`[SonarQube checker] ${_sqts()} 命中缓存，跳过扫描 project=${projectKey} errors=${errors.length}`);
           return cachedIssues.map(si => ({
             ruleId: `sonarqube:${si.rule}`,
             level: ['BLOCKER', 'CRITICAL', 'MAJOR'].includes(si.severity) ? 'error' : 'warn',
@@ -203,33 +205,33 @@ export const sonarqubeChecker: LintChecker = {
 
       if (!scanZipBuffer) {
         // 两者均无 → 跳过扫描
-        console.error(`[SonarQube checker] 无扫描内容（无 zipBuffer 且无 HTML），跳过 project=${projectKey}`);
+        console.error(`[SonarQube checker] ${_sqts()} 无扫描内容（无 zipBuffer 且无 HTML），跳过 project=${projectKey}`);
         return [];
       }
 
       // 1. 提交扫描任务到 scanner 微服务
-      console.error(`[SonarQube checker] 提交 ZIP 到 scanner 服务 project=${projectKey} size=${scanZipBuffer.length}`);
+      console.error(`[SonarQube checker] ${_sqts()} 提交 ZIP 到 scanner 服务 project=${projectKey} size=${scanZipBuffer.length}`);
       await submitScan({ projectId: projectKey, zipBuffer: scanZipBuffer });
 
       // 2. 轮询直到扫描完成
-      console.error(`[SonarQube checker] 等待扫描完成 project=${projectKey}`);
+      console.error(`[SonarQube checker] ${_sqts()} 等待扫描完成 project=${projectKey}`);
       const finalStatus = await pollScanStatus({
         projectId: projectKey,
         intervalMs: 3000,
         timeoutMs: 120000,
         onPoll: (status) => {
-          console.error(`[SonarQube checker] 扫描状态 project=${projectKey} status=${status.status} message=${status.message}`);
+          console.error(`[SonarQube checker] ${_sqts()} 扫描状态 project=${projectKey} status=${status.status} message=${status.message}`);
         },
       });
 
       if (finalStatus.status === 'error') {
         const msg = `SonarQube scan failed: ${finalStatus.message}`;
-        console.error(`[SonarQube checker] ${msg}`);
+        console.error(`[SonarQube checker] ${_sqts()} ${msg}`);
         throw new Error(msg);  // throw 让 LintRunner 捕获并转为 lintIssue
       }
 
       // 3. 扫描成功，从 SonarQube 拉取 issues
-      console.error(`[SonarQube checker] 拉取 issues project=${projectKey}`);
+      console.error(`[SonarQube checker] ${_sqts()} 拉取 issues project=${projectKey}`);
       const sonarIssues = await client.getProjectIssues(projectKey);
 
       // 缓存扫描结果（基于 zipBuffer hash）
@@ -244,7 +246,7 @@ export const sonarqubeChecker: LintChecker = {
       }
 
       const errors = sonarIssues.filter(si => ['BLOCKER', 'CRITICAL', 'MAJOR'].includes(si.severity));
-      console.error(`[SonarQube checker] 扫描完成 project=${projectKey} totalIssues=${sonarIssues.length} errors=${errors.length} issues=${JSON.stringify(sonarIssues.map(i => ({ rule: i.rule, severity: i.severity, message: i.message })))}`);
+      console.error(`[SonarQube checker] ${_sqts()} 扫描完成 project=${projectKey} totalIssues=${sonarIssues.length} errors=${errors.length} issues=${JSON.stringify(sonarIssues.map(i => ({ rule: i.rule, severity: i.severity, message: i.message })))}`);
 
       return sonarIssues.map(si => ({
         ruleId: `sonarqube:${si.rule}`,
@@ -256,7 +258,7 @@ export const sonarqubeChecker: LintChecker = {
 
     } catch (err: any) {
       // scanner 微服务任何异常 → 抛出转为 lintIssue，阻断游戏提交
-      console.error(`[SonarQube checker] scanner 服务异常 project=${projectKey} error=${err?.message}`);
+      console.error(`[SonarQube checker] ${_sqts()} scanner 服务异常 project=${projectKey} error=${err?.message}`);
       throw err;
     }
   },

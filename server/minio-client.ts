@@ -57,6 +57,7 @@ export async function getPresignedDownloadUrl(
 
 // 删除对象
 export async function deleteObject(objectKey: string): Promise<void> {
+  await ensureBucket();
   const client = getClient();
   await client.removeObject(MINIO_BUCKET, objectKey);
 }
@@ -68,6 +69,7 @@ export async function putObject(
   size: number,
   contentType: string
 ): Promise<void> {
+  await ensureBucket();
   const client = getClient();
   await client.putObject(MINIO_BUCKET, objectKey, buffer, size, { contentType });
 }
