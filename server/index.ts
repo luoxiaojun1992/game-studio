@@ -1117,6 +1117,15 @@ app.listen(PORT, async () => {
     console.warn('[Boot] SonarQube 启动预检失败:', err);
   }
 
+  // 预创建 MinIO bucket，确保文件上传流程无需判断 bucket 是否存在
+  try {
+    const { ensureBucket } = await import('./minio-client.js');
+    await ensureBucket();
+    console.log('[Boot] MinIO bucket 已就绪');
+  } catch (err) {
+    console.warn('[Boot] MinIO bucket 初始化失败:', err);
+  }
+
   console.log(`
 ╔══════════════════════════════════════════════════════╗
 ║                                                      ║
