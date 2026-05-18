@@ -53,7 +53,7 @@ services:
       - CREATOR_SERVICE_URL=http://creator:8080
       - DRAWIO_SERVICE_URL=http://drawio-service:8082
       - SCANNER_SERVICE_URL=http://scanner:8081
-      - STAR_OFFICE_JOIN_KEY=${STAR_OFFICE_JOIN_KEY:-ocj_example_team_01}
+      - STAR_OFFICE_JOIN_KEY=ocj_example_team_01
       - SONARQUBE_HOST=http://sonarqube:9000
       - SONARQUBE_USER=admin
       - SONARQUBE_PASSWORD=admin
@@ -88,8 +88,8 @@ services:
     environment:
       - STAR_BACKEND_PORT=19000
       - STAR_OFFICE_MAX_CONCURRENT=100
-      - STAR_OFFICE_JOIN_KEY=${STAR_OFFICE_JOIN_KEY:-ocj_example_team_01}
-      - STAR_OFFICE_SECRET=${STAR_OFFICE_SECRET:-your-secret-key-here-min-24-chars}
+      - STAR_OFFICE_JOIN_KEY=ocj_example_team_01
+      - STAR_OFFICE_SECRET=your-secret-key-here-min-24-chars
       - FLASK_ENV=production
     networks:
       default:
