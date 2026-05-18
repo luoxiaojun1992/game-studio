@@ -26,9 +26,9 @@ graph TB
     end
 
     subgraph "Lint 框架"
-        LintRunner["lintGameArtifact()<br/>（ZIP 入口）"]
-        SonarChecker["sonarqube<br/>（仅 ZIP 成品）"]
-        GameEngChecker["game-engineering<br/>（目录模式）"]
+        LintRunner["lintGameArtifact()<br/>（submitDir 上下文）"]
+        SonarChecker["sonarqube<br/>（从目录自打包 ZIP）"]
+        GameEngChecker["game-engineering<br/>（直接读目录文件）"]
     end
 
     subgraph "外部服务"

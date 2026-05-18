@@ -26,9 +26,9 @@ graph TB
     end
 
     subgraph "Lint Framework"
-        LintRunner["lintGameArtifact()<br/>(ZIP entry)"]
-        SonarChecker["sonarqube<br/>(ZIP only)"]
-        GameEngChecker["game-engineering<br/>(directory mode)"]
+        LintRunner["lintGameArtifact()<br/>(submitDir context)"]
+        SonarChecker["sonarqube<br/>(self-packs ZIP from dir)"]
+        GameEngChecker["game-engineering<br/>(reads files from dir)"]
     end
 
     subgraph "External Services"
