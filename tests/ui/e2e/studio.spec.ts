@@ -380,18 +380,39 @@ const runFullWorkflowTest = async (
 
   // 通过 mock 模拟大模型输出，调用 write_game_file MCP 工具在 backend 服务器端写入游戏文件
   // 注意：使用 MCP 工具而非 SDK 内置 Write 工具，因为 CI 环境无 CodeBuddy 运行时执行内置工具
-  log('mocks:queue-write-game-file', { projectId, path: 'index.html' });
+  // 游戏工程规范要求 dist/ 目录结构：dist/index.html（入口）+ dist/metadata.json（元信息）
+  log('mocks:queue-write-game-file', { projectId, path: 'dist/index.html' });
   await setMockExpectation(projectId, 'engineer', {
-    content: '正在写入游戏文件...',
+    content: '正在写入游戏入口文件...',
     toolCalls: [{
       name: 'write_game_file',
       arguments: {
-        path: 'index.html',
+        path: 'dist/index.html',
         content: `<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><title>RPG游戏</title></head><body><h1>RPG游戏</h1><p>游戏说明。</p></body></html>`
       }
     }]
   });
   log('mocks:write-game-file-queued');
+
+  log('mocks:queue-write-metadata-json', { projectId, path: 'dist/metadata.json' });
+  await setMockExpectation(projectId, 'engineer', {
+    content: '正在写入游戏元信息...',
+    toolCalls: [{
+      name: 'write_game_file',
+      arguments: {
+        path: 'dist/metadata.json',
+        content: JSON.stringify({
+          title: 'RPG游戏',
+          version: '1.0.0',
+          game_type: 'h5',
+          resolution: { width: 800, height: 600 },
+          orientation: 'landscape',
+          entry: 'index.html'
+        })
+      }
+    }]
+  });
+  log('mocks:write-metadata-json-queued');
 
   log('mocks:queue-submit-game', { projectId });
   await setMockExpectation(projectId, 'engineer', {
