@@ -143,13 +143,11 @@ tool(
 ```typescript
 // 在 createStudioToolsServer 时动态注入
 const registeredTypes = db.getGameTypes().map(t => t.type);
-// DB 无数据时使用 z.string().refine() 替代空枚举，避免类型安全问题
-// 任何传入值均被拒绝，错误消息提示调用方先确认支持的类型
+// DB 无数据时枚举值为空列表，get_game_framework_spec 无法通过校验
+// 调用方应优先调用 get_game_types 确认支持的类型
 const gameTypeEnum = registeredTypes.length > 0
   ? z.enum(registeredTypes as [string, ...string[]])
-  : z.string().refine(() => false, {
-      message: '暂无可用的游戏类型，请先配置游戏工程规范种子数据。'
-    });
+  : z.enum([] as unknown as [string, ...string[]]); // 空枚举，任何值都通不过
 ```
 
 ### 返回值格式
@@ -229,7 +227,7 @@ tool(
 |------|------|
 | **必填校验** | 标记为"是"的参数 MUST 传入；未传入时 zod 抛出 `Required` 错误 |
 | **枚举校验** | `game_type` 使用 `z.enum()` 限制可选值；枚举值由 DB 动态构建，启动时从 `game_engineering_specs` 表查询 |
-| **DB 无数据** | 枚举构建时若 DB 无数据，使用 `z.string().refine(() => false)` 替代空枚举，`get_game_framework_spec` 因无合法枚举值而无法通过校验，`get_game_types` 返回空数组 |
+| **DB 无数据** | 枚举构建时若 DB 无数据，枚举值为空列表，`get_game_framework_spec` 因无合法枚举值而无法通过校验，`get_game_types` 返回空数组 |
 | **数据一致性** | `get_game_types` 和 `get_game_framework_spec` 共享同一数据源，保证列表和查询结果始终一致 |
 
 ## 与 Checker 的关系
