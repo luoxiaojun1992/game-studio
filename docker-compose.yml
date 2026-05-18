@@ -21,7 +21,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 30s
     restart: unless-stopped
 
   # Game Dev Studio 后端服务
@@ -72,7 +72,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 30s
     restart: unless-stopped
 
   # Game Dev Studio 前端服务
@@ -122,7 +122,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 30s
     restart: unless-stopped
 
   # SonarQube 代码质量扫描服务（使用内置 H2 数据库，不依赖外部 PostgreSQL）
@@ -190,7 +190,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 30s
     restart: unless-stopped
 
   # Draw.io Export Server（官方 jgraph/drawio 镜像）
@@ -212,6 +212,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 30s
     restart: unless-stopped
 
   # Sonar Scanner 微服务（SonarScanner CLI + FastAPI）
@@ -234,7 +235,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 30s
     restart: unless-stopped
 
 volumes:
