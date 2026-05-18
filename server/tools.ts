@@ -1642,6 +1642,8 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         {},
         async () => {
           const gameTypes = db.getGameTypes();
+          console.error(`[Tool] ${_tts()} get_game_types START agentId=${agentId} projectId=${scopedProjectId}`);
+          console.error(`[Tool] ${_tts()} get_game_types DONE types=${gameTypes.length}`);
           return {
             content: [{ type: 'text' as const, text: JSON.stringify({ game_types: gameTypes }, null, 2) }]
           };
@@ -1659,12 +1661,15 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           return { game_type: gameTypeEnum.describe('游戏类型，从 get_game_types 获取当前支持的类型') };
         })(),
         async ({ game_type }: { game_type: string }) => {
+          console.error(`[Tool] ${_tts()} get_game_framework_spec START agentId=${agentId} projectId=${scopedProjectId} game_type=${game_type}`);
           const content = db.getGameFrameworkSpec(game_type);
           if (!content) {
+            console.error(`[Tool] ${_tts()} get_game_framework_spec NOT_FOUND game_type=${game_type}`);
             return {
               content: [{ type: 'text' as const, text: `未找到游戏类型 "${game_type}" 的规范。请先调用 get_game_types 确认支持的类型。` }]
             };
           }
+          console.error(`[Tool] ${_tts()} get_game_framework_spec DONE game_type=${game_type} contentLength=${content.length}`);
           return {
             content: [{ type: 'text' as const, text: content }]
           };
@@ -1676,12 +1681,15 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         '获取所有游戏类型共享的公共工程规范。',
         {},
         async () => {
+          console.error(`[Tool] ${_tts()} get_common_spec START agentId=${agentId} projectId=${scopedProjectId}`);
           const content = db.getCommonSpec();
           if (!content) {
+            console.error(`[Tool] ${_tts()} get_common_spec NOT_FOUND`);
             return {
               content: [{ type: 'text' as const, text: '公共规范暂未配置。' }]
             };
           }
+          console.error(`[Tool] ${_tts()} get_common_spec DONE contentLength=${content.length}`);
           return {
             content: [{ type: 'text' as const, text: content }]
           };

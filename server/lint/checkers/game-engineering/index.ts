@@ -33,6 +33,7 @@ import { assetResourceRelativePathRule } from './rules/h5/asset-resource-relativ
 
 const _filename = fileURLToPath(import.meta.url);
 const _dirname = path.dirname(_filename);
+const _gets = () => new Date().toISOString();
 
 class GameEngineeringCheckerImpl implements LintChecker {
   readonly id = 'game-engineering';
@@ -81,7 +82,9 @@ class GameEngineeringCheckerImpl implements LintChecker {
   /** LintChecker 接口实现，接收 submitDir 上下文 */
   async check(content: string, context?: LintContext): Promise<LintIssue[]> {
     const submitDir = context?.submitDir as string | undefined;
+    console.error(`[GameEngineering checker] ${_gets()} check START submitDir=${submitDir || '(none)'}`);
     if (!submitDir || !fs.existsSync(submitDir)) {
+      console.error(`[GameEngineering checker] ${_gets()} check SKIP submitDir not found`);
       return [{
         ruleId: 'checker-fatal',
         level: 'error' as const,
@@ -89,14 +92,18 @@ class GameEngineeringCheckerImpl implements LintChecker {
         checkerId: 'game-engineering',
       }];
     }
-    return this._runCheck(submitDir);
+    const issues = this._runCheck(submitDir);
+    console.error(`[GameEngineering checker] ${_gets()} check DONE submitDir=${submitDir} issues=${issues.length}`);
+    return issues;
   }
 
   /** 执行检查 */
   private _runCheck(submitDir: string): LintIssue[] {
     // 读取 game_type
     const gameType = this._readGameType(submitDir);
+    console.error(`[GameEngineering checker] ${_gets()} _runCheck gameType=${gameType}`);
     if (!gameType) {
+      console.error(`[GameEngineering checker] ${_gets()} _runCheck FAIL no game_type found`);
       return [{
         ruleId: 'asset-metadata-exists',
         level: 'error' as const,
@@ -107,13 +114,20 @@ class GameEngineeringCheckerImpl implements LintChecker {
 
     // 运行适用规则
     const allResults: CheckerResult[] = [];
+    let rulesRun = 0;
+    let rulesSkipped = 0;
     for (const rule of this.rules) {
-      if (!rule.appliesTo(gameType)) continue;
+      if (!rule.appliesTo(gameType)) { rulesSkipped++; continue; }
+      rulesRun++;
       try {
         const results = rule.check(submitDir);
+        if (results.length > 0) {
+          console.error(`[GameEngineering checker] ${_gets()} rule=${rule.ruleId} issues=${results.length} first=${results[0].message}`);
+        }
         allResults.push(...results);
       } catch (err: unknown) {
         const errMsg = err instanceof Error ? err.message : String(err);
+        console.error(`[GameEngineering checker] ${_gets()} rule=${rule.ruleId} ERROR ${errMsg}`);
         allResults.push({
           ruleId: rule.ruleId,
           level: 'error',
@@ -121,6 +135,8 @@ class GameEngineeringCheckerImpl implements LintChecker {
         });
       }
     }
+
+    console.error(`[GameEngineering checker] ${_gets()} _runCheck DONE rulesRun=${rulesRun} rulesSkipped=${rulesSkipped} totalIssues=${allResults.length}`);
 
     // 映射为 LintIssue[]
     return allResults.map(r => ({
