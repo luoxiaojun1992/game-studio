@@ -297,6 +297,6 @@ const requiredFields: Record<string, (v: any) => boolean> = {
 ### ruleId 命名
 
 - **前缀对应规则组**：`html-doctype` 表示 HTML 结构组的规则；`asset-metadata-exists` 表示资源组的规则。
-- **规则组前缀**：`html-`、`asset-`、`lifecycle-`、`manifest-`、`resource-` 等。
+- **规则组前缀**：`html-`、`asset-`、`lifecycle-` 等。`asset-` 组同时包含通用规则（`asset-metadata-*`）和 H5 特有规则（`asset-manifest-*`、`asset-resource-*`）。
 - **连字符分隔**：`{规则组前缀}-{规则描述}`，如 `asset-metadata-exists`。
 - 所有规则统一注册在 `game-engineering-checker` 中，规则组前缀仅用于分类和避免 ID 冲突。

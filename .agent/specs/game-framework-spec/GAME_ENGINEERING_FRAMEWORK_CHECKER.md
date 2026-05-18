@@ -90,9 +90,9 @@ server/
           lifecycle-exports.ts
           lifecycle-window-global.ts
           lifecycle-script-tag.ts
-          manifest-exists.ts
-          manifest-schema.ts
-          resource-relative-path.ts
+          asset-manifest-exists.ts
+          asset-manifest-schema.ts
+          asset-resource-relative-path.ts
         (future-game-type)/ # 新增游戏类型时创建对应目录
           ...
 ```
@@ -177,9 +177,7 @@ class GameEngineeringChecker {
 |---------------|---------|---------|------------|
 | `html-` | common/ | 通用 | `html-doctype`, `html-root`, `html-head`, `html-body`, `html-charset`, `html-body-not-empty` |
 | `asset-` | common/ | 通用 | `asset-metadata-exists`, `asset-metadata-schema` |
-| `lifecycle-` | h5/ | H5 特有 | `lifecycle-exports`, `lifecycle-window-global`, `lifecycle-script-tag` |
-| `manifest-` | h5/ | H5 特有 | `manifest-exists`, `manifest-schema` |
-| `resource-` | h5/ | H5 特有 | `resource-relative-path` |
+| `asset-` | h5/ | H5 特有 | `asset-manifest-exists`, `asset-manifest-schema`, `asset-resource-relative-path` |
 
 - 规则 `appliesTo()` 返回 `true` 时运行，返回 `false` 时跳过。
 - 新增游戏类型时，只需开发对应的规则并注册到 checker，无需新建 checker。

@@ -165,15 +165,15 @@ class MyGame { init(c){}, start(){}, pause(){}, resume(){}, resize(w,h){}, destr
 
 ---
 
-### A.2 资源与配置规则组（manifest-/resource- 前缀）
+### A.2 资源与配置规则组（asset- 前缀）— H5 扩展
 
-#### A.2.1 manifest-exists
+#### A.2.1 asset-manifest-exists
 
 | 属性 | 值 |
 |------|-----|
-| ruleId | `manifest-exists` |
+| ruleId | `asset-manifest-exists` |
 | level | `error` |
-| 规则组 | manifest |
+| 规则组 | asset |
 | 描述 | `assets/manifest.json` MUST 存在于提交产物目录 |
 
 **判定逻辑：** `fs.existsSync(path.join(submitDir, 'assets', 'manifest.json'))`
@@ -182,13 +182,13 @@ class MyGame { init(c){}, start(){}, pause(){}, resume(){}, resize(w,h){}, destr
 
 ---
 
-#### A.2.2 manifest-schema
+#### A.2.2 asset-manifest-schema
 
 | 属性 | 值 |
 |------|-----|
-| ruleId | `manifest-schema` |
+| ruleId | `asset-manifest-schema` |
 | level | `error` |
-| 规则组 | manifest |
+| 规则组 | asset |
 | 描述 | manifest.json MUST 是合法 JSON 且包含 resources 数组 |
 
 **判定逻辑：**
@@ -212,13 +212,13 @@ for (const item of data.resources) {
 
 ---
 
-#### A.2.3 resource-relative-path
+#### A.2.3 asset-resource-relative-path
 
 | 属性 | 值 |
 |------|-----|
-| ruleId | `resource-relative-path` |
+| ruleId | `asset-resource-relative-path` |
 | level | `error` |
-| 规则组 | resource |
+| 规则组 | asset |
 | 描述 | index.html 中引用的资源路径 MUST 使用相对路径 |
 
 **判定逻辑：** `/(?:src|href)\s*=\s*["'](https?:\/\/[^"']+)["']/gi`
@@ -246,6 +246,6 @@ for (const item of data.resources) {
 | `lifecycle-exports` | lifecycle | error | H5 特有 | MUST 实现 GameApp 全部 6 个生命周期方法 |
 | `lifecycle-window-global` | lifecycle | error | H5 特有 | MUST 挂载 GameApp 实例到 `window.__GAME__` |
 | `lifecycle-script-tag` | lifecycle | error | H5 特有 | index.html MUST 包含 `<script>` 标签 |
-| `manifest-exists` | manifest | error | H5 特有 | MUST 存在 `assets/manifest.json` |
-| `manifest-schema` | manifest | error | H5 特有 | manifest.json MUST 合法且含 resources |
-| `resource-relative-path` | resource | error | H5 特有 | 资源路径 MUST 使用相对路径 |
+| `asset-manifest-exists` | asset | error | H5 特有 | MUST 存在 `assets/manifest.json` |
+| `asset-manifest-schema` | asset | error | H5 特有 | manifest.json MUST 合法且含 resources |
+| `asset-resource-relative-path` | asset | error | H5 特有 | 资源路径 MUST 使用相对路径 |
