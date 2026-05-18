@@ -89,6 +89,8 @@ services:
       - STAR_BACKEND_PORT=19000
       - STAR_OFFICE_MAX_CONCURRENT=100
       - STAR_OFFICE_JOIN_KEY=${STAR_OFFICE_JOIN_KEY:-ocj_example_team_01}
+      - STAR_OFFICE_SECRET=${STAR_OFFICE_SECRET:-your-secret-key-here-min-24-chars}
+      - FLASK_ENV=production
     networks:
       default:
         aliases:
