@@ -16,8 +16,13 @@ export const htmlBodyNotEmptyRule: GameRule = {
     if (!bodyMatch) return []; // 由 html-body 规则检测，此处不重复报错
 
     const bodyContent = bodyMatch[1];
-    // 去除 HTML 注释
-    const noComments = bodyContent.replace(/<!--[^]*?-->/g, '');
+    // 去除 HTML 注释（循环替换，避免多字符清洗后重新拼接出注释起始标记）
+    let noComments = bodyContent;
+    let previous: string;
+    do {
+      previous = noComments;
+      noComments = noComments.replace(/<!--[^]*?-->/g, '');
+    } while (noComments !== previous);
     // 去除所有 HTML 标签
     const noTags = noComments.replace(/<[^>]+>/g, '');
     // 检查是否只剩空白
