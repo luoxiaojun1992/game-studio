@@ -187,7 +187,7 @@ export const sonarqubeChecker: LintChecker = {
   name: 'SonarQube 代码质量扫描',
   description: '通过 SonarQube 对游戏 HTML/JS 内容进行静态质量分析',
 
-  async check(content: string, context: LintContext): Promise<LintIssue[]> {
+  async check(context: LintContext): Promise<LintIssue[]> {
     const cid = sonarqubeChecker.id;
     const { baseUrl, token, projectKey } = await resolveConfig(context);
     const client = new SonarQubeClient(baseUrl, token);

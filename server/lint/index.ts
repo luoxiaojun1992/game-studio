@@ -79,7 +79,7 @@ export async function lintGameArtifact(zipBuffer: Buffer, context?: LintContext)
       continue;
     }
     try {
-      const result = checker.check('', enrichedContext);
+      const result = checker.check(enrichedContext);
       const issues = result instanceof Promise ? await result : result;
       allIssues.push(...issues);
       console.error(`[LintFramework] ${_lts()} checker ${id} done issues=${issues.length}`);

@@ -54,8 +54,6 @@ export interface LintResult {
  * Lint 检查器接口
  *
  * 每个检查器必须实现此接口，通过 LintRunner.register() 注册后即可自动参与检查流程。
- * @param content - 已废弃，始终为空字符串，检查器应使用 context.submitDir
- * @param context - 检查上下文，包含 submitDir 目录路径
  */
 export interface LintChecker {
   /** 检查器唯一标识（如 'html-structure', 'js-security', 'sensitive-words'） */
@@ -66,9 +64,8 @@ export interface LintChecker {
   readonly description: string;
   /**
    * 执行检查逻辑
-   * @param content 已废弃，始终为空字符串（保留参数仅兼容接口签名）
    * @param context 检查上下文，含 submitDir 目录路径
    * @returns 发现的 issue 列表（空数组表示无问题）
    */
-  check(content: string, context: LintContext): LintIssue[] | Promise<LintIssue[]>;
+  check(context: LintContext): LintIssue[] | Promise<LintIssue[]>;
 }
