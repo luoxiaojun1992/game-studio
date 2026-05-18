@@ -143,25 +143,21 @@ tool(
 ```typescript
 // 在 createStudioToolsServer 时动态注入
 const registeredTypes = db.getGameTypes().map(t => t.type);
-// DB 无数据时枚举值为空列表，get_game_framework_spec 无法通过校验
-// 调用方应优先调用 get_game_types 确认支持的类型
+// DB 无数据时使用 z.string().refine() 替代空枚举，避免类型安全问题
+// 任何传入值均被拒绝，错误消息提示调用方先确认支持的类型
 const gameTypeEnum = registeredTypes.length > 0
   ? z.enum(registeredTypes as [string, ...string[]])
-  : z.enum([] as unknown as [string, ...string[]]); // 空枚举，任何值都通不过
+  : z.string().refine(() => false, {
+      message: '暂无可用的游戏类型，请先配置游戏工程规范种子数据。'
+    });
 ```
 
 ### 返回值格式
 ```
-# 公共规范
-...
-（公共规范 content）
-
----
-
-# H5 小游戏工程规范
-...
-（框架规范 content）
+（框架规范 content，即对应 game_type 的 Markdown 全文内容）
 ```
+
+> **说明**：`get_game_framework_spec` **仅返回框架规范内容**，不拼接公共规范。调用方如需公共规范可单独调用 `get_common_spec` 获取。两个工具职责分离，避免冗余。
 
 ### 实现参考
 ```typescript
@@ -172,7 +168,6 @@ tool(
     game_type: gameTypeEnum.describe('游戏类型，从 get_game_types 获取当前支持的类型'),
   },
   async ({ game_type }) => {
-    const commonContent = db.getCommonSpec();
     const frameworkContent = db.getGameFrameworkSpec(game_type);
 
     if (!frameworkContent) {
@@ -182,9 +177,7 @@ tool(
     }
 
     return {
-      content: [
-        { type: 'text', text: `# 公共规范\n\n${commonContent || ''}\n\n# ${game_type} 工程规范\n\n${frameworkContent}` }
-      ]
+      content: [{ type: 'text', text: frameworkContent }]
     };
   }
 );
@@ -193,7 +186,6 @@ tool(
 ### 边界处理
 - `game_type` 传入未注册的值 → zod `z.enum()` 自动拒绝
 - DB 中查询不到框架规范 → 返回明确错误消息，提示先调用 `get_game_types`
-- 公共规范不存在 → 返回空字符串（不阻断）
 
 ---
 
@@ -237,7 +229,7 @@ tool(
 |------|------|
 | **必填校验** | 标记为"是"的参数 MUST 传入；未传入时 zod 抛出 `Required` 错误 |
 | **枚举校验** | `game_type` 使用 `z.enum()` 限制可选值；枚举值由 DB 动态构建，启动时从 `game_engineering_specs` 表查询 |
-| **DB 无数据** | 枚举构建时若 DB 无数据，枚举值为空列表，`get_game_framework_spec` 因无合法枚举值而无法通过校验，`get_game_types` 返回空数组 |
+| **DB 无数据** | 枚举构建时若 DB 无数据，使用 `z.string().refine(() => false)` 替代空枚举，`get_game_framework_spec` 因无合法枚举值而无法通过校验，`get_game_types` 返回空数组 |
 | **数据一致性** | `get_game_types` 和 `get_game_framework_spec` 共享同一数据源，保证列表和查询结果始终一致 |
 
 ## 与 Checker 的关系

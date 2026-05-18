@@ -31,12 +31,14 @@
 ### 提交产物结构（lint checker 扫描目标）
 ```
 dist/
-  index.html          # MUST 存在
-  metadata.json       # MUST 存在（game_type: "h5"）
+  index.html          # MUST 存在。H5 类型下 entry 固定为 dist/index.html
+  metadata.json       # MUST 存在（game_type: "h5"），其中 entry 字段须填写 "index.html"
   assets/
     manifest.json     # MUST 存在（H5 特有）
     ...               # 游戏资源文件
 ```
+
+> **说明**：metadata.json 中的 `entry` 字段在 H5 类型下语义为**相对提交产物根目录**的入口路径。由于 H5 框架规范固定入口为 `dist/index.html`，checker 实际检查 `{submitDir}/dist/index.html`。但 `entry` 作为公共必填字段仍须填写，值为 `"index.html"`。
 
 ### 开发期目录结构（供 Engineer Agent 参考）
 ```
@@ -100,7 +102,10 @@ export interface GameApp {
 **判定逻辑：**
 ```typescript
 const REQUIRED_METHODS = ['init', 'start', 'pause', 'resume', 'resize', 'destroy'];
-const RE_METHOD = new RegExp(`\\b(${REQUIRED_METHODS.join('|')})\\s*\\(`, 'g');
+// 使用 negative lookbehind 防止误匹配（如 reinitialize → init 被误判）
+const RE_METHOD = new RegExp(
+  REQUIRED_METHODS.map(m => `(?<![\\w$.])${m}\\s*\\(`).join('|'), 'g'
+);
 const found = new Set(sanitized.match(RE_METHOD)?.map(m => m.replace(/\s*\($/, '')) || []);
 const missing = REQUIRED_METHODS.filter(m => !found.has(m));
 ```
@@ -236,8 +241,8 @@ for (const item of data.resources) {
 | `html-body` | html-structure | error | 公共 | MUST 包含 `<body>` 标签 |
 | `html-charset` | html-structure | error | 公共 | `<head>` 中 MUST 包含 `<meta charset="utf-8">` |
 | `html-body-not-empty` | html-structure | error | 公共 | `<body>` MUST 有可见内容 |
-| `metadata-exists` | game-asset | error | 公共 | MUST 存在 `metadata.json` |
-| `metadata-schema` | game-asset | error | 公共 | metadata.json MUST 完整且 game_type 已注册 |
+| `asset-metadata-exists` | game-asset | error | 公共 | MUST 存在 `metadata.json` |
+| `asset-metadata-schema` | game-asset | error | 公共 | metadata.json MUST 完整且 game_type 已注册 |
 | `lifecycle-exports` | game-lifecycle | error | H5 特有 | MUST 实现 GameApp 全部 6 个生命周期方法 |
 | `lifecycle-window-global` | game-lifecycle | error | H5 特有 | MUST 挂载 GameApp 实例到 `window.__GAME__` |
 | `lifecycle-script-tag` | game-lifecycle | error | H5 特有 | index.html MUST 包含 `<script>` 标签 |

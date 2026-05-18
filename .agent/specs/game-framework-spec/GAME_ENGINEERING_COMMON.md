@@ -38,6 +38,7 @@
 
 - `game_type`（MUST）— 字符串，必须是已注册的游戏类型值。lint checker 据此选择适用的规则集。
 - `title` / `version` / `resolution` / `orientation` / `entry` — 必填字段定义详见附录 A.2 metadata-schema。
+- `entry` 路径相对于**提交产物根目录**（submitDir）。当某游戏类型的框架规范固定了入口文件（如 H5 类型固定 `dist/index.html`），`entry` 字段在该类型下**语义变为冗余**，但作为公共字段仍须填写。
 
 ## 公共校验规则
 
@@ -141,9 +142,11 @@ const passed = RE_HTML_TAG.test(content);
 | level | `error` |
 | 描述 | MUST 包含 `<head>` 标签 |
 
-**判定逻辑：** `/^<head[\s>]/i.test(content)`
+**判定逻辑：** `/<head[\s>]/i.test(content)`
 
 **通过/失败示例：** `<head>` 通过；`<header>`、无 head 标签失败。
+
+**边界：** 匹配不锚定行首，允许 head 前存在 DOCTYPE 声明、空白或注释。
 
 **错误消息：** `缺少 <head> 标签。文档应包含 head 区域。`
 
@@ -157,7 +160,7 @@ const passed = RE_HTML_TAG.test(content);
 | level | `error` |
 | 描述 | MUST 包含 `<body>` 标签 |
 
-**判定逻辑：** `/^<body[\s>]/i.test(content)`
+**判定逻辑：** `/<body[\s>]/i.test(content)`
 
 **错误消息：** `缺少 <body> 标签。游戏内容应在 body 中渲染。`
 
@@ -194,7 +197,19 @@ const passed = !hasHead || RE_CHARSET_META.test(content);
 | level | `error` |
 | 描述 | `<body>` MUST 有可见内容 |
 
-**判定逻辑：** 提取 body 内容，去除所有 HTML 标签后检查是否只剩空白。
+**判定逻辑：**
+```typescript
+// 1. 提取 <body>...</body> 内容
+const bodyMatch = content.match(/<body[^>]*>([^]*)<\/body>/i);
+if (!bodyMatch) return; // 由 html-body 规则检测，此处不重复报错
+const bodyContent = bodyMatch[1];
+// 2. 去除 HTML 注释
+const noComments = bodyContent.replace(/<!--[^]*?-->/g, '');
+// 3. 去除所有 HTML 标签
+const noTags = noComments.replace(/<[^>]+>/g, '');
+// 4. 检查是否只剩空白
+const passed = noTags.trim().length > 0;
+```
 
 **通过示例：** `<body><div id="game"></div></body>`
 
@@ -208,11 +223,11 @@ const passed = !hasHead || RE_CHARSET_META.test(content);
 
 ### A.2 元信息检查器（game-asset）
 
-#### A.2.1 metadata-exists
+#### A.2.1 asset-metadata-exists
 
 | 属性 | 值 |
 |------|-----|
-| ruleId | `metadata-exists` |
+| ruleId | `asset-metadata-exists` |
 | level | `error` |
 | 描述 | metadata.json MUST 存在于提交产物根目录 |
 
@@ -222,11 +237,11 @@ const passed = !hasHead || RE_CHARSET_META.test(content);
 
 ---
 
-#### A.2.2 metadata-schema
+#### A.2.2 asset-metadata-schema
 
 | 属性 | 值 |
 |------|-----|
-| ruleId | `metadata-schema` |
+| ruleId | `asset-metadata-schema` |
 | level | `error` |
 | 描述 | metadata.json MUST 是合法 JSON 且包含所有必填字段 |
 
@@ -274,5 +289,14 @@ const requiredFields: Record<string, (v: any) => boolean> = {
 | `html-body` | html-structure | error | 全部 | MUST 包含 `<body>` 标签 |
 | `html-charset` | html-structure | error | 全部 | `<head>` 中 MUST 包含 `<meta charset="utf-8">` |
 | `html-body-not-empty` | html-structure | error | 全部 | `<body>` MUST 有可见内容 |
-| `metadata-exists` | game-asset | error | 全部 | MUST 存在 `metadata.json` |
-| `metadata-schema` | game-asset | error | 全部 | metadata.json MUST 包含必填字段且 game_type 已注册 |
+| `asset-metadata-exists` | game-asset | error | 全部 | MUST 存在 `metadata.json` |
+| `asset-metadata-schema` | game-asset | error | 全部 | metadata.json MUST 包含必填字段且 game_type 已注册 |
+
+## 附录 C：命名约定
+
+### ruleId 命名
+
+- **前缀对应 checker 名称**：`html-structure` 的 ruleId 以 `html-` 开头；`game-asset` 的 ruleId 以 `asset-` 开头。
+- **连字符分隔**：`{checker-前缀}-{规则描述}`，如 `asset-metadata-exists`。
+- 新增 checker 时，其所有 ruleId 使用 checker 名称的首个单词作为前缀。
+- 避免扁平命名导致不同类型规则的 ID 冲突。
