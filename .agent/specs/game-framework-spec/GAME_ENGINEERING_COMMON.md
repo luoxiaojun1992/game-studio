@@ -5,7 +5,7 @@
 ## 目标
 - 为 Engineering Agent 提供**稳定、可验证、可测试**的开发边界。
 - 便于系统对产物进行静态检查、自动化测试与验收反馈。
-- 按 `game_type` 区分不同游戏类型的工程规范。
+- 所有规则统一注册在 `game-engineering-checker` 中，按 `game_type` 区分不同游戏类型的规则集。
 
 ## 适用范围
 - 所有提交至平台进行工程校验与验收的游戏成品。
@@ -53,18 +53,18 @@
 
 ## 工程规范检查器
 
-工程规范检查器用于按 `game_type` 选择规则集并执行静态校验，详见 [GAME_ENGINEERING_FRAMEWORK_CHECKER.md](./GAME_ENGINEERING_FRAMEWORK_CHECKER.md)。
+工程规范检查器（Game Engineering Checker）是 Lint 系统下的一个统一检查器，内部注册多条规则（rule），按 `game_type` 自动选择适用的规则集并执行静态校验。详见 [GAME_ENGINEERING_FRAMEWORK_CHECKER.md](./GAME_ENGINEERING_FRAMEWORK_CHECKER.md)。
 
 ---
 
 ## 附录 A：公共可验证规则清单
 
-### A.1 HTML 结构检查器（html-structure）
+### A.1 HTML 结构规则组（html- 前缀）
 
 **输入**：`index.html` 文本内容（字符串）。
 
 **通用约定：**
-- 所有 checker 按 `\n` 分割计算行号（1-based）。
+- 所有规则按 `\n` 分割计算行号（1-based）。
 - 多行匹配使用 `[^]*` 而非 `[\s\S]`。
 - 输入为空或仅空白时，跳过所有正则匹配，仅返回一条 `html-empty` error。
 
@@ -177,7 +177,7 @@ const passed = RE_HTML_TAG.test(content);
 **判定逻辑：**
 ```typescript
 const RE_CHARSET_META = /<meta\s[^>]*charset=["']?utf-8["']?/i;
-const hasHead = /^<head[\s>]/i.test(content);
+const hasHead = /<head[\s>]/i.test(content);
 const passed = !hasHead || RE_CHARSET_META.test(content);
 ```
 
@@ -221,7 +221,7 @@ const passed = noTags.trim().length > 0;
 
 ---
 
-### A.2 元信息检查器（game-asset）
+### A.2 元信息规则组（asset- 前缀）
 
 #### A.2.1 asset-metadata-exists
 
@@ -281,22 +281,22 @@ const requiredFields: Record<string, (v: any) => boolean> = {
 
 ## 附录 B：规则总览表
 
-| ruleId | checker | level | 适用范围 | 描述 |
-|--------|---------|-------|---------|------|
-| `html-doctype` | html-structure | error | 全部 | MUST 包含 `<!DOCTYPE html>` |
-| `html-root` | html-structure | error | 全部 | MUST 包含 `<html>` 根标签 |
-| `html-head` | html-structure | error | 全部 | MUST 包含 `<head>` 标签 |
-| `html-body` | html-structure | error | 全部 | MUST 包含 `<body>` 标签 |
-| `html-charset` | html-structure | error | 全部 | `<head>` 中 MUST 包含 `<meta charset="utf-8">` |
-| `html-body-not-empty` | html-structure | error | 全部 | `<body>` MUST 有可见内容 |
-| `asset-metadata-exists` | game-asset | error | 全部 | MUST 存在 `metadata.json` |
-| `asset-metadata-schema` | game-asset | error | 全部 | metadata.json MUST 包含必填字段且 game_type 已注册 |
+| ruleId | 规则组 | level | 适用范围 | 描述 |
+|--------|-------|-------|---------|------|
+| `html-doctype` | html | error | 全部 | MUST 包含 `<!DOCTYPE html>` |
+| `html-root` | html | error | 全部 | MUST 包含 `<html>` 根标签 |
+| `html-head` | html | error | 全部 | MUST 包含 `<head>` 标签 |
+| `html-body` | html | error | 全部 | MUST 包含 `<body>` 标签 |
+| `html-charset` | html | error | 全部 | `<head>` 中 MUST 包含 `<meta charset="utf-8">` |
+| `html-body-not-empty` | html | error | 全部 | `<body>` MUST 有可见内容 |
+| `asset-metadata-exists` | asset | error | 全部 | MUST 存在 `metadata.json` |
+| `asset-metadata-schema` | asset | error | 全部 | metadata.json MUST 包含必填字段且 game_type 已注册 |
 
 ## 附录 C：命名约定
 
 ### ruleId 命名
 
-- **前缀对应 checker 名称**：`html-structure` 的 ruleId 以 `html-` 开头；`game-asset` 的 ruleId 以 `asset-` 开头。
-- **连字符分隔**：`{checker-前缀}-{规则描述}`，如 `asset-metadata-exists`。
-- 新增 checker 时，其所有 ruleId 使用 checker 名称的首个单词作为前缀。
-- 避免扁平命名导致不同类型规则的 ID 冲突。
+- **前缀对应规则组**：`html-doctype` 表示 HTML 结构组的规则；`asset-metadata-exists` 表示资源组的规则。
+- **规则组前缀**：`html-`、`asset-`、`lifecycle-`、`manifest-`、`resource-` 等。
+- **连字符分隔**：`{规则组前缀}-{规则描述}`，如 `asset-metadata-exists`。
+- 所有规则统一注册在 `game-engineering-checker` 中，规则组前缀仅用于分类和避免 ID 冲突。

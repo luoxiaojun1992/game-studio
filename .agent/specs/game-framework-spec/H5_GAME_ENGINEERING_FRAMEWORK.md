@@ -88,7 +88,7 @@ export interface GameApp {
 
 以下规则仅在 `game_type === "h5"` 时生效。
 
-### A.1 游戏框架契约检查器（game-lifecycle）
+### A.1 游戏框架契约规则组（lifecycle- 前缀）
 
 #### A.1.1 lifecycle-exports
 
@@ -96,7 +96,7 @@ export interface GameApp {
 |------|-----|
 | ruleId | `lifecycle-exports` |
 | level | `error` |
-| checker | game-lifecycle |
+| 规则组 | lifecycle |
 | 描述 | GameApp MUST 实现全部 6 个生命周期方法：init/start/pause/resume/resize/destroy |
 
 **判定逻辑：**
@@ -135,7 +135,7 @@ class MyGame { init(c){}, start(){}, pause(){}, resume(){}, resize(w,h){}, destr
 |------|-----|
 | ruleId | `lifecycle-window-global` |
 | level | `error` |
-| checker | game-lifecycle |
+| 规则组 | lifecycle |
 | 描述 | GameApp 实例 MUST 挂载到 `window.__GAME__` |
 
 **判定逻辑：** `/window\.__GAME__\s*=/`
@@ -154,7 +154,7 @@ class MyGame { init(c){}, start(){}, pause(){}, resume(){}, resize(w,h){}, destr
 |------|-----|
 | ruleId | `lifecycle-script-tag` |
 | level | `error` |
-| checker | game-lifecycle |
+| 规则组 | lifecycle |
 | 描述 | index.html MUST 包含 `<script>` 标签加载游戏脚本 |
 
 **判定逻辑：** `/<script[\s>]/i`
@@ -165,7 +165,7 @@ class MyGame { init(c){}, start(){}, pause(){}, resume(){}, resize(w,h){}, destr
 
 ---
 
-### A.2 资源与配置检查器（game-asset）— H5 扩展
+### A.2 资源与配置规则组（manifest-/resource- 前缀）
 
 #### A.2.1 manifest-exists
 
@@ -173,7 +173,7 @@ class MyGame { init(c){}, start(){}, pause(){}, resume(){}, resize(w,h){}, destr
 |------|-----|
 | ruleId | `manifest-exists` |
 | level | `error` |
-| checker | game-asset |
+| 规则组 | manifest |
 | 描述 | `assets/manifest.json` MUST 存在于提交产物目录 |
 
 **判定逻辑：** `fs.existsSync(path.join(submitDir, 'assets', 'manifest.json'))`
@@ -188,7 +188,7 @@ class MyGame { init(c){}, start(){}, pause(){}, resume(){}, resize(w,h){}, destr
 |------|-----|
 | ruleId | `manifest-schema` |
 | level | `error` |
-| checker | game-asset |
+| 规则组 | manifest |
 | 描述 | manifest.json MUST 是合法 JSON 且包含 resources 数组 |
 
 **判定逻辑：**
@@ -218,7 +218,7 @@ for (const item of data.resources) {
 |------|-----|
 | ruleId | `resource-relative-path` |
 | level | `error` |
-| checker | game-asset |
+| 规则组 | resource |
 | 描述 | index.html 中引用的资源路径 MUST 使用相对路径 |
 
 **判定逻辑：** `/(?:src|href)\s*=\s*["'](https?:\/\/[^"']+)["']/gi`
@@ -233,19 +233,19 @@ for (const item of data.resources) {
 
 ## 附录 B：规则总览表
 
-| ruleId | checker | level | 来源 | 描述 |
-|--------|---------|-------|------|------|
-| `html-doctype` | html-structure | error | 公共 | MUST 包含 `<!DOCTYPE html>` |
-| `html-root` | html-structure | error | 公共 | MUST 包含 `<html>` 根标签 |
-| `html-head` | html-structure | error | 公共 | MUST 包含 `<head>` 标签 |
-| `html-body` | html-structure | error | 公共 | MUST 包含 `<body>` 标签 |
-| `html-charset` | html-structure | error | 公共 | `<head>` 中 MUST 包含 `<meta charset="utf-8">` |
-| `html-body-not-empty` | html-structure | error | 公共 | `<body>` MUST 有可见内容 |
-| `asset-metadata-exists` | game-asset | error | 公共 | MUST 存在 `metadata.json` |
-| `asset-metadata-schema` | game-asset | error | 公共 | metadata.json MUST 完整且 game_type 已注册 |
-| `lifecycle-exports` | game-lifecycle | error | H5 特有 | MUST 实现 GameApp 全部 6 个生命周期方法 |
-| `lifecycle-window-global` | game-lifecycle | error | H5 特有 | MUST 挂载 GameApp 实例到 `window.__GAME__` |
-| `lifecycle-script-tag` | game-lifecycle | error | H5 特有 | index.html MUST 包含 `<script>` 标签 |
-| `manifest-exists` | game-asset | error | H5 特有 | MUST 存在 `assets/manifest.json` |
-| `manifest-schema` | game-asset | error | H5 特有 | manifest.json MUST 合法且含 resources |
-| `resource-relative-path` | game-asset | error | H5 特有 | 资源路径 MUST 使用相对路径 |
+| ruleId | 规则组 | level | 来源 | 描述 |
+|--------|-------|-------|------|------|
+| `html-doctype` | html | error | 公共 | MUST 包含 `<!DOCTYPE html>` |
+| `html-root` | html | error | 公共 | MUST 包含 `<html>` 根标签 |
+| `html-head` | html | error | 公共 | MUST 包含 `<head>` 标签 |
+| `html-body` | html | error | 公共 | MUST 包含 `<body>` 标签 |
+| `html-charset` | html | error | 公共 | `<head>` 中 MUST 包含 `<meta charset="utf-8">` |
+| `html-body-not-empty` | html | error | 公共 | `<body>` MUST 有可见内容 |
+| `asset-metadata-exists` | asset | error | 公共 | MUST 存在 `metadata.json` |
+| `asset-metadata-schema` | asset | error | 公共 | metadata.json MUST 完整且 game_type 已注册 |
+| `lifecycle-exports` | lifecycle | error | H5 特有 | MUST 实现 GameApp 全部 6 个生命周期方法 |
+| `lifecycle-window-global` | lifecycle | error | H5 特有 | MUST 挂载 GameApp 实例到 `window.__GAME__` |
+| `lifecycle-script-tag` | lifecycle | error | H5 特有 | index.html MUST 包含 `<script>` 标签 |
+| `manifest-exists` | manifest | error | H5 特有 | MUST 存在 `assets/manifest.json` |
+| `manifest-schema` | manifest | error | H5 特有 | manifest.json MUST 合法且含 resources |
+| `resource-relative-path` | resource | error | H5 特有 | 资源路径 MUST 使用相对路径 |

@@ -240,6 +240,7 @@ tool(
 | **Framework Checker** | 提交后校验产物是否符合规范 | `game_engineering_specs` 表（同表） | `submit_game` + LintRunner |
 
 - Tool 和 Checker **共享同一数据源**，保证规范与验证规则一致。
+- Checker 是一个**统一检查器**，内部注册多条规则（规则分为通用和游戏类型特定）。Tool 查询到的规范文档决定了 checker 中规则的具体校验内容。
 - 修改 DB 中的 spec 内容后，Tool 和 Checker 均立即生效。
 
 ## 新增游戏类型的步骤（DB 方式）
