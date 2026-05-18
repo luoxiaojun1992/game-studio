@@ -353,6 +353,25 @@ const runFullWorkflowTest = async (
   await expectHandoff(projectId, 'ceo', 'architect');
   log('mocks:queue-handoff-architect-to-engineer', { projectId, from: 'architect', to: 'engineer' });
   await expectHandoff(projectId, 'architect', 'engineer');
+
+  // ── Engineer: game framework spec queries (new prompt instructions) ──
+  log('mocks:queue-get-game-types', { projectId, agent: 'engineer' });
+  await setMockExpectation(projectId, 'engineer', {
+    content: '正在查询支持的游戏类型...',
+    toolCalls: [{ name: 'get_game_types' }]
+  });
+  log('mocks:queue-get-game-framework-spec', { projectId, agent: 'engineer' });
+  await setMockExpectation(projectId, 'engineer', {
+    content: '正在获取 H5 工程规范...',
+    toolCalls: [{ name: 'get_game_framework_spec', arguments: { game_type: 'h5' } }]
+  });
+  log('mocks:queue-get-common-spec', { projectId, agent: 'engineer' });
+  await setMockExpectation(projectId, 'engineer', {
+    content: '正在获取公共规范...',
+    toolCalls: [{ name: 'get_common_spec' }]
+  });
+  log('mocks:game-spec-queries-queued');
+
   log('mocks:queue-submit-proposal', { projectId, agent: 'engineer' });
   await setMockExpectation(projectId, 'engineer', {
     content: '提案已提交。',
