@@ -255,17 +255,21 @@ class StarOfficeSyncService {
         if (error instanceof Error && error.message.includes('404')) {
           console.warn(`[star-office-sync] Agent ${key} push failed (not registered), re-registering...`);
           this.registeredAgents.delete(key);
-          const newAgentId = await this.registerAgent(projectId, state.id, key, state.status, state.currentTask || state.lastMessage || '');
-          if (newAgentId) {
-            await this.postJson(agentPushUrl, {
-              type: 'agent_state_sync',
-              reason: reason + '_retry',
-              agentId: newAgentId,
-              joinKey: JOIN_KEY,
-              state: state.status,
-              detail: state.currentTask || state.lastMessage || '',
-              name: key,
-            });
+          try {
+            const newAgentId = await this.registerAgent(projectId, state.id, key, state.status, state.currentTask || state.lastMessage || '');
+            if (newAgentId) {
+              await this.postJson(agentPushUrl, {
+                type: 'agent_state_sync',
+                reason: reason + '_retry',
+                agentId: newAgentId,
+                joinKey: JOIN_KEY,
+                state: state.status,
+                detail: state.currentTask || state.lastMessage || '',
+                name: key,
+              });
+            }
+          } catch (retryError) {
+            console.warn(`[star-office-sync] Agent ${key} retry push also failed:`, retryError instanceof Error ? retryError.message : String(retryError));
           }
         } else {
           console.warn('[star-office-sync] Error pushing state for %s:', key, error);
