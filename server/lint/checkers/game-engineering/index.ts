@@ -80,9 +80,9 @@ class GameEngineeringCheckerImpl implements LintChecker {
   }
 
   /** LintChecker 接口实现，接收 submitDir 上下文 */
-  async check(content: string, context?: LintContext): Promise<LintIssue[]> {
-    const submitDir = context?.submitDir as string | undefined;
-    console.error(`[GameEngineering checker] ${_gets()} check START submitDir=${submitDir || '(none)'}`);
+  async check(content: string, context: LintContext): Promise<LintIssue[]> {
+    const submitDir = context.submitDir;
+    console.error(`[GameEngineering checker] ${_gets()} check START submitDir=${submitDir}`);
     if (!submitDir || !fs.existsSync(submitDir)) {
       console.error(`[GameEngineering checker] ${_gets()} check SKIP submitDir not found`);
       return [{

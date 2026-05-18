@@ -656,8 +656,8 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
               // lint 检查：ZIP 内每个 HTML 逐一检查，遇第一个 error 即阻断
               console.error(`[Tool] ${_tts()} submit_game calling lintZipBuffer zipSize=${fileBuffer.length}`);
               const zipLintResult = await lintZipBuffer(fileBuffer, {
-                projectId: scopedProjectId,
                 submitDir: targetPath,
+                projectId: scopedProjectId,
               });
               console.error(`[Tool] ${_tts()} submit_game lintZipBuffer done passed=${zipLintResult.passed} errors=${zipLintResult.errors.length} warnings=${zipLintResult.warnings.length} summary=${zipLintResult.summary}`);
               if (!zipLintResult.passed) {

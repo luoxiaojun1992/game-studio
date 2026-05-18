@@ -53,10 +53,12 @@ const _lts = () => new Date().toISOString();
 /**
  * 使用所有内置检查器执行 lint 检查（统一入口函数）
  *
- * 传入 ZIP Buffer，由具体 checker 自行决定是否解压。
+ * Checker 通过 context.submitDir 获取游戏成品目录路径，自行决定处理方式：
+ * - SonarQube checker：自行从 submitDir 打包 ZIP 后调用 scanner 微服务
+ * - GameEngineeringChecker：直接读取 submitDir/dist/* 文件进行规则校验
  *
- * @param zipBuffer ZIP 文件内容 Buffer
- * @param context 可选上下文信息
+ * @param zipBuffer ZIP 文件内容 Buffer（已废弃，仅为兼容保留签名）
+ * @param context 检查上下文，必须包含 submitDir 字段
  * @returns lint 检查结果
  */
 export async function lintGameArtifact(zipBuffer: Buffer, context?: LintContext): Promise<LintResult> {
@@ -66,7 +68,7 @@ export async function lintGameArtifact(zipBuffer: Buffer, context?: LintContext)
 
   const allIssues: LintIssue[] = [];
   const extraPayloads: Record<string, unknown> = {};
-  const enrichedContext: LintContext = { ...context, __extraPayloads: extraPayloads, zipBuffer };
+  const enrichedContext: LintContext = { ...context, __extraPayloads: extraPayloads };
 
   let checkerIndex = 0;
   for (const [id, checker] of runner['checkers']) {

@@ -21,16 +21,10 @@ export interface LintIssue {
 
 /** Lint 检查上下文信息 */
 export interface LintContext {
-  /** 文件名（如 'snake.html'） */
-  fileName?: string;
+  /** 提交产物目录路径，checker 自行决定如何处理该目录（读文件、打包 ZIP 等） */
+  submitDir: string;
   /** 项目 ID */
   projectId?: string;
-  /**
-   * 原始 ZIP Buffer（ZIP 打包模式专用）
-   * 当 lintZipBuffer 传入时，sonarqube checker 可直接上传此 buffer，
-   * 避免"提取 HTML → 重新打包"的往返开销。
-   */
-  zipBuffer?: Buffer;
   /**
    * 内部字段：Runner 自动创建的额外负载收集器
    * checker 通过此字段将非 LintIssue 的原始数据（如 sonar 扫描报告）传回给调用方
@@ -60,15 +54,8 @@ export interface LintResult {
  * Lint 检查器接口
  *
  * 每个检查器必须实现此接口，通过 LintRunner.register() 注册后即可自动参与检查流程。
- * 实现示例：
- * ```typescript
- * export const myChecker: LintChecker = {
- *   id: 'my-checker',
- *   name: '我的检查器',
- *   description: '描述',
- *   check(content, context) { return [...issues]; },
- * };
- * ```
+ * @param content - 已废弃，始终为空字符串，检查器应使用 context.submitDir
+ * @param context - 检查上下文，包含 submitDir 目录路径
  */
 export interface LintChecker {
   /** 检查器唯一标识（如 'html-structure', 'js-security', 'sensitive-words'） */
@@ -79,9 +66,9 @@ export interface LintChecker {
   readonly description: string;
   /**
    * 执行检查逻辑
-   * @param content 待检查的内容字符串
-   * @param context 可选上下文信息（文件名、项目ID等）
+   * @param content 已废弃，始终为空字符串（保留参数仅兼容接口签名）
+   * @param context 检查上下文，含 submitDir 目录路径
    * @returns 发现的 issue 列表（空数组表示无问题）
    */
-  check(content: string, context?: LintContext): LintIssue[] | Promise<LintIssue[]>;
+  check(content: string, context: LintContext): LintIssue[] | Promise<LintIssue[]>;
 }
