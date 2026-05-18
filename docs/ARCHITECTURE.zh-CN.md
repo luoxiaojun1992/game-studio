@@ -138,7 +138,7 @@ graph TB
   - `permission_requests`
   - `game_engineering_specs`
 - 游戏产物由 engineer 调用 `write_game_file` 写入 `output/{project_id}/games/latest/dist/`，再通过 `submit_game` 打包 ZIP 上传 MinIO，通过 `games.file_storage_id` 关联
-- 游戏提交触发双 lint 检查：SonarQube checker（ZIP 模式，外部扫描）+ GameEngineeringChecker（目录模式，直接读取 `submitDir/dist/*` 文件进行工程规范校验）
+- 游戏提交触发双 lint 检查：两个 checker 通过 LintContext.submitDir 获取目录 —— SonarQube checker 自行从目录打包 ZIP 送给 scanner，GameEngineeringChecker 直接读取 `submitDir/dist/*` 文件进行工程规范校验
 - Sonar 质量报告存入 MinIO，通过 `games.sonar_storage_id` 关联（可在游戏详情页面下载）
 - `project_settings` 存储 `autopilot_enabled` 和 `team_builder_model`（按项目隔离）
 - 数据与产物按 `project_id` 隔离

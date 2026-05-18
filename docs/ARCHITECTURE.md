@@ -139,7 +139,7 @@ graph TB
   - `permission_requests`
   - `game_engineering_specs`
 - Game artifacts are written to `output/{project_id}/games/latest/dist/` by the engineer calling `write_game_file` tool, then packaged as ZIP by `submit_game`, uploaded to MinIO, and linked through `games.file_storage_id`
-- Game submission triggers dual lint: SonarQube checker (ZIP mode, external scan) + GameEngineeringChecker (directory mode, reads `submitDir/dist/*` for engineering spec validation)
+- Game submission triggers dual lint: both checkers receive `submitDir` via LintContext — SonarQube checker self-packs ZIP from the directory for external scan, GameEngineeringChecker reads `submitDir/dist/*` directly for engineering spec validation
 - Sonar quality reports are stored in MinIO and linked through `games.sonar_storage_id` (downloadable from the game detail page)
 - `project_settings` stores `autopilot_enabled` and `team_builder_model` (project-scoped)
 - Data and outputs are isolated by `project_id`

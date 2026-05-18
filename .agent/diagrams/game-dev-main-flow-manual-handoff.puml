@@ -134,7 +134,7 @@ if (用户审批通过?) then (通过)
   note right
     submit_game 打包 games/latest/ 目录
     打包 ZIP → lint 扫描(2 checkers) → 上传 MinIO → 创建 DB 记录
-    1. SonarQube checker: scanner 微服务 → sonar-scanner CLI
+    1. SonarQube checker: 从 submitDir 自行打包 ZIP → scanner→ sonar-scanner CLI
     2. GameEngineeringChecker: 读 submitDir/dist/* → 14 条规则
     两个 checker 任一返回 error 即阻断
     代码位置:
