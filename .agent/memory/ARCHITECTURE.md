@@ -11,11 +11,14 @@
 - `server/creator-service.ts` - Creator 服务调用封装（Blender 项目/文件生命周期）
 - `server/drawio-service.ts` - Draw.io 服务调用封装（图表 CRUD/导出）
 - `server/lint/` - 可扩展静态检查框架（LintRunner + 可插拔 checker）
-- `server/lint/types.ts` - 核心类型：LintChecker 接口、LintIssue、LintResult
-- `server/lint/index.ts` - lintGameArtifact() 入口（ZIP 模式），已移除旧 HTML 内容模式检查
+- `server/lint/types.ts` - 核心类型：LintChecker 接口、LintIssue、LintResult、LintContext（含 submitDir 字段）
+- `server/lint/index.ts` - lintGameArtifact() 入口（ZIP 模式），遍历所有内置 checker
 - `server/lint/checkers/sonar/sonarqube.ts` - SonarQube 质量扫描检查器（仅 ZIP 模式，scanner 微服务调用）
 - `server/lint/checkers/sonar/sonarqube-client.ts` - SonarQube REST API 客户端（查询 issues、创建项目）
 - `server/lint/checkers/sonar/sonarqube-token.ts` - SonarQube TokenManager（动态生成 USER_TOKEN，Basic Auth）
+- `server/lint/checkers/game-engineering/` - 游戏工程规范检查器（14 条规则：8 公共 + 6 H5）
+- `server/lint/checkers/game-engineering/rules/` - 规则目录：common/（通用规则）、h5/（H5 特有规则）
+- `server/specs/` - 游戏工程规范种子数据模块（game-engineering-common.ts, game-engineering-h5.ts）
 - `server/sonar-scanner-service.ts` - scanner 微服务 HTTP 客户端（提交 ZIP、轮询状态）
 - `sonar-scanner-service/` - Python FastAPI 微服务（接收 ZIP、解压、调用 sonar-scanner CLI、轮询 SonarQube）
 - `server/agent-manager.ts` - Agent 管理器，通过 mcpServers 注册自定义工具
@@ -133,7 +136,7 @@ game-dev-studio/
 
 #### 2. 数据库层 (`server/db.ts`)
 - 使用 **better‑sqlite3** 驱动，WAL 模式，外键启用。
-- 核心表：`projects`、`project_settings`、`agent_sessions`、`proposals`、`games`、`handoffs`、`task_board_tasks`、`agent_memories`、`logs`、`commands`、`permission_requests`。
+- 核心表：`projects`、`project_settings`、`agent_sessions`、`proposals`、`games`、`handoffs`、`task_board_tasks`、`agent_memories`、`logs`、`commands`、`permission_requests`、`game_engineering_specs`。
 - 核心业务数据按 `project_id` 隔离；Agent 运行状态通过 `agent_sessions` 与项目关联。
 - `games` 已移除 `author_agent_id`，提交链路不再要求该字段。
 - `logs`、`commands`、`permission_requests` 已统一包含 `updated_at`。
@@ -146,13 +149,16 @@ game-dev-studio/
   - `get_memories`：获取指定 Agent 的记忆。
   - `create_handoff`：创建任务交接（来源、目标、标题、描述、上下文、优先级）。
   - `submit_proposal`：提交提案（类型、标题、内容、作者）。
-- `submit_game(description, version)`：提交游戏成品。engineer 先通过 `write_game_file(path, content)` 写入 `games/latest/`，后调 `submit_game` 提交。后端打包 ZIP → lint(SonarQube) → 上传 MinIO → 持久化 DB 记录，返回 `version_number`。
+- `submit_game(description, version)`：提交游戏成品。engineer 先通过 `write_game_file(path, content)` 写入 `games/latest/`，后调 `submit_game` 提交。后端打包 ZIP → lint(SonarQube + GameEngineeringChecker) → 上传 MinIO → 持久化 DB 记录，返回 `version_number`。
   - 游戏使用 `version_number`（整数自增）作为唯一标识
+  - 游戏工程规范要求 `games/latest/dist/` 结构：`dist/index.html`、`dist/metadata.json`、`dist/assets/manifest.json`
+  - GameEngineeringChecker 直接从 `submitDir`（`games/latest/`）目录读取文件验证 HTML 结构、元信息、H5 生命周期契约等
 - `get_games`：按时间倒序获取当前项目游戏列表，返回基础元信息与文件模式标记。
 - `get_game_info`：按游戏 ID 或 `version_number` 获取详情，支持获取最新版本，返回 MinIO 预签名下载链接。
 - `drawio_*`：draw.io 项目与图表 CRUD、导出与元素列表；`blender_list_objects`：按类型分页查询 Blender 对象。
   - `get_proposals`：获取当前项目的提案列表。
   - `get_pending_handoffs`：获取待处理的交接任务。
+- `get_game_types` / `get_game_framework_spec` / `get_common_spec`：游戏工程规范查询工具（仅 engineer 可用，无需授权），从 `game_engineering_specs` 表返回规范内容供工程师在开发前查阅。
 - **项目隔离**：工具不再接收 `project_id` 入参，统一依赖初始化注入的 `scopedProjectId` 实现项目内隔离与拒绝跨项目。
 - **权限检查**：部分工具（如 `submit_proposal`）会验证调用 Agent 的角色是否允许执行该操作。
 - **产物存储**：文件模式通过 `file_storage_id` 关联 `file_storages` 元数据并提供下载能力。

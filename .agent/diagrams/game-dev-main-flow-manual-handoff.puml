@@ -99,6 +99,17 @@ if (用户审批通过?) then (通过)
     - server/index.ts:615-684
   end note
 
+  :engineer 调用游戏规范查询工具;
+  note right
+    engineer 在开发前 MUST 调用:
+    - get_game_types → 确认支持的游戏类型
+    - get_game_framework_spec → 获取框架规范
+    - get_common_spec → 获取公共规范
+    代码位置:
+    - server/tools.ts:1639-1689 (3 个工具)
+    - server/db.ts:1681-1734 (seedGameEngineeringSpecs)
+  end note
+
   :engineer 执行开发/测试看板流转;
   note right
     代码位置:
@@ -107,26 +118,31 @@ if (用户审批通过?) then (通过)
     - server/tools.ts:275-357 (update_task_status)
   end note
 
-  :engineer 调用 write_game_file MCP 工具写入游戏 HTML 文件;
+  :engineer 调用 write_game_file MCP 工具写入游戏文件（dist/ 结构）;
   note right
     write_game_file 是 MCP 工具（由 SDK 本地执行）
-    文件写入路径: output/{projectId}/games/{name}/
+    游戏工程规范要求 dist/ 前缀:
+    - output/{projectId}/games/latest/dist/index.html
+    - output/{projectId}/games/latest/dist/metadata.json
+    - output/{projectId}/games/latest/dist/assets/manifest.json
     代码位置:
     - server/tools.ts:new (write_game_file)
     - 区别于内置 Write 工具（需 CodeBuddy 运行时，CI 不可用）
   end note
 
-  :engineer 提交游戏成品 submit_game (name);
+  :engineer 提交游戏成品 submit_game;
   note right
-    submit_game 使用 name 参数构建路径 games/{name}
-    打包 ZIP → lint 扫描(SonarQube) → 上传 MinIO → 创建 DB 记录
-    name 参数校验: 字母/数字/中文/下划线/连字符，长度≤50，禁止路径穿越
+    submit_game 打包 games/latest/ 目录
+    打包 ZIP → lint 扫描(2 checkers) → 上传 MinIO → 创建 DB 记录
+    1. SonarQube checker: scanner 微服务 → sonar-scanner CLI
+    2. GameEngineeringChecker: 读 submitDir/dist/* → 14 条规则
+    两个 checker 任一返回 error 即阻断
     代码位置:
-    - server/tools.ts:540-743 (submit_game)
-    - server/db.ts:661-707 (createGame)
-    - server/db.ts:65-84 (normalizeAndValidateGameName)
+    - server/tools.ts:552-793 (submit_game)
+    - server/db.ts:678-726 (createGame)
     - server/file-storage.ts (MinIO 上传)
-    - server/lint/index.ts:lintZipBuffer (ZIP lint)
+    - server/lint/checkers/sonar (SonarQube)
+    - server/lint/checkers/game-engineering (游戏工程规范)
   end note
 
   stop

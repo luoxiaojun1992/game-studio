@@ -107,6 +107,15 @@
 - **checker 内部异常由 LintRunner catch 并降级为 error issue**，不会中断其他 checker 执行
 - **submit_game 是唯一调用点**（tools.ts 权限校验后、db.createGame() 前），API 层和 DB 层不接入 lint
 - **零外部依赖**：检查器使用纯正则/字符串分析，不引入 DOM parser 或 AST 库
+- **GameEngineeringChecker 目录模式**：直接读取 `submitDir/dist/*` 文件，而非 ZIP 解压；与 SonarQube checker 的 ZIP 模式并行工作
+- **submitDir 传递**：`submit_game` 调用 lint 时传入 `{ projectId, submitDir: targetPath, zipBuffer: fileBuffer }`，各 checker 按需使用
+
+## 游戏工程规范约定
+- **统一 `dist/` 前缀**：所有游戏类型的提交产物以 `submitDir/dist/` 为根目录，`dist/index.html` = 入口文件，`dist/metadata.json` = 元信息
+- **H5 特有结构**：额外需要 `dist/assets/manifest.json` 资源清单
+- **3 个查询工具**仅 engineer 可用、无需授权：`get_game_types`、`get_game_framework_spec`、`get_common_spec`
+- **种子数据**嵌入在 `server/specs/*.ts` 中，不依赖运行时 `.md` 文件
+- **新增游戏类型**：在 `rules/` 下创建对应目录 + 规则文件，在 `server/specs/` 添加种子数据，在 `game-engineering/index.ts` 注册规则
 
 ---
 
