@@ -67,11 +67,11 @@ services:
       sonarqube:
         condition: service_healthy
       creator:
-        condition: service_started
+        condition: service_healthy
       drawio-service:
-        condition: service_started
+        condition: service_healthy
       scanner:
-        condition: service_started
+        condition: service_healthy
     ports:
       - "3000:3000"
     healthcheck:
@@ -130,7 +130,7 @@ services:
       - default
     depends_on:
       drawio-export:
-        condition: service_started
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8082/health"]
       interval: 30s

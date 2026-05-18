@@ -62,11 +62,11 @@ services:
       sonarqube:
         condition: service_healthy
       creator:
-        condition: service_started
+        condition: service_healthy
       drawio-service:
-        condition: service_started
+        condition: service_healthy
       scanner:
-        condition: service_started
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/api/agents"]
       interval: 30s
@@ -93,7 +93,7 @@ services:
       studio-backend:
         condition: service_healthy
       star-office-ui:
-        condition: service_started
+        condition: service_healthy
     networks:
       - game-studio-network
     restart: unless-stopped
@@ -184,7 +184,7 @@ services:
       - game-studio-network
     depends_on:
       drawio-export:
-        condition: service_started
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8082/health"]
       interval: 30s
