@@ -6,12 +6,12 @@
 
 | 文档 | 内容 |
 |------|------|
-| [ARCHITECTURE.md](./ARCHITECTURE.md) | 项目架构、关键文件、SDK Tools、MCP 机制、SonarQube 集成 |
+| [ARCHITECTURE.md](./ARCHITECTURE.md) | 项目架构、关键文件、SDK Tools、MCP 机制、SonarQube 集成、Game Engineering Framework |
 | [E2E_TESTING.md](./E2E_TESTING.md) | E2E 测试选择器原则、UI-007/008 调试经验、Docker |
 | [SDK_MOCK.md](./SDK_MOCK.md) | Mock Server 架构、Agent systemPrompt、LANGUAGE_ADAPTATION |
 | [STAROFFICE.md](./STAROFFICE.md) | Star-Office-UI 集成、状态映射 |
 | [CONVENTIONS.md](./CONVENTIONS.md) | 工作红线、Bug 修复记录、Agent 状态持久化、SonarQube 踩坑 |
-| [LINT.md](./LINT.md) | 可扩展 Lint Framework 架构、LintRunner、内置检查器（含 SonarQube）、扩展指南 |
+| [LINT.md](./LINT.md) | Lint Framework 架构、LintRunner、双检查器（SonarQube + GameEngineering）、14 条规则总览、扩展指南 |
 | [REUSABLE_PATTERNS.md](./REUSABLE_PATTERNS.md) | 可复用代码片段、代码模板、设计模式汇总 |
 
 ## 快速参考
@@ -21,7 +21,8 @@
 - MCP 工具执行是进程内通信，Mock Server 只返回 tool_calls
 - 6 个 Agent 中 team_builder 需特别检测（易与 CEO 混淆）
 - `submit_game` 仅支持文件目录模式；engineer 先通过 MCP 工具 `write_game_file` 写入 HTML，再调 submit_game 打包 ZIP 上传 MinIO
-- Lint 内置检查器仅剩 `sonarqube`（仅 ZIP 模式）；旧 HTML 模式检查器已全部移除
+- Lint 内置检查器：SonarQube（从 submitDir 自行打包 ZIP） + GameEngineeringChecker（14 条规则，直接读 submitDir/dist/* 文件）
+- `game_engineering_specs` 表存储公共/H5 游戏工程规范，通过 `get_game_types`/`get_game_framework_spec`/`get_common_spec` 工具查询
 - `games` 表已移除 `author_agent_id`，提交/查询链路不再输出该字段
 - `logs`、`commands`、`permission_requests` 持久化字段统一包含 `updated_at`
 - 新增 `get_games`（列表）与 `get_game_info`（详情）用于按项目查询游戏；文件模式详情返回 MinIO 预签名下载链接
