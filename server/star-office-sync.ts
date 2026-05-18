@@ -252,27 +252,23 @@ class StarOfficeSyncService {
           name: key,
         });
       } catch (error) {
-        if (error instanceof Error && error.message.includes('404')) {
-          console.warn(`[star-office-sync] Agent ${key} push failed (not registered), re-registering...`);
-          this.registeredAgents.delete(key);
-          try {
-            const newAgentId = await this.registerAgent(projectId, state.id, key, state.status, state.currentTask || state.lastMessage || '');
-            if (newAgentId) {
-              await this.postJson(agentPushUrl, {
-                type: 'agent_state_sync',
-                reason: reason + '_retry',
-                agentId: newAgentId,
-                joinKey: JOIN_KEY,
-                state: state.status,
-                detail: state.currentTask || state.lastMessage || '',
-                name: key,
-              });
-            }
-          } catch (retryError) {
-            console.warn(`[star-office-sync] Agent ${key} retry push also failed:`, retryError instanceof Error ? retryError.message : String(retryError));
+        console.warn(`[star-office-sync] Agent ${key} push failed, re-registering...`, error instanceof Error ? error.message : String(error));
+        this.registeredAgents.delete(key);
+        try {
+          const newAgentId = await this.registerAgent(projectId, state.id, key, state.status, state.currentTask || state.lastMessage || '');
+          if (newAgentId) {
+            await this.postJson(agentPushUrl, {
+              type: 'agent_state_sync',
+              reason: reason + '_retry',
+              agentId: newAgentId,
+              joinKey: JOIN_KEY,
+              state: state.status,
+              detail: state.currentTask || state.lastMessage || '',
+              name: key,
+            });
           }
-        } else {
-          console.warn('[star-office-sync] Error pushing state for %s:', key, error);
+        } catch (retryError) {
+          console.warn(`[star-office-sync] Agent ${key} retry push also failed:`, retryError instanceof Error ? retryError.message : String(retryError));
         }
       }
     }
