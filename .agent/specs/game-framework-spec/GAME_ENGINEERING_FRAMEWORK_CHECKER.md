@@ -9,10 +9,13 @@
 ```
 Lint Runner
   └── game-engineering-checker（单一 checker，接受游戏目录）
-        ├── 自动读取 submitDir/metadata.json → 获取 game_type
-        ├── 加载通用规则（所有 game_type 均运行）
-        ├── 加载类型特定规则（仅当 game_type 匹配时运行）
-        └── 依次运行每条规则，汇总结果
+        ├── 启动时扫描 rules/
+        │     ├── common/      → 通用规则（appliesTo 始终 true）
+        │     ├── h5/          → H5 规则（appliesTo 仅对 "h5" 返回 true）
+        │     └── (new-type)/  → 新增类型规则
+        ├── 运行时自动读取 submitDir/metadata.json → 获取 game_type
+        ├── 遍历已注册规则，按 appliesTo(gameType) 筛选
+        └── 依次运行筛选后的规则，汇总结果
 ```
 
 - Checker 本身**不按游戏类型或框架拆分**，所有游戏类型共用同一个 checker。
@@ -65,14 +68,75 @@ interface GameRule {
 - `appliesTo()` 在 `check()` 前调用：返回 `false` 时跳过该规则。
 - `check()` 应**尽可能上报所有违反项**，而非遇到第一个错误就返回。
 
+## 规则目录结构
+
+规则按适用范围分目录存放，checker 启动时自动扫描注册：
+
+```
+server/
+  checkers/
+    game-engineering/
+      rules/
+        common/             # 通用规则，所有 game_type 均运行
+          html-doctype.ts
+          html-root.ts
+          html-head.ts
+          html-body.ts
+          html-charset.ts
+          html-body-not-empty.ts
+          asset-metadata-exists.ts
+          asset-metadata-schema.ts
+        h5/                 # H5 特有规则，仅 game_type === "h5" 时运行
+          lifecycle-exports.ts
+          lifecycle-window-global.ts
+          lifecycle-script-tag.ts
+          manifest-exists.ts
+          manifest-schema.ts
+          resource-relative-path.ts
+        (future-game-type)/ # 新增游戏类型时创建对应目录
+          ...
+```
+
+- `common/` 目录下的规则：`appliesTo()` 始终返回 `true`。
+- 各游戏类型命名的目录（如 `h5/`）下的规则：`appliesTo()` 仅对自身 `game_type` 返回 `true`。
+- 新增游戏类型时，创建对应的规则目录并放入规则文件即可，无需修改注册代码。
+
 ## 规则注册方式
+
+Checker 启动时自动扫描 `rules/` 子目录，按目录分类注册：
 
 ```typescript
 class GameEngineeringChecker {
   private rules: GameRule[] = [];
 
-  /** 注册一条规则 */
-  register(rule: GameRule): void { ... }
+  /** 启动时从 rules/ 目录自动扫描并注册所有规则 */
+  async loadRules(rulesDir: string): Promise<void> {
+    // 扫描 rules/ 下所有子目录
+    const dirs = await fs.readdir(rulesDir);
+    for (const dir of dirs) {
+      const dirPath = path.join(rulesDir, dir);
+      const stat = await fs.stat(dirPath);
+      if (!stat.isDirectory()) continue;
+
+      // 读取目录下所有 .ts 文件
+      const files = (await fs.readdir(dirPath)).filter(f => f.endsWith('.ts'));
+      for (const file of files) {
+        const ruleModule = await import(path.join(dirPath, file));
+        const rule: GameRule = ruleModule.default || ruleModule;
+        this.register(rule, dir); // dir = 'common' | 'h5' | ...
+      }
+    }
+  }
+
+  /** 注册一条规则，dirName 决定 appliesTo 行为 */
+  register(rule: GameRule, dirName: string): void {
+    // 若不是 common 目录，包装 appliesTo 仅对对应 game_type 生效
+    if (dirName !== 'common') {
+      const originalAppliesTo = rule.appliesTo.bind(rule);
+      rule.appliesTo = (gameType: string) => gameType === dirName && originalAppliesTo(gameType);
+    }
+    this.rules.push(rule);
+  }
 
   /** 执行检查，自动从目录读取 game_type */
   check(submitDir: string): CheckerResult[] {
@@ -105,15 +169,17 @@ class GameEngineeringChecker {
 }
 ```
 
+> **说明**：非 `common` 目录下的规则，其 `appliesTo` 由注册逻辑自动包装——目录名即 `game_type`。规则本身只需关注检查逻辑，无需感知游戏类型判断。
+
 ## 规则分类
 
-| 规则组（前缀） | 适用范围 | 示例 ruleId |
-|---------------|---------|------------|
-| `html-` | 通用 | `html-doctype`, `html-root`, `html-head`, `html-body`, `html-charset`, `html-body-not-empty` |
-| `asset-` | 通用 | `asset-metadata-exists`, `asset-metadata-schema` |
-| `lifecycle-` | H5 特有 | `lifecycle-exports`, `lifecycle-window-global`, `lifecycle-script-tag` |
-| `manifest-` | H5 特有 | `manifest-exists`, `manifest-schema` |
-| `resource-` | H5 特有 | `resource-relative-path` |
+| 规则组（前缀） | 来源目录 | 适用范围 | 示例 ruleId |
+|---------------|---------|---------|------------|
+| `html-` | common/ | 通用 | `html-doctype`, `html-root`, `html-head`, `html-body`, `html-charset`, `html-body-not-empty` |
+| `asset-` | common/ | 通用 | `asset-metadata-exists`, `asset-metadata-schema` |
+| `lifecycle-` | h5/ | H5 特有 | `lifecycle-exports`, `lifecycle-window-global`, `lifecycle-script-tag` |
+| `manifest-` | h5/ | H5 特有 | `manifest-exists`, `manifest-schema` |
+| `resource-` | h5/ | H5 特有 | `resource-relative-path` |
 
 - 规则 `appliesTo()` 返回 `true` 时运行，返回 `false` 时跳过。
 - 新增游戏类型时，只需开发对应的规则并注册到 checker，无需新建 checker。
@@ -122,8 +188,8 @@ class GameEngineeringChecker {
 ## 新增游戏类型的步骤
 1. 在公共规范中注册新的 `game_type` 值。
 2. 新增对应的 `<GAMETYPE>_GAME_ENGINEERING_FRAMEWORK.md`，放入 `.agent/specs/game-framework-spec/` 目录。
-3. 开发新规则（实现 `GameRule` 接口），在 checker 初始化时注册。
-4. 无需修改 checker 本身的执行逻辑。
+3. 在 `rules/` 下创建对应的规则目录（如 `rules/native/`），开发新规则并放入其中。
+4. Checker 启动时自动扫描到新目录，无需修改注册代码。
 
 ## UI Test 验收规则（checker 功能验收）
 
