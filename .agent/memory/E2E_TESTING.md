@@ -99,9 +99,9 @@
 
 ## Lint Framework 集成验证
 
-- `submit_game` 调用链路：权限校验 → 打包 ZIP → **lintGameArtifact(zipBuffer, { projectId, submitDir })**
-  - **SonarQube checker**：使用 `context.zipBuffer` 上传 scanner 微服务 → sonar-scanner CLI → SonarQube API
-  - **GameEngineeringChecker**：使用 `context.submitDir` 直接读取 `submitDir/dist/*` 文件 → 14 条规则验证
+- `submit_game` 调用链路：权限校验 → 打包 ZIP → **lintGameArtifact(zipBuffer, { submitDir, projectId })**
+  - **SonarQube checker**：从 `submitDir` 自行打包 ZIP → scanner 微服务 → sonar-scanner CLI → SonarQube API
+  - **GameEngineeringChecker**：从 `submitDir` 直接读取 `submitDir/dist/*` 文件 → 14 条规则验证
 - 两个 checker 并行工作，任一返回 error 即阻断提交
 - Mock 游戏文件必须同时满足：
   - **公共规则（8 条）**：DOCTYPE、html/head/body 标签、charset、body 非空、metadata.json 字段完整

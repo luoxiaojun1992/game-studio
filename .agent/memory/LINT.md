@@ -47,8 +47,8 @@ server/lint/
 ```
 submit_game (tools.ts)
   -> validateAgentPermission()
-  -> 目录模式: 读取 games/latest/ -> 打包 ZIP -> lintGameArtifact(zipBuffer, { projectId, submitDir })
-     -> SonarQube checker: scanner 微服务 -> sonar-scanner CLI -> SonarQube API
+  -> 目录模式: 读取 games/latest/ -> 打包 ZIP -> lintGameArtifact(zipBuffer, { submitDir, projectId })
+     -> SonarQube checker: 从 submitDir 自行打包 ZIP -> scanner 微服务 -> sonar-scanner CLI -> SonarQube API
      -> GameEngineeringChecker: 读取 submitDir/dist/* 文件 -> 14 条规则 -> LintIssue[]
   -> passed=true  -> db.createGame() + 上传 MinIO
   -> passed=false -> return { content: error text }  // 不创建 DB 记录
@@ -106,8 +106,8 @@ const myChecker: LintChecker = {
   id: 'my-checker',
   name: '我的检查器',
   description: '自定义检查规则',
-  check(content: string, context?: LintContext): LintIssue[] | Promise<LintIssue[]> {
-    // check logic
+  check(context: LintContext): LintIssue[] | Promise<LintIssue[]> {
+    // 使用 context.submitDir 读取游戏目录文件
     return [];
   }
 };
@@ -121,7 +121,7 @@ const myChecker: LintChecker = {
 
 ## 注意事项
 
-- **双模式**：SonarQube checker 使用 `context.zipBuffer`（ZIP 模式），GameEngineeringChecker 使用 `context.submitDir`（目录模式），互不干扰
-- **SonarQube 扫描**：通过独立 scanner 微服务执行（`sonar-scanner-service.ts`），backend 通过 HTTP API 调用，非进程内调用
+- **统一目录模式**：LintContext 以 `submitDir` 为唯一输入，checker 自行决定处理方式（读文件、打包 ZIP 等），不再传递 zipBuffer
+- **SonarQube 扫描**：从 `submitDir` 自行打包 ZIP 后通过 scanner 微服务执行（`sonar-scanner-service.ts`），backend 通过 HTTP API 调用，非进程内调用
 - **重复扫描防护**：`scannedProjects` 内存 Set 防止同一 ZIP 被重复扫描；进程重启或 `resetSonarScanHistory()` 会清空
 - **扫描结果复用**：Sonar 报告通过 `LintResult.extraPayloads` 返回，由 `submit_game` 上传 MinIO 并写入 `games.sonar_storage_id`
