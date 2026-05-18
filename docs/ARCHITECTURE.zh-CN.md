@@ -28,6 +28,7 @@ graph TB
     subgraph "Lint 框架"
         LintRunner["lintGameArtifact()<br/>（ZIP 入口）"]
         SonarChecker["sonarqube<br/>（仅 ZIP 成品）"]
+        GameEngChecker["game-engineering<br/>（目录模式）"]
     end
 
     subgraph "外部服务"
@@ -64,6 +65,7 @@ graph TB
     Drawio -->|导出| DrawioExport
 
     LintRunner --> SonarChecker
+    LintRunner --> GameEngChecker
 
     Scanner -->|sonar-scanner CLI| Sonar
     Sonar -->|Issues / 质量门禁| Scanner
@@ -89,7 +91,8 @@ graph TB
 - `minio-client.ts`：MinIO 对象操作与预签名 URL 能力
 - `creator-service.ts`：creator HTTP 客户端、建模 project 生命周期/模型文件操作与安全路径校验
 - `drawio-service.ts`：draw.io HTTP 客户端、图表 CRUD/导出与安全路径校验
-- `lint/`：可扩展 Lint 框架（LintRunner、可插拔检查器、本地规则 + SonarQube 质量扫描）
+- `lint/`：可扩展 Lint 框架（LintRunner、可插拔检查器：SonarQube + GameEngineeringChecker）
+- `lint/checkers/game-engineering/`：游戏工程规范检查器，14 条规则（8 公共 + 6 H5 特有），直接读取 `submitDir/dist/*` 文件校验
 - `agents.ts`：角色定义、提示词、交接约束
 - `db.ts`：SQLite 表结构（DDL 优先初始化）与读写逻辑
 - `sse-broadcaster.ts`：SSE 客户端管理与事件广播
@@ -104,10 +107,11 @@ graph TB
 - **提案（Proposals）**：提案创建、评审流转、决策状态
 - **任务（Tasks）**：开发/测试任务拆分与状态流转
 - **交接（Handoffs）**：跨角色任务移交与确认执行
-- **产物（Games）**：支持目录模式提交（使用 `games/latest/`，自动生成 `version_number` 作为唯一标识），支持列表、文件下载（MinIO）与 **Sonar 报告下载**
+- **产物（Games）**：支持目录模式提交（使用 `games/latest/dist/` 结构：`index.html` + `metadata.json` + `assets/manifest.json`，自动生成 `version_number` 作为唯一标识），支持列表、文件下载（MinIO）与 **Sonar 报告下载**
+- **游戏工程框架（Game Engineering Framework）**：通过 `game_engineering_specs` 表管理游戏类型注册，提供 3 个 MCP 查询工具（`get_game_types`、`get_game_framework_spec`、`get_common_spec`），GameEngineeringChecker 配备 14 条静态分析规则校验 HTML 结构、元信息 schema 和 H5 生命周期契约
 - **建模（Modeling）**：Blender project 管理、几何体/材质/导出、模型文件回传与**场景对象列表**
 - **图表/附件（Diagrams/Attachments）**：draw.io 图表管理、导出、策划案附件与**图表元素列表**
-- **静态分析（Lint/Quality）**：可扩展静态检查框架，支持 HTML 结构、HTTP 方法安全、JS 安全、SonarQube 质量扫描等可插拔检查器，支持异步检查器；Sonar 报告通过 `games.sonar_storage_id` 关联到游戏成品
+- **静态分析（Lint/Quality）**：可扩展静态检查框架（通过 scanner 微服务的 sonarqube + 带 14 条规则的 game-engineering checker）；Sonar 报告通过 `games.sonar_storage_id` 关联到游戏成品；GameEngineeringChecker 使用 `submitDir` 上下文直接读取目录文件进行工程规范校验
 - **记忆（Memories）**：按角色/项目组织的长期记忆
 - **观测（Logs/Events）**：运行日志与事件流
 - **权限（Permissions）**：工具执行审批流与回调响应
@@ -132,7 +136,9 @@ graph TB
   - `logs`
   - `commands`
   - `permission_requests`
-- 游戏产物由 engineer 调用 `write_game_file` 写入 `output/{project_id}/games/latest/`，再通过 `submit_game` 打包 ZIP 上传 MinIO，通过 `games.file_storage_id` 关联
+  - `game_engineering_specs`
+- 游戏产物由 engineer 调用 `write_game_file` 写入 `output/{project_id}/games/latest/dist/`，再通过 `submit_game` 打包 ZIP 上传 MinIO，通过 `games.file_storage_id` 关联
+- 游戏提交触发双 lint 检查：SonarQube checker（ZIP 模式，外部扫描）+ GameEngineeringChecker（目录模式，直接读取 `submitDir/dist/*` 文件进行工程规范校验）
 - Sonar 质量报告存入 MinIO，通过 `games.sonar_storage_id` 关联（可在游戏详情页面下载）
 - `project_settings` 存储 `autopilot_enabled` 和 `team_builder_model`（按项目隔离）
 - 数据与产物按 `project_id` 隔离
