@@ -61,7 +61,7 @@ const _lts = () => new Date().toISOString();
  * @param context 检查上下文，必须包含 submitDir 字段
  * @returns lint 检查结果
  */
-export async function lintGameArtifact(zipBuffer: Buffer, context?: LintContext): Promise<LintResult> {
+export async function lintGameArtifact(zipBuffer: Buffer, context: LintContext): Promise<LintResult> {
   const runner = createLintRunner();
   runner.registerAll(builtInCheckers);
   console.error(`[LintFramework] ${_lts()} lintGameArtifact start zipSize=${zipBuffer.length} checkers=${builtInCheckers.length}`);
