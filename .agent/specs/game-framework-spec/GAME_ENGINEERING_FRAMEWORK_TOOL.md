@@ -80,9 +80,9 @@ function seedGameEngineeringSpecs(): void {
 
 | 工具名称 | 功能 | 参数 | 权限 |
 |---------|------|------|------|
-| `get_game_types` | 获取所有已注册的游戏类型列表 | 无 | 全员 |
-| `get_game_framework_spec` | 根据游戏类型获取对应的框架规范 | `game_type`（必填，枚举） | 全员 |
-| `get_common_spec` | 获取所有游戏类型共享的公共规范 | 无 | 全员 |
+| `get_game_types` | 获取所有已注册的游戏类型列表 | 无 | **engineer**（无需授权） |
+| `get_game_framework_spec` | 根据游戏类型获取对应的框架规范 | `game_type`（必填，枚举） | **engineer**（无需授权） |
+| `get_common_spec` | 获取所有游戏类型共享的公共规范 | 无 | **engineer**（无需授权） |
 
 ---
 

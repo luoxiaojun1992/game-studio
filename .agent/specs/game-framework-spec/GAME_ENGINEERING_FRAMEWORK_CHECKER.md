@@ -13,7 +13,7 @@ Lint Runner
         │     ├── common/      → 通用规则（appliesTo 始终 true）
         │     ├── h5/          → H5 规则（appliesTo 仅对 "h5" 返回 true）
         │     └── (new-type)/  → 新增类型规则
-        ├── 运行时自动读取 submitDir/metadata.json → 获取 game_type
+        ├── 运行时自动读取 submitDir/dist/metadata.json → 获取 game_type
         ├── 遍历已注册规则，按 appliesTo(gameType) 筛选
         └── 依次运行筛选后的规则，汇总结果
 ```
@@ -23,10 +23,11 @@ Lint Runner
 - 游戏类型通过**游戏目录内的 `metadata.json` 自动读取**；读取失败或无法获取 `game_type` → 整次 lint check 视为失败。
 
 ## 输入
-- 提交产物目录（`submitDir`），保证已解压到磁盘。
+- 提交产物目录（`submitDir`），由 Lint Runner 直接传入目录路径。
+- 所有游戏类型统一使用 `dist/` 作为提交前缀，checker 自动在 `dist/` 子目录下读取文件。
 
 ## 执行流程
-1. 读取 `submitDir/metadata.json`。
+1. 读取 `submitDir/dist/metadata.json`。
    - 文件不存在 → **lint 失败**，返回 `asset-metadata-exists` 规则级别的 fatal error。
    - 文件存在但无法解析或缺少 `game_type` → **lint 失败**，返回 fatal error。
 2. 加载 checker 中已注册的**所有规则**。
@@ -160,7 +161,7 @@ class GameEngineeringChecker {
   }
 
   private readGameType(submitDir: string): string | null {
-    // 读取 submitDir/metadata.json, 提取 game_type 字段
+    // 读取 submitDir/dist/metadata.json, 提取 game_type 字段
   }
 
   private fatal(msg: string): CheckerResult[] {

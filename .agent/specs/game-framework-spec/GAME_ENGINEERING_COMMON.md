@@ -38,7 +38,7 @@
 
 - `game_type`（MUST）— 字符串，必须是已注册的游戏类型值。lint checker 据此选择适用的规则集。
 - `title` / `version` / `resolution` / `orientation` / `entry` — 必填字段定义详见附录 A.2 metadata-schema。
-- `entry` 路径相对于**提交产物根目录**（submitDir）。当某游戏类型的框架规范固定了入口文件（如 H5 类型固定 `dist/index.html`），`entry` 字段在该类型下**语义变为冗余**，但作为公共字段仍须填写。
+- `entry` 路径相对于**提交产物根目录**（submitDir）。所有游戏类型统一使用 `dist/` 作为提交前缀，`metadata.json` 位于 `submitDir/dist/metadata.json`，入口文件位于 `submitDir/dist/{entry}`。当某游戏类型的框架规范固定了入口文件（如 H5 类型固定 `dist/index.html`），`entry` 字段在该类型下**语义变为冗余**，但作为公共字段仍须填写。
 
 ## 公共校验规则
 
@@ -61,7 +61,7 @@
 
 ### A.1 HTML 结构规则组（html- 前缀）
 
-**输入**：`index.html` 文本内容（字符串）。
+**输入**：`submitDir/dist/index.html` 文本内容（字符串）。
 
 **通用约定：**
 - 所有规则按 `\n` 分割计算行号（1-based）。
@@ -229,9 +229,9 @@ const passed = noTags.trim().length > 0;
 |------|-----|
 | ruleId | `asset-metadata-exists` |
 | level | `error` |
-| 描述 | metadata.json MUST 存在于提交产物根目录 |
+| 描述 | metadata.json MUST 存在于 `dist/` 目录 |
 
-**判定逻辑：** `fs.existsSync(path.join(submitDir, 'metadata.json'))`
+**判定逻辑：** `fs.existsSync(path.join(submitDir, 'dist', 'metadata.json'))`
 
 **错误消息：** `缺少 metadata.json。`
 

@@ -101,6 +101,9 @@ const TOOLS_OVERVIEW = `
 | \`blender_download_model_file\` | 从 creator service 下载模型文件到本地 output 目录 | **engineer** |
 | \`blender_delete_model_file\` | 删除 creator 远程模型文件（幂等） | **engineer** |
 | \`blender_list_objects\` | 分页列出 Blender 场景中的对象（供 add_material/export 引用 object_name） | **engineer** |
+| \`get_game_types\` | 获取所有已注册的游戏类型列表（开发前确认支持的游戏类型） | **engineer** |
+| \`get_game_framework_spec\` | 根据游戏类型获取对应的工程框架规范（Engineer Agent 开发前 MUST 调用） | **engineer** |
+| \`get_common_spec\` | 获取所有游戏类型共享的公共工程规范 | **engineer** |
 | \`drawio_create_project\` | 创建 draw.io 图表 project（调用 drawio service） | 全员 |
 | \`drawio_list_projects\` | 列出当前项目下所有 draw.io 图表 project | 全员 |
 | \`drawio_delete_project\` | 删除 draw.io 图表 project（幂等） | 全员 |
@@ -206,6 +209,13 @@ export const AGENT_DEFINITIONS: Record<AgentRole, AgentDefinition> = {
 - \`blender_delete_project\`：清理 creator 端容器存储（不删除本地文件）
 
 重要：实现前仍需遵守方案审批流程；但成品完成后必须主动调用工具提交产物。
+
+## 游戏工程规范（必须遵守）
+1. 开始开发前，MUST 先调用 \`get_game_types\` 确认支持的游戏类型。
+2. MUST 调用 \`get_game_framework_spec\` 获取目标游戏类型的框架规范。
+3. MUST 调用 \`get_common_spec\` 获取公共规范。
+4. 开发完成后提交游戏成品时，系统会自动进行工程规范检查。
+5. 若检查失败，MUST 根据错误提示修改后重新提交。
 
 ${HANDOFF_INSTRUCTION}${MEMORY_INSTRUCTION}${TOOLS_OVERVIEW}`,
     handoffTargets: ['biz_designer']

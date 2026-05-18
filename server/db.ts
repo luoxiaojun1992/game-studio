@@ -2,6 +2,9 @@ import Database from 'better-sqlite3';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import { v4 as uuidv4 } from 'uuid';
+import { SEED_COMMON_CONTENT } from './specs/game-engineering-common.js';
+import { SEED_H5_CONTENT } from './specs/game-engineering-h5.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -327,6 +330,19 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS idx_proposal_attachments_proposal ON proposal_attachments(proposal_id);
+
+  -- 游戏工程规范数据表（存储公共规范和各游戏类型框架规范的 Markdown 内容）
+  CREATE TABLE IF NOT EXISTS game_engineering_specs (
+    id TEXT PRIMARY KEY,
+    spec_key TEXT NOT NULL UNIQUE,
+    game_type TEXT,
+    spec_type TEXT NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT,
+    content TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
 `);
 ensureProject('default');
 export interface DbAgentSession {
@@ -1613,3 +1629,91 @@ export function deleteProposalAttachmentsByProposal(proposalId: string): number 
   const result = stmt.run(proposalId);
   return result.changes;
 }
+
+// ====== Game Engineering Specs ======
+
+export interface DbGameEngineeringSpec {
+  id: string;
+  spec_key: string;
+  game_type: string | null;
+  spec_type: string;
+  title: string;
+  description: string | null;
+  content: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/** 获取所有已注册的游戏类型列表 */
+export function getGameTypes(): Array<{ type: string; description: string }> {
+  const stmt = db.prepare('SELECT game_type, description FROM game_engineering_specs WHERE spec_type = ?');
+  const rows = stmt.all('framework') as Array<{ game_type: string; description: string | null }>;
+  return rows.map(r => ({ type: r.game_type, description: r.description || '' }));
+}
+
+/** 根据 game_type 获取框架规范内容 */
+export function getGameFrameworkSpec(gameType: string): string | null {
+  const stmt = db.prepare('SELECT content FROM game_engineering_specs WHERE spec_key = ?');
+  const row = stmt.get(`framework:${gameType}`) as { content: string } | undefined;
+  return row?.content || null;
+}
+
+/** 获取公共规范内容 */
+export function getCommonSpec(): string | null {
+  const stmt = db.prepare('SELECT content FROM game_engineering_specs WHERE spec_key = ?');
+  const row = stmt.get('common') as { content: string } | undefined;
+  return row?.content || null;
+}
+
+/** 校验 game_type 是否已注册 */
+export function isValidGameType(gameType: string): boolean {
+  const stmt = db.prepare('SELECT 1 FROM game_engineering_specs WHERE spec_type = ? AND game_type = ?');
+  const row = stmt.get('framework', gameType);
+  return !!row;
+}
+
+function insertGameEngineeringSpec(spec: DbGameEngineeringSpec): void {
+  const stmt = db.prepare(`
+    INSERT INTO game_engineering_specs (id, spec_key, game_type, spec_type, title, description, content, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  stmt.run(spec.id, spec.spec_key, spec.game_type, spec.spec_type, spec.title, spec.description, spec.content, spec.created_at, spec.updated_at);
+}
+
+/** 种子数据导入：规范内容已嵌入源码，不依赖运行时 .md 文件 */
+export function seedGameEngineeringSpecs(): void {
+  if (getGameTypes().length > 0) return; // 已有数据，跳过
+
+  const now = new Date().toISOString();
+
+  // 导入公共规范
+  insertGameEngineeringSpec({
+    id: uuidv4(),
+    spec_key: 'common',
+    game_type: null,
+    spec_type: 'common',
+    title: '游戏工程规范 — 公共部分',
+    description: '所有游戏类型共享的公共规范',
+    content: SEED_COMMON_CONTENT,
+    created_at: now,
+    updated_at: now,
+  });
+
+  // 导入 H5 框架规范
+  insertGameEngineeringSpec({
+    id: uuidv4(),
+    spec_key: 'framework:h5',
+    game_type: 'h5',
+    spec_type: 'framework',
+    title: 'H5 小游戏工程规范',
+    description: 'H5 小游戏（浏览器运行）',
+    content: SEED_H5_CONTENT,
+    created_at: now,
+    updated_at: now,
+  });
+
+  console.error('[db] seeded game engineering specs: common=ok, h5=ok');
+}
+
+// 启动时自动导入种子数据
+seedGameEngineeringSpecs();
