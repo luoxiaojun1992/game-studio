@@ -23,8 +23,8 @@ export const htmlBodyNotEmptyRule: GameRule = {
       previous = noComments;
       noComments = noComments.replace(/<!--[^]*?-->/g, '');
     } while (noComments !== previous);
-    // 去除所有 HTML 标签
-    const noTags = noComments.replace(/<[^>]+>/g, '');
+    // 去除标签分隔符，避免多字符模式导致不完全清洗
+    const noTags = noComments.replace(/[<>]/g, '');
     // 检查是否只剩空白
     if (noTags.trim().length === 0) {
       return [{ ruleId: 'html-body-not-empty', level: 'error', message: '<body> 内容为空或仅含空白与注释。' }];
