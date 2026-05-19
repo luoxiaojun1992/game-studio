@@ -12,6 +12,7 @@ import { StreamEvent } from './agent-manager.js';
 import fileStorageRouter from './file-storage.js';
 import proposalAttachmentsRouter from './proposal-attachments-api.js';
 import { globalTokenManager, SonarQubeClient } from './lint/checkers/sonar/sonarqube.js';
+import { sanitizeHtml } from './utils/sanitize-html.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -970,6 +971,7 @@ app.post('/api/proposals', (req, res) => {
   if (!titleValidation.ok) return res.status(400).json({ error: titleValidation.error });
   const contentValidation = validateRequiredTextInput(content, 'content');
   if (!contentValidation.ok) return res.status(400).json({ error: contentValidation.error });
+  const safeContent = sanitizeHtml(contentValidation.text);
 
   const now = new Date().toISOString();
   const proposal = db.createProposal({
@@ -977,7 +979,7 @@ app.post('/api/proposals', (req, res) => {
     project_id: projectValidation.projectId,
     type,
     title: titleValidation.title,
-    content: contentValidation.text,
+    content: safeContent,
     author_agent_id: proposalAuthorValidation.agentId,
     status: 'pending_review',
     reviewer_agent_id: null,

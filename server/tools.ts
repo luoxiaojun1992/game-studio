@@ -414,13 +414,13 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
       ),
       tool(
         'submit_proposal',
-        '提交一份策划案或方案文档（如游戏策划案、商业策划案、技术方案等）。提案提交后将通知管理者进行审批。可通过 attachment_storage_ids 参数关联最多 10 个图表附件（来自 drawio_download_diagram 返回的 file_storage_id）。',
+        '提交一份策划案或方案文档（如游戏策划案、商业策划案、技术方案等）。提案提交后将通知管理者进行审批。可通过 attachment_storage_ids 参数关联最多 10 个图表附件（来自 drawio_download_diagram 返回的 file_storage_id）。内容会自动进行 XSS 安全过滤，仅保留 p/br/strong/em/ul/ol/li/code/pre/a/span/div 等安全标签。',
         {
           type: z.enum(db.PROPOSAL_TYPES).describe(
             '提案类型：game_design=游戏策划, biz_design=商业策划, tech_arch=架构方案, tech_impl=技术方案'
           ),
           title: singleLineTitleSchema('title').describe('提案标题'),
-          content: requiredTextSchema('content').describe('提案的完整内容（Markdown 格式）'),
+          content: requiredTextSchema('content').describe('提案的完整内容（Markdown 格式），提交时将自动过滤 XSS 内容'),
           attachment_storage_ids: z.array(z.string().uuid()).max(10).optional().describe('关联的附件 file_storage_id 列表（最多 10 个），来自 drawio_download_diagram 返回的 file_storage_id')
         },
         async ({ type, title, content, attachment_storage_ids }) => {
@@ -437,6 +437,18 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
             validateAgentPermission(['ceo'], '提交 CEO 评审结论');
           }
 
+          // XSS 安全过滤（与 submit_game 复用同一工具）
+          const { validateHtmlSafe, sanitizeHtml } = await import('./utils/sanitize-html.js');
+          const validationErrors = validateHtmlSafe(content);
+          if (validationErrors.length > 0) {
+            console.error(`[Tool ${_tts()} submit_proposal] content 安全校验失败: ${validationErrors.map(e => e.message).join('; ')}`);
+            return {
+              content: [{ type: 'text' as const, text: `提交提案失败：内容存在安全问题：\n${validationErrors.map(e => `- ${e.message}${e.detail ? `（${e.detail}）` : ''}`).join('\n')}` }]
+            };
+          }
+          const safeContent = sanitizeHtml(content);
+          console.error(`[Tool ${_tts()} submit_proposal] content 安全校验通过`);
+
           // 校验附件数量
           if (attachment_storage_ids && attachment_storage_ids.length > 10) {
             return { content: [{ type: 'text' as const, text: '附件数量不能超过 10 个' }] };
@@ -448,7 +460,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
             project_id: scopedProjectId,
             type,
             title,
-            content,
+            content: safeContent,
             author_agent_id: agentId,
             status: 'pending_review',
             reviewer_agent_id: null,
