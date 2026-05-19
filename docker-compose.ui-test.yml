@@ -10,6 +10,8 @@ services:
       - ./:/workspace
     ports:
       - "3001:3001"
+    networks:
+      - game-studio-network
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:3001/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 10s
@@ -26,6 +28,8 @@ services:
     ports:
       - "9000:9000"
       - "9001:9001"
+    networks:
+      - game-studio-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 10s
@@ -74,6 +78,8 @@ services:
         condition: service_healthy
     ports:
       - "3000:3000"
+    networks:
+      - game-studio-network
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 10s
@@ -111,6 +117,8 @@ services:
       - CREATOR_PORT=8080
     ports:
       - "8080:8080"
+    networks:
+      - game-studio-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
@@ -130,7 +138,7 @@ services:
     volumes:
       - drawio-data:/app/data
     networks:
-      - default
+      - game-studio-network
     depends_on:
       drawio-export:
         condition: service_healthy
@@ -152,7 +160,7 @@ services:
     ports:
       - "8083:8080"
     networks:
-      - default
+      - game-studio-network
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8080"]
       interval: 30s
@@ -170,6 +178,8 @@ services:
       - SONAR_PASSWORD=admin
     ports:
       - "8081:8081"
+    networks:
+      - game-studio-network
     volumes:
       - scanner-data:/app/scanner
     healthcheck:
@@ -183,6 +193,8 @@ services:
     image: sonarqube:community
     ports:
       - "9002:9000"
+    networks:
+      - game-studio-network
     volumes:
       - sonarqube-data:/opt/sonarqube/data
       - sonarqube-logs:/opt/sonarqube/logs
@@ -208,6 +220,8 @@ services:
         condition: service_healthy
     ports:
       - "4173:80"
+    networks:
+      - game-studio-network
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1 || exit 1"]
       interval: 10s
@@ -235,6 +249,8 @@ services:
     volumes:
       - ./tests/ui/artifacts:/workspace/artifacts
       - ./tests/ui/coverage:/workspace/coverage
+    networks:
+      - game-studio-network
     depends_on:
       ui-app:
         condition: service_healthy
@@ -253,3 +269,7 @@ volumes:
   sonarqube-logs:
   sonarqube-extensions:
   drawio-data:
+
+networks:
+  game-studio-network:
+    driver: bridge
