@@ -80,9 +80,9 @@ function seedGameEngineeringSpecs(): void {
 
 | 工具名称 | 功能 | 参数 | 权限 |
 |---------|------|------|------|
-| `get_game_types` | 获取所有已注册的游戏类型列表 | 无 | 全员 |
-| `get_game_framework_spec` | 根据游戏类型获取对应的框架规范 | `game_type`（必填，枚举） | 全员 |
-| `get_common_spec` | 获取所有游戏类型共享的公共规范 | 无 | 全员 |
+| `get_game_types` | 获取所有已注册的游戏类型列表 | 无 | **engineer**（无需授权） |
+| `get_game_framework_spec` | 根据游戏类型获取对应的框架规范 | `game_type`（必填，枚举） | **engineer**（无需授权） |
+| `get_common_spec` | 获取所有游戏类型共享的公共规范 | 无 | **engineer**（无需授权） |
 
 ---
 
@@ -152,16 +152,10 @@ const gameTypeEnum = registeredTypes.length > 0
 
 ### 返回值格式
 ```
-# 公共规范
-...
-（公共规范 content）
-
----
-
-# H5 小游戏工程规范
-...
-（框架规范 content）
+（框架规范 content，即对应 game_type 的 Markdown 全文内容）
 ```
+
+> **说明**：`get_game_framework_spec` **仅返回框架规范内容**，不拼接公共规范。调用方如需公共规范可单独调用 `get_common_spec` 获取。两个工具职责分离，避免冗余。
 
 ### 实现参考
 ```typescript
@@ -172,7 +166,6 @@ tool(
     game_type: gameTypeEnum.describe('游戏类型，从 get_game_types 获取当前支持的类型'),
   },
   async ({ game_type }) => {
-    const commonContent = db.getCommonSpec();
     const frameworkContent = db.getGameFrameworkSpec(game_type);
 
     if (!frameworkContent) {
@@ -182,9 +175,7 @@ tool(
     }
 
     return {
-      content: [
-        { type: 'text', text: `# 公共规范\n\n${commonContent || ''}\n\n# ${game_type} 工程规范\n\n${frameworkContent}` }
-      ]
+      content: [{ type: 'text', text: frameworkContent }]
     };
   }
 );
@@ -193,7 +184,6 @@ tool(
 ### 边界处理
 - `game_type` 传入未注册的值 → zod `z.enum()` 自动拒绝
 - DB 中查询不到框架规范 → 返回明确错误消息，提示先调用 `get_game_types`
-- 公共规范不存在 → 返回空字符串（不阻断）
 
 ---
 
@@ -248,6 +238,7 @@ tool(
 | **Framework Checker** | 提交后校验产物是否符合规范 | `game_engineering_specs` 表（同表） | `submit_game` + LintRunner |
 
 - Tool 和 Checker **共享同一数据源**，保证规范与验证规则一致。
+- Checker 是一个**统一检查器**，内部注册多条规则（规则分为通用和游戏类型特定）。Tool 查询到的规范文档决定了 checker 中规则的具体校验内容。
 - 修改 DB 中的 spec 内容后，Tool 和 Checker 均立即生效。
 
 ## 新增游戏类型的步骤（DB 方式）

@@ -3,14 +3,12 @@
  *
  * 通过 scanner 微服务（SonarScanner CLI）对游戏内容进行静态质量分析。
  *
- * 工作流程（调用 scanner 微服务）：
- * 1. 将 ZIP 包 POST 到 /api/scans/{project_id}
- *    - 有 zipBuffer → 直接发送
- *    - 无 zipBuffer，有 content (HTML) → 打包为 html_content/<fileName> 发送
- *    - 两者均无 → 跳过扫描
- * 2. 轮询 GET /api/scans/{project_id} 直到 done/error
- * 3. 调用 SonarQube REST API 拉取 issues
- * 4. scanner 微服务自动清理 ZIP 和 sources 目录
+ * 工作流程：
+ * 1. 从 context.submitDir 读取游戏成品目录，打包为 ZIP
+ * 2. 将 ZIP 包 POST 到 /api/scans/{project_id}
+ * 3. 轮询 GET /api/scans/{project_id} 直到 done/error
+ * 4. 调用 SonarQube REST API 拉取 issues
+ * 5. scanner 微服务自动清理 ZIP 和 sources 目录
  *
  * 依赖：
  * - scanner 微服务（SCANNER_SERVICE_URL，默认 http://localhost:8081）
@@ -18,6 +16,8 @@
  */
 
 import yazl from 'yazl';
+import fs from 'fs';
+import path from 'path';
 import crypto from 'crypto';
 
 import type { LintChecker, LintIssue, LintContext } from '../../types.js';
@@ -116,46 +116,68 @@ export function resetSonarScanHistory(projectKey?: string): void {
 
 // ====== 配置解析 ======
 
-async function resolveConfig(context?: LintContext): Promise<{
+async function resolveConfig(context: LintContext): Promise<{
   baseUrl: string; token: string; projectKey: string; projectName: string;
 }> {
-  const baseUrl = (context?.sonarQubeUrl as string)
+  const baseUrl = (context.sonarQubeUrl as string)
     || process.env.SONARQUBE_HOST
     || `http://localhost:${process.env.SONARQUBE_PORT ?? '9002'}`;
-  const token = (context?.sonarQubeToken as string)
+  const token = (context.sonarQubeToken as string)
     || await globalTokenManager.ensureToken();
-  const projectKey = context?.projectId ? `game-${context.projectId}` : 'game-default';
+  const projectKey = context.projectId ? `game-${context.projectId}` : 'game-default';
   return { baseUrl, token, projectKey, projectName: `Game ${projectKey}` };
 }
 
 // ====== ZIP 打包辅助 ======
 
 /**
- * 将 HTML 内容打包为单一 ZIP buffer。
- * 目录结构：html_content/<fileName>
- * 无 content 时返回 null 表示跳过扫描。
+ * 从游戏成品目录打包为 ZIP buffer。
+ * 递归添加目录下所有文件，保持目录结构。
  */
-async function buildZipBuffer(
-  content: string,
-  context?: LintContext,
-): Promise<Buffer | null> {
-  if (!content || content.trim().length === 0) {
-    return null;
-  }
-
+async function buildZipFromDir(dirPath: string): Promise<Buffer> {
   const zip = new yazl.ZipFile();
-  const fileName = context?.fileName ?? 'index.html';
-  zip.addBuffer(Buffer.from(content, 'utf-8'), `html_content/${fileName}`);
+  const entries = collectFiles(dirPath);
+
+  for (const entry of entries) {
+    zip.addFile(entry.fullPath, entry.relativePath);
+  }
 
   return new Promise<Buffer>((resolve, reject) => {
     const chunks: Buffer[] = [];
     zip.outputStream.on('data', (chunk: Buffer) => chunks.push(chunk));
-    zip.outputStream.on('end', () => {
-      resolve(Buffer.concat(chunks));
-    });
+    zip.outputStream.on('end', () => resolve(Buffer.concat(chunks)));
     zip.outputStream.on('error', reject);
     zip.end();
   });
+}
+
+interface FileEntry {
+  fullPath: string;
+  relativePath: string;
+}
+
+function collectFiles(dirPath: string): FileEntry[] {
+  const entries: FileEntry[] = [];
+  const readDir = (currentPath: string, relativePrefix: string) => {
+    let names: string[];
+    try {
+      names = fs.readdirSync(currentPath);
+    } catch { return; }
+    for (const name of names) {
+      const fullPath = path.join(currentPath, name);
+      const relativePath = relativePrefix ? `${relativePrefix}/${name}` : name;
+      try {
+        const stat = fs.statSync(fullPath);
+        if (stat.isDirectory()) {
+          readDir(fullPath, relativePath);
+        } else if (stat.isFile()) {
+          entries.push({ fullPath, relativePath });
+        }
+      } catch { /* skip inaccessible files */ }
+    }
+  };
+  readDir(dirPath, '');
+  return entries;
 }
 
 // ====== SonarQube Checker ======
@@ -165,55 +187,49 @@ export const sonarqubeChecker: LintChecker = {
   name: 'SonarQube 代码质量扫描',
   description: '通过 SonarQube 对游戏 HTML/JS 内容进行静态质量分析',
 
-  async check(content: string, context?: LintContext): Promise<LintIssue[]> {
+  async check(context: LintContext): Promise<LintIssue[]> {
     const cid = sonarqubeChecker.id;
     const { baseUrl, token, projectKey } = await resolveConfig(context);
     const client = new SonarQubeClient(baseUrl, token);
 
-    console.error(`[SonarQube checker] ${_sqts()} 开始扫描 project=${projectKey} contentLength=${content?.length ?? 0} fileName=${context?.fileName ?? 'unknown'}`);
+    console.error(`[SonarQube checker] ${_sqts()} 开始扫描 project=${projectKey} submitDir=${context?.submitDir ?? '(none)'}`);
 
     // scanner 微服务 unavailable → graceful degrade（sonar 扫描可选，不阻断提交）
     try {
-      const zipBuffer = context?.zipBuffer;
-
-      // 需要打包的 ZIP buffer
-      let scanZipBuffer: Buffer | null = null;
-
-      if (zipBuffer) {
-        // 有原始 ZIP：直接使用
-        scanZipBuffer = zipBuffer;
-        console.error(`[SonarQube checker] ${_sqts()} 使用原始 zipBuffer size=${zipBuffer.length}`);
-
-        // 先检查缓存（基于 hash 去重）
-        const cachedIssues = getCachedSonarIssues(projectKey, scanZipBuffer);
-        if (cachedIssues !== null) {
-          // 命中缓存，直接返回缓存的 issues
-          const errors = cachedIssues.filter(si => ['BLOCKER', 'CRITICAL', 'MAJOR'].includes(si.severity));
-          console.error(`[SonarQube checker] ${_sqts()} 命中缓存，跳过扫描 project=${projectKey} errors=${errors.length}`);
-          return cachedIssues.map(si => ({
-            ruleId: `sonarqube:${si.rule}`,
-            level: ['BLOCKER', 'CRITICAL', 'MAJOR'].includes(si.severity) ? 'error' : 'warn',
-            message: si.message,
-            line: si.line,
-            checkerId: cid,
-          }));
-        }
-      } else {
-        // 无原始 ZIP → 从 HTML content 打包
-        scanZipBuffer = await buildZipBuffer(content, context);
-      }
-
-      if (!scanZipBuffer) {
-        // 两者均无 → 跳过扫描
-        console.error(`[SonarQube checker] ${_sqts()} 无扫描内容（无 zipBuffer 且无 HTML），跳过 project=${projectKey}`);
+      const submitDir = context?.submitDir;
+      if (!submitDir || !fs.existsSync(submitDir)) {
+        console.error(`[SonarQube checker] ${_sqts()} 跳过扫描：submitDir 为空或不存在 submitDir=${submitDir}`);
         return [];
       }
 
-      // 1. 提交扫描任务到 scanner 微服务
+      // 从 submitDir 打包 ZIP
+      console.error(`[SonarQube checker] ${_sqts()} 从 submitDir 打包 ZIP project=${projectKey}`);
+      const scanZipBuffer = await buildZipFromDir(submitDir);
+      if (!scanZipBuffer || scanZipBuffer.length === 0) {
+        console.error(`[SonarQube checker] ${_sqts()} 打包 ZIP 为空，跳过扫描 project=${projectKey}`);
+        return [];
+      }
+      console.error(`[SonarQube checker] ${_sqts()} ZIP 打包完成 project=${projectKey} size=${scanZipBuffer.length}`);
+
+      // 先检查缓存（基于 hash 去重）
+      const cachedIssues = getCachedSonarIssues(projectKey, scanZipBuffer);
+      if (cachedIssues !== null) {
+        const errors = cachedIssues.filter(si => ['BLOCKER', 'CRITICAL', 'MAJOR'].includes(si.severity));
+        console.error(`[SonarQube checker] ${_sqts()} 命中缓存，跳过扫描 project=${projectKey} errors=${errors.length}`);
+        return cachedIssues.map(si => ({
+          ruleId: `sonarqube:${si.rule}`,
+          level: ['BLOCKER', 'CRITICAL', 'MAJOR'].includes(si.severity) ? 'error' : 'warn',
+          message: si.message,
+          line: si.line,
+          checkerId: cid,
+        }));
+      }
+
+      // 2. 提交扫描任务到 scanner 微服务
       console.error(`[SonarQube checker] ${_sqts()} 提交 ZIP 到 scanner 服务 project=${projectKey} size=${scanZipBuffer.length}`);
       await submitScan({ projectId: projectKey, zipBuffer: scanZipBuffer });
 
-      // 2. 轮询直到扫描完成
+      // 3. 轮询直到扫描完成
       console.error(`[SonarQube checker] ${_sqts()} 等待扫描完成 project=${projectKey}`);
       const finalStatus = await pollScanStatus({
         projectId: projectKey,
@@ -230,7 +246,7 @@ export const sonarqubeChecker: LintChecker = {
         throw new Error(msg);  // throw 让 LintRunner 捕获并转为 lintIssue
       }
 
-      // 3. 扫描成功，从 SonarQube 拉取 issues
+      // 4. 扫描成功，从 SonarQube 拉取 issues
       console.error(`[SonarQube checker] ${_sqts()} 拉取 issues project=${projectKey}`);
       const sonarIssues = await client.getProjectIssues(projectKey);
 

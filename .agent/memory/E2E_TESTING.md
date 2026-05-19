@@ -49,8 +49,10 @@
 
 ### Mock 队列编排策略
 - **预队列所有 mock**：在发送指令前一次性排队所有 agent 响应
-- **链路**：game_designer→ceo→architect→engineer，engineer 最后执行 submit_proposal + submit_game + save_memory + text
+- **链路**：game_designer→ceo→architect→engineer，engineer 执行游戏规范查询（get_game_types / get_game_framework_spec / get_common_spec）→ submit_proposal → write_game_file → submit_game → save_memory → text
 - **per-agent 路由**：mock server 通过 HTTP headers 中的 `(projectId, agentRole)` 路由到独立队列，无 FIFO 跨 agent 干扰
+- **游戏文件结构 mock**：必须使用 `dist/` 前缀（`dist/index.html`, `dist/metadata.json`, `dist/assets/manifest.json`）以通过 GameEngineeringChecker 验证
+- **H5 生命周期 mock**：index.html 中必须包含 `<script>` 标签、6 个生命周期方法定义（init/start/pause/resume/resize/destroy）和 `window.__GAME__` 赋值
 
 ## UI-009 提案创建测试
 - **手动提案流程**：切换策划案 tab → 点击创建按钮 → 填写表单（type/author/title/content）→ 提交
@@ -97,7 +99,11 @@
 
 ## Lint Framework 集成验证
 
-- `submit_game` 调用链路：权限校验 → **lintGameContent()** → db.createGame()
-- Mock HTML 内容已包含完整 DOCTYPE/html/head/body 骨架 + utf-8 charset，**天然通过 html-structure 全部 6 条规则**
-- Mock HTML 不含 eval/innerHTML 等调用，**天然通过 js-security 全部 4 条规则**
-- E2E 9/9 全通过 = lint 拦截点未误拦正常提交
+- `submit_game` 调用链路：权限校验 → 打包 ZIP → **lintGameArtifact(zipBuffer, { submitDir, projectId })**
+  - **SonarQube checker**：从 `submitDir` 自行打包 ZIP → scanner 微服务 → sonar-scanner CLI → SonarQube API
+  - **GameEngineeringChecker**：从 `submitDir` 直接读取 `submitDir/dist/*` 文件 → 14 条规则验证
+- 两个 checker 并行工作，任一返回 error 即阻断提交
+- Mock 游戏文件必须同时满足：
+  - **公共规则（8 条）**：DOCTYPE、html/head/body 标签、charset、body 非空、metadata.json 字段完整
+  - **H5 特有规则（6 条）**：6 个生命周期方法、`window.__GAME__`、`<script>` 标签、manifest.json、资源相对路径
+- 当前 mock 文件结构：`dist/index.html` + `dist/metadata.json` + `dist/assets/manifest.json`，全部 14 条规则通过

@@ -7,6 +7,7 @@
 
 import type { LintChecker } from '../types.js';
 import { sonarqubeChecker } from './sonar/sonarqube.js';
+import { gameEngineeringChecker } from './game-engineering/index.js';
 
 /**
  * 所有内置检查器的列表
@@ -16,4 +17,5 @@ import { sonarqubeChecker } from './sonar/sonarqube.js';
  */
 export const builtInCheckers: LintChecker[] = [
   sonarqubeChecker,
+  gameEngineeringChecker,
 ];

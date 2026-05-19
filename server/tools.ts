@@ -656,6 +656,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
               // lint 检查：ZIP 内每个 HTML 逐一检查，遇第一个 error 即阻断
               console.error(`[Tool] ${_tts()} submit_game calling lintZipBuffer zipSize=${fileBuffer.length}`);
               const zipLintResult = await lintZipBuffer(fileBuffer, {
+                submitDir: targetPath,
                 projectId: scopedProjectId,
               });
               console.error(`[Tool] ${_tts()} submit_game lintZipBuffer done passed=${zipLintResult.passed} errors=${zipLintResult.errors.length} warnings=${zipLintResult.warnings.length} summary=${zipLintResult.summary}`);
@@ -1629,6 +1630,68 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
           return {
             content: [{ type: 'text' as const, text: lines.join('\n') }]
+          };
+        }
+      ),
+
+      // ====== 游戏工程规范查询工具 ======
+
+      tool(
+        'get_game_types',
+        '获取所有已注册的游戏类型列表，供 Engineer Agent 在开发前确认支持的游戏类型。',
+        {},
+        async () => {
+          const gameTypes = db.getGameTypes();
+          console.error(`[Tool] ${_tts()} get_game_types START agentId=${agentId} projectId=${scopedProjectId}`);
+          console.error(`[Tool] ${_tts()} get_game_types DONE types=${gameTypes.length}`);
+          return {
+            content: [{ type: 'text' as const, text: JSON.stringify({ game_types: gameTypes }, null, 2) }]
+          };
+        }
+      ),
+
+      tool(
+        'get_game_framework_spec',
+        '根据游戏类型获取对应的工程框架规范。Engineer Agent 在开发前 MUST 调用此工具获取规范。',
+        (() => {
+          const registeredTypes = db.getGameTypes().map((t: { type: string }) => t.type);
+          const gameTypeEnum = registeredTypes.length > 0
+            ? z.enum(registeredTypes as [string, ...string[]])
+            : z.enum([] as unknown as [string, ...string[]]);
+          return { game_type: gameTypeEnum.describe('游戏类型，从 get_game_types 获取当前支持的类型') };
+        })(),
+        async ({ game_type }: { game_type: string }) => {
+          console.error(`[Tool] ${_tts()} get_game_framework_spec START agentId=${agentId} projectId=${scopedProjectId} game_type=${game_type}`);
+          const content = db.getGameFrameworkSpec(game_type);
+          if (!content) {
+            console.error(`[Tool] ${_tts()} get_game_framework_spec NOT_FOUND game_type=${game_type}`);
+            return {
+              content: [{ type: 'text' as const, text: `未找到游戏类型 "${game_type}" 的规范。请先调用 get_game_types 确认支持的类型。` }]
+            };
+          }
+          console.error(`[Tool] ${_tts()} get_game_framework_spec DONE game_type=${game_type} contentLength=${content.length}`);
+          return {
+            content: [{ type: 'text' as const, text: content }]
+          };
+        }
+      ),
+
+      tool(
+        'get_common_spec',
+        '获取所有游戏类型共享的公共工程规范。',
+        {},
+        async () => {
+          console.error(`[Tool] ${_tts()} get_common_spec START agentId=${agentId} projectId=${scopedProjectId}`);
+          const content = db.getCommonSpec();
+          if (!content) {
+            console.error(`[Tool] ${_tts()} get_common_spec NOT_FOUND`);
+            return {
+              content: [{ type: 'text' as const, text: '公共规范暂未配置。' }]
+            };
+          }
+          console.error(`[Tool] ${_tts()} get_common_spec DONE contentLength=${content.length}`);
+          return {
+            content: [{ type: 'text' as const, text: content }]
           };
         }
       ),

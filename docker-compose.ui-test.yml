@@ -10,12 +10,14 @@ services:
       - ./:/workspace
     ports:
       - "3001:3001"
+    networks:
+      - game-studio-network
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:3001/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 5s
+      start_period: 30s
 
   minio:
     image: minio/minio:latest
@@ -26,12 +28,14 @@ services:
     ports:
       - "9000:9000"
       - "9001:9001"
+    networks:
+      - game-studio-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 5s
+      start_period: 30s
 
   studio-backend:
     build:
@@ -44,7 +48,7 @@ services:
       - PORT=3000
       - CODEBUDDY_API_KEY=mock-codebuddy-key
       - CODEBUDDY_BASE_URL=http://codebuddy-sdk-mock:3001
-      - STAR_OFFICE_UI_URL=http://starofficeui:19000
+      - STAR_OFFICE_UI_URL=http://star-office-ui:19000
       - MINIO_ENDPOINT=minio:9000
       - MINIO_ACCESS_KEY=minioadmin
       - MINIO_SECRET_KEY=minioadmin
@@ -53,7 +57,7 @@ services:
       - CREATOR_SERVICE_URL=http://creator:8080
       - DRAWIO_SERVICE_URL=http://drawio-service:8082
       - SCANNER_SERVICE_URL=http://scanner:8081
-      - STAR_OFFICE_JOIN_KEY=${STAR_OFFICE_JOIN_KEY:-ocj_example_team_01}
+      - STAR_OFFICE_JOIN_KEY=ocj_example_team_01
       - SONARQUBE_HOST=http://sonarqube:9000
       - SONARQUBE_USER=admin
       - SONARQUBE_PASSWORD=admin
@@ -67,19 +71,21 @@ services:
       sonarqube:
         condition: service_healthy
       creator:
-        condition: service_started
+        condition: service_healthy
       drawio-service:
-        condition: service_started
+        condition: service_healthy
       scanner:
-        condition: service_started
+        condition: service_healthy
     ports:
       - "3000:3000"
+    networks:
+      - game-studio-network
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 10s
       timeout: 5s
       retries: 20
-      start_period: 20s
+      start_period: 30s
 
   star-office-ui:
     build:
@@ -88,17 +94,18 @@ services:
     environment:
       - STAR_BACKEND_PORT=19000
       - STAR_OFFICE_MAX_CONCURRENT=100
-      - STAR_OFFICE_JOIN_KEY=${STAR_OFFICE_JOIN_KEY:-ocj_example_team_01}
+      - STAR_OFFICE_JOIN_KEY=ocj_example_team_01
+      - STAR_OFFICE_SECRET=your-secret-key-here-min-24-chars
+      - ASSET_DRAWER_PASS=secure-pass-1234
+      - FLASK_ENV=production
     networks:
-      default:
-        aliases:
-          - starofficeui
+      - game-studio-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:19000/health"]
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 10s
+      start_period: 30s
 
   creator:
     build:
@@ -108,6 +115,8 @@ services:
       - CREATOR_PORT=8080
     ports:
       - "8080:8080"
+    networks:
+      - game-studio-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
@@ -127,16 +136,16 @@ services:
     volumes:
       - drawio-data:/app/data
     networks:
-      - default
+      - game-studio-network
     depends_on:
       drawio-export:
-        condition: service_started
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8082/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 30s
 
   drawio-export:
     image: jgraph/drawio:latest
@@ -149,12 +158,13 @@ services:
     ports:
       - "8083:8080"
     networks:
-      - default
+      - game-studio-network
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8080"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 30s
 
   scanner:
     build:
@@ -167,6 +177,8 @@ services:
       - SONAR_PASSWORD=admin
     ports:
       - "8081:8081"
+    networks:
+      - game-studio-network
     volumes:
       - scanner-data:/app/scanner
     healthcheck:
@@ -174,12 +186,14 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 10s
+      start_period: 30s
 
   sonarqube:
     image: sonarqube:community
     ports:
       - "9002:9000"
+    networks:
+      - game-studio-network
     volumes:
       - sonarqube-data:/opt/sonarqube/data
       - sonarqube-logs:/opt/sonarqube/logs
@@ -205,12 +219,14 @@ services:
         condition: service_healthy
     ports:
       - "4173:80"
+    networks:
+      - game-studio-network
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1 || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10
-      start_period: 20s
+      start_period: 30s
 
   ui-e2e:
     build:
@@ -232,6 +248,8 @@ services:
     volumes:
       - ./tests/ui/artifacts:/workspace/artifacts
       - ./tests/ui/coverage:/workspace/coverage
+    networks:
+      - game-studio-network
     depends_on:
       ui-app:
         condition: service_healthy
@@ -250,3 +268,7 @@ volumes:
   sonarqube-logs:
   sonarqube-extensions:
   drawio-data:
+
+networks:
+  game-studio-network:
+    driver: bridge

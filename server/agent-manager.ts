@@ -477,6 +477,7 @@ class AgentManager extends EventEmitter {
         'blender_create_project', 'blender_list_projects', 'blender_delete_project',
         'blender_create_mesh', 'blender_add_material', 'blender_export_model',
         'blender_download_model_file', 'blender_delete_model_file',
+        'get_game_types', 'get_game_framework_spec', 'get_common_spec',
       ];
 
       // 合并最终允许列表

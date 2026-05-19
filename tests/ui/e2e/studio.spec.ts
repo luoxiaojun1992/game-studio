@@ -353,6 +353,25 @@ const runFullWorkflowTest = async (
   await expectHandoff(projectId, 'ceo', 'architect');
   log('mocks:queue-handoff-architect-to-engineer', { projectId, from: 'architect', to: 'engineer' });
   await expectHandoff(projectId, 'architect', 'engineer');
+
+  // ── Engineer: game framework spec queries (new prompt instructions) ──
+  log('mocks:queue-get-game-types', { projectId, agent: 'engineer' });
+  await setMockExpectation(projectId, 'engineer', {
+    content: '正在查询支持的游戏类型...',
+    toolCalls: [{ name: 'get_game_types' }]
+  });
+  log('mocks:queue-get-game-framework-spec', { projectId, agent: 'engineer' });
+  await setMockExpectation(projectId, 'engineer', {
+    content: '正在获取 H5 工程规范...',
+    toolCalls: [{ name: 'get_game_framework_spec', arguments: { game_type: 'h5' } }]
+  });
+  log('mocks:queue-get-common-spec', { projectId, agent: 'engineer' });
+  await setMockExpectation(projectId, 'engineer', {
+    content: '正在获取公共规范...',
+    toolCalls: [{ name: 'get_common_spec' }]
+  });
+  log('mocks:game-spec-queries-queued');
+
   log('mocks:queue-submit-proposal', { projectId, agent: 'engineer' });
   await setMockExpectation(projectId, 'engineer', {
     content: '提案已提交。',
@@ -361,18 +380,52 @@ const runFullWorkflowTest = async (
 
   // 通过 mock 模拟大模型输出，调用 write_game_file MCP 工具在 backend 服务器端写入游戏文件
   // 注意：使用 MCP 工具而非 SDK 内置 Write 工具，因为 CI 环境无 CodeBuddy 运行时执行内置工具
-  log('mocks:queue-write-game-file', { projectId, path: 'index.html' });
+  // 游戏工程规范要求 dist/ 目录结构 + H5 生命周期契约（lifecycle-* 规则）
+  log('mocks:queue-write-game-file', { projectId, path: 'dist/index.html' });
   await setMockExpectation(projectId, 'engineer', {
-    content: '正在写入游戏文件...',
+    content: '正在写入游戏入口文件...',
     toolCalls: [{
       name: 'write_game_file',
       arguments: {
-        path: 'index.html',
-        content: `<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><title>RPG游戏</title></head><body><h1>RPG游戏</h1><p>游戏说明。</p></body></html>`
+        path: 'dist/index.html',
+        content: `<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><title>RPG游戏</title></head><body><div id="game"></div><script>const app={init(c){},start(){},pause(){},resume(){},resize(w,h){},destroy(){}};window.__GAME__=app;</script></body></html>`
       }
     }]
   });
   log('mocks:write-game-file-queued');
+
+  log('mocks:queue-write-metadata-json', { projectId, path: 'dist/metadata.json' });
+  await setMockExpectation(projectId, 'engineer', {
+    content: '正在写入游戏元信息...',
+    toolCalls: [{
+      name: 'write_game_file',
+      arguments: {
+        path: 'dist/metadata.json',
+        content: JSON.stringify({
+          title: 'RPG游戏',
+          version: '1.0.0',
+          game_type: 'h5',
+          resolution: { width: 800, height: 600 },
+          orientation: 'landscape',
+          entry: 'index.html'
+        })
+      }
+    }]
+  });
+  log('mocks:write-metadata-json-queued');
+
+  log('mocks:queue-write-manifest-json', { projectId, path: 'dist/assets/manifest.json' });
+  await setMockExpectation(projectId, 'engineer', {
+    content: '正在写入资源清单...',
+    toolCalls: [{
+      name: 'write_game_file',
+      arguments: {
+        path: 'dist/assets/manifest.json',
+        content: JSON.stringify({ resources: [] })
+      }
+    }]
+  });
+  log('mocks:write-manifest-json-queued');
 
   log('mocks:queue-submit-game', { projectId });
   await setMockExpectation(projectId, 'engineer', {

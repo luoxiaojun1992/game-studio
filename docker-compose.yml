@@ -21,7 +21,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 30s
     restart: unless-stopped
 
   # Game Dev Studio 后端服务
@@ -62,17 +62,17 @@ services:
       sonarqube:
         condition: service_healthy
       creator:
-        condition: service_started
+        condition: service_healthy
       drawio-service:
-        condition: service_started
+        condition: service_healthy
       scanner:
-        condition: service_started
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/api/agents"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 30s
     restart: unless-stopped
 
   # Game Dev Studio 前端服务
@@ -93,7 +93,7 @@ services:
       studio-backend:
         condition: service_healthy
       star-office-ui:
-        condition: service_started
+        condition: service_healthy
     networks:
       - game-studio-network
     restart: unless-stopped
@@ -122,7 +122,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 30s
     restart: unless-stopped
 
   # SonarQube 代码质量扫描服务（使用内置 H2 数据库，不依赖外部 PostgreSQL）
@@ -184,13 +184,13 @@ services:
       - game-studio-network
     depends_on:
       drawio-export:
-        condition: service_started
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8082/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 30s
     restart: unless-stopped
 
   # Draw.io Export Server（官方 jgraph/drawio 镜像）
@@ -212,6 +212,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 30s
     restart: unless-stopped
 
   # Sonar Scanner 微服务（SonarScanner CLI + FastAPI）
@@ -234,7 +235,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 30s
     restart: unless-stopped
 
 volumes:

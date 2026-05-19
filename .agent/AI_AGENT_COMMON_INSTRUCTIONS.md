@@ -62,8 +62,9 @@ export const AGENT_IDS = ['engineer', 'architect', 'game_designer', 'biz_designe
 | 数据库操作 | `server/db.ts` |
 | 文件存储 | `server/file-storage.ts`、`server/minio-client.ts` |
 | 提案附件 API | `server/proposal-attachments-api.ts` |
-| Lint 框架 | `server/lint/`（LintRunner + 可插拔检查器，含 SonarQube） |
+| Lint 框架 | `server/lint/`（LintRunner + 可插拔检查器：SonarQube + GameEngineeringChecker） |
 | SonarQube 客户端 | `server/lint/checkers/sonar/sonarqube-client.ts`、`server/lint/checkers/sonar/sonarqube-token.ts` |
+| GameEngineering Checker | `server/lint/checkers/game-engineering/`（14 条规则：8 公共 + 6 H5） |
 | Scanner 服务客户端 | `server/sonar-scanner-service.ts` |
 | SSE 广播 | `server/sse-broadcaster.ts` |
 | Express 路由 | `server/index.ts` |

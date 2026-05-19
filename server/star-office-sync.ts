@@ -102,14 +102,14 @@ class StarOfficeSyncService {
   /**
    * Fetches current remote agent IDs from Star-Office-UI for reconciliation.
    */
-  private async getRemoteAgentIds(): Promise<Set<string>> {
-    if (!agentsUrl) return new Set();
+  private async getRemoteAgentIds(): Promise<Set<string> | null> {
+    if (!agentsUrl) return null;
     try {
       const agents = await this.getJson(agentsUrl) as RemoteAgentInfo[];
       return new Set(agents.map((a) => a.agentId));
     } catch (error) {
-      console.warn('[star-office-sync] Failed to get remote agents:', error);
-      return new Set();
+      console.warn('[star-office-sync] Failed to get remote agents, skipping remote check:', error instanceof Error ? error.message : String(error));
+      return null; // 返回 null 表示"不知道"，调用方不应据此清缓存
     }
   }
 
@@ -201,7 +201,8 @@ class StarOfficeSyncService {
       const key = `${projectId}:${agentRole}`;
       const localReg = this.registeredAgents.get(key);
       const remoteAgentIds = await this.getRemoteAgentIds();
-      if (localReg && !remoteAgentIds.has(localReg.agentId)) {
+      // remoteAgentIds 为 null 表示 GET /agents 失败，保留缓存不做重新注册判断
+      if (remoteAgentIds !== null && localReg && !remoteAgentIds.has(localReg.agentId)) {
         console.log(`[star-office-sync] Agent ${key} exists locally (${localReg.agentId}) but not in remote, re-registering...`);
         this.registeredAgents.delete(key);
       }
@@ -252,9 +253,9 @@ class StarOfficeSyncService {
           name: key,
         });
       } catch (error) {
-        if (error instanceof Error && error.message.includes('404')) {
-          console.warn(`[star-office-sync] Agent ${key} push failed (not registered), re-registering...`);
-          this.registeredAgents.delete(key);
+        console.warn(`[star-office-sync] Agent ${key} push failed, re-registering...`, error instanceof Error ? error.message : String(error));
+        this.registeredAgents.delete(key);
+        try {
           const newAgentId = await this.registerAgent(projectId, state.id, key, state.status, state.currentTask || state.lastMessage || '');
           if (newAgentId) {
             await this.postJson(agentPushUrl, {
@@ -267,8 +268,8 @@ class StarOfficeSyncService {
               name: key,
             });
           }
-        } else {
-          console.warn('[star-office-sync] Error pushing state for %s:', key, error);
+        } catch (retryError) {
+          console.warn(`[star-office-sync] Agent ${key} retry push also failed:`, retryError instanceof Error ? retryError.message : String(retryError));
         }
       }
     }
@@ -330,6 +331,10 @@ class StarOfficeSyncService {
 
           // Verify all agents are registered
           const remoteAgentIds = await this.getRemoteAgentIds();
+          if (remoteAgentIds === null) {
+            console.warn('[star-office-sync] Failed to verify agents after recovery (GET /agents failed), will retry');
+            continue;
+          }
           const allRegistered = [...this.registeredAgents.values()].every(reg =>
             remoteAgentIds.has(reg.agentId)
           );
