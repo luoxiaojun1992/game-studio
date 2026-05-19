@@ -225,7 +225,11 @@ export const sonarqubeChecker: LintChecker = {
         }));
       }
 
-      // 2. 轮询直到扫描完成
+      // 2. 提交扫描任务到 scanner 微服务
+      console.error(`[SonarQube checker] ${_sqts()} 提交 ZIP 到 scanner 服务 project=${projectKey} size=${scanZipBuffer.length}`);
+      await submitScan({ projectId: projectKey, zipBuffer: scanZipBuffer });
+
+      // 3. 轮询直到扫描完成
       console.error(`[SonarQube checker] ${_sqts()} 等待扫描完成 project=${projectKey}`);
       const finalStatus = await pollScanStatus({
         projectId: projectKey,
@@ -242,7 +246,7 @@ export const sonarqubeChecker: LintChecker = {
         throw new Error(msg);  // throw 让 LintRunner 捕获并转为 lintIssue
       }
 
-      // 3. 扫描成功，从 SonarQube 拉取 issues
+      // 4. 扫描成功，从 SonarQube 拉取 issues
       console.error(`[SonarQube checker] ${_sqts()} 拉取 issues project=${projectKey}`);
       const sonarIssues = await client.getProjectIssues(projectKey);
 
