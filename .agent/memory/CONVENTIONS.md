@@ -10,6 +10,20 @@
   2. `.agent/memory/E2E_TESTING.md` — 更新测试矩阵、testid 对照表、测试经验
   3. `.agent/specs/` 下对应的 spec 文档 — 更新测试策略章节
   4. `.agent/specs/INDEX.md` — 如有新 spec 则更新索引
+
+- **主动更新所有相关文档**：实现新功能或做重大修改后，必须主动检查并更新所有受影响的文档，而非仅更新直接相关文件。完整检查清单：
+  1. `README.md` + `README.zh-CN.md` — 功能概览、API 概览、目录结构
+  2. `docs/ARCHITECTURE.md` + `docs/ARCHITECTURE.zh-CN.md` — 业务域、数据模型、运行时组件
+  3. `.agent/memory/ARCHITECTURE.md` — 架构关键点、关键模块详解
+  4. `.agent/memory/INDEX.md` — 快速参考
+  5. `.agent/memory/E2E_TESTING.md` — 测试矩阵、testid 对照表（如有新测试）
+  6. `.agent/memory/CONVENTIONS.md` — 工作约定（如有新规范）
+  7. `.agent/memory/MEMORY.md` — 长期记忆（工程决策记录）
+  8. `.agent/specs/` 下相关 spec 文档 — 状态、测试策略
+  9. `.agent/specs/INDEX.md` — spec 索引状态
+  10. `.agent/AI_AGENT_COMMON_INSTRUCTIONS.md` — 关键文件位置、API 概览
+  - **文档更新禁止添加日期和敏感信息**
+  - **不相关的文档不需要修改**（如 LINT.md 与问卷提案无关则不更新）
 - **UI Test 编号规则**：`UI-XXX` 从现有最大编号 +1 递增，测试文件中用 `[UI-XXX]` 作为 test 名称前缀
 - **前端组件 data-testid 规范**：新组件必须添加 `data-testid` 属性供 E2E 测试使用，命名采用 `{功能缩写}-{元素}` 格式（如 `q-game-name`）
 
