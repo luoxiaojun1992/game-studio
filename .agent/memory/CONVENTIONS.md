@@ -5,6 +5,13 @@
 - 不允许为了"让测试通过"而放宽断言、加 fallback、或绕过正常流程
 - 遇到问题必须先定位根因，再修复，不能猜测或碰运气
 - 验收标准中明确，提交代码前必须跑通ui test。如遇网络或依赖问题，可临时修改代码解决网络问题，但禁止提交为了解决网络依赖问题所做的变更。
+- **主动添加 UI Test**：新增前端交互功能（按钮、表单、弹窗、面板等）时，必须同步编写对应的 E2E 测试用例，并更新以下文档：
+  1. `tests/ui/e2e/studio.spec.ts` — 添加测试用例（分配下一个 UI-XXX 编号）
+  2. `.agent/memory/E2E_TESTING.md` — 更新测试矩阵、testid 对照表、测试经验
+  3. `.agent/specs/` 下对应的 spec 文档 — 更新测试策略章节
+  4. `.agent/specs/INDEX.md` — 如有新 spec 则更新索引
+- **UI Test 编号规则**：`UI-XXX` 从现有最大编号 +1 递增，测试文件中用 `[UI-XXX]` 作为 test 名称前缀
+- **前端组件 data-testid 规范**：新组件必须添加 `data-testid` 属性供 E2E 测试使用，命名采用 `{功能缩写}-{元素}` 格式（如 `q-game-name`）
 
 ## 6 个 Bug 修复记录
 1. CommandPanel 历史记录丢失

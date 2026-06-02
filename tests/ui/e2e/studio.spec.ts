@@ -645,3 +645,63 @@ test('[UI-009] should manually create a proposal via UI', async ({ page }) => {
   // 验证新提案出现在列表中（通过标题）
   await expect(page.getByText('测试技术架构提案')).toBeVisible();
 });
+
+// ═══════════════════════════════════════════
+// UI-010: Questionnaire proposal creation (SPEC-007)
+// Fill questionnaire form → submit → verify proposal appears with source tag
+// ═══════════════════════════════════════════
+
+test('[UI-010] should create a questionnaire proposal via structured form', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('game_studio_ui_language', 'zh-CN'));
+  await page.goto('/');
+
+  // Switch to proposals tab
+  await page.getByRole('tab', { name: /策划案/ }).click();
+  await expect(page.getByRole('heading', { name: /策划案/ })).toBeVisible();
+
+  // Record initial count
+  const initialCount = await page.locator('[data-testid^="proposal-item-"]').count();
+
+  // Click questionnaire proposal button
+  await page.getByTestId('create-questionnaire-proposal-btn').click();
+  await expect(page.getByTestId('q-game-name')).toBeVisible();
+
+  // ── Step 0: Core info ──
+  const longCoreMechanic = '玩家通过种植不同外星作物获取资源种子与能量晶体。每种作物有独特的生长周期和元素属性，合理搭配能触发连锁反应产生额外收益。'.repeat(2);
+  const longGameObjectives = '在限定周期内将农场从初始的单个温室扩展到包含五个星球的完整生态网络。每个星球解锁需要达到前一个星球的产量目标，同时抵御随机陨石事件造成的损失。'.repeat(2);
+
+  await page.getByTestId('q-game-name').fill('星际农场');
+  await page.getByTestId('q-game-genre').selectOption('simulation');
+  await page.getByTestId('q-one-liner').fill('在太空站经营生态农场，培育外星作物并抵御陨石威胁');
+  await page.getByTestId('q-core-mechanic').fill(longCoreMechanic);
+  await page.getByTestId('q-target-audience').fill('18-35岁休闲玩家，喜欢模拟经营和轻策略元素');
+  await page.getByTestId('q-game-objectives').fill(longGameObjectives);
+
+  // Click "Next" to proceed to step 1
+  await page.getByTestId('q-next-step').click();
+  // Verify we're on step 1 (extended info)
+  await expect(page.getByTestId('q-level-design')).toBeVisible();
+
+  // ── Step 1: Extended info (optional, fill a couple) ──
+  await page.getByTestId('q-tech-req').fill('HTML5 Canvas 2D，无需外部引擎');
+  await page.getByTestId('q-duration').fill('2-3周');
+
+  // ── Submit ──
+  await page.getByTestId('q-submit').click();
+  // Modal should close after successful submit
+  await expect(page.getByTestId('q-game-name')).not.toBeVisible({ timeout: 5000 });
+
+  // Wait for SSE update
+  await page.waitForTimeout(1000);
+
+  // ── Verify ──
+  const finalCount = await page.locator('[data-testid^="proposal-item-"]').count();
+  expect(finalCount).toBeGreaterThan(initialCount);
+
+  // Verify proposal title appears
+  await expect(page.getByText('星际农场')).toBeVisible();
+
+  // Verify source tag (问卷 label)
+  const sourceTag = page.locator('.text-purple-300').filter({ hasText: '问卷' });
+  await expect(sourceTag).toBeVisible();
+});

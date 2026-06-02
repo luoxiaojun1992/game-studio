@@ -59,7 +59,12 @@
 - **data-testid 链路**：`create-proposal-btn` → `proposal-type-select` → `proposal-author-select` → `proposal-title-input` → `proposal-content-textarea` → `proposal-submit-btn`
 - **断言策略**：提交后按钮 disabled + 对话框关闭 + 列表数量增加 + 标题文本可见
 
-## data-testid 完整对照表（21 个，覆盖率 100%）
+## UI-010 问卷提案创建测试（SPEC-007）
+- **问卷提案流程**：切换策划案 tab → 点击问卷提案按钮 → 填写核心信息（game_name/genre/one_liner/core_mechanic/target_audience/game_objectives）→ 下一步 → 填写扩展信息（可选）→ 提交
+- **data-testid 链路**：`create-questionnaire-proposal-btn` → `q-game-name` → `q-game-genre` → `q-one-liner` → `q-core-mechanic` → `q-target-audience` → `q-game-objectives` → `q-next-step` → `q-level-design` → `q-tech-req` → `q-duration` → `q-submit`
+- **断言策略**：提交后弹窗关闭 + 列表数量增加 + 标题文本可见 + 紫色"问卷"来源标签可见
+
+## data-testid 完整对照表（32 个，覆盖率 100%）
 
 | testid | 所在组件 | 用途 |
 |:---|:---|:---|
@@ -75,6 +80,22 @@
 | `proposal-title-input` | StudioPage | 提案标题输入 |
 | `proposal-content-textarea` | StudioPage | 提案内容文本区 |
 | `proposal-submit-btn` | StudioPage | 提交提案确认按钮 |
+| `create-questionnaire-proposal-btn` | StudioPage | 创建问卷提案按钮（SPEC-007） |
+| `q-game-name` | QuestionnaireForm | 问卷：游戏名称 |
+| `q-game-type` | QuestionnaireForm | 问卷：游戏工程类型下拉 |
+| `q-game-genre` | QuestionnaireForm | 问卷：游戏类型下拉 |
+| `q-one-liner` | QuestionnaireForm | 问卷：一句话描述 |
+| `q-core-mechanic` | QuestionnaireForm | 问卷：核心玩法 |
+| `q-target-audience` | QuestionnaireForm | 问卷：目标受众 |
+| `q-game-objectives` | QuestionnaireForm | 问卷：游戏目标 |
+| `q-next-step` | QuestionnaireForm | 问卷：下一步按钮 |
+| `q-level-design` | QuestionnaireForm | 问卷：关卡设计（步骤1） |
+| `q-ui-ux` | QuestionnaireForm | 问卷：UI/UX 设计要点 |
+| `q-tech-req` | QuestionnaireForm | 问卷：技术需求 |
+| `q-duration` | QuestionnaireForm | 问卷：预期开发周期 |
+| `q-ref-games` | QuestionnaireForm | 问卷：参考竞品 |
+| `q-monetization` | QuestionnaireForm | 问卷：商业化方向 |
+| `q-submit` | QuestionnaireForm | 问卷：提交按钮 |
 | `handoff-card-*` | HandoffPanel | 交接卡片（ID 后缀） |
 | `handoff-header` | HandoffPanel | 交接卡片头部（展开/折叠） |
 | `handoff-accept-btn` | HandoffPanel | 接受交接按钮 |
@@ -83,7 +104,7 @@
 | `proposal-item-*` | ProposalList | 提案列表项（ID 后缀） |
 | `game-card-*` | GameList | 游戏卡片（ID 后缀） |
 
-## 测试矩阵总览（9 个用例）
+## 测试矩阵总览（10 个用例）
 
 | 用例 ID | 类别 | 是否需要 Mock | 核心验证 |
 |:---|:---|:---:|:---|
@@ -96,6 +117,7 @@
 | UI-007 | 完整工作流（手动） | ✅ | 3 handoffs + 1 game |
 | UI-008 | 完整工作流（自动） | ✅ | 同上 + autopilot |
 | UI-009 | 手动创建提案 | ✅ | 表单填写 + SSE 更新 |
+| UI-010 | 问卷提案创建 | ✅ | 分步表单 + SSE 更新 + 来源标签 |
 
 ## Lint Framework 集成验证
 

@@ -352,6 +352,8 @@ export interface DbProposal {
    - 创建的 proposal 与通过 `POST /api/proposals` 创建的格式完全一致（除 source 外）
 3. **DB 兼容测试**：现有 `submit_proposal` 调用后 `source` 默认为 `'manual'`，不影响现有流程
 4. **前端测试**：问卷表单校验、分步填写、预览渲染、来源标签显示
+5. **UI-010（E2E）**：打开问卷表单 → 填写核心必填字段（game_name/genre/one_liner/core_mechanic/target_audience/game_objectives）→ 下一步 → 填写扩展字段 → 提交 → 弹窗关闭 + 列表数量增加 + 标题可见 + 紫色"问卷"来源标签可见
+   - data-testid 链路：`create-questionnaire-proposal-btn` → `q-game-name` → `q-game-genre` → `q-one-liner` → `q-core-mechanic` → `q-target-audience` → `q-game-objectives` → `q-next-step` → `q-level-design` → `q-tech-req` → `q-duration` → `q-submit`
 
 ## UI Test 验收规则
 
