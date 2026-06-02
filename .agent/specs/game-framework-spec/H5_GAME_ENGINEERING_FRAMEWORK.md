@@ -1,5 +1,7 @@
 # H5 小游戏工程规范
 
+> **SPEC-005** | 状态：已实现
+
 ## 概述
 
 本文档是 H5 游戏类型的工程规范，基于 [GAME_ENGINEERING_COMMON.md](./GAME_ENGINEERING_COMMON.md) 中的公共规范扩展。

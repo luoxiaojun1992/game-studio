@@ -1,5 +1,7 @@
 # 游戏工程规范工具（Game Engineering Framework Tool）
 
+> **SPEC-003** | 状态：已实现
+
 ## 目标
 - 提供 MCP 工具供 Engineer Agent 查询游戏工程规范。
 - Spec 存储在数据库中，支持运行时查询，新增/修改无需改代码。
