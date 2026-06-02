@@ -2,6 +2,10 @@ import React from 'react';
 import { Proposal, ProposalStatus } from '../types';
 import { useI18n } from '../i18n';
 
+const SOURCE_TAG = {
+  questionnaire: '📝 问卷',
+} as const;
+
 interface Props {
   proposals: Proposal[];
   selectedId?: string;
@@ -82,6 +86,11 @@ function ProposalItem({ proposal, selected, onClick }: { proposal: Proposal; sel
     >
       <div className="flex items-center gap-2 mb-1">
         <span className="text-xs text-gray-500">{typeLabels[proposal.type] || proposal.type}</span>
+        {proposal.source === 'questionnaire' && (
+          <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-600/40 px-1 rounded">
+            {SOURCE_TAG.questionnaire}
+          </span>
+        )}
       </div>
       <p className="text-sm text-gray-200 font-medium leading-snug truncate">{proposal.title}</p>
       <p className="text-[11px] text-gray-500 mt-1">{l('项目', 'Project')}: {proposal.project_id}</p>

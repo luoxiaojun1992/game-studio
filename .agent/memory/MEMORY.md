@@ -9,12 +9,13 @@
 - [STAROFFICE.md](./STAROFFICE.md) — Star-Office-UI 集成
 - [CONVENTIONS.md](./CONVENTIONS.md) — 工作约定、Bug 修复、被纠正的错误做法汇总表
 - [LINT.md](./LINT.md) — 可扩展 Lint Framework（LintRunner 注册式架构、HTML+JS 检查器、扩展指南）
+- [REUSABLE_PATTERNS.md](./REUSABLE_PATTERNS.md) — 可复用代码片段、代码模板、设计模式汇总
 
 ## 关键工程决策记录
 - **2026-04-02**: 修复 6 个 Bug（历史记录丢失、产出持久化失败等），确立 project_id 作用域隔离原则
 - **2026-04-18**: E2E 9/9 全通过，完成三层架构一致性审查；确立事件循环测试模式为 UI-007/008 共享标准模式
 - **2026-04-18**: 新增 UI-009 提案创建测试，补全 E2E 测试与 data-testid 对照文档
 - **2026-04-18**: 实现可扩展 Lint Framework（注册式架构，LintRunner + 可插拔 checker），第一期实现 HTML 结构 + JS 安全两个检查器，集成到 submit_game tool 拦截点
-- **2026-04-18**: 新增 UI-009 提案创建测试，补全 E2E 测试与 data-testid 对照文档
+- **2026-05-28**: 实现 SPEC-007 问卷式提案提交：`proposals.source` 字段、`questionnaire-renderer.ts` 渲染引擎、`GET /api/game-types` + `POST /api/proposals/questionnaire` API、`QuestionnaireForm` 分步表单组件、UI-010 E2E 测试。确立主动更新所有文档规范。
 
 > **提示**: 查阅具体经验前先看 INDEX.md 快速定位。

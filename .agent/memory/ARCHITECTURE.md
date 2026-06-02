@@ -25,9 +25,11 @@
 - `server/agents.ts` - Agent 定义 + 系统提示词（TOOLS_OVERVIEW）
 - `server/sse-broadcaster.ts` - SSE 广播（解耦循环依赖）
 - `server/index.ts` - Express 路由
+- `server/utils/questionnaire-renderer.ts` - 问卷字段→Markdown 渲染引擎（SPEC-007）
 - `src/components/CommandPanel.tsx` - 指令面板（含历史记录）
 - `src/components/HandoffPanel.tsx` - 交接面板（含确认流程）
-- `src/components/ProposalList.tsx` - 提案列表组件
+- `src/components/ProposalList.tsx` - 提案列表组件（支持 `source` 来源标签）
+- `src/components/QuestionnaireForm.tsx` - 问卷式提案表单（SPEC-007，分步填写）
 - `src/components/GameList.tsx` - 游戏成品列表组件（展示描述信息，不再预览 HTML）
 - `src/components/GamePreview.tsx` - 游戏详情展示组件（展示描述 + MinIO 下载链接）
 - `src/pages/StudioPage.tsx` - 主页面（Tab 导航、项目管理、权限横幅、提案表单）
@@ -136,7 +138,7 @@ game-dev-studio/
 
 #### 2. 数据库层 (`server/db.ts`)
 - 使用 **better‑sqlite3** 驱动，WAL 模式，外键启用。
-- 核心表：`projects`、`project_settings`、`agent_sessions`、`proposals`、`games`、`handoffs`、`task_board_tasks`、`agent_memories`、`logs`、`commands`、`permission_requests`、`game_engineering_specs`。
+- 核心表：`projects`、`project_settings`、`agent_sessions`、`proposals`（含 `source` 字段区分 manual/questionnaire）、`games`、`handoffs`、`task_board_tasks`、`agent_memories`、`logs`、`commands`、`permission_requests`、`game_engineering_specs`。
 - 核心业务数据按 `project_id` 隔离；Agent 运行状态通过 `agent_sessions` 与项目关联。
 - `games` 已移除 `author_agent_id`，提交链路不再要求该字段。
 - `logs`、`commands`、`permission_requests` 已统一包含 `updated_at`。
@@ -187,7 +189,7 @@ game-dev-studio/
 - 集成 Star‑Office‑UI 组件，实现双端联动。
 
 #### 8. E2E 测试 (`tests/ui/e2e/studio.spec.ts`)
-- 使用 Playwright 编写，覆盖 9 个核心场景：
+- 使用 Playwright 编写，覆盖 10 个核心场景：
   - UI‑001: 页面加载与基础布局
   - UI‑002: 语言切换
   - UI‑003: 自动驾驶开关
@@ -197,13 +199,14 @@ game-dev-studio/
   - UI‑007: 完整工作流（手动模式）
   - UI‑008: 完整工作流（自动模式）
   - UI‑009: 手动创建提案
+  - UI‑010: 问卷提案创建（SPEC-007，分步表单 + 来源标签）
 - 依赖 Mock Server 模拟 SDK 行为，确保测试可重复、不依赖外部服务。
 
 ##### E2E 测试架构
 - **测试框架**: Playwright + TypeScript
 - **Mock 服务**: `tests/mock-server/codebuddy-sdk-mock-server.mjs`（per-agent 路由队列）
 - **Docker 编排**: `docker-compose.ui-test.yml`（5 个服务）
-- **测试入口**: `tests/ui/e2e/studio.spec.ts`（9 个用例）
+- **测试入口**: `tests/ui/e2e/studio.spec.ts`（10 个用例）
 - **核心模式**: `runFullWorkflowTest()` — 目标状态驱动的事件循环，UI-007/008 共用
 - **数据流**: 测试 → Mock Admin API (port 3001) → 预设响应队列 → Agent 调用 /chat/completions → 匹配 (projectId, agentRole) → 返回预设响应
 

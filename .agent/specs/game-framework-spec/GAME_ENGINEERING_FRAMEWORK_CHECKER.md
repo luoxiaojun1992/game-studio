@@ -1,5 +1,7 @@
 # 游戏工程规范检查器（Game Engineering Framework Checker）
 
+> **SPEC-004** | 状态：已实现
+
 ## 目标
 - 作为 Lint 系统下的**一个统一检查器（checker）**，对游戏成品进行工程规范静态校验。
 - 内部注册多条规则（rule），按 `game_type` 自动选择适用的规则集并输出可追溯的 `ruleId` 结果。
