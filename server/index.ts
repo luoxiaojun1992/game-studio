@@ -959,26 +959,40 @@ app.use('/output', express.static(path.join(__dirname, '..', 'output'), {
 // SPEC-007: GET /api/game-types — 获取已注册的游戏工程类型
 app.get('/api/game-types', (_req, res) => {
   const gameTypes = db.getGameTypes();
+  console.log('[DEBUG:game-types] GET /api/game-types →', gameTypes.length, 'types');
   res.json({ game_types: gameTypes });
 });
 
 // SPEC-007: POST /api/proposals/questionnaire — 问卷式提案提交
 app.post('/api/proposals/questionnaire', (req, res) => {
   const { project_id, author_agent_id, game_name, game_type, game_genre, one_liner, core_mechanic, target_audience, game_objectives, level_design, ui_ux_notes, tech_requirements, estimated_duration, reference_games, monetization_hint } = req.body;
+  console.log('[DEBUG:questionnaire] POST /api/proposals/questionnaire → received', {
+    project_id, author_agent_id, game_name,
+    has_game_type: !!game_type, game_type,
+    game_genre, one_liner_length: one_liner?.length,
+    core_mechanic_length: core_mechanic?.length,
+    target_audience_length: target_audience?.length,
+    game_objectives_length: game_objectives?.length,
+    has_level_design: !!level_design, has_ui_ux_notes: !!ui_ux_notes,
+    has_tech_requirements: !!tech_requirements, has_estimated_duration: !!estimated_duration,
+    has_reference_games: !!reference_games, has_monetization_hint: !!monetization_hint,
+  });
 
   // 1. 校验必填字段
+  console.log('[DEBUG:questionnaire] step1: validating required fields...');
   const projectValidation = validateProjectIdInput(project_id, 'project_id');
-  if (!projectValidation.ok) return res.status(400).json({ error: projectValidation.error });
+  if (!projectValidation.ok) { console.log('[DEBUG:questionnaire] step1:FAIL project_id', projectValidation.error); return res.status(400).json({ error: projectValidation.error }); }
   const authorValidation = validateAgentIdInput(author_agent_id, 'author_agent_id');
-  if (!authorValidation.ok) return res.status(400).json({ error: authorValidation.error });
+  if (!authorValidation.ok) { console.log('[DEBUG:questionnaire] step1:FAIL author_agent_id', authorValidation.error); return res.status(400).json({ error: authorValidation.error }); }
 
   const gameNameValidation = (() => {
     try { return { ok: true as const, value: db.normalizeAndValidateGameName(game_name, 'game_name') }; }
     catch (e: any) { return { ok: false as const, error: e?.message || 'game_name 不合法' }; }
   })();
-  if (!gameNameValidation.ok) return res.status(400).json({ error: gameNameValidation.error });
+  if (!gameNameValidation.ok) { console.log('[DEBUG:questionnaire] step1:FAIL game_name', gameNameValidation.error); return res.status(400).json({ error: gameNameValidation.error }); }
 
   if (!game_genre || typeof game_genre !== 'string' || !GAME_GENRE_OPTIONS.includes(game_genre as any)) {
+    console.log('[DEBUG:questionnaire] step1:FAIL game_genre', game_genre);
     return res.status(400).json({ error: `game_genre 不合法，可选值：${GAME_GENRE_OPTIONS.join(' / ')}` });
   }
   const oneLinerValidation = (() => {
@@ -988,7 +1002,7 @@ app.post('/api/proposals/questionnaire', (req, res) => {
       return { ok: true as const, value: val };
     } catch (e: any) { return { ok: false as const, error: e?.message || 'one_liner 不合法' }; }
   })();
-  if (!oneLinerValidation.ok) return res.status(400).json({ error: oneLinerValidation.error });
+  if (!oneLinerValidation.ok) { console.log('[DEBUG:questionnaire] step1:FAIL one_liner', oneLinerValidation.error); return res.status(400).json({ error: oneLinerValidation.error }); }
 
   const coreMechanicValidation = (() => {
     try {
@@ -998,10 +1012,10 @@ app.post('/api/proposals/questionnaire', (req, res) => {
       return { ok: true as const, value: val };
     } catch (e: any) { return { ok: false as const, error: e?.message || 'core_mechanic 不合法' }; }
   })();
-  if (!coreMechanicValidation.ok) return res.status(400).json({ error: coreMechanicValidation.error });
+  if (!coreMechanicValidation.ok) { console.log('[DEBUG:questionnaire] step1:FAIL core_mechanic', coreMechanicValidation.error); return res.status(400).json({ error: coreMechanicValidation.error }); }
 
   const targetAudienceValidation = validateRequiredTextInput(target_audience, 'target_audience');
-  if (!targetAudienceValidation.ok) return res.status(400).json({ error: targetAudienceValidation.error });
+  if (!targetAudienceValidation.ok) { console.log('[DEBUG:questionnaire] step1:FAIL target_audience', targetAudienceValidation.error); return res.status(400).json({ error: targetAudienceValidation.error }); }
 
   const gameobjectivesValidation = (() => {
     try {
@@ -1011,16 +1025,23 @@ app.post('/api/proposals/questionnaire', (req, res) => {
       return { ok: true as const, value: val };
     } catch (e: any) { return { ok: false as const, error: e?.message || 'game_objectives 不合法' }; }
   })();
-  if (!gameobjectivesValidation.ok) return res.status(400).json({ error: gameobjectivesValidation.error });
+  if (!gameobjectivesValidation.ok) { console.log('[DEBUG:questionnaire] step1:FAIL game_objectives', gameobjectivesValidation.error); return res.status(400).json({ error: gameobjectivesValidation.error }); }
+
+  console.log('[DEBUG:questionnaire] step1:PASS all required fields');
 
   // 2. 可选字段 game_type 校验
   if (game_type !== undefined && game_type !== null && game_type !== '') {
     if (typeof game_type !== 'string' || !db.isValidGameType(game_type.trim())) {
+      console.log('[DEBUG:questionnaire] step2:FAIL game_type not registered', game_type);
       return res.status(400).json({ error: 'game_type 未注册，请检查可用值' });
     }
+    console.log('[DEBUG:questionnaire] step2: game_type validated', game_type);
+  } else {
+    console.log('[DEBUG:questionnaire] step2: game_type omitted (optional)');
   }
 
   // 3. 组装 QuestionnaireInput
+  console.log('[DEBUG:questionnaire] step3: assembling questionnaire input...');
   const questionnaireInput = {
     game_name: gameNameValidation.value,
     game_type: game_type ? db.normalizeOptionalText(game_type, 'game_type') || undefined : undefined,
@@ -1038,12 +1059,16 @@ app.post('/api/proposals/questionnaire', (req, res) => {
   };
 
   // 4. 渲染 Markdown
+  console.log('[DEBUG:questionnaire] step4: rendering markdown...');
   const markdownContent = renderQuestionnaireToMarkdown(questionnaireInput);
+  console.log('[DEBUG:questionnaire] step4: markdown rendered, length =', markdownContent.length);
 
   // 5. sanitizeHtml
   const safeContent = sanitizeHtml(markdownContent);
+  console.log('[DEBUG:questionnaire] step5: sanitized, length =', safeContent.length);
 
   // 6. 创建 proposal
+  console.log('[DEBUG:questionnaire] step6: creating proposal in DB...');
   const now = new Date().toISOString();
   const proposal = db.createProposal({
     id: uuidv4(),
@@ -1065,9 +1090,12 @@ app.post('/api/proposals/questionnaire', (req, res) => {
   });
   db.ensureProject(proposal.project_id);
   const filePath = db.saveProposalToFile(proposal);
+  console.log('[DEBUG:questionnaire] step6: proposal created → id=%s, source=questionnaire, file=%s', proposal.id, filePath);
   sseBroadcaster.broadcast({ type: 'proposal_created', proposal, filePath }, proposal.project_id);
+  console.log('[DEBUG:questionnaire] step7: SSE broadcast proposal_created');
   agentManager.addLog(proposal.project_id, authorValidation.agentId, '提交问卷提案', `问卷提案: ${proposal.title}`, 'success');
 
+  console.log('[DEBUG:questionnaire] DONE → 200, proposal.id=%s', proposal.id);
   res.json({ proposal });
 });
 

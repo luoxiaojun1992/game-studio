@@ -46,9 +46,13 @@ export default function QuestionnaireForm({ project_id, authorAgentId, onSubmit,
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
+    console.log('[DEBUG:QuestionnaireForm] mounted, fetching game-types...');
     api.getGameTypes().then((data: any) => {
+      console.log('[DEBUG:QuestionnaireForm] getGameTypes response:', data?.game_types?.length, 'types');
       if (data?.game_types) setGameTypes(data.game_types);
-    }).catch(() => {});
+    }).catch((err) => {
+      console.error('[DEBUG:QuestionnaireForm] getGameTypes failed:', err);
+    });
   }, []);
 
   const updateField = (field: string, value: string) => {
@@ -66,12 +70,14 @@ export default function QuestionnaireForm({ project_id, authorAgentId, onSubmit,
     if (!form.target_audience.trim()) e.target_audience = l('目标受众必填', 'Target audience is required');
     if (!form.game_objectives.trim()) e.game_objectives = l('游戏目标必填', 'Game objectives is required');
     else if (form.game_objectives.trim().length < 50) e.game_objectives = l('游戏目标最少50字', 'Game objectives: min 50 chars');
+    console.log('[DEBUG:QuestionnaireForm] validateStep0 →', Object.keys(e).length === 0 ? 'PASS' : 'FAIL', { errors: e });
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
   const handleSubmit = async () => {
-    if (!validateStep0()) { setStep(0); return; }
+    if (!validateStep0()) { console.log('[DEBUG:QuestionnaireForm] handleSubmit: validateStep0 failed, staying on step 0'); setStep(0); return; }
+    console.log('[DEBUG:QuestionnaireForm] handleSubmit: submitting...', { game_name: form.game_name, game_type: form.game_type, game_genre: form.game_genre });
     setLoading(true);
     try {
       const payload: any = {
@@ -93,12 +99,16 @@ export default function QuestionnaireForm({ project_id, authorAgentId, onSubmit,
       if (form.monetization_hint.trim()) payload.monetization_hint = form.monetization_hint.trim();
 
       const result = await api.submitQuestionnaireProposal(payload);
+      console.log('[DEBUG:QuestionnaireForm] handleSubmit: API response', result);
       if ((result as any).error) {
+        console.log('[DEBUG:QuestionnaireForm] handleSubmit: API returned error', (result as any).error);
         setErrors({ _global: (result as any).error });
         return;
       }
+      console.log('[DEBUG:QuestionnaireForm] handleSubmit: SUCCESS, calling onSubmit');
       onSubmit();
-    } catch {
+    } catch (err) {
+      console.error('[DEBUG:QuestionnaireForm] handleSubmit: catch error', err);
       setErrors({ _global: l('提交失败，请重试', 'Submit failed, please retry') });
     } finally {
       setLoading(false);

@@ -354,6 +354,7 @@ export interface DbProposal {
 4. **前端测试**：问卷表单校验、分步填写、预览渲染、来源标签显示
 5. **UI-010（E2E）**：打开问卷表单 → 填写核心必填字段（game_name/genre/one_liner/core_mechanic/target_audience/game_objectives）→ 下一步 → 填写扩展字段 → 提交 → 弹窗关闭 + 列表数量增加 + 标题可见 + 紫色"问卷"来源标签可见
    - data-testid 链路：`create-questionnaire-proposal-btn` → `q-game-name` → `q-game-genre` → `q-one-liner` → `q-core-mechanic` → `q-target-audience` → `q-game-objectives` → `q-next-step` → `q-level-design` → `q-tech-req` → `q-duration` → `q-submit`
+   - debug 日志覆盖：后端路由（`[DEBUG:questionnaire]` step1~step7）、前端组件（`[DEBUG:QuestionnaireForm]`）、SSE 事件（`[DEBUG:SSE] proposal_created`）、E2E 测试（`[UI-010]` step1~step8）
 
 ## UI Test 验收规则
 

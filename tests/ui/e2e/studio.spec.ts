@@ -652,56 +652,95 @@ test('[UI-009] should manually create a proposal via UI', async ({ page }) => {
 // ═══════════════════════════════════════════
 
 test('[UI-010] should create a questionnaire proposal via structured form', async ({ page }) => {
+  const log = (step: string, extra?: Record<string, unknown>) => {
+    let payload = '';
+    if (extra) try { payload = ` ${JSON.stringify(extra)}` } catch { payload = ` ${String(extra)}` }
+    process.stderr.write(`[UI-010] ${new Date().toISOString()} ${step}${payload}\n`);
+  };
+
+  log('setup:init-language');
   await page.addInitScript(() => localStorage.setItem('game_studio_ui_language', 'zh-CN'));
+  log('setup:goto-page');
   await page.goto('/');
+  log('setup:page-loaded', { url: page.url() });
 
   // Switch to proposals tab
+  log('step1:switch-to-proposals-tab');
   await page.getByRole('tab', { name: /策划案/ }).click();
   await expect(page.getByRole('heading', { name: /策划案/ })).toBeVisible();
+  log('step1:proposals-tab-visible');
 
   // Record initial count
   const initialCount = await page.locator('[data-testid^="proposal-item-"]').count();
+  log('step1:initial-proposal-count', { count: initialCount });
 
   // Click questionnaire proposal button
+  log('step2:click-questionnaire-btn');
   await page.getByTestId('create-questionnaire-proposal-btn').click();
   await expect(page.getByTestId('q-game-name')).toBeVisible();
+  log('step2:questionnaire-form-visible');
 
   // ── Step 0: Core info ──
   const longCoreMechanic = '玩家通过种植不同外星作物获取资源种子与能量晶体。每种作物有独特的生长周期和元素属性，合理搭配能触发连锁反应产生额外收益。'.repeat(2);
   const longGameObjectives = '在限定周期内将农场从初始的单个温室扩展到包含五个星球的完整生态网络。每个星球解锁需要达到前一个星球的产量目标，同时抵御随机陨石事件造成的损失。'.repeat(2);
+  log('step3:fill-core-fields', { coreMechanicLength: longCoreMechanic.length, objectivesLength: longGameObjectives.length });
 
   await page.getByTestId('q-game-name').fill('星际农场');
+  log('step3:filled game_name');
   await page.getByTestId('q-game-genre').selectOption('simulation');
+  log('step3:filled game_genre=simulation');
   await page.getByTestId('q-one-liner').fill('在太空站经营生态农场，培育外星作物并抵御陨石威胁');
+  log('step3:filled one_liner');
   await page.getByTestId('q-core-mechanic').fill(longCoreMechanic);
+  log('step3:filled core_mechanic');
   await page.getByTestId('q-target-audience').fill('18-35岁休闲玩家，喜欢模拟经营和轻策略元素');
+  log('step3:filled target_audience');
   await page.getByTestId('q-game-objectives').fill(longGameObjectives);
+  log('step3:filled game_objectives');
 
   // Click "Next" to proceed to step 1
+  log('step4:click-next-step');
   await page.getByTestId('q-next-step').click();
+  log('step4:waiting-for-step1...');
   // Verify we're on step 1 (extended info)
   await expect(page.getByTestId('q-level-design')).toBeVisible();
+  log('step4:step1-visible (extended info)');
 
   // ── Step 1: Extended info (optional, fill a couple) ──
+  log('step5:fill-extended-fields');
   await page.getByTestId('q-tech-req').fill('HTML5 Canvas 2D，无需外部引擎');
+  log('step5:filled tech_requirements');
   await page.getByTestId('q-duration').fill('2-3周');
+  log('step5:filled estimated_duration');
 
   // ── Submit ──
+  log('step6:click-submit');
   await page.getByTestId('q-submit').click();
+  log('step6:waiting-for-modal-close...');
   // Modal should close after successful submit
   await expect(page.getByTestId('q-game-name')).not.toBeVisible({ timeout: 5000 });
+  log('step6:modal-closed');
 
   // Wait for SSE update
+  log('step7:waiting-for-SSE-update...');
   await page.waitForTimeout(1000);
+  log('step7:SSE-wait-done');
 
   // ── Verify ──
+  log('step8:verify-proposal-count');
   const finalCount = await page.locator('[data-testid^="proposal-item-"]').count();
   expect(finalCount).toBeGreaterThan(initialCount);
+  log('step8:proposal-count', { initial: initialCount, final: finalCount });
 
   // Verify proposal title appears
+  log('step8:verify-title-visible');
   await expect(page.getByText('星际农场')).toBeVisible();
+  log('step8:title-visible:PASS');
 
   // Verify source tag (问卷 label)
+  log('step8:verify-source-tag');
   const sourceTag = page.locator('.text-purple-300').filter({ hasText: '问卷' });
   await expect(sourceTag).toBeVisible();
+  log('step8:source-tag-visible:PASS');
+  log('DONE');
 });

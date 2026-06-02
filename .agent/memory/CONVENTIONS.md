@@ -27,6 +27,14 @@
 - **UI Test 编号规则**：`UI-XXX` 从现有最大编号 +1 递增，测试文件中用 `[UI-XXX]` 作为 test 名称前缀
 - **前端组件 data-testid 规范**：新组件必须添加 `data-testid` 属性供 E2E 测试使用，命名采用 `{功能缩写}-{元素}` 格式（如 `q-game-name`）
 
+- **添加详细 debug 日志以方便 UI Test 调试**：新增前端交互功能、后端 API 路由、E2E 测试用例时，必须同步添加 `console.log` / `process.stderr.write` debug 日志，方便测试失败时快速定位问题：
+  1. **后端 API 路由**：在路由入口、校验步骤（PASS/FAIL）、关键操作（DB 写入、SSE 广播）处添加 `console.log('[DEBUG:路由名] stepN: ...')` 格式日志
+  2. **前端组件**：在关键生命周期（mount）、用户操作（表单填写、校验、提交）、API 请求/响应处添加 `console.log('[DEBUG:ComponentName] ...')` 格式日志
+  3. **SSE 事件处理**：在 `handleSSEEvent` 的 case 分支中添加日志，记录事件类型和关键数据
+  4. **E2E 测试用例**：参照 UI-007/008 的 `log()` helper 模式，每个操作步骤添加 `process.stderr.write('[UI-XXX] step: ...')` 日志，包含结构化 extra 数据
+  - **日志格式统一**：`[DEBUG:模块名] stepN: 描述` 或 `[UI-XXX] stepN: 描述`，关键数据以 JSON extra 输出
+  - **日志粒度**：关键路径全覆盖，但避免在循环/高频回调中输出日志
+
 ## 6 个 Bug 修复记录
 1. CommandPanel 历史记录丢失
 2. 产出持久化失败

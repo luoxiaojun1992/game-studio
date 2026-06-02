@@ -165,6 +165,7 @@ export default function StudioPage() {
       case 'proposal_reviewed':
         setProposals(prev => {
           const proposal = (event as any).proposal as Proposal;
+          console.log(`[DEBUG:SSE] ${event.type}:`, { proposalId: proposal.id, title: proposal.title, source: (proposal as any).source, project_id: proposal.project_id });
           if (proposal.project_id !== selectedProjectId) return prev;
           const idx = prev.findIndex(p => p.id === proposal.id);
           if (idx >= 0) {
@@ -388,6 +389,7 @@ export default function StudioPage() {
 
   // SPEC-007: 问卷提案成功回调
   const handleQuestionnaireSubmit = () => {
+    console.log('[DEBUG:StudioPage] handleQuestionnaireSubmit: closing questionnaire form');
     setShowQuestionnaireForm(false);
   };
 
