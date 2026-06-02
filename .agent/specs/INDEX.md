@@ -21,6 +21,9 @@
 | SPEC-005 | H5 小游戏工程规范 | [game-framework-spec/H5_GAME_ENGINEERING_FRAMEWORK.md](game-framework-spec/H5_GAME_ENGINEERING_FRAMEWORK.md) | 已实现 |
 | SPEC-006 | 游戏成品提交与 Lint 功能变更计划 | [game-submission-lint-change-plan.md](game-submission-lint-change-plan.md) | 已实现 |
 | SPEC-007 | 基于问卷的游戏策划案提交功能规范 | [questionnaire-proposal.md](questionnaire-proposal.md) | 实现中 |
+| SPEC-008 | ImageMagick 图片处理微服务规范 | [image-service.md](image-service.md) | 设计中 |
+| SPEC-009 | FFmpeg 视频处理微服务规范 | [video-service.md](video-service.md) | 设计中 |
+| SPEC-010 | Phaser Mobile 游戏工程规范 | [game-framework-spec/PHASER_MOBILE_GAME_ENGINEERING_FRAMEWORK.md](game-framework-spec/PHASER_MOBILE_GAME_ENGINEERING_FRAMEWORK.md) | 设计中 |
 
 ---
 
