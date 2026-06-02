@@ -5,7 +5,7 @@
 
 ## 项目概述
 
-Game Dev Studio 是一个基于 CodeBuddy Agent SDK 的多 Agent 游戏研发工作台，提供团队协作、提案评审与附件、任务看板、任务交接、游戏产出、draw.io 图表、运行观测与 Star-Office-UI 联动能力。
+Game Dev Studio 是一个基于 CodeBuddy Agent SDK 的多 Agent 游戏研发工作台，提供团队协作、提案评审与附件、问卷式提案提交、任务看板、任务交接、游戏产出、draw.io 图表、运行观测与 Star-Office-UI 联动能力。
 
 ## 技术栈
 
@@ -68,6 +68,7 @@ export const AGENT_IDS = ['engineer', 'architect', 'game_designer', 'biz_designe
 | Scanner 服务客户端 | `server/sonar-scanner-service.ts` |
 | SSE 广播 | `server/sse-broadcaster.ts` |
 | Express 路由 | `server/index.ts` |
+| 问卷渲染引擎 | `server/utils/questionnaire-renderer.ts` |
 
 ## 编码规范
 

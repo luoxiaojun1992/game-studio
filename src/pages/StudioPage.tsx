@@ -11,6 +11,7 @@ import GamePreview from '../components/GamePreview';
 import HandoffPanel from '../components/HandoffPanel';
 import TaskBoardPanel from '../components/TaskBoardPanel';
 import StarOfficeStudio from '../components/StarOfficeStudio';
+import QuestionnaireForm from '../components/QuestionnaireForm';
 import { useI18n } from '../i18n';
 
 const AGENT_NAMES_ZH: Record<string, string> = {
@@ -90,6 +91,7 @@ export default function StudioPage() {
   const [proposalFormContent, setProposalFormContent] = useState('');
   const [proposalFormAuthorAgentId, setProposalFormAuthorAgentId] = useState<AgentRole>('game_designer');
   const [submittingProposal, setSubmittingProposal] = useState(false);
+  const [showQuestionnaireForm, setShowQuestionnaireForm] = useState(false);
   const eventSourceRef = useRef<EventSource | null>(null);
   const connectedRef = useRef(false);
 
@@ -163,6 +165,7 @@ export default function StudioPage() {
       case 'proposal_reviewed':
         setProposals(prev => {
           const proposal = (event as any).proposal as Proposal;
+          console.log(`[DEBUG:SSE] ${event.type}:`, { proposalId: proposal.id, title: proposal.title, source: (proposal as any).source, project_id: proposal.project_id });
           if (proposal.project_id !== selectedProjectId) return prev;
           const idx = prev.findIndex(p => p.id === proposal.id);
           if (idx >= 0) {
@@ -383,6 +386,13 @@ export default function StudioPage() {
     }
     setSubmittingProposal(false);
   };
+
+  // SPEC-007: 问卷提案成功回调
+  const handleQuestionnaireSubmit = () => {
+    console.log('[DEBUG:StudioPage] handleQuestionnaireSubmit: closing questionnaire form');
+    setShowQuestionnaireForm(false);
+  };
+
   const handlePreviewGame = (game: Game) => {
     setSelectedGame(game);
   };
@@ -697,6 +707,13 @@ export default function StudioPage() {
               </div>
               <div className="flex items-center gap-2">
                 <button
+                  data-testid="create-questionnaire-proposal-btn"
+                  onClick={() => setShowQuestionnaireForm(true)}
+                  className="bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                >
+                  {l('📝 问卷提案', '📝 Questionnaire')}
+                </button>
+                <button
                   data-testid="create-proposal-btn"
                   onClick={() => setShowCreateProposalDialog(true)}
                   className="bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
@@ -827,6 +844,16 @@ export default function StudioPage() {
               </div>
             )}
           </div>
+        )}
+
+        {/* SPEC-007: 问卷提案表单 */}
+        {showQuestionnaireForm && (
+          <QuestionnaireForm
+            project_id={selectedProjectId}
+            authorAgentId={proposalFormAuthorAgentId}
+            onSubmit={handleQuestionnaireSubmit}
+            onCancel={() => setShowQuestionnaireForm(false)}
+          />
         )}
 
         {activeTab === 'games' && (

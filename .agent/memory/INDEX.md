@@ -30,6 +30,9 @@
 - draw.io 图表工具（`drawio_*`、`drawio_list_elements`）通过 `drawio-service.ts` 调用微服务，项目记录存放于 `drawio_projects`
 - 策划案附件记录在 `proposal_attachments`，附件文件存储在 MinIO
 - SonarQube 报告上传后写入 `games.sonar_storage_id`，前端可下载扫描报告
+- `proposals` 表含 `source` 字段（`manual`/`questionnaire`），问卷式提案通过 `questionnaire-renderer.ts` 渲染结构化输入为 Markdown
+- `QuestionnaireForm` 组件提供分步问卷表单，`GET /api/game-types` 动态获取游戏工程类型
+- `POST /api/proposals/questionnaire` 为问卷提案 REST 入口，提交后与普通提案完全等价
 
 ### E2E 测试关键
 - 选择器不匹配 → 前端加 `data-testid` → 测试用属性选

@@ -48,6 +48,7 @@ export interface Proposal {
   user_comment: string | null;
   version: number;
   parent_id: string | null;
+  source: 'manual' | 'questionnaire';
   created_at: string;
   updated_at: string;
 }

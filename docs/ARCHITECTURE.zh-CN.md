@@ -81,6 +81,7 @@ graph TB
 - API 封装层：`src/config.ts`
 - 共享类型：`src/types.ts`
 - 通过 SSE 订阅后端事件，保持前端状态与运行时一致
+- `QuestionnaireForm` 组件提供结构化游戏策划问卷表单，支持分步填写（核心信息 + 扩展信息），通过 `GET /api/game-types` 动态获取游戏工程类型
 
 ### 3.2 后端（`server/`）
 
@@ -98,13 +99,14 @@ graph TB
 - `sse-broadcaster.ts`：SSE 客户端管理与事件广播
 - `star-office-sync.ts`：Star-Office 注册/同步/健康巡检
 - `proposal-attachments-api.ts`：策划案附件 CRUD 与文件存储绑定
+- `utils/questionnaire-renderer.ts`：问卷字段到 Markdown 的渲染引擎，用于结构化提案提交
 - `/creator/app/safe_path.py` 与 `/drawio-service/app/safe_path.py`：路径穿越防护工具函数（将用户提供的路径段解析到受信任的基础目录内）
 
 ## 4. 核心业务域
 
 - **项目（Projects）**：项目生命周期、项目切换上下文、项目设置
 - **Agent（Agents）**：基于角色的协作与指令执行
-- **提案（Proposals）**：提案创建、评审流转、决策状态
+- **提案（Proposals）**：提案创建、评审流转、决策状态；支持问卷式结构化策划案提交（`source='questionnaire'`，通过 `questionnaire-renderer.ts` 渲染为 Markdown）
 - **任务（Tasks）**：开发/测试任务拆分与状态流转
 - **交接（Handoffs）**：跨角色任务移交与确认执行
 - **产物（Games）**：支持目录模式提交（使用 `games/latest/dist/` 结构：`index.html` + `metadata.json` + `assets/manifest.json`，自动生成 `version_number` 作为唯一标识），支持列表、文件下载（MinIO）与 **Sonar 报告下载**
@@ -137,6 +139,7 @@ graph TB
   - `commands`
   - `permission_requests`
   - `game_engineering_specs`
+- `proposals` 表包含 `source` 列（`manual` | `questionnaire`），区分自由文本提案与问卷式提案；问卷式提案在存储前将结构化输入渲染为 Markdown
 - 游戏产物由 engineer 调用 `write_game_file` 写入 `output/{project_id}/games/latest/dist/`，再通过 `submit_game` 打包 ZIP 上传 MinIO，通过 `games.file_storage_id` 关联
 - 游戏提交触发双 lint 检查：两个 checker 通过 LintContext.submitDir 获取目录 —— SonarQube checker 自行从目录打包 ZIP 送给 scanner，GameEngineeringChecker 直接读取 `submitDir/dist/*` 文件进行工程规范校验
 - Sonar 质量报告存入 MinIO，通过 `games.sonar_storage_id` 关联（可在游戏详情页面下载）
