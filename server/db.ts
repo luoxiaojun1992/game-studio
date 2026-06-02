@@ -16,6 +16,7 @@ export const GAME_NAME_PATTERN = /^[a-zA-Z0-9_\-\u4e00-\u9fa5]+$/;
 export const MAX_VERSION_LENGTH = 30;
 export const MAX_DESCRIPTION_LENGTH = 2000;
 export const SINGLE_LINE_TITLE_PATTERN = /^[^\r\n]*$/;
+export const PROPOSAL_SOURCES = ['manual', 'questionnaire'] as const;
 export const PROPOSAL_TYPES = ['game_design', 'biz_design', 'tech_arch', 'tech_impl', 'ceo_review'] as const;
 export const PROPOSAL_STATUSES = ['pending_review', 'under_review', 'approved', 'rejected', 'revision_needed', 'user_approved', 'user_rejected'] as const;
 export const GAME_STATUSES = ['draft', 'published'] as const;
@@ -139,6 +140,7 @@ db.exec(`
     user_comment TEXT,
     version INTEGER NOT NULL DEFAULT 1,
     parent_id TEXT,
+    source TEXT NOT NULL DEFAULT 'manual',
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
   );
@@ -232,6 +234,7 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_agent_sessions_project_agent ON agent_sessions(project_id, agent_id);
   CREATE INDEX IF NOT EXISTS idx_proposals_status ON proposals(status);
   CREATE INDEX IF NOT EXISTS idx_proposals_project_id ON proposals(project_id);
+  CREATE INDEX IF NOT EXISTS idx_proposals_source ON proposals(source);
   CREATE INDEX IF NOT EXISTS idx_games_project_id ON games(project_id);
   CREATE INDEX IF NOT EXISTS idx_commands_status ON commands(status);
   CREATE INDEX IF NOT EXISTS idx_commands_project ON commands(project_id);
@@ -370,6 +373,7 @@ export interface DbProposal {
   user_comment: string | null;
   version: number;
   parent_id: string | null;
+  source: 'manual' | 'questionnaire';
   created_at: string;
   updated_at: string;
 }
@@ -604,9 +608,10 @@ export function createProposal(proposal: DbProposal): DbProposal {
   const normalizedContent = normalizeAndValidateRequiredText(proposal.content, 'content');
   const normalizedAuthorAgentId = normalizeAndValidateRequiredText(proposal.author_agent_id, 'author_agent_id');
   const normalizedStatus = validateEnumValue(proposal.status, 'status', PROPOSAL_STATUSES);
+  const normalizedSource = validateEnumValue(proposal.source || 'manual', 'source', PROPOSAL_SOURCES);
   const stmt = db.prepare(`
-    INSERT INTO proposals (id, project_id, type, title, content, author_agent_id, status, reviewer_agent_id, review_comment, user_decision, user_comment, version, parent_id, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO proposals (id, project_id, type, title, content, author_agent_id, status, reviewer_agent_id, review_comment, user_decision, user_comment, version, parent_id, source, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   stmt.run(
     proposal.id,
@@ -622,6 +627,7 @@ export function createProposal(proposal: DbProposal): DbProposal {
     proposal.user_comment,
     proposal.version,
     proposal.parent_id,
+    normalizedSource,
     proposal.created_at,
     proposal.updated_at
   );
@@ -632,7 +638,8 @@ export function createProposal(proposal: DbProposal): DbProposal {
     title: normalizedTitle,
     content: normalizedContent,
     author_agent_id: normalizedAuthorAgentId,
-    status: normalizedStatus
+    status: normalizedStatus,
+    source: normalizedSource
   };
 }
 
@@ -1717,3 +1724,10 @@ export function seedGameEngineeringSpecs(): void {
 
 // 启动时自动导入种子数据
 seedGameEngineeringSpecs();
+
+// 兼容迁移：为旧库添加 source 列
+try {
+  db.exec(`ALTER TABLE proposals ADD COLUMN source TEXT NOT NULL DEFAULT 'manual'`);
+} catch {
+  // 列已存在则忽略
+}
