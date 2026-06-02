@@ -14,6 +14,7 @@ A multi-agent game development workspace built on the CodeBuddy Agent SDK, provi
 - Task handoff (cross-role transfer, acceptance, execution confirmation, completion callback)
 - Project settings (auto-handoff toggle)
 - Proposal management (create, review, and human decision)
+- Questionnaire-based proposal submission (structured game design questionnaire for non-technical users, renders to Markdown with `source='questionnaire'`)
 - Proposal attachments (manual uploads or draw.io diagram exports stored in MinIO)
 - Game artifact management (submit HTML artifacts or packaged files, preview, download, and version status)
 - Blender modeling pipeline (creator service + `blender_*` tools for project/mesh/material/export/file operations)
@@ -136,6 +137,15 @@ game-studio/
 ├── src/                    # Frontend app
 │   ├── pages/StudioPage.tsx
 │   ├── components/         # Business panels
+│   │   ├── QuestionnaireForm.tsx  # Structured game design questionnaire form
+│   │   ├── AgentCard.tsx        # Agent status cards
+│   │   ├── CommandPanel.tsx     # Command dispatch panel
+│   │   ├── HandoffPanel.tsx     # Task handoff panel
+│   │   ├── ProposalList.tsx     # Proposal list (supports source tag)
+│   │   ├── GameList.tsx         # Game list
+│   │   ├── TaskBoardPanel.tsx  # Task board
+│   │   ├── LogPanel.tsx         # Log panel
+│   │   └── StarOfficeStudio.tsx # Star‑Office‑UI integration widget
 │   ├── config.ts           # API wrappers
 │   └── types.ts            # Shared business types
 ├── star-office-ui/         # Star-Office-UI Docker build resources
@@ -167,7 +177,8 @@ Main endpoints (prefix `/api`):
 
 - Basic: `/health` `/models` `/check-login` `/observe`
 - Agents: `/agents` `/agents/:agentId/command` `/agents/:agentId/pause` `/agents/:agentId/resume`
-- Proposals: `/proposals` `/proposals/:id` `/proposals`(POST) `/proposals/:id/review` `/proposals/:id/decide` `/proposals/:id/attachments`(GET/POST) `/proposals/:id/attachments/:attachmentId`(DELETE) `/proposals/:id/attachments/:attachmentId/download`
+- Proposals: `/proposals` `/proposals/:id` `/proposals`(POST) `/proposals/questionnaire`(POST) `/proposals/:id/review` `/proposals/:id/decide` `/proposals/:id/attachments`(GET/POST) `/proposals/:id/attachments/:attachmentId`(DELETE) `/proposals/:id/attachments/:attachmentId/download`
+- Game types: `/game-types`(GET)
 - Games: `/games` `/games/:id` `/games`(POST) `/games/:id/preview` `/games/:id`(PATCH)
 - File storage: `/file-storage` `/file-storage/:id` `/file-storage/:id/download`
 - Projects: `/projects`(GET/POST) `/projects/switch`(POST) `/projects/:id/settings`(GET/PATCH)

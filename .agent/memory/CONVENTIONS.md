@@ -5,6 +5,35 @@
 - 不允许为了"让测试通过"而放宽断言、加 fallback、或绕过正常流程
 - 遇到问题必须先定位根因，再修复，不能猜测或碰运气
 - 验收标准中明确，提交代码前必须跑通ui test。如遇网络或依赖问题，可临时修改代码解决网络问题，但禁止提交为了解决网络依赖问题所做的变更。
+- **主动添加 UI Test**：新增前端交互功能（按钮、表单、弹窗、面板等）时，必须同步编写对应的 E2E 测试用例，并更新以下文档：
+  1. `tests/ui/e2e/studio.spec.ts` — 添加测试用例（分配下一个 UI-XXX 编号）
+  2. `.agent/memory/E2E_TESTING.md` — 更新测试矩阵、testid 对照表、测试经验
+  3. `.agent/specs/` 下对应的 spec 文档 — 更新测试策略章节
+  4. `.agent/specs/INDEX.md` — 如有新 spec 则更新索引
+
+- **主动更新所有相关文档**：实现新功能或做重大修改后，必须主动检查并更新所有受影响的文档，而非仅更新直接相关文件。完整检查清单：
+  1. `README.md` + `README.zh-CN.md` — 功能概览、API 概览、目录结构
+  2. `docs/ARCHITECTURE.md` + `docs/ARCHITECTURE.zh-CN.md` — 业务域、数据模型、运行时组件
+  3. `.agent/memory/ARCHITECTURE.md` — 架构关键点、关键模块详解
+  4. `.agent/memory/INDEX.md` — 快速参考
+  5. `.agent/memory/E2E_TESTING.md` — 测试矩阵、testid 对照表（如有新测试）
+  6. `.agent/memory/CONVENTIONS.md` — 工作约定（如有新规范）
+  7. `.agent/memory/MEMORY.md` — 长期记忆（工程决策记录）
+  8. `.agent/specs/` 下相关 spec 文档 — 状态、测试策略
+  9. `.agent/specs/INDEX.md` — spec 索引状态
+  10. `.agent/AI_AGENT_COMMON_INSTRUCTIONS.md` — 关键文件位置、API 概览
+  - **文档更新禁止添加日期和敏感信息**
+  - **不相关的文档不需要修改**（如 LINT.md 与问卷提案无关则不更新）
+- **UI Test 编号规则**：`UI-XXX` 从现有最大编号 +1 递增，测试文件中用 `[UI-XXX]` 作为 test 名称前缀
+- **前端组件 data-testid 规范**：新组件必须添加 `data-testid` 属性供 E2E 测试使用，命名采用 `{功能缩写}-{元素}` 格式（如 `q-game-name`）
+
+- **添加详细 debug 日志以方便 UI Test 调试**：新增前端交互功能、后端 API 路由、E2E 测试用例时，必须同步添加 `console.log` / `process.stderr.write` debug 日志，方便测试失败时快速定位问题：
+  1. **后端 API 路由**：在路由入口、校验步骤（PASS/FAIL）、关键操作（DB 写入、SSE 广播）处添加 `console.log('[DEBUG:路由名] stepN: ...')` 格式日志
+  2. **前端组件**：在关键生命周期（mount）、用户操作（表单填写、校验、提交）、API 请求/响应处添加 `console.log('[DEBUG:ComponentName] ...')` 格式日志
+  3. **SSE 事件处理**：在 `handleSSEEvent` 的 case 分支中添加日志，记录事件类型和关键数据
+  4. **E2E 测试用例**：参照 UI-007/008 的 `log()` helper 模式，每个操作步骤添加 `process.stderr.write('[UI-XXX] step: ...')` 日志，包含结构化 extra 数据
+  - **日志格式统一**：`[DEBUG:模块名] stepN: 描述` 或 `[UI-XXX] stepN: 描述`，关键数据以 JSON extra 输出
+  - **日志粒度**：关键路径全覆盖，但避免在循环/高频回调中输出日志
 
 ## 6 个 Bug 修复记录
 1. CommandPanel 历史记录丢失
