@@ -48,6 +48,7 @@
 | 字段名 | 类型 | 必填 | 长度限制 | 说明 |
 |--------|------|------|---------|------|
 | `game_name` | string | ✅ | 1-50 | 游戏名称，规则同 `game_name` 校验（字母/数字/中文/下划线/连字符） |
+| `game_type` | enum | ✅ | — | 游戏工程类型（对应 `game_engineering_specs` 表中已注册的 `game_type`，如 `h5`），通过 `get_game_types` 工具获取可选值 |
 | `game_genre` | enum | ✅ | — | 游戏类型：`action` / `puzzle` / `rpg` / `strategy` / `casual` / `simulation` / `sports` / `other` |
 | `one_liner` | string | ✅ | 1-200 | 一句话描述游戏核心体验（elevator pitch） |
 | `core_mechanic` | string | ✅ | 50-2000 | 核心玩法机制：玩家做什么、怎么做、有什么反馈循环 |
@@ -65,6 +66,7 @@
 | 字段 | 规则 |
 |------|------|
 | `game_name` | 复用 `normalizeAndValidateGameName`，1-50 字符 |
+| `game_type` | 运行时从 `game_engineering_specs` 表查询已注册类型，动态构建 `z.enum()` 校验；传入未注册类型 → 400 |
 | `one_liner` | 单行文本，不允许换行，1-200 字符 |
 | `core_mechanic` / `game_objectives` | 最少 50 字符（防止敷衍），最多 2000 字符 |
 | `game_genre` | Literal enum，不支持多选（聚焦核心类型） |
@@ -79,6 +81,7 @@
 ```typescript
 interface QuestionnaireInput {
   game_name: string;
+  game_type: string; // 已注册的游戏工程类型，如 'h5'；值来自 game_engineering_specs 表
   game_genre: 'action' | 'puzzle' | 'rpg' | 'strategy' | 'casual' | 'simulation' | 'sports' | 'other';
   one_liner: string;
   core_mechanic: string;
@@ -102,34 +105,37 @@ export function renderQuestionnaireToMarkdown(input: QuestionnaireInput): string
 
 > {one_liner}
 
-## 1. 游戏类型
+## 1. 游戏工程类型
+{game_type}
+
+## 2. 游戏类型
 {game_genre_label}
 
-## 2. 核心玩法
+## 3. 核心玩法
 {core_mechanic}
 
-## 3. 目标受众
+## 4. 目标受众
 {target_audience}
 
-## 4. 游戏目标与胜利条件
+## 5. 游戏目标与胜利条件
 {game_objectives}
 
-## 5. 关卡/内容设计
+## 6. 关卡/内容设计
 {level_design || "（待补充）"}
 
-## 6. UI/UX 设计要点
+## 7. UI/UX 设计要点
 {ui_ux_notes || "（待补充）"}
 
-## 7. 技术需求
+## 8. 技术需求
 {tech_requirements || "（待补充）"}
 
-## 8. 预期开发周期
+## 9. 预期开发周期
 {estimated_duration || "（待补充）"}
 
-## 9. 参考竞品
+## 10. 参考竞品
 {reference_games || "（无）"}
 
-## 10. 商业化方向
+## 11. 商业化方向
 {monetization_hint || "（待补充）"}
 ```
 
@@ -152,6 +158,26 @@ CREATE INDEX IF NOT EXISTS idx_proposals_source ON proposals(source);
 
 ## API 设计
 
+### `GET /api/game-types`
+
+前端问卷表单初始化时调用，获取当前系统已注册的游戏工程类型，用于渲染 `game_type` 下拉框。
+
+**参数**：无
+
+**响应**：
+
+```json
+{
+  "game_types": [
+    { "type": "h5", "description": "H5 小游戏（浏览器运行）" }
+  ]
+}
+```
+
+**实现**：直接复用 `db.getGameTypes()`，与 `get_game_types` MCP 工具共享同一数据源。DB 无数据时返回空数组（前端应禁用提交并提示"暂无可用游戏类型"）。
+
+---
+
 ### `POST /api/proposals/questionnaire`
 
 用户从前端问卷表单直接提交的 REST 入口。
@@ -163,6 +189,7 @@ CREATE INDEX IF NOT EXISTS idx_proposals_source ON proposals(source);
   "project_id": "my-project",
   "author_agent_id": "game_designer",
   "game_name": "星际农场",
+  "game_type": "h5",
   "game_genre": "simulation",
   "one_liner": "在太空站经营生态农场，培育外星作物并抵御陨石威胁",
   "core_mechanic": "玩家通过种植不同外星作物获取资源...",
@@ -181,13 +208,14 @@ CREATE INDEX IF NOT EXISTS idx_proposals_source ON proposals(source);
 
 ```json
 {
-  "proposal": { /* 完整 Proposal 对象，source='questionnaire' */ },
-  "filePath": "/path/to/proposal.md"
+  "proposal": { /* 完整 Proposal 对象，source='questionnaire' */ }
 }
 ```
 
+> `proposal` 对象直接来自 `db.createProposal` 的返回值（数据库记录），不含文件路径。问卷内容已渲染为 Markdown 存入 `proposals.content` 字段，不以文件形式保存。
+
 **校验规则**：
-- `project_id` / `author_agent_id` / `game_name` / `game_genre` / `one_liner` / `core_mechanic` / `target_audience` / `game_objectives` 必填
+- `project_id` / `author_agent_id` / `game_name` / `game_type` / `game_genre` / `one_liner` / `core_mechanic` / `target_audience` / `game_objectives` 必填
 - 其余字段可选
 - 复用 db.ts 中现有 normalize + 校验逻辑
 - content 渲染后走 `sanitizeHtml` 清洗
@@ -196,10 +224,11 @@ CREATE INDEX IF NOT EXISTS idx_proposals_source ON proposals(source);
 
 ```
 1. 校验必填字段 + normalize
-2. 组装 QuestionnaireInput 对象
-3. renderQuestionnaireToMarkdown(input) → Markdown content
-4. sanitizeHtml(content) → safeContent
-5. db.createProposal({
+2. 校验 game_type 是否已在 game_engineering_specs 表中注册（动态枚举，不通过 → 400）
+3. 组装 QuestionnaireInput 对象
+4. renderQuestionnaireToMarkdown(input) → Markdown content
+5. sanitizeHtml(content) → safeContent
+6. db.createProposal({
      source: 'questionnaire',
      type: 'game_design',
      title: game_name,
@@ -208,8 +237,8 @@ CREATE INDEX IF NOT EXISTS idx_proposals_source ON proposals(source);
      project_id,
      ...
    })
-6. SSE broadcast 'proposal_created'
-7. 返回提案对象
+7. SSE broadcast 'proposal_created'
+8. 返回提案对象
 ```
 
 > 步骤 5 与现有 `POST /api/proposals` 复用同一 `db.createProposal`，仅多一个 `source` 字段。
@@ -220,8 +249,15 @@ CREATE INDEX IF NOT EXISTS idx_proposals_source ON proposals(source);
 
 | 组件 | 路径 | 说明 |
 |------|------|------|
-| `QuestionnaireForm` | `src/components/QuestionnaireForm.tsx` | 问卷填写表单，含全部 12 个字段，分"核心信息"和"扩展信息"两组 |
+| `QuestionnaireForm` | `src/components/QuestionnaireForm.tsx` | 问卷填写表单，含全部 13 个字段，分"核心信息"和"扩展信息"两组 |
 | `QuestionnairePreview` | `src/components/QuestionnairePreview.tsx` | 填写完成后预览渲染出的 Markdown 效果（复用 ProposalDetail 的渲染逻辑或简单 markdown-it） |
+
+### 下拉框字段
+
+| 字段 | 下拉数据来源 | 获取时机 | 说明 |
+|------|-------------|---------|------|
+| `game_type` | `GET /api/game-types` 返回的 `game_types` 数组 | 组件 `useEffect` 初始化时请求 | 动态数据，DB 驱动；请求失败或返回空数组时禁用提交按钮并显示提示 |
+| `game_genre` | 前端硬编码常量数组 | 无需请求 | 固定 8 个值：`action` / `puzzle` / `rpg` / `strategy` / `casual` / `simulation` / `sports` / `other`；下拉显示中文标签（如 `action → 动作`），提交时发送英文枚举值 |
 
 ### ProposalList 调整
 
@@ -296,9 +332,9 @@ export interface DbProposal {
 | `server/utils/questionnaire-renderer.ts` | 问卷字段 → Markdown 渲染引擎 |
 | `server/db.ts` | `source` 字段 + `PROPOSAL_SOURCES` 常量 + `DbProposal` 类型更新 |
 | `server/db.d.ts` | 类型声明更新 |
-| `server/index.ts` | `POST /api/proposals/questionnaire` |
+| `server/index.ts` | `GET /api/game-types` + `POST /api/proposals/questionnaire` |
 | `src/types.ts` | `Proposal.source` 类型 |
-| `src/config.ts` | 新增 `submitQuestionnaireProposal` API 封装 |
+| `src/config.ts` | 新增 `getGameTypes` + `submitQuestionnaireProposal` API 封装 |
 | `src/components/QuestionnaireForm.tsx` | 问卷填写表单 |
 | `src/components/QuestionnairePreview.tsx` | 渲染预览组件 |
 | `src/components/ProposalList.tsx` | 列表来源标签 |
@@ -309,14 +345,21 @@ export interface DbProposal {
 1. **单元测试**：`questionnaire-renderer.ts` 的渲染输出校验（字段缺失时的兜底文案、Markdown 格式正确性）
 2. **API 测试**：
    - `POST /api/proposals/questionnaire` 必填字段缺失 → 400
+   - `POST /api/proposals/questionnaire` `game_type` 传入未注册值 → 400
    - `POST /api/proposals/questionnaire` 完整字段 → 200 并正确创建 proposal 记录，`source='questionnaire'`
    - 创建的 proposal 与通过 `POST /api/proposals` 创建的格式完全一致（除 source 外）
 3. **DB 兼容测试**：现有 `submit_proposal` 调用后 `source` 默认为 `'manual'`，不影响现有流程
 4. **前端测试**：问卷表单校验、分步填写、预览渲染、来源标签显示
 
+## UI Test 验收规则
+
+提交代码前必须跑通 ui test。
+如遇网络或依赖问题，可临时修改代码解决网络问题，但禁止提交为了解决网络依赖问题所做的变更。
+
 ## 注意事项
 
 - **不保存原始问卷**：问卷字段仅在提交瞬间用于渲染 Markdown，提交后即丢弃。如需回显编辑，v2 可重新设计。
+- **game_type 动态枚举**：`game_type` 的合法值由 `game_engineering_specs` 表驱动，前端通过 `GET /api/game-types` 获取可选值渲染下拉框，禁止硬编码。
 - **genre 扩展**：`game_genre` enum 初版硬编码 8 个类型，后续可通过配置文件或数据表扩展，避免频繁改代码。
 - **多语言**：问卷字段标签和渲染模板需支持 i18n，初版仅支持中文，英文模板后续补充。
 - **XSS 安全**：渲染后的 Markdown 与 `submit_proposal` 走同一套 `sanitizeHtml` 流程，不引入新的安全面。
