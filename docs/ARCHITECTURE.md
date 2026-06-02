@@ -81,6 +81,7 @@ graph TB
 - API wrapper layer in `src/config.ts`
 - Shared business/event types in `src/types.ts`
 - Consumes SSE events to keep UI state synchronized with backend runtime
+- `QuestionnaireForm` component provides structured game design questionnaire form with multi-step input (core fields + extended fields), fetches `game_types` dynamically via `GET /api/game-types`
 
 ### 3.2 Backend (`server/`)
 
@@ -98,13 +99,14 @@ graph TB
 - `sse-broadcaster.ts`: SSE client management and event broadcast
 - `star-office-sync.ts`: Star-Office registration/state sync/health checks
 - `proposal-attachments-api.ts`: proposal attachment CRUD and file-storage binding
+- `utils/questionnaire-renderer.ts`: questionnaire field-to-Markdown renderer for structured proposal submission
 - `/creator/app/safe_path.py` & `/drawio-service/app/safe_path.py`: path traversal protection utility (resolves user-supplied paths within trusted base directory)
 
 ## 4. Core Business Domains
 
 - **Projects**: project lifecycle, project switching context, settings
 - **Agents**: role-based collaboration and command execution
-- **Proposals**: creation, review workflow, decision states
+- **Proposals**: creation, review workflow, decision states; questionnaire-based submission for structured game design input (`source='questionnaire'`, renders to Markdown via `questionnaire-renderer.ts`)
 - **Tasks**: development/testing decomposition and status transitions
 - **Handoffs**: cross-role ownership transfer and confirmation flow
 - **Games**: directory-based artifact submission (using `games/latest/dist/` structure with `index.html` + `metadata.json` + `assets/manifest.json`), auto-generated `version_number` for unique identification, listing, file download via MinIO, and **Sonar report download**
@@ -138,6 +140,7 @@ graph TB
   - `commands`
   - `permission_requests`
   - `game_engineering_specs`
+- `proposals` table includes `source` column (`manual` | `questionnaire`) to distinguish between free-text and questionnaire-based proposals; questionnaire proposals render structured input to Markdown before storage
 - Game artifacts are written to `output/{project_id}/games/latest/dist/` by the engineer calling `write_game_file` tool, then packaged as ZIP by `submit_game`, uploaded to MinIO, and linked through `games.file_storage_id`
 - Game submission triggers dual lint: both checkers receive `submitDir` via LintContext — SonarQube checker self-packs ZIP from the directory for external scan, GameEngineeringChecker reads `submitDir/dist/*` directly for engineering spec validation
 - Sonar quality reports are stored in MinIO and linked through `games.sonar_storage_id` (downloadable from the game detail page)

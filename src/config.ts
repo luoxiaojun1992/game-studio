@@ -193,5 +193,16 @@ export const api = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message, model: model || 'glm-5.0', projectId })
-    })
+    }),
+
+  // SPEC-007: Game types for questionnaire
+  getGameTypes: () => fetch(`${API_BASE}/api/game-types`).then(r => r.json()),
+
+  // SPEC-007: Submit questionnaire proposal
+  submitQuestionnaireProposal: (data: any) =>
+    fetch(`${API_BASE}/api/proposals/questionnaire`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }).then(r => r.json()),
 };

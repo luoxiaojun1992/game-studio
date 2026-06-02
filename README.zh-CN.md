@@ -13,6 +13,7 @@
 - 任务交接（跨角色移交、确认执行、完成回传）
 - 项目设置（自动交接开关）
 - 提案管理（创建、评审、人工决策）
+- 问卷式提案提交（面向非技术用户的结构化游戏策划问卷，渲染为 Markdown，标记 `source='questionnaire'`）
 - 提案附件（支持手动上传或 draw.io 图表导出并存储到 MinIO）
 - 游戏成品管理（支持 HTML 成品或打包文件提交、预览下载、版本状态）
 - Blender 建模链路（creator service + `blender_*` 工具，覆盖 project/几何体/材质/导出/文件操作）
@@ -135,6 +136,15 @@ game-studio/
 ├── src/                    # 前端应用
 │   ├── pages/StudioPage.tsx
 │   ├── components/         # 各业务面板
+│   │   ├── QuestionnaireForm.tsx  # 结构化游戏策划问卷表单
+│   │   ├── AgentCard.tsx        # Agent 状态卡片
+│   │   ├── CommandPanel.tsx     # 指令发送面板
+│   │   ├── HandoffPanel.tsx     # 任务交接面板
+│   │   ├── ProposalList.tsx     # 提案列表（支持来源标签）
+│   │   ├── GameList.tsx         # 游戏列表
+│   │   ├── TaskBoardPanel.tsx  # 任务看板
+│   │   ├── LogPanel.tsx         # 日志面板
+│   │   └── StarOfficeStudio.tsx # Star‑Office‑UI 集成组件
 │   ├── config.ts           # API 封装
 │   └── types.ts            # 前后端共享业务类型
 ├── star-office-ui/         # Star-Office-UI Docker 构建资源
@@ -166,7 +176,8 @@ game-studio/
 
 - 基础：`/health` `/models` `/check-login` `/observe`
 - Agent：`/agents` `/agents/:agentId/command` `/agents/:agentId/pause` `/agents/:agentId/resume`
-- 提案：`/proposals` `/proposals/:id` `/proposals`(POST) `/proposals/:id/review` `/proposals/:id/decide` `/proposals/:id/attachments`(GET/POST) `/proposals/:id/attachments/:attachmentId`(DELETE) `/proposals/:id/attachments/:attachmentId/download`
+- 提案：`/proposals` `/proposals/:id` `/proposals`(POST) `/proposals/questionnaire`(POST) `/proposals/:id/review` `/proposals/:id/decide` `/proposals/:id/attachments`(GET/POST) `/proposals/:id/attachments/:attachmentId`(DELETE) `/proposals/:id/attachments/:attachmentId/download`
+- 游戏类型：`/game-types`(GET)
 - 游戏：`/games` `/games/:id` `/games`(POST) `/games/:id/preview` `/games/:id`(PATCH)
 - 文件存储：`/file-storage` `/file-storage/:id` `/file-storage/:id/download`
 - 项目：`/projects`(GET/POST) `/projects/switch`(POST) `/projects/:id/settings`(GET/PATCH)
