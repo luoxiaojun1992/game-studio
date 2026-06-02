@@ -48,7 +48,7 @@
 | 字段名 | 类型 | 必填 | 长度限制 | 说明 |
 |--------|------|------|---------|------|
 | `game_name` | string | ✅ | 1-50 | 游戏名称，规则同 `game_name` 校验（字母/数字/中文/下划线/连字符） |
-| `game_type` | enum | ✅ | — | 游戏工程类型（对应 `game_engineering_specs` 表中已注册的 `game_type`，如 `h5`），通过 `get_game_types` 工具获取可选值 |
+| `game_type` | enum | ❌ | — | 游戏工程类型（对应 `game_engineering_specs` 表中已注册的 `game_type`，如 `h5`），通过 `get_game_types` 工具获取可选值；传入时校验合法性，不传则跳过 |
 | `game_genre` | enum | ✅ | — | 游戏类型：`action` / `puzzle` / `rpg` / `strategy` / `casual` / `simulation` / `sports` / `other` |
 | `one_liner` | string | ✅ | 1-200 | 一句话描述游戏核心体验（elevator pitch） |
 | `core_mechanic` | string | ✅ | 50-2000 | 核心玩法机制：玩家做什么、怎么做、有什么反馈循环 |
@@ -66,7 +66,7 @@
 | 字段 | 规则 |
 |------|------|
 | `game_name` | 复用 `normalizeAndValidateGameName`，1-50 字符 |
-| `game_type` | 运行时从 `game_engineering_specs` 表查询已注册类型，动态构建 `z.enum()` 校验；传入未注册类型 → 400 |
+| `game_type` | 可选；传入时从 `game_engineering_specs` 表校验是否已注册（动态 `z.enum()`），不传时跳过；传入未注册值 → 400 |
 | `one_liner` | 单行文本，不允许换行，1-200 字符 |
 | `core_mechanic` / `game_objectives` | 最少 50 字符（防止敷衍），最多 2000 字符 |
 | `game_genre` | Literal enum，不支持多选（聚焦核心类型） |
@@ -81,7 +81,7 @@
 ```typescript
 interface QuestionnaireInput {
   game_name: string;
-  game_type: string; // 已注册的游戏工程类型，如 'h5'；值来自 game_engineering_specs 表
+  game_type?: string; // 可选，已注册的游戏工程类型，如 'h5'；值来自 game_engineering_specs 表
   game_genre: 'action' | 'puzzle' | 'rpg' | 'strategy' | 'casual' | 'simulation' | 'sports' | 'other';
   one_liner: string;
   core_mechanic: string;
@@ -106,7 +106,7 @@ export function renderQuestionnaireToMarkdown(input: QuestionnaireInput): string
 > {one_liner}
 
 ## 1. 游戏工程类型
-{game_type}
+{game_type || "（待补充）"}
 
 ## 2. 游戏类型
 {game_genre_label}
@@ -174,7 +174,7 @@ CREATE INDEX IF NOT EXISTS idx_proposals_source ON proposals(source);
 }
 ```
 
-**实现**：直接复用 `db.getGameTypes()`，与 `get_game_types` MCP 工具共享同一数据源。DB 无数据时返回空数组（前端应禁用提交并提示"暂无可用游戏类型"）。
+**实现**：直接复用 `db.getGameTypes()`，与 `get_game_types` MCP 工具共享同一数据源。DB 无数据时返回空数组。
 
 ---
 
@@ -215,7 +215,7 @@ CREATE INDEX IF NOT EXISTS idx_proposals_source ON proposals(source);
 > `proposal` 对象直接来自 `db.createProposal` 的返回值（数据库记录），不含文件路径。问卷内容已渲染为 Markdown 存入 `proposals.content` 字段，不以文件形式保存。
 
 **校验规则**：
-- `project_id` / `author_agent_id` / `game_name` / `game_type` / `game_genre` / `one_liner` / `core_mechanic` / `target_audience` / `game_objectives` 必填
+- `project_id` / `author_agent_id` / `game_name` / `game_genre` / `one_liner` / `core_mechanic` / `target_audience` / `game_objectives` 必填
 - 其余字段可选
 - 复用 db.ts 中现有 normalize + 校验逻辑
 - content 渲染后走 `sanitizeHtml` 清洗
@@ -224,7 +224,7 @@ CREATE INDEX IF NOT EXISTS idx_proposals_source ON proposals(source);
 
 ```
 1. 校验必填字段 + normalize
-2. 校验 game_type 是否已在 game_engineering_specs 表中注册（动态枚举，不通过 → 400）
+2. 可选字段 game_type 如传入，校验是否已在 game_engineering_specs 表中注册（动态枚举，不通过 → 400）
 3. 组装 QuestionnaireInput 对象
 4. renderQuestionnaireToMarkdown(input) → Markdown content
 5. sanitizeHtml(content) → safeContent
@@ -256,7 +256,7 @@ CREATE INDEX IF NOT EXISTS idx_proposals_source ON proposals(source);
 
 | 字段 | 下拉数据来源 | 获取时机 | 说明 |
 |------|-------------|---------|------|
-| `game_type` | `GET /api/game-types` 返回的 `game_types` 数组 | 组件 `useEffect` 初始化时请求 | 动态数据，DB 驱动；请求失败或返回空数组时禁用提交按钮并显示提示 |
+| `game_type` | `GET /api/game-types` 返回的 `game_types` 数组 | 组件 `useEffect` 初始化时请求 | 可选字段，动态数据，DB 驱动；请求失败或返回空数组时下拉框为空但不影响提交 |
 | `game_genre` | 前端硬编码常量数组 | 无需请求 | 固定 8 个值：`action` / `puzzle` / `rpg` / `strategy` / `casual` / `simulation` / `sports` / `other`；下拉显示中文标签（如 `action → 动作`），提交时发送英文枚举值 |
 
 ### ProposalList 调整
@@ -345,7 +345,7 @@ export interface DbProposal {
 1. **单元测试**：`questionnaire-renderer.ts` 的渲染输出校验（字段缺失时的兜底文案、Markdown 格式正确性）
 2. **API 测试**：
    - `POST /api/proposals/questionnaire` 必填字段缺失 → 400
-   - `POST /api/proposals/questionnaire` `game_type` 传入未注册值 → 400
+   - `POST /api/proposals/questionnaire` `game_type` 传入未注册值 → 400（不传则跳过）
    - `POST /api/proposals/questionnaire` 完整字段 → 200 并正确创建 proposal 记录，`source='questionnaire'`
    - 创建的 proposal 与通过 `POST /api/proposals` 创建的格式完全一致（除 source 外）
 3. **DB 兼容测试**：现有 `submit_proposal` 调用后 `source` 默认为 `'manual'`，不影响现有流程
