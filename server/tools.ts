@@ -469,6 +469,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
             user_comment: null,
             version: 1,
             parent_id: null,
+            source: 'manual',
             created_at: now,
             updated_at: now
           });

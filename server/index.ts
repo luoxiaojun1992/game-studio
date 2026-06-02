@@ -1132,6 +1132,7 @@ app.post('/api/proposals', (req, res) => {
     user_comment: null,
     version: 1,
     parent_id: null,
+    source: 'manual',
     created_at: now,
     updated_at: now
   });
