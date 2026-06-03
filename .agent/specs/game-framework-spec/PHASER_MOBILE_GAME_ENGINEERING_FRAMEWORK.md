@@ -299,31 +299,53 @@ interface SaveData {
 
 > **说明**：`settings`（音量控制）是所有游戏的公共字段，MUST 保留。其余字段完全由游戏需求决定，不做强制规定。
 
-- localStorage key MUST 使用项目前缀，格式为 `'{appId}_save_v{version}'`（如 `'com.example.mygame_save_v1'`）。
 - `SaveManager` MUST 提供 `load()` 和 `save(data)` 方法。
 - 首次运行时（无存档）MUST 返回默认初始状态，不报错。
 
+### localStorage Key 命名规则
+
+Key 格式：`'__phaser__|{appId}|v{version}'`，由三部分组成：
+
+| 段 | 说明 | 示例 |
+|----|------|------|
+| 固定前缀 | `__phaser__`（MUST，标识所有 phaser-mobile 框架产出的存档） | `__phaser__` |
+| appId | Capacitor appId，反域名格式（MUST） | `com.example.mygame` |
+| 版本 | `v{数字}`，存档 schema 版本（MUST） | `v1` |
+
+示例：`'__phaser__|com.example.mygame|v1'`
+
 ### Key 冲突检测
 
-`SaveManager.save()` 在写入前 MUST 执行冲突检测：遍历当前 `localStorage` 中所有 key，若存在**前缀不匹配但 key 名相同**的条目，MUST 输出 `console.warn` 告警，然后继续写入（不阻断保存流程）。
+`SaveManager.save()` 在写入前 MUST 执行冲突检测：遍历 `localStorage` 中所有以 `__phaser__` 为前缀的 key，若存在**不同 appId 但相同版本号**的条目，MUST 输出 `console.warn` 告警，然后继续写入（不阻断保存流程）。
 
 ```typescript
+const KEY_PREFIX = '__phaser__';
+
 class SaveManager {
   private readonly storageKey: string;
+  private readonly appId: string;
+  private readonly version: number;
 
   constructor(appId: string, version: number) {
-    this.storageKey = `${appId}_save_v${version}`;
+    this.appId = appId;
+    this.version = version;
+    this.storageKey = `${KEY_PREFIX}|${appId}|v${version}`;
   }
 
   save(data: SaveData): void {
-    // 冲突检测：检查是否有其他来源使用了相同 key
-    if (localStorage.getItem(this.storageKey) === null) {
-      // 首次写入：检查是否存在同名 key（无前缀或不同前缀）
-      for (let i = 0; i < localStorage.length; i++) {
-        const existingKey = localStorage.key(i);
-        if (existingKey && existingKey !== this.storageKey && existingKey.endsWith(this.storageKey.split('_save_')[1] ?? '')) {
-          console.warn(`[SaveManager] Key conflict detected: "${existingKey}" may conflict with "${this.storageKey}". Check appId uniqueness.`);
-        }
+    // 冲突检测：遍历所有 __phaser__ key，告警不同 appId 的潜在冲突
+    for (let i = 0; i < localStorage.length; i++) {
+      const existingKey = localStorage.key(i);
+      if (!existingKey || !existingKey.startsWith(KEY_PREFIX)) continue;
+      const parts = existingKey.split('|');
+      const existingAppId = parts[1] ?? '';
+      const existingVersion = parts[2] ?? '';
+      if (existingAppId !== this.appId && existingVersion === `v${this.version}`) {
+        console.warn(
+          `[SaveManager] Potential key conflict: "${existingKey}" (appId: "${existingAppId}") ` +
+          `may collide with "${this.storageKey}" (appId: "${this.appId}"). ` +
+          `Ensure appId uniqueness.`
+        );
       }
     }
     localStorage.setItem(this.storageKey, JSON.stringify(data));
@@ -336,7 +358,7 @@ class SaveManager {
 }
 ```
 
-> **说明**：冲突检测仅做告警，不阻断保存，避免影响游戏运行。开发阶段可通过 DevTools Console 观察告警排查问题。
+> **说明**：固定前缀 `__phaser__` 隔离了其他应用/框架的 localStorage 条目，冲突检测只扫描同框架的 key，避免误报。告警不阻断保存，开发阶段可通过 DevTools Console 排查。
 
 ## 非目标（明确不做）
 - 不规定玩法、规则、关卡内容与复杂度。
