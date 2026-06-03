@@ -299,9 +299,44 @@ interface SaveData {
 
 > **说明**：`settings`（音量控制）是所有游戏的公共字段，MUST 保留。其余字段完全由游戏需求决定，不做强制规定。
 
-- localStorage key MUST 使用项目前缀防冲突，如 `'{appId}_save_v{version}'`。
+- localStorage key MUST 使用项目前缀，格式为 `'{appId}_save_v{version}'`（如 `'com.example.mygame_save_v1'`）。
 - `SaveManager` MUST 提供 `load()` 和 `save(data)` 方法。
 - 首次运行时（无存档）MUST 返回默认初始状态，不报错。
+
+### Key 冲突检测
+
+`SaveManager.save()` 在写入前 MUST 执行冲突检测：遍历当前 `localStorage` 中所有 key，若存在**前缀不匹配但 key 名相同**的条目，MUST 输出 `console.warn` 告警，然后继续写入（不阻断保存流程）。
+
+```typescript
+class SaveManager {
+  private readonly storageKey: string;
+
+  constructor(appId: string, version: number) {
+    this.storageKey = `${appId}_save_v${version}`;
+  }
+
+  save(data: SaveData): void {
+    // 冲突检测：检查是否有其他来源使用了相同 key
+    if (localStorage.getItem(this.storageKey) === null) {
+      // 首次写入：检查是否存在同名 key（无前缀或不同前缀）
+      for (let i = 0; i < localStorage.length; i++) {
+        const existingKey = localStorage.key(i);
+        if (existingKey && existingKey !== this.storageKey && existingKey.endsWith(this.storageKey.split('_save_')[1] ?? '')) {
+          console.warn(`[SaveManager] Key conflict detected: "${existingKey}" may conflict with "${this.storageKey}". Check appId uniqueness.`);
+        }
+      }
+    }
+    localStorage.setItem(this.storageKey, JSON.stringify(data));
+  }
+
+  load(): SaveData | null {
+    const raw = localStorage.getItem(this.storageKey);
+    return raw ? JSON.parse(raw) as SaveData : null;
+  }
+}
+```
+
+> **说明**：冲突检测仅做告警，不阻断保存，避免影响游戏运行。开发阶段可通过 DevTools Console 观察告警排查问题。
 
 ## 非目标（明确不做）
 - 不规定玩法、规则、关卡内容与复杂度。
