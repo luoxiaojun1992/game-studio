@@ -5,6 +5,7 @@ import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import { SEED_COMMON_CONTENT } from './specs/game-engineering-common.js';
 import { SEED_H5_CONTENT } from './specs/game-engineering-h5.js';
+import { SEED_PHASER_MOBILE_CONTENT } from './specs/game-engineering-phaser-mobile.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1715,6 +1716,19 @@ export function seedGameEngineeringSpecs(): void {
     title: 'H5 小游戏工程规范',
     description: 'H5 小游戏（浏览器运行）',
     content: SEED_H5_CONTENT,
+    created_at: now,
+    updated_at: now,
+  });
+
+  // 导入 Phaser Mobile 框架规范
+  insertGameEngineeringSpec({
+    id: uuidv4(),
+    spec_key: 'framework:phaser-mobile',
+    game_type: 'phaser-mobile',
+    spec_type: 'framework',
+    title: 'Phaser Mobile 游戏工程规范',
+    description: 'Phaser 3 + Capacitor 移动端 2D 游戏',
+    content: SEED_PHASER_MOBILE_CONTENT,
     created_at: now,
     updated_at: now,
   });

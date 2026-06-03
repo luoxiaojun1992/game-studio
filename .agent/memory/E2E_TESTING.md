@@ -123,9 +123,10 @@
 
 - `submit_game` 调用链路：权限校验 → 打包 ZIP → **lintGameArtifact(zipBuffer, { submitDir, projectId })**
   - **SonarQube checker**：从 `submitDir` 自行打包 ZIP → scanner 微服务 → sonar-scanner CLI → SonarQube API
-  - **GameEngineeringChecker**：从 `submitDir` 直接读取 `submitDir/dist/*` 文件 → 14 条规则验证
+  - **GameEngineeringChecker**：从 `submitDir` 直接读取 `submitDir/dist/*` 文件 → 20 条规则验证
 - 两个 checker 并行工作，任一返回 error 即阻断提交
 - Mock 游戏文件必须同时满足：
   - **公共规则（8 条）**：DOCTYPE、html/head/body 标签、charset、body 非空、metadata.json 字段完整
   - **H5 特有规则（6 条）**：6 个生命周期方法、`window.__GAME__`、`<script>` 标签、manifest.json、资源相对路径
-- 当前 mock 文件结构：`dist/index.html` + `dist/metadata.json` + `dist/assets/manifest.json`，全部 14 条规则通过
+  - **Phaser Mobile 特有规则（6 条）**：`new Phaser.Game()`、`preload()`、`create()`、`<script>` 标签、资源相对路径、capacitor.config（warning）
+- 当前 H5 mock 文件结构：`dist/index.html` + `dist/metadata.json` + `dist/assets/manifest.json`，全部 14 条 H5 规则通过

@@ -34,6 +34,7 @@ server/lint/
             │   ├── asset-metadata-exists.ts
             │   └── asset-metadata-schema.ts
             └── h5/       ← 6 条 H5 特有规则：lifecycle-* (3) + asset-* (3)
+            └── phaser-mobile/  ← 6 条 Phaser Mobile 特有规则：lifecycle-phaser-* (4) + asset-* (2)
                 ├── lifecycle-exports.ts
                 ├── lifecycle-window-global.ts
                 ├── lifecycle-script-tag.ts
@@ -49,7 +50,7 @@ submit_game (tools.ts)
   -> validateAgentPermission()
   -> 目录模式: 读取 games/latest/ -> 打包 ZIP -> lintGameArtifact(zipBuffer, { submitDir, projectId })
      -> SonarQube checker: 从 submitDir 自行打包 ZIP -> scanner 微服务 -> sonar-scanner CLI -> SonarQube API
-     -> GameEngineeringChecker: 读取 submitDir/dist/* 文件 -> 14 条规则 -> LintIssue[]
+     -> GameEngineeringChecker: 读取 submitDir/dist/* 文件 -> 20 条规则 -> LintIssue[]
   -> passed=true  -> db.createGame() + 上传 MinIO
   -> passed=false -> return { content: error text }  // 不创建 DB 记录
   -> LintResult.extraPayloads 携带 Sonar 报告 -> 上传 MinIO 写入 `sonar_storage_id`
@@ -61,17 +62,17 @@ submit_game (tools.ts)
 | 检查器 | 级别 | 覆盖模式 | 说明 |
 |:---|:---|:---|:---|
 | `sonarqube` | error | ZIP | 通过 scanner 微服务调用 sonar-scanner CLI 对 ZIP 包做质量扫描；质量门未通过则阻断提交 |
-| `game-engineering` | error | 目录 | 直接读取 `submitDir/dist/*` 文件，按 `game_type` 选择规则集（8 公共 + 6 H5），验证 HTML 结构、元信息、生命周期契约等工程规范 |
+| `game-engineering` | error | 目录 | 直接读取 `submitDir/dist/*` 文件，按 `game_type` 选择规则集（8 公共 + 6 H5 + 6 phaser-mobile），验证 HTML 结构、元信息、生命周期契约等工程规范 |
 
 ## GameEngineeringChecker 架构
 
-- **规则自动分类**：`common/` 目录下规则适用于所有 game_type；`h5/` 目录下规则由注册逻辑包装 `appliesTo`，仅对 `game_type === "h5"` 生效
+- **规则自动分类**：`common/` 目录下规则适用于所有 game_type；`h5/` 目录下规则仅对 `game_type === "h5"` 生效；`phaser-mobile/` 目录下规则仅对 `game_type === "phaser-mobile"` 生效
 - **产物目录约定**：所有游戏类型使用 `submitDir/dist/` 为提交前缀：
   - HTML 规则读取 `submitDir/dist/index.html`
   - 元信息规则读取 `submitDir/dist/metadata.json`
   - H5 manifest 规则读取 `submitDir/dist/assets/manifest.json`
 - **game_type 读取**：从 `submitDir/dist/metadata.json` 的 `game_type` 字段获取
-- **14 条规则**（全部为 error 级别）：
+- **20 条规则**（18 error + 2 warning）：
 
 | ruleId | 组 | 适用范围 | 描述 |
 |--------|-----|---------|------|
@@ -89,6 +90,12 @@ submit_game (tools.ts)
 | `asset-manifest-exists` | asset | H5 | MUST 存在 `assets/manifest.json` |
 | `asset-manifest-schema` | asset | H5 | manifest.json MUST 合法且含 resources |
 | `asset-resource-relative-path` | asset | H5 | 资源路径 MUST 使用相对路径 |
+| `lifecycle-phaser-game` | lifecycle | Phaser Mobile | MUST 创建 `new Phaser.Game()` 实例 |
+| `lifecycle-phaser-scene-preload` | lifecycle | Phaser Mobile | MUST 定义 `preload()` 方法 |
+| `lifecycle-phaser-scene-create` | lifecycle | Phaser Mobile | MUST 定义 `create()` 方法 |
+| `lifecycle-phaser-script-tag` | lifecycle | Phaser Mobile | index.html MUST 加载 `<script>` |
+| `asset-resource-relative-path` | asset | Phaser Mobile | 资源路径 MUST 使用相对路径 |
+| `asset-capacitor-config` | asset | Phaser Mobile | SHOULD 包含 capacitor.config（warning） |
 
 ## 扩展指南
 
