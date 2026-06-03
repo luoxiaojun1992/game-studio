@@ -233,21 +233,56 @@ make compose-ui-test-down
 
 - Playwright 视频/trace 与报告输出在 `tests/ui/artifacts/`。
 - UI 测试覆盖率汇总输出在 `tests/ui/artifacts/ui-coverage-summary.json`，阈值要求为 90%。
-- 本地手动运行（需分终端）：
+- 本地手动运行（需预先启动外部服务 — 见下方清单 — 再分终端操作）：
+
+外部服务清单（启动后端前全部就绪）：
+
+| 服务 | 端口 | 说明 |
+|------|------|------|
+| MinIO | `:9000`（API）、`:9001`（控制台） | `minio/minio:latest`，凭证 `minioadmin/minioadmin` |
+| Star Office UI | `:19000` | 从 `star-office-ui/` 构建 |
+| Creator（Blender） | `:8080` | 从 `creator/` 构建 |
+| Draw.io 服务 | `:8082` | 从 `drawio-service/` 构建 |
+| Draw.io 导出 | `:8083` | `jgraph/drawio:latest` |
+| SonarQube 扫描器 | `:8081` | 从 `sonar-scanner-service/` 构建 |
+| SonarQube | `:9002` | `sonarqube:community`，初始凭证 `admin/admin` |
+
+> **提示：** `make compose-ui-test-up` 通过 Docker Compose 一键启动以上全部服务并正确组网。
 
 ```bash
 # 启动前先安装依赖（一次即可）
 npm ci
+cd tests/ui && npm ci && cd ../..
 
 # 终端 1：启动 CodeBuddy SDK mock server
 npm run mock:server
 
-# 终端 2：启动 Studio 后端（真实 /api/*），并将 CodeBuddy SDK 请求指向 mock server
-CODEBUDDY_BASE_URL=http://localhost:3001 CODEBUDDY_API_KEY=mock-codebuddy-key STAR_OFFICE_UI_URL=http://127.0.0.1:19000 npm run server
+# 终端 2：启动 Studio 后端（真实 /api/*），需确保所有外部服务可达
+CODEBUDDY_BASE_URL=http://localhost:3001 \
+CODEBUDDY_API_KEY=mock-codebuddy-key \
+MINIO_ENDPOINT=localhost:9000 \
+MINIO_ACCESS_KEY=minioadmin \
+MINIO_SECRET_KEY=minioadmin \
+MINIO_USE_SSL=false \
+MINIO_BUCKET=game-files \
+STAR_OFFICE_UI_URL=http://127.0.0.1:19000 \
+STAR_OFFICE_JOIN_KEY=ocj_example_team_01 \
+CREATOR_SERVICE_URL=http://localhost:8080 \
+DRAWIO_SERVICE_URL=http://localhost:8082 \
+SCANNER_SERVICE_URL=http://localhost:8081 \
+SONARQUBE_HOST=http://localhost:9000 \
+SONARQUBE_USER=admin \
+SONARQUBE_PASSWORD=admin \
+npm run server
 
 # 终端 3：启动前端并指向真实 Studio 后端
 VITE_API_BASE=http://localhost:3000 VITE_STAR_OFFICE_UI_URL=http://127.0.0.1:19000 npm run dev:client -- --host 0.0.0.0 --port 4173
 
-# 终端 4：执行 UI 测试 + 覆盖率 + allure 产物
-STUDIO_API_BASE=http://localhost:3000 STAR_OFFICE_API_BASE=http://localhost:19000 CODEBUDDY_MOCK_ADMIN_URL=http://localhost:3001 npm run test:ui:ci
+# 终端 4：执行 UI 测试 + 覆盖率 + allure 产物（在 tests/ui/ 下运行）
+cd tests/ui && \
+UI_BASE_URL=http://localhost:4173 \
+STUDIO_API_BASE=http://localhost:3000 \
+STAR_OFFICE_API_BASE=http://localhost:19000 \
+CODEBUDDY_MOCK_ADMIN_URL=http://localhost:3001 \
+npm run test:ui:ci
 ```
