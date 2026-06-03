@@ -93,7 +93,7 @@ graph TB
 - `creator-service.ts`: creator HTTP client, Blender project lifecycle/model file operations, and safe-path validation
 - `drawio-service.ts`: draw.io HTTP client, diagram CRUD/export, safe-path validation
 - `lint/`: extensible lint framework (LintRunner, pluggable checkers: SonarQube + GameEngineeringChecker)
-- `lint/checkers/game-engineering/`: game engineering specification checker with 14 rules (8 common + 6 H5-specific), reads `submitDir/dist/*` files directly for validation
+- `lint/checkers/game-engineering/`: game engineering specification checker with 20 rules (8 common + 6 H5-specific + 6 phaser-mobile-specific), reads `submitDir/dist/*` files directly for validation
 - `agents.ts`: role declarations, prompts, and handoff constraints
 - `db.ts`: SQLite schema (DDL-first initialization) and read/write operations
 - `sse-broadcaster.ts`: SSE client management and event broadcast
@@ -113,7 +113,7 @@ graph TB
 - **Game Engineering Framework**: game type registration via `game_engineering_specs` DB table, 3 MCP query tools (`get_game_types`, `get_game_framework_spec`, `get_common_spec`), GameEngineeringChecker with 14 static analysis rules validating HTML structure, metadata schema, and H5 lifecycle contracts
 - **Modeling**: Blender project management, mesh/material/export, model file pullback, **and scene object listing**
 - **Diagrams/Attachments**: draw.io diagrams, exports, proposal attachment lifecycle, **and diagram element listing**
-- **Lint/Quality**: extensible static analysis framework with pluggable checkers (sonarqube via scanner microservice + game-engineering checker with 14 rules), Sonar report stored as game attachment via `games.sonar_storage_id`, GameEngineeringChecker uses `submitDir` context for directory-mode file validation
+- **Lint/Quality**: extensible static analysis framework with pluggable checkers (sonarqube via scanner microservice + game-engineering checker with 20 rules), Sonar report stored as game attachment via `games.sonar_storage_id`, GameEngineeringChecker uses `submitDir` context for directory-mode file validation
 - **Memories**: long-term memory records scoped by role/project
 - **Logs/Observability**: runtime logs and stream events
 - **Permissions**: tool execution approval lifecycle and response callbacks

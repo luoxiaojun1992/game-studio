@@ -152,6 +152,8 @@ interface WorkflowOptions {
   testId: string;
   /** Enable autopilot mode (auto-accepts handoffs internally) */
   autopilot: boolean;
+  /** Game type for mock data: affects file writes and spec queries. Defaults to 'h5'. */
+  gameType?: 'h5' | 'phaser-mobile';
 }
 
 const runFullWorkflowTest = async (
@@ -160,6 +162,9 @@ const runFullWorkflowTest = async (
 ) => {
   const LOOP_TIMEOUT_MS = parseInt(process.env.UI_TEST_LOOP_TIMEOUT_MS || '600000', 10);
   test.setTimeout(LOOP_TIMEOUT_MS + 30000);
+
+  const gameType = opts.gameType || 'h5';
+  const isPhaserMobile = gameType === 'phaser-mobile';
 
   const debugPrefix = `[${opts.testId}]`;
   const log = (step: string, extra?: Record<string, unknown>) => {
@@ -360,10 +365,10 @@ const runFullWorkflowTest = async (
     content: '正在查询支持的游戏类型...',
     toolCalls: [{ name: 'get_game_types' }]
   });
-  log('mocks:queue-get-game-framework-spec', { projectId, agent: 'engineer' });
+  log('mocks:queue-get-game-framework-spec', { projectId, agent: 'engineer', gameType });
   await setMockExpectation(projectId, 'engineer', {
-    content: '正在获取 H5 工程规范...',
-    toolCalls: [{ name: 'get_game_framework_spec', arguments: { game_type: 'h5' } }]
+    content: `正在获取 ${gameType} 工程规范...`,
+    toolCalls: [{ name: 'get_game_framework_spec', arguments: { game_type: gameType } }]
   });
   log('mocks:queue-get-common-spec', { projectId, agent: 'engineer' });
   await setMockExpectation(projectId, 'engineer', {
@@ -380,52 +385,115 @@ const runFullWorkflowTest = async (
 
   // 通过 mock 模拟大模型输出，调用 write_game_file MCP 工具在 backend 服务器端写入游戏文件
   // 注意：使用 MCP 工具而非 SDK 内置 Write 工具，因为 CI 环境无 CodeBuddy 运行时执行内置工具
-  // 游戏工程规范要求 dist/ 目录结构 + H5 生命周期契约（lifecycle-* 规则）
-  log('mocks:queue-write-game-file', { projectId, path: 'dist/index.html' });
-  await setMockExpectation(projectId, 'engineer', {
-    content: '正在写入游戏入口文件...',
-    toolCalls: [{
-      name: 'write_game_file',
-      arguments: {
-        path: 'dist/index.html',
-        content: `<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><title>RPG游戏</title></head><body><div id="game"></div><script>const app={init(c){},start(){},pause(){},resume(){},resize(w,h){},destroy(){}};window.__GAME__=app;</script></body></html>`
-      }
-    }]
-  });
-  log('mocks:write-game-file-queued');
+  // 游戏工程规范要求 dist/ 目录结构 + 生命周期契约
+  if (isPhaserMobile) {
+    // ── Phaser Mobile 游戏文件 ──
+    log('mocks:queue-write-game-index-html', { projectId, path: 'dist/index.html' });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在写入游戏入口文件...',
+      toolCalls: [{
+        name: 'write_game_file',
+        arguments: {
+          path: 'dist/index.html',
+          content: '<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><title>Phaser游戏</title></head><body><div id="app"></div><script src="phaser.min.js"></script><script src="game.js"></script></body></html>'
+        }
+      }]
+    });
+    log('mocks:write-game-index-html-queued');
 
-  log('mocks:queue-write-metadata-json', { projectId, path: 'dist/metadata.json' });
-  await setMockExpectation(projectId, 'engineer', {
-    content: '正在写入游戏元信息...',
-    toolCalls: [{
-      name: 'write_game_file',
-      arguments: {
-        path: 'dist/metadata.json',
-        content: JSON.stringify({
-          title: 'RPG游戏',
-          version: '1.0.0',
-          game_type: 'h5',
-          resolution: { width: 800, height: 600 },
-          orientation: 'landscape',
-          entry: 'index.html'
-        })
-      }
-    }]
-  });
-  log('mocks:write-metadata-json-queued');
+    log('mocks:queue-write-game-js', { projectId, path: 'dist/game.js' });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在写入游戏主逻辑...',
+      toolCalls: [{
+        name: 'write_game_file',
+        arguments: {
+          path: 'dist/game.js',
+          content: 'class GameScene extends Phaser.Scene{preload(){this.load.image("bg","assets/bg.png")}create(){this.add.image(400,300,"bg")}}const config={type:Phaser.AUTO,width:800,height:600,scene:GameScene};new Phaser.Game(config);'
+        }
+      }]
+    });
+    log('mocks:write-game-js-queued');
 
-  log('mocks:queue-write-manifest-json', { projectId, path: 'dist/assets/manifest.json' });
-  await setMockExpectation(projectId, 'engineer', {
-    content: '正在写入资源清单...',
-    toolCalls: [{
-      name: 'write_game_file',
-      arguments: {
-        path: 'dist/assets/manifest.json',
-        content: JSON.stringify({ resources: [] })
-      }
-    }]
-  });
-  log('mocks:write-manifest-json-queued');
+    log('mocks:queue-write-metadata-json', { projectId, path: 'dist/metadata.json' });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在写入游戏元信息...',
+      toolCalls: [{
+        name: 'write_game_file',
+        arguments: {
+          path: 'dist/metadata.json',
+          content: JSON.stringify({
+            title: 'Phaser游戏',
+            version: '1.0.0',
+            game_type: 'phaser-mobile',
+            resolution: { width: 800, height: 600 },
+            orientation: 'landscape',
+            entry: 'index.html'
+          })
+        }
+      }]
+    });
+    log('mocks:write-metadata-json-queued');
+
+    log('mocks:queue-write-capacitor-config', { projectId, path: 'capacitor.config.json' });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在写入 Capacitor 配置...',
+      toolCalls: [{
+        name: 'write_game_file',
+        arguments: {
+          path: 'capacitor.config.json',
+          content: JSON.stringify({ appId: 'com.phasergame.demo', appName: 'PhaserGame' })
+        }
+      }]
+    });
+    log('mocks:write-capacitor-config-queued');
+  } else {
+    // ── H5 游戏文件（原有逻辑）──
+    log('mocks:queue-write-game-file', { projectId, path: 'dist/index.html' });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在写入游戏入口文件...',
+      toolCalls: [{
+        name: 'write_game_file',
+        arguments: {
+          path: 'dist/index.html',
+          content: `<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><title>RPG游戏</title></head><body><div id="game"></div><script>const app={init(c){},start(){},pause(){},resume(){},resize(w,h){},destroy(){}};window.__GAME__=app;</script></body></html>`
+        }
+      }]
+    });
+    log('mocks:write-game-file-queued');
+
+    log('mocks:queue-write-metadata-json', { projectId, path: 'dist/metadata.json' });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在写入游戏元信息...',
+      toolCalls: [{
+        name: 'write_game_file',
+        arguments: {
+          path: 'dist/metadata.json',
+          content: JSON.stringify({
+            title: 'RPG游戏',
+            version: '1.0.0',
+            game_type: 'h5',
+            resolution: { width: 800, height: 600 },
+            orientation: 'landscape',
+            entry: 'index.html'
+          })
+        }
+      }]
+    });
+    log('mocks:write-metadata-json-queued');
+
+    log('mocks:queue-write-manifest-json', { projectId, path: 'dist/assets/manifest.json' });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在写入资源清单...',
+      toolCalls: [{
+        name: 'write_game_file',
+        arguments: {
+          path: 'dist/assets/manifest.json',
+          content: JSON.stringify({ resources: [] })
+        }
+      }]
+    });
+    log('mocks:write-manifest-json-queued');
+  }
 
   log('mocks:queue-submit-game', { projectId });
   await setMockExpectation(projectId, 'engineer', {
@@ -743,4 +811,18 @@ test('[UI-010] should create a questionnaire proposal via structured form', asyn
   await expect(sourceTag).toBeVisible();
   log('step8:source-tag-visible:PASS');
   log('DONE');
+});
+
+// ═══════════════════════════════════════════
+// UI-011: Full workflow — Phaser Mobile (SPEC-010)
+// Game designer → CEO → architect → engineer (phaser-mobile game type, manual mode)
+// ═══════════════════════════════════════════
+
+test('[UI-011] should complete full workflow with phaser-mobile game type (SPEC-010)', async ({ page }) => {
+  process.stderr.write(`[UI-011] ${new Date().toISOString()} test:starting (phaser-mobile, manual mode)\n`);
+  await runFullWorkflowTest(page, {
+    testId: 'UI-011',
+    autopilot: false,
+    gameType: 'phaser-mobile',
+  });
 });

@@ -16,9 +16,9 @@
 - `server/lint/checkers/sonar/sonarqube.ts` - SonarQube 质量扫描检查器（仅 ZIP 模式，scanner 微服务调用）
 - `server/lint/checkers/sonar/sonarqube-client.ts` - SonarQube REST API 客户端（查询 issues、创建项目）
 - `server/lint/checkers/sonar/sonarqube-token.ts` - SonarQube TokenManager（动态生成 USER_TOKEN，Basic Auth）
-- `server/lint/checkers/game-engineering/` - 游戏工程规范检查器（14 条规则：8 公共 + 6 H5）
-- `server/lint/checkers/game-engineering/rules/` - 规则目录：common/（通用规则）、h5/（H5 特有规则）
-- `server/specs/` - 游戏工程规范种子数据模块（game-engineering-common.ts, game-engineering-h5.ts）
+- `server/lint/checkers/game-engineering/` - 游戏工程规范检查器（20 条规则：8 公共 + 6 H5 + 6 phaser-mobile）
+- `server/lint/checkers/game-engineering/rules/` - 规则目录：common/（通用规则）、h5/（H5 特有规则）、phaser-mobile/（Phaser Mobile 特有规则）
+- `server/specs/` - 游戏工程规范种子数据模块（game-engineering-common.ts, game-engineering-h5.ts, game-engineering-phaser-mobile.ts）
 - `server/sonar-scanner-service.ts` - scanner 微服务 HTTP 客户端（提交 ZIP、轮询状态）
 - `sonar-scanner-service/` - Python FastAPI 微服务（接收 ZIP、解压、调用 sonar-scanner CLI、轮询 SonarQube）
 - `server/agent-manager.ts` - Agent 管理器，通过 mcpServers 注册自定义工具

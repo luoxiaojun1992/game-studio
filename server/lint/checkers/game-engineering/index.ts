@@ -5,6 +5,7 @@
  * 按 game_type 自动选择适用的规则集，规则按目录分类：
  * - rules/common/ → 通用规则（所有 game_type 均运行）
  * - rules/h5/ → H5 特有规则（仅 game_type === "h5" 时运行）
+ * - rules/phaser-mobile/ → Phaser Mobile 特有规则（仅 game_type === "phaser-mobile" 时运行）
  *
  * 文件路径约定：所有游戏类型使用 dist/ 为提交前缀
  * - HTML 规则读取 submitDir/dist/index.html
@@ -27,9 +28,16 @@ import { assetMetadataSchemaRule } from './rules/common/asset-metadata-schema.js
 import { lifecycleExportsRule } from './rules/h5/lifecycle-exports.js';
 import { lifecycleWindowGlobalRule } from './rules/h5/lifecycle-window-global.js';
 import { lifecycleScriptTagRule } from './rules/h5/lifecycle-script-tag.js';
-import { assetManifestExistsRule } from './rules/h5/asset-manifest-exists.js';
+ import { assetManifestExistsRule } from './rules/h5/asset-manifest-exists.js';
 import { assetManifestSchemaRule } from './rules/h5/asset-manifest-schema.js';
 import { assetResourceRelativePathRule } from './rules/h5/asset-resource-relative-path.js';
+/** phaser-mobile 特有规则 (SPEC-010) */
+import { lifecyclePhaserGameRule } from './rules/phaser-mobile/lifecycle-phaser-game.js';
+import { lifecyclePhaserScenePreloadRule } from './rules/phaser-mobile/lifecycle-phaser-scene-preload.js';
+import { lifecyclePhaserSceneCreateRule } from './rules/phaser-mobile/lifecycle-phaser-scene-create.js';
+import { lifecyclePhaserScriptTagRule } from './rules/phaser-mobile/lifecycle-phaser-script-tag.js';
+import { assetResourceRelativePathRule as assetResourceRelativePathPhaserRule } from './rules/phaser-mobile/asset-resource-relative-path.js';
+import { assetCapacitorConfigRule } from './rules/phaser-mobile/asset-capacitor-config.js';
 
 const _filename = fileURLToPath(import.meta.url);
 const _dirname = path.dirname(_filename);
@@ -66,6 +74,14 @@ class GameEngineeringCheckerImpl implements LintChecker {
     this._register(assetManifestExistsRule, 'h5');
     this._register(assetManifestSchemaRule, 'h5');
     this._register(assetResourceRelativePathRule, 'h5');
+
+    // Phaser Mobile 特有规则（仅 game_type === "phaser-mobile" 时运行）
+    this._register(lifecyclePhaserGameRule, 'phaser-mobile');
+    this._register(lifecyclePhaserScenePreloadRule, 'phaser-mobile');
+    this._register(lifecyclePhaserSceneCreateRule, 'phaser-mobile');
+    this._register(lifecyclePhaserScriptTagRule, 'phaser-mobile');
+    this._register(assetResourceRelativePathPhaserRule, 'phaser-mobile');
+    this._register(assetCapacitorConfigRule, 'phaser-mobile');
 
     this.rulesLoaded = true;
   }
