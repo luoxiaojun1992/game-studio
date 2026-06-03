@@ -27,7 +27,7 @@
 | 构建 | Vite | >=8.0.0 | 秒级 HMR，`base: './'` 相对路径输出 |
 | 后端 | 无 | — | 纯离线单机，不依赖服务端 |
 | TTS | Web Speech API（浏览器原生） | — | 零依赖，离线可用。或 Phaser 内置音频播放预生成 MP3 |
-| 存档 | `localStorage` | — | 通过 `SaveManager` 封装，key 使用项目前缀防冲突 |
+| 存档 | `localStorage` | — | 通过 `SaveManager` 封装，key 使用项目前缀作为命名规范 |
 
 > **说明**：Phaser 3 已内置 Arcade Physics、Tweens 补间动画、Web Audio 音频管理，**不需要**单独引入 Matter.js、Howler.js、@tweenjs/tween.js 等外部库。
 
@@ -314,9 +314,7 @@ Key 格式：`'__phaser__|{appId}|v{version}'`，由三部分组成：
 
 示例：`'__phaser__|com.example.mygame|v1'`
 
-### Key 冲突检测
-
-`SaveManager.save()` 写入前 MUST 全匹配检测：若 `this.storageKey` 已存在于 `localStorage`，直接 `throw new Error` 阻断保存，避免数据覆盖。
+### SaveManager 实现
 
 ```typescript
 const KEY_PREFIX = '__phaser__';
@@ -333,12 +331,6 @@ class SaveManager {
   }
 
   save(data: SaveData): void {
-    if (localStorage.getItem(this.storageKey) !== null) {
-      throw new Error(
-        `[SaveManager] Key conflict: "${this.storageKey}" already exists. ` +
-        `Ensure appId uniqueness. Existing data will not be overwritten.`
-      );
-    }
     localStorage.setItem(this.storageKey, JSON.stringify(data));
   }
 
@@ -348,6 +340,8 @@ class SaveManager {
   }
 }
 ```
+
+> **隔离机制：** 每个游戏独立部署（Capacitor 打包后各 App 拥有独立 WebView），localStorage 天然隔离，无需冲突校验。key 前缀为命名规范，便于调试时识别来源。
 
 ## 非目标（明确不做）
 - 不规定玩法、规则、关卡内容与复杂度。
