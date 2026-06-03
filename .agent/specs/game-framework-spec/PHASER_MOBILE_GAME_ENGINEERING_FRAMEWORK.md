@@ -62,8 +62,7 @@ game/
     managers/             # 管理器层（可选）
       SaveManager.ts      # localStorage 存档封装
     data/                 # 静态数据（可选）
-      levels.ts           # 关卡配置
-      words.ts            # 单词/内容数据
+      config.ts           # 游戏配置数据（关卡、道具、角色等，按游戏类型自行命名）
   public/
     assets/
       sprites/            # 精灵/角色 PNG
@@ -92,8 +91,9 @@ class GameScene extends Phaser.Scene {
    * 加载完成后 Phaser 自动调用 create()。
    */
   preload(): void {
-    this.load.image('player', 'assets/sprites/player.png');
-    this.load.image('background', 'assets/backgrounds/map.png');
+    // 加载游戏所需的图片、音频、精灵表、JSON 等资源（键名与路径按游戏自行定义）
+    this.load.image('bg', 'assets/backgrounds/bg.png');
+    this.load.image('hero', 'assets/sprites/hero.png');
     // ...
   }
 
@@ -102,8 +102,8 @@ class GameScene extends Phaser.Scene {
    * 创建游戏对象、设置物理世界、绑定输入事件。
    */
   create(): void {
-    this.add.image(240, 400, 'background');
-    const player = this.physics.add.sprite(100, 100, 'player');
+    // 初始化场景内容（游戏对象、UI 元素、事件绑定等，按游戏类型自行实现）
+    this.add.image(240, 400, 'bg');
     // ...
   }
 
@@ -162,14 +162,16 @@ this.scene.stop('CurrentScene');         // 停止当前场景
 this.scene.launch('OverlayScene', data); // 叠加场景（如暂停菜单）
 ```
 
-**典型流转链：**
+**典型流转链（示例，具体场景按游戏设计自行扩展）：**
 ```
 BootScene (preload 加载资源)
   → MainMenuScene (主菜单)
-    → LevelSelectScene (选关)
+    → [可选中间场景，如选关、教程、设置]
       → GameScene (核心玩法)
-        → ResultScene (结算)
+        → ResultScene (结算/结果)
 ```
+
+> **说明**：具体场景数量和流转方式完全由游戏设计决定。简单游戏可只有 BootScene → GameScene → ResultScene；复杂游戏可按需增加选关、世界地图、剧情等场景。
 
 ## Capacitor 原生打包
 
@@ -231,54 +233,71 @@ AI 生成原始 PNG (256×256)
 
 ### 资源尺寸约定
 
-| 素材类型 | 原始尺寸 | Phaser 内缩放 | 可见尺寸 | 格式 |
-|---------|---------|-------------|---------|------|
-| 玩家角色 | 256×256 | 0.15–0.20 | ~40–50px | PNG, RGBA |
-| NPC | 256×256 | 0.18–0.22 | ~46–56px | PNG, RGBA |
-| 收集物品 | 256×256 | 0.10–0.14 | ~25–36px | PNG, RGBA |
-| 关卡图标 | 256×256 | 0.15–0.20 | ~40–50px | PNG, RGBA (圆形遮罩) |
-| 背景图 | 1024×1024 | setDisplaySize(480, 800) | 全屏 | PNG/JPG |
-| 特效粒子 | 128×128 | 0.05–0.20 | ~6–25px | PNG, RGBA |
+以下为通用参考基准，适用于任何类型的 phaser-mobile 游戏。Engineer Agent SHOULD 按游戏实际需求选择合适的尺寸，并在 `preload()` 中用 `setScale()` 或 `setDisplaySize()` 控制最终可见尺寸。
+
+| 素材类别 | 推荐原始尺寸 | 典型 Phaser 内缩放范围 | 典型可见尺寸 | 格式 |
+|---------|------------|-------------------|------------|------|
+| 角色 / 主体精灵（大） | 256×256 | 0.15–0.25 | ~40–65px | PNG, RGBA |
+| 角色 / 主体精灵（小） | 128×128 | 0.25–0.40 | ~32–51px | PNG, RGBA |
+| 道具 / 元素 / 小物件 | 128×128 | 0.15–0.25 | ~19–32px | PNG, RGBA |
+| UI 图标 / 按钮 | 128×128 | 0.40–0.60 | ~51–77px | PNG, RGBA |
+| 关卡 / 卡片 / 缩略图 | 256×256 | 0.20–0.35 | ~51–90px | PNG, RGBA（可加圆形遮罩） |
+| 背景图（竖屏） | 1024×1024 或 512×896 | setDisplaySize(480, 800) | 全屏 480×800 | PNG/JPG |
+| 背景图（横屏） | 1024×512 | setDisplaySize(800, 480) | 全屏 800×480 | PNG/JPG |
+| 特效 / 粒子 | 64×64 或 128×128 | 0.05–0.20 | ~3–26px | PNG, RGBA |
+| 精灵表（动画帧） | 帧尺寸 48×48 或 64×64 | — | 按帧尺寸 | PNG, RGBA |
+
+> **通用原则**：
+> - 源图统一使用 2 的幂次尺寸（64/128/256/512/1024），有利于 GPU 纹理缓存。
+> - 透明通道素材（角色、道具、UI 元素）MUST 使用 PNG RGBA；不需要透明度的背景可使用 JPG 减小体积。
+> - 具体尺寸和缩放值以实际游戏视觉效果为准，上表仅作参考起点。
 
 ### Phaser 资源加载方式
 
-所有美术资源在 `BootScene.preload()` 中统一加载：
+所有美术资源在 `BootScene.preload()` 中统一加载（键名与路径按游戏自行定义）：
 
 ```typescript
-// 加载精灵
-this.load.image('player', 'assets/sprites/player.png');
-this.load.image('merlin', 'assets/sprites/npc/merlin.png');
+// 加载单帧图片（背景、UI 元素、静态精灵等）
+this.load.image('bg', 'assets/backgrounds/bg.png');
+this.load.image('hero', 'assets/sprites/hero.png');
 
 // 加载精灵表（多帧动画）
-this.load.spritesheet('player_walk', 'assets/sprites/player_walk.png', {
-  frameWidth: 48, frameHeight: 48,
+this.load.spritesheet('hero_run', 'assets/sprites/hero_run.png', {
+  frameWidth: 64, frameHeight: 64,  // 单帧尺寸按实际素材填写
 });
 
 // 加载音频
 this.load.audio('bgm', 'assets/audio/bgm.mp3');
+this.load.audio('sfx_hit', 'assets/audio/hit.mp3');
+
+// 加载 JSON 数据（如关卡配置、对话数据等，可选）
+this.load.json('level_data', 'assets/data/levels.json');
 
 // 启动加载场景后，Phaser 自动调用 create()
 ```
 
 ## 存档格式
 
-phaser-mobile 游戏 MUST 通过 `localStorage` 实现持久化，并通过 `SaveManager` 封装读写操作：
+phaser-mobile 游戏 MUST 通过 `localStorage` 实现持久化，并通过 `SaveManager` 封装读写操作。
+
+存档数据结构由**游戏自行定义**，规范仅约定以下最低必要字段：
 
 ```typescript
 interface SaveData {
-  version: number;                              // 存档版本（用于迁移）
-  levelProgress: Record<number, {
-    completed: boolean;
-    stars: number;                              // 0–3
-    highScore: number;
-  }>;
-  unlockedLevels: number[];
+  version: number;          // 存档版本（用于迁移，MUST 存在）
   settings: {
-    bgmVolume: number;                          // 0.0–1.0
-    sfxVolume: number;                          // 0.0–1.0
+    bgmVolume: number;      // 背景音乐音量 0.0–1.0
+    sfxVolume: number;      // 音效音量 0.0–1.0
   };
+  // 游戏特有数据由各游戏自行扩展，例如：
+  // progress?: Record<string, unknown>;   // 进度数据
+  // stats?: Record<string, number>;       // 统计数据
+  // unlockedItems?: string[];             // 已解锁内容
+  [key: string]: unknown;   // 允许扩展任意游戏特有字段
 }
 ```
+
+> **说明**：`settings`（音量控制）是所有游戏的公共字段，MUST 保留。其余字段完全由游戏需求决定，不做强制规定。
 
 - localStorage key MUST 使用项目前缀防冲突，如 `'{appId}_save_v{version}'`。
 - `SaveManager` MUST 提供 `load()` 和 `save(data)` 方法。
