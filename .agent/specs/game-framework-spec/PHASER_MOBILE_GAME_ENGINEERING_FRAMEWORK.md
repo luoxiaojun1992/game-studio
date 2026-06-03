@@ -316,7 +316,7 @@ Key 格式：`'__phaser__|{appId}|v{version}'`，由三部分组成：
 
 ### Key 冲突检测
 
-`SaveManager.save()` 在写入前 MUST 执行冲突检测：遍历 `localStorage` 中所有以 `__phaser__` 为前缀的 key，若存在**不同 appId 但相同版本号**的条目，MUST 输出 `console.warn` 告警，然后继续写入（不阻断保存流程）。
+`SaveManager.save()` 写入前 MUST 全匹配检测：若 `this.storageKey` 已存在于 `localStorage`，直接 `throw new Error` 阻断保存，避免数据覆盖。
 
 ```typescript
 const KEY_PREFIX = '__phaser__';
@@ -333,20 +333,11 @@ class SaveManager {
   }
 
   save(data: SaveData): void {
-    // 冲突检测：遍历所有 __phaser__ key，告警不同 appId 的潜在冲突
-    for (let i = 0; i < localStorage.length; i++) {
-      const existingKey = localStorage.key(i);
-      if (!existingKey || !existingKey.startsWith(KEY_PREFIX)) continue;
-      const parts = existingKey.split('|');
-      const existingAppId = parts[1] ?? '';
-      const existingVersion = parts[2] ?? '';
-      if (existingAppId !== this.appId && existingVersion === `v${this.version}`) {
-        console.warn(
-          `[SaveManager] Potential key conflict: "${existingKey}" (appId: "${existingAppId}") ` +
-          `may collide with "${this.storageKey}" (appId: "${this.appId}"). ` +
-          `Ensure appId uniqueness.`
-        );
-      }
+    if (localStorage.getItem(this.storageKey) !== null) {
+      throw new Error(
+        `[SaveManager] Key conflict: "${this.storageKey}" already exists. ` +
+        `Ensure appId uniqueness. Existing data will not be overwritten.`
+      );
     }
     localStorage.setItem(this.storageKey, JSON.stringify(data));
   }
@@ -357,8 +348,6 @@ class SaveManager {
   }
 }
 ```
-
-> **说明**：固定前缀 `__phaser__` 隔离了其他应用/框架的 localStorage 条目，冲突检测只扫描同框架的 key，避免误报。告警不阻断保存，开发阶段可通过 DevTools Console 排查。
 
 ## 非目标（明确不做）
 - 不规定玩法、规则、关卡内容与复杂度。
