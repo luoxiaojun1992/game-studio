@@ -25,7 +25,7 @@ export const SEED_PHASER_MOBILE_CONTENT = `# Phaser Mobile 游戏工程规范
 | 构建 | Vite | >=8.0.0 | 秒级 HMR，\`base: './'\` 相对路径输出 |
 | 后端 | 无 | — | 纯离线单机，不依赖服务端 |
 | TTS | Web Speech API（浏览器原生） | — | 零依赖，离线可用 |
-| 存档 | \`localStorage\` | — | 通过 \`SaveManager\` 封装，key 使用项目前缀防冲突 |
+| 存档 | \`localStorage\` | — | 通过 \`SaveManager\` 封装，key 使用项目前缀作为命名规范 |
 
 ## 目录结构
 
@@ -115,6 +115,8 @@ phaser-mobile 类型游戏 SHOULD 采用 **AI 生图 + Python 后处理** 的美
 ## 存档格式
 
 phaser-mobile 游戏 MUST 通过 \`localStorage\` 实现持久化，并通过 \`SaveManager\` 封装读写操作。Key 格式：\`'__phaser__|{appId}|v{version}'\`。
+
+> **隔离机制：** 每个游戏独立部署（Capacitor 打包后各 App 拥有独立 WebView），localStorage 天然隔离，无需冲突校验。key 前缀为命名规范，便于调试时识别来源。
 
 ## 非目标（明确不做）
 - 不规定玩法、规则、关卡内容与复杂度。
