@@ -11,9 +11,9 @@ export const assetCapacitorConfigRule: GameRule = {
   appliesTo: () => true,
   check(submitDir: string): CheckerResult[] {
     // 检查 capacitor.config.ts 或 capacitor.config.json
-    // 配置文件位于 submitDir/.. 即 project 根目录
-    const configTsPath = path.join(submitDir, '..', 'capacitor.config.ts');
-    const configJsonPath = path.join(submitDir, '..', 'capacitor.config.json');
+    // 配置文件位于 submitDir 根目录（write_game_file 写入路径相对于 latestDir）
+    const configTsPath = path.join(submitDir, 'capacitor.config.ts');
+    const configJsonPath = path.join(submitDir, 'capacitor.config.json');
 
     const configExists = fs.existsSync(configTsPath) || fs.existsSync(configJsonPath);
     if (!configExists) {
