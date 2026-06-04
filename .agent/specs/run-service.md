@@ -4,57 +4,54 @@
 
 ## 目标
 
-构建游戏运行微服务（`run-service`），为 game-studio 提供已打包游戏在隔离环境中的运行和预览能力。架构复刻现有 creator service (Blender) 和 video service (FFmpeg) 模式：独立 FastAPI 容器 → HTTP → TS 客户端 → MCP 工具（仅 engineer 可用）。
+构建游戏运行微服务（`run-service`），为 game-studio 提供已打包游戏的统一静态文件伺服和预览能力。架构复刻现有 creator service (Blender) 和 video service (FFmpeg) 模式：独立 FastAPI 容器 → HTTP → TS 客户端 → MCP 工具（仅 engineer 可用）。
 
-核心流程：backend 上传已打包的游戏产物 → run-service 读取 `metadata.json` 判断 `game_type` → 选择运行策略 → 启动运行环境 → 返回预览地址。
+核心流程：backend 上传已打包的游戏产物 → run-service 读取 `metadata.json` 判断 `game_type` → 验证产物完整性 → Nginx 统一通过 `/{project_id}/` 路径伺服各项目 `dist/` 目录。
 
 > **当前阶段**：运行服务的使用场景暂不明确，本 spec 仅定义架构和 API，不涉及 `submit_game` 等现有工具的集成变更。
 
-## 游戏类型与运行策略
+## 端口分离设计
 
-Run service 通过读取项目根目录下的 `dist/metadata.json` 文件中的 `game_type` 字段判断运行策略：
+| 端口 | 用途 | 说明 |
+|------|------|------|
+| **8086** | 管理 API | FastAPI REST API（项目管理、上传、文件操作） |
+| **8087** | 静态文件伺服 | Nginx 统一伺服，通过 `/{project_id}/` 路由到各项目 `dist/` 目录 |
 
-### 运行策略映射
+> **设计理由**：API 和静态文件伺服分离端口，避免路径冲突，便于独立扩缩容和安全策略配置。
 
-| game_type | 运行方式 | 端口分配 | 说明 |
-|-----------|---------|---------|------|
-| `h5` | Nginx 静态文件服务 | 动态分配（9000-9099） | 托管 `dist/` 目录，启动 nginx worker |
-| `phaser-mobile` | Nginx 静态文件服务 + Capacitor 配置提示 | 动态分配（9000-9099） | 托管 `dist/` 目录，额外暴露 capacitor.config.json 供移动端参考 |
+## 游戏类型与伺服策略
 
+Run service 通过读取项目根目录下的 `dist/metadata.json` 文件中的 `game_type` 字段判断伺服策略：
+
+### 伺服策略映射
+
+| game_type | 伺服方式 | 说明 |
+|-----------|---------|------|
+| `h5` | Nginx 静态文件 + SPA fallback | 托管 `dist/`，`try_files $uri $uri/ /index.html` |
+| `phaser-mobile` | Nginx 静态文件 + SPA fallback | 等同 H5，额外暴露 `capacitor.config.json` |
+
+> 所有游戏类型均使用同一 Nginx 实例伺服，通过 URL 路径前缀 `/{project_id}/` 区分项目。
 > **扩展性**：未来新增游戏类型（如 Unity WebGL、Unreal Pixel Streaming）只需在 `GameRunner` 中注册新策略。
-
-### 运行状态
-
-| 状态 | 说明 |
-|------|------|
-| `stopped` | 初始状态，未运行 |
-| `starting` | 正在启动 nginx / 运行环境 |
-| `running` | 正常运行中，可访问 |
-| `stopping` | 正在停止 |
-| `error` | 启动失败（端口占用、文件缺失等） |
 
 ## 架构概述
 
 ```
-run-service/ (FastAPI + Nginx, port 8086)
+run-service/ (FastAPI + Nginx, API:8086 + Static:8087)
 ├── app/main.py              # FastAPI entrypoint + /health
 ├── app/schemas.py           # Pydantic 请求/响应模型
-├── app/runner.py            # subprocess 执行器（nginx 启动/停止）
-├── app/strategies.py        # GameRunner：读取 metadata.json 分发运行策略
-├── app/port_manager.py      # 端口分配器（9000-9099 范围管理）
+├── app/strategies.py        # GameRunner：读取 metadata.json 验证伺服策略
 ├── app/safe_path.py         # 统一路径安全校验函数（resolve_safe_path）
 ├── app/routers/
 │   ├── project.py           # 项目 CRUD + 游戏包上传
-│   ├── run.py               # 运行/停止端点
 │   └── file.py              # 文件列表/下载/删除
 ├── requirements.txt
-├── nginx.conf.template      # Nginx 配置模板（端口动态替换）
-└── Dockerfile (alpine:3.21 + nginx, ~120MB)
+├── nginx.conf               # Nginx 配置（统一伺服，{project_id} 路由）
+└── Dockerfile (alpine:3.21 + nginx, ~25MB)
 
 server/
-├── run-service.ts           # TS 客户端 (runFetch, createRunProject, startRun, stopRun, ...)
+├── run-service.ts           # TS 客户端 (runFetch, createRunProject, uploadGame, ...)
 ├── run-service.d.ts         # TypeScript 类型定义
-├── tools.ts                 # MCP 工具注册 (run_upload, run_start, run_stop, run_status, ...)
+├── tools.ts                 # MCP 工具注册 (run_create_project, run_upload, run_delete_project, ...)
 ├── db.ts                    # SQLite run_projects 表
 ├── agent-manager.ts         # ENGINEER_ALLOW 权限
 └── agents.ts                # 系统提示词 + TOOLS_OVERVIEW
@@ -65,13 +62,24 @@ server/
 | 维度 | Video Service (FFmpeg) | Build Service (Node.js) | Run Service (Nginx) |
 |------|----------------------|------------------------|---------------------|
 | 镜像 | alpine:3.21 + ffmpeg | alpine:3.21 + nodejs 22 | alpine:3.21 + nginx |
-| 镜像大小 | ~120MB | ~180MB | ~15MB |
-| 端口 | 8084 | 8085 | 8086（管理）+ 9000-9099（游戏实例） |
+| 镜像大小 | ~120MB | ~180MB | ~25MB |
+| 端口 | 8084 | 8085 | 8086（API）+ 8087（静态伺服） |
 | 核心工具 | `ffmpeg` | `npm` / `npx` | `nginx` |
-| 执行方式 | subprocess 一次性命令 | subprocess 长时间命令 | subprocess 后台进程管理 |
+| 执行方式 | subprocess 一次性命令 | subprocess 长时间命令 | 容器启动时运行，持续伺服 |
 | 项目存储 | `/app/data/projects/{id}` | 同 | 同 |
-| 超时 | 300s | 600s | 无（持续运行，手动停止） |
-| 策略层 | `operations.py` | `strategies.py` GameEngineBuilder | `strategies.py` GameRunner |
+| 路由方式 | 各端点独立 | 各端点独立 | API 端点 + `/{project_id}/` 统一静态路由 |
+| 策略层 | `operations.py` | `strategies.py` GameEngineBuilder | `strategies.py` GameRunner（仅验证） |
+
+## 统一静态文件伺服
+
+Nginx 监听 8087 端口，通过 `/{project_id}/` 路径前缀路由到对应项目的 `dist/` 目录：
+
+```
+用户访问:  http://run-service:8087/abc-123/
+Nginx 映射: /app/data/projects/abc-123/dist/
+```
+
+每个项目的静态资源路径完全隔离，`project_id` 经过 `resolve_safe_path` 校验，防止路径穿越。
 
 ## API 设计
 
@@ -80,22 +88,14 @@ server/
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | POST | `/api/projects/{project_id}` | 创建项目目录（幂等） |
-| GET | `/api/projects/{project_id}` | 查询项目状态与运行信息 |
-| DELETE | `/api/projects/{project_id}` | 删除项目目录（先 stop 再删除，幂等） |
+| GET | `/api/projects/{project_id}` | 查询项目状态与伺服信息 |
+| DELETE | `/api/projects/{project_id}` | 删除项目目录及所有文件（幂等） |
 
 ### 游戏包上传
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| POST | `/api/projects/{project_id}/upload` | 上传已打包的游戏产物（tar.gz），解压到项目目录 |
-
-### 运行控制
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| POST | `/api/run/{project_id}/start` | 启动游戏运行环境（分配端口 + 生成 nginx config + 启动 nginx） |
-| POST | `/api/run/{project_id}/stop` | 停止游戏运行环境（停止 nginx + 释放端口，幂等） |
-| GET | `/api/run/{project_id}/status` | 查询运行状态与预览地址 |
+| POST | `/api/projects/{project_id}/upload` | 上传已打包的游戏产物（tar.gz），解压到项目目录。上传后自动可伺服 |
 
 ### 文件管理
 
@@ -106,40 +106,25 @@ server/
 | DELETE | `/api/files/{project_id}/{filename}` | 删除文件（幂等） |
 | DELETE | `/api/files/{project_id}` | 删除项目目录内所有文件 |
 
-> **路径安全**：以上所有端点中涉及 `project_id` 拼接、`filename` 路径操作时，必须通过 `_project_path()` + `_safe_join()` 校验（详见 [路径安全](#路径安全) 章节）。
+### 静态文件伺服（Nginx，端口 8087）
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/{project_id}/` | 伺服项目 `dist/index.html`（SPA fallback） |
+| GET | `/{project_id}/{path}` | 伺服项目 `dist/` 下的任意静态资源 |
+
+> **路径安全**：以上所有 API 端点中涉及 `project_id` 拼接、`filename` 路径操作时，必须通过 `_project_path()` + `_safe_join()` 校验（详见 [路径安全](#路径安全) 章节）。Nginx 静态路由同样通过 `rewrite` 规则限制在 `/app/data/projects/` 目录内。
 
 ### 通用响应格式
 
 ```json
-// 启动成功
+// 上传成功
 {
   "success": true,
   "game_type": "h5",
-  "status": "running",
-  "port": 9001,
-  "preview_url": "http://run-service:9001",
-  "message": "Game started successfully on port 9001"
-}
-
-// 停止成功
-{
-  "success": true,
-  "message": "Game stopped, port 9001 released"
-}
-
-// 运行状态
-{
-  "project_id": "abc-123",
-  "game_type": "h5",
-  "status": "running",
-  "port": 9001,
-  "preview_url": "http://run-service:9001",
-  "started_at": "2026-06-04T08:20:00Z"
-}
-
-// 启动失败 (422)
-{
-  "detail": "No available ports in range 9000-9099"
+  "message": "Game uploaded and ready to serve",
+  "preview_url": "http://run-service:8087/abc-123/",
+  "file_count": 42
 }
 
 // 项目信息
@@ -147,8 +132,13 @@ server/
   "project_id": "abc-123",
   "exists": true,
   "game_type": "h5",
-  "run_status": "stopped",
-  "port": null
+  "preview_url": "http://run-service:8087/abc-123/",
+  "file_count": 42
+}
+
+// 上传失败 (422)
+{
+  "detail": "metadata.json not found in uploaded package"
 }
 ```
 
@@ -160,36 +150,37 @@ server/
 | `game_type` | 从 metadata.json 读取，必须匹配已注册类型 (`h5`、`phaser-mobile`) |
 | 上传文件大小 | 最大 200MB（已打包游戏产物上限） |
 | 上传文件格式 | `application/gzip`（tar.gz） |
-| `port` | 9000-9099，由服务自动分配 |
 
-## 运行策略详解
+## 伺服策略详解
 
 ### H5 游戏
 
 ```
 1. 读取 metadata.json 确认 game_type == "h5"
 2. 检查 dist/index.html 存在
-3. 分配可用端口（9000-9099）
-4. 从 nginx.conf.template 生成实例配置：
-   - server_name: localhost
-   - listen: {port}
-   - root: /app/data/projects/{project_id}/dist
-   - index: index.html
-   - SPA fallback: try_files $uri $uri/ /index.html
-5. 写入临时配置 /app/nginx_conf/{project_id}.conf
-6. nginx -c /app/nginx_conf/{project_id}.conf（独立进程）
-7. 返回 preview_url
+3. dist/ 目录自动通过 Nginx 伺服，无需额外启动步骤
+4. 返回 preview_url: http://run-service:8087/{project_id}/
 ```
 
-**nginx.conf.template：**
+### Phaser Mobile 游戏
+
+```
+1. 读取 metadata.json 确认 game_type == "phaser-mobile"
+2. 检查 dist/index.html 存在
+3. 检查 capacitor.config.json 是否存在
+4. dist/ 目录自动通过 Nginx 伺服
+5. 返回 preview_url + capacitor_config_available: true/false
+```
+
+## Nginx 配置
 
 ```nginx
-worker_processes 1;
-error_log /app/data/projects/{PROJECT_ID}/nginx_error.log;
-pid /app/data/projects/{PROJECT_ID}/nginx.pid;
+worker_processes auto;
+error_log /var/log/nginx/error.log warn;
+pid /var/run/nginx.pid;
 
 events {
-    worker_connections 256;
+    worker_connections 1024;
 }
 
 http {
@@ -198,65 +189,40 @@ http {
     sendfile on;
     keepalive_timeout 65;
 
+    # gzip 静态资源
+    gzip on;
+    gzip_types text/html text/css application/javascript application/json image/svg+xml;
+
     server {
-        listen {PORT};
+        listen 8087;
         server_name localhost;
 
-        root /app/data/projects/{PROJECT_ID}/dist;
-        index index.html;
+        # 统一静态文件伺服：/{project_id}/ → /app/data/projects/{project_id}/dist/
+        location ~ ^/(?<project_id>[a-zA-Z0-9_-]{1,64})(/.*)?$ {
+            # 安全检查：project_id 正则限制，防止路径穿越
+            alias /app/data/projects/$project_id/dist/;
 
-        location / {
+            index index.html;
+
+            # SPA fallback
             try_files $uri $uri/ /index.html;
-        }
 
-        # 允许跨域（开发调试需要）
-        add_header Access-Control-Allow-Origin *;
+            # 允许跨域（开发调试需要）
+            add_header Access-Control-Allow-Origin *;
+
+            # 缓存策略：HTML 不缓存，静态资源短期缓存
+            location ~ \.html$ {
+                add_header Cache-Control "no-cache, must-revalidate";
+            }
+            location ~ \.(js|css|png|jpg|gif|svg|ico|woff2?)$ {
+                expires 1h;
+            }
+        }
     }
 }
 ```
 
-### Phaser Mobile 游戏
-
-```
-1. 读取 metadata.json 确认 game_type == "phaser-mobile"
-2. 检查 dist/index.html 存在
-3. 分配可用端口（9000-9099）
-4. 生成 nginx 配置（同 H5）
-5. 额外检查 capacitor.config.json 是否存在
-6. 启动 nginx
-7. 返回 preview_url + capacitor_config_available: true/false
-```
-
-## 端口管理
-
-`port_manager.py` 负责 9000-9099 范围的端口分配与回收：
-
-```python
-class PortManager:
-    """端口分配器，线程安全"""
-    
-    def __init__(self, start: int = 9000, end: int = 9099):
-        self._range = range(start, end + 1)
-        self._used: dict[str, int] = {}  # project_id -> port
-    
-    def allocate(self, project_id: str) -> int:
-        """分配一个未使用端口，已分配的项目返回已有端口"""
-        if project_id in self._used:
-            return self._used[project_id]
-        for port in self._range:
-            if port not in self._used.values():
-                self._used[project_id] = port
-                return port
-        raise NoAvailablePortError()
-    
-    def release(self, project_id: str) -> None:
-        """释放项目占用的端口"""
-        self._used.pop(project_id, None)
-```
-
-- 端口分配前通过 `socket.bind()` 探测端口是否真正可用
-- 同一 project_id 重复 start 为幂等操作，返回已有端口
-- stop 时释放端口
+> **安全要点**：`project_id` 通过 nginx `location` 正则 `[a-zA-Z0-9_-]{1,64}` 严格限制，与 API 层 `project_id` 校验规则一致，双重防护路径穿越。
 
 ## 数据模型
 
@@ -269,33 +235,24 @@ CREATE TABLE IF NOT EXISTS run_projects (
   run_project_id TEXT NOT NULL,
   name TEXT NOT NULL,
   game_type TEXT,
-  run_status TEXT NOT NULL DEFAULT 'stopped',
-  port INTEGER,
-  nginx_pid INTEGER,
-  started_at TEXT,
-  stopped_at TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_run_projects_project ON run_projects(project_id);
 ```
 
-`run_status` 枚举：`"stopped"` | `"starting"` | `"running"` | `"stopping"` | `"error"`
+> **简化说明**：移除 `run_status`、`port`、`nginx_pid`、`started_at`/`stopped_at` 字段。上传即伺服，无运行状态管理。结构与 `video_projects` / `image_projects` 完全一致。
 
-结构与 `build_projects` 类似，增加 `port`、`nginx_pid`、运行时间字段。
-
-## MCP 工具清单（8 个）
+## MCP 工具清单（6 个）
 
 所有工具仅 **engineer** 可用，无需审批，`ENGINEER_ALLOW` 自动放行。
 
 | 工具名 | 说明 |
 |--------|------|
 | `run_create_project` | 创建运行 project |
-| `run_delete_project` | 删除运行 project（先 stop） |
-| `run_upload` | 上传已打包游戏产物到运行服务 |
-| `run_start` | 启动游戏运行环境（自动识别 game_type） |
-| `run_stop` | 停止游戏运行环境 |
-| `run_status` | 查询运行状态与预览地址 |
+| `run_delete_project` | 删除运行 project 及所有文件 |
+| `run_upload` | 上传已打包游戏产物（解压并验证，上传后自动可伺服） |
+| `run_status` | 查询项目伺服状态与预览地址 |
 | `run_list_files` | 列出项目文件 |
 | `run_delete_file` | 删除项目内文件 |
 
@@ -310,12 +267,11 @@ run-service:
     dockerfile: Dockerfile
   container_name: game-studio-run-service
   ports:
-    - "${RUN_SERVICE_PORT:-8086}:8086"
-    - "9000-9099:9000-9099"
+    - "${RUN_SERVICE_API_PORT:-8086}:8086"
+    - "${RUN_SERVICE_SERVE_PORT:-8087}:8087"
   environment:
-    - RUN_SERVICE_PORT=8086
-    - NGINX_PORT_RANGE_START=9000
-    - NGINX_PORT_RANGE_END=9099
+    - RUN_SERVICE_API_PORT=8086
+    - RUN_SERVICE_SERVE_PORT=8087
   volumes:
     - run-data:/app/data
   networks:
@@ -329,13 +285,12 @@ run-service:
   restart: unless-stopped
 ```
 
-> **端口映射**：管理 API 端口 8086 + 游戏运行端口范围 9000-9099。生产环境建议通过反向代理统一暴露，不使用大范围端口映射。
-
 新增 volume：`run-data`。
 
 Backend 环境变量：
 ```
 RUN_SERVICE_URL=http://run-service:8086
+RUN_SERVICE_SERVE_URL=http://run-service:8087
 ```
 
 ### Dockerfile
@@ -348,9 +303,12 @@ RUN apk add --no-cache nginx curl python3 py3-pip
 
 WORKDIR /app
 
-# Nginx 配置模板
-COPY nginx.conf.template /app/
-RUN mkdir -p /app/nginx_conf /app/data /app/data/projects
+# 创建数据目录
+RUN mkdir -p /app/data/projects /run/nginx
+RUN chown -R nginx:nginx /app/data
+
+# Nginx 配置
+COPY nginx.conf /etc/nginx/nginx.conf
 
 # Python FastAPI 依赖
 COPY requirements.txt .
@@ -358,15 +316,30 @@ RUN pip install --no-cache-dir -r requirements.txt --break-system-packages
 
 COPY app/ ./app/
 
-EXPOSE 8086
-EXPOSE 9000-9099
+EXPOSE 8086 8087
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8086"]
+# 启动脚本：后台 nginx + 前台 uvicorn
+COPY entrypoint.sh /app/
+RUN chmod +x /app/entrypoint.sh
+
+CMD ["/app/entrypoint.sh"]
 ```
 
-> **镜像大小估算**：Alpine (~7MB) + nginx (~5MB) + Python/FastAPI (~10MB) ≈ **~22MB**。
+**entrypoint.sh：**
 
-> **为什么不用 Node.js serve**：Nginx 成熟稳定，支持 SPA fallback、MIME types、静态文件缓存，配置模板化便于动态生成。Node.js 静态服务方案（如 serve 包）作为备选。
+```bash
+#!/bin/sh
+set -e
+
+# 启动 Nginx（后台）
+nginx -g "daemon off;" &
+
+# 启动 FastAPI（前台，作为容器主进程）
+exec uvicorn app.main:app --host 0.0.0.0 --port 8086
+```
+
+> **镜像大小估算**：Alpine (~7MB) + nginx (~5MB) + Python/FastAPI (~10MB) ≈ **~25MB**。
+> **为什么不动态管理 Nginx**：统一 Nginx 实例伺服所有项目，通过 URL 路径 `/{project_id}/` 路由，无需 per-project 进程管理，架构更简单。
 
 ### 端口分配总览
 
@@ -379,17 +352,19 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8086"]
 | image-service (ImageMagick) | 待定 | 设计中 |
 | video-service (FFmpeg) | 8084 | 设计中 |
 | build-service (Node.js) | 8085 | 设计中 |
-| **run-service (Nginx)** | **8086（管理）+ 9000-9099（游戏）** | 设计中 |
+| **run-service API** | **8086** | 设计中 |
+| **run-service 静态伺服** | **8087** | 设计中 |
 
 ## 路径安全
 
-> **所有涉及文件路径操作的代码，必须在服务内部（Python）和 TS 客户端两侧统一使用安全校验函数，禁止自行拼接路径。**
+> **所有涉及文件路径操作的代码，必须在服务内部（Python）、Nginx 配置和 TS 客户端三侧统一使用安全校验函数，禁止自行拼接路径。**
 
-### 总体架构
+### 三层安全
 
-| 层级 | 位置 | 函数 | 职责 |
+| 层级 | 位置 | 函数/规则 | 职责 |
 |------|------|------|------|
 | **微服务内部** | `run-service/app/safe_path.py` | `resolve_safe_path(base, user_path)` | 所有 FastAPI 路由中涉及 `project_id`、`filename` 拼接时统一调用 |
+| **Nginx 配置** | `run-service/nginx.conf` | `location ~ ^/(?<project_id>[a-zA-Z0-9_-]{1,64})` | `project_id` 正则严格限制，防止路径穿越 |
 | **TS 客户端** | `server/db.ts` (已有) | `resolveSafePath(baseDir, fileName)` | 下载/删除文件时校验本地输出路径 |
 
 ### 路由层使用规范
@@ -417,46 +392,46 @@ def _safe_join(base: str, filename: str) -> str:
 | 路由文件 | 涉及路径操作 | 安全函数使用 |
 |---------|-------------|-------------|
 | `routers/project.py` | 上传、创建、删除时解析 `project_id` | `_project_path()` |
-| `routers/run.py` | 启动时读取 metadata.json、生成 nginx config | `_project_path()` + `_safe_join()` |
 | `routers/file.py` | 列出/下载/删除文件 | `_project_path()` + `_safe_join()` |
 
 **硬性要求**：
-- Nginx 配置写入必须在 `_safe_join()` 校验后的路径内
-- Nginx `root` 指令必须指向 `_project_path()` 返回的 dist 目录
+- 任何路由中访问项目目录、读写文件前，**必须先调用 `_project_path()`** 校验 `project_id`
+- 禁止在路由中直接使用 `os.path.join(PROJECTS_ROOT, project_id)` 或字符串拼接路径
+- 上传 tar.gz 解压时必须在 `_project_path()` 返回的目录内操作
+- Nginx `location` 正则必须与 API 层 `project_id` 校验规则一致
 
 ## 运行安全
 
-### Nginx 进程管理
+### Nginx 配置安全
 
-- 每个游戏实例运行独立 nginx master + worker 进程
-- 使用 `nginx -c {config_path}` 指定独立配置文件，避免与系统 nginx 冲突
-- 启动时记录 PID 到 `run_projects` 表，停止时通过 PID kill
-- 停止策略：先 `nginx -s quit`（graceful shutdown，5s 超时），超时后 `kill -TERM`，再超时 `kill -KILL`
-- 异常退出：定期检查 PID 是否存在，不存在则自动标记为 `error` 状态
+- **路径限制**：`location` 正则 `[a-zA-Z0-9_-]{1,64}` 严格限制 `project_id` 字符集
+- **alias 隔离**：每个项目通过 `alias /app/data/projects/$project_id/dist/` 独立映射
+- **双层防护**：即便 Nginx 正则被绕过，Python API 层的 `resolve_safe_path` 也会阻止非法路径写入
 
-### subprocess 执行安全
+### 上传安全
 
-- 所有 nginx 操作通过 `subprocess.run()` 执行
-- 禁止使用 `shell=True`
-- nginx 配置文件在写入前做模板变量注入校验（`PROJECT_ID`、`PORT` 均来自已验证的输入）
+- 上传 tar.gz 前校验 Content-Type 为 `application/gzip`
+- 解压前检查文件大小不超过 200MB
+- 解压到临时目录，验证 `dist/metadata.json` 存在后再移动到项目目录
+- 旧项目目录在上传新包前先清空
 
 ### 容器端口暴露
 
-- 开发环境：映射 9000-9099 到宿主机
-- 生产环境：不映射游戏端口，仅通过 backend 反向代理访问（后续 phase）
+- 开发环境：映射 8086 + 8087 到宿主机
+- 生产环境：仅映射 8087（静态伺服），或通过反向代理统一暴露
 
 ## 性能考量
 
-- **并发游戏实例**：最多 100 个（9000-9099 共 100 端口），每个实例 ~5MB 内存（nginx worker）
-- **内存**：100 个实例约 500MB + Python FastAPI ~100MB = **~600MB 建议分配**
+- **并发项目**：无上限，受磁盘空间和 Nginx worker_connections 限制（默认 1024）
+- **内存**：Nginx ~10MB + Python FastAPI ~100MB = **~110MB 稳定占用**，不随项目数增长
 - **磁盘**：挂载 volume 2GB+，每个游戏 dist 约 5-50MB
-- **启动时间**：nginx 启动 < 1s
+- **静态资源缓存**：Nginx `expires 1h` + gzip 压缩
 
 ## 成本
 
-- 镜像体积 ~22MB（Alpine + nginx + Python/FastAPI）
+- 镜像体积 ~25MB（Alpine + nginx + Python/FastAPI）
 - 纯 CPU 运算，无需 GPU
-- 内存占用与运行实例数线性相关
+- 内存占用固定 ~110MB，不随项目数增长
 
 ## 使用场景（TBD）
 
@@ -472,29 +447,27 @@ def _safe_join(base: str, filename: str) -> str:
 | 文件 | 角色 |
 |------|------|
 | `run-service/Dockerfile` | 容器构建 |
-| `run-service/nginx.conf.template` | Nginx 配置模板 |
+| `run-service/entrypoint.sh` | 容器启动脚本（nginx + uvicorn） |
+| `run-service/nginx.conf` | Nginx 配置（统一伺服，端口 8087） |
 | `run-service/requirements.txt` | Python 依赖 |
-| `run-service/app/main.py` | FastAPI 入口 |
+| `run-service/app/main.py` | FastAPI 入口（端口 8086） |
 | `run-service/app/schemas.py` | Pydantic 模型 |
-| `run-service/app/runner.py` | Nginx subprocess 管理 |
-| `run-service/app/strategies.py` | GameRunner：metadata.json 解析 + 策略分发 |
-| `run-service/app/port_manager.py` | 端口分配管理器 |
+| `run-service/app/strategies.py` | GameRunner：metadata.json 解析 + 策略验证 |
 | `run-service/app/safe_path.py` | 路径安全 |
 | `run-service/app/routers/project.py` | 项目路由 + 游戏包上传 |
-| `run-service/app/routers/run.py` | 运行/停止路由 |
 | `run-service/app/routers/file.py` | 文件管理路由 |
 | `server/run-service.ts` | TS HTTP 客户端 |
 | `server/run-service.d.ts` | TS 类型定义 |
 | `server/db.ts` | run_projects 表 + CRUD |
-| `server/tools.ts` | 8 个 MCP 工具 |
+| `server/tools.ts` | 6 个 MCP 工具 |
 | `server/agent-manager.ts` | ENGINEER_ALLOW 权限 |
 | `server/agents.ts` | TOOLS_OVERVIEW + 系统提示词 |
 | `docker-compose.yml` | run-service 容器 |
 
 ## 测试策略
 
-1. **单元测试**：`strategies.py` GameRunner 策略分发、`port_manager.py` 端口分配逻辑
-2. **集成测试**：docker-compose 拉起 run-service，curl 上传 mock 游戏包 → start → 访问 preview_url → stop
+1. **单元测试**：`strategies.py` GameRunner 策略验证
+2. **集成测试**：docker-compose 拉起 run-service，curl 上传 mock 游戏包 → 访问 preview_url 验证静态伺服 → delete 项目
 3. **UI Test**：通过 engineer agent 调用 `run_*` 工具，验证全链路
 
 ## UI Test 验收规则
@@ -520,11 +493,11 @@ def _safe_join(base: str, filename: str) -> str:
 
 ## 注意事项
 
-- **Nginx 配置隔离**：每个游戏实例使用独立配置文件，互不干扰
-- **端口回收**：stop 时确保端口释放，nginx 进程完全终止
-- **Graceful shutdown**：优先 `nginx -s quit`，超时后 force kill
-- **metadata.json 未找到**：启动前检查，缺失时返回错误
+- **上传即伺服**：游戏包上传成功后立即通过 Nginx 可访问，无需额外的启动/停止步骤
+- **目录覆盖**：上传新游戏包前清空旧项目目录，避免残留文件
+- **metadata.json 未找到**：上传后校验，缺失时返回错误
 - **dist/index.html 未找到**：返回错误，提示缺少入口文件
-- **Docker 端口映射**：开发环境映射 9000-9099，生产环境建议 Nginx 反向代理
-- **文件目录删除**：所有项目目录和文件支持通过 API 删除，DELETE 方法幂等，stop 后才能删除运行中的项目
-- **容器重启恢复**：container restart 后所有运行状态重置为 `stopped`，port_manager 重新初始化
+- **Nginx alias 与 trailing slash**：`alias` 指令的路径末尾 `/` 必须与 `location` 的 `/` 对齐，否则 `try_files` 行为异常
+- **文件目录删除**：所有项目目录和文件支持通过 API 删除，DELETE 方法幂等
+- **容器重启**：restart 后 `run-data` volume 中的项目数据依然存在，Nginx 自动恢复伺服
+- **无进程管理**：不需要 `port_manager.py`、`runner.py`、nginx 子进程管理，架构更简洁
