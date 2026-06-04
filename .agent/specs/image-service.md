@@ -14,7 +14,7 @@ image-service/ (FastAPI + ImageMagick, port 8083)
 ├── app/schemas.py        # Pydantic 请求/响应模型
 ├── app/imagemagick.py    # ImageMagick subprocess 执行器
 ├── app/operations.py     # 命令行参数生成器
-├── app/safe_path.py      # 路径遍历防护
+├── app/safe_path.py      # 统一路径安全校验函数（resolve_safe_path）
 ├── app/routers/
 │   ├── project.py        # 项目 CRUD（同 creator 模式）
 │   ├── image.py          # 12 个图片操作端点
@@ -70,6 +70,8 @@ server/
 | `/api/image/info` | 图片信息 | `filename`（返回尺寸、格式、色彩空间、文件大小） |
 | `/api/image/batch` | 批量处理 | `input_pattern`, `operation`, `operation_params`, `output_dir` |
 | `/api/image/sprite-sheet` | 精灵图拼合 | `files`, `columns`, `rows`, `output_filename` |
+
+> **路径安全**：以上所有端点中涉及 `project_id` 拼接、`input_filename`/`output_filename`/`base_filename`/`overlay_filename` 路径操作时，必须通过 `_project_path()` + `_safe_join()` 校验（详见 [路径安全](#路径安全) 章节）。
 
 ### 文件管理
 
@@ -202,9 +204,117 @@ Backend 环境变量：
 IMAGE_SERVICE_URL=http://image-service:8083
 ```
 
+## 路径安全
+
+> **所有涉及文件路径操作的代码，必须在服务内部（Python）和 TS 客户端两侧统一使用安全校验函数，禁止自行拼接路径。**
+
+### 总体架构
+
+参照 creator service (Blender) 的现有模式，路径安全分为两层：
+
+| 层级 | 位置 | 函数 | 职责 |
+|------|------|------|------|
+| **微服务内部** | `image-service/app/safe_path.py` | `resolve_safe_path(base, user_path)` | 所有 FastAPI 路由中涉及 `project_id`、`filename` 拼接时统一调用 |
+| **TS 客户端** | `server/db.ts` (已有) | `resolveSafePath(baseDir, fileName)` | 下载/删除文件时校验本地输出路径 |
+
+### Python 端：`safe_path.py` 实现
+
+与 creator service、drawio-service 完全一致的 `resolve_safe_path` 函数，复制自 `creator/app/safe_path.py`：
+
+```python
+import os
+
+def resolve_safe_path(base: str, user_path: str) -> str:
+    """安全解析用户提供的路径段到受信基准目录下。
+    
+    使用 os.path.realpath + os.path.commonpath 双重校验，
+    防止路径穿越攻击（如 ../ 逃逸、符号链接逃逸）。
+    
+    Args:
+        base: 受信的绝对基准目录路径。
+        user_path: 用户提供的路径段（如 project_id、filename）。
+    
+    Returns:
+        解析后的安全绝对路径。
+    
+    Raises:
+        ValueError: 解析结果不在基准目录内时抛出。
+    """
+    root = os.path.realpath(base)
+    candidate = os.path.realpath(os.path.join(root, user_path))
+    if os.path.commonpath([root, candidate]) != root:
+        raise ValueError(
+            f"Path traversal detected: '{user_path}' resolves outside '{base}'"
+        )
+    return candidate
+```
+
+### 路由层使用规范
+
+**每个路由文件都必须遵循统一模式**，定义两个辅助函数并导入 `resolve_safe_path`：
+
+```python
+# routers/project.py, routers/image.py, routers/file.py — 公共模式
+
+from app.safe_path import resolve_safe_path
+
+PROJECTS_ROOT = "/app/data/projects"
+
+def _project_path(project_id: str) -> str:
+    """解析项目目录，带路径穿越防护。"""
+    try:
+        return resolve_safe_path(PROJECTS_ROOT, project_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+def _safe_join(base: str, filename: str) -> str:
+    """拼接文件名到基准目录，并校验结果在目录内（路径穿越防护）。"""
+    try:
+        return resolve_safe_path(base, filename)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+```
+
+### 路由覆盖范围
+
+| 路由文件 | 涉及路径操作 | 安全函数使用 |
+|---------|-------------|-------------|
+| `routers/project.py` | POST/GET/DELETE 时解析 `project_id` → 项目目录路径 | `_project_path()` |
+| `routers/image.py` | 所有 12 个操作端点中解析 `project_id` + 拼接 `input_filename`/`output_filename` | `_project_path()` + `_safe_join()` |
+| `routers/file.py` | 列出/下载/删除文件时解析 `project_id` + 拼接 `filename` | `_project_path()` + `_safe_join()` |
+
+**硬性要求**：
+- 任何路由中访问项目目录、读写文件前，**必须先调用 `_project_path()`** 校验 `project_id`
+- 任何路由中拼接用户输入的文件名时，**必须先调用 `_safe_join()`** 校验
+- 禁止在路由中直接使用 `os.path.join(PROJECTS_ROOT, project_id)` 或字符串拼接路径
+- `sprite-sheet` 等生成多文件的端点，其 `output_filename` 也需通过 `_safe_join` 校验
+
+### TS 客户端端：`resolveSafePath`
+
+`server/image-service.ts` 中下载/删除文件到本地时，导入并使用 `server/db.ts` 中已有的 `resolveSafePath`：
+
+```typescript
+import { resolveSafePath } from './db.js';
+
+// 下载文件到本地
+const localPath = resolveSafePath(localOutputDir, safeFilename);
+```
+
+该函数实现：
+```typescript
+export function resolveSafePath(baseDir: string, fileName: string): string {
+  const resolvedBase = path.resolve(baseDir);
+  const candidate = path.resolve(baseDir, fileName);
+  if (!candidate.startsWith(`${resolvedBase}${path.sep}`) && candidate !== resolvedBase) {
+    throw new Error('非法文件路径');
+  }
+  return candidate;
+}
+```
+
 ### 导出路径安全
 
-图片处理工具生成的输出文件，导出到本地时路径限制在 `/app/output/{projectId}/games/latest/` 下，使用 `resolveSafePath` + `startsWith` 双重校验。
+图片处理工具生成的输出文件，导出到本地时路径限制在 `/app/output/{projectId}/games/latest/` 下，使用 `resolveSafePath` + `startsWith` 双重校验（TS 客户端端）。微服务内部输出写入则通过 `resolve_safe_path` 限制在项目目录内。
 
 ### 成本
 
@@ -240,8 +350,6 @@ IMAGE_SERVICE_URL=http://image-service:8083
 1. **单元测试**：`imagemagick.py` 和 `operations.py` 独立测试
 2. **集成测试**：docker-compose 中拉起 image-service 容器，curl 调用各端点
 3. **UI Test**：通过 engineer agent 调用 image_* 工具，验证全链路
-
-> **注意**：ImageMagick 在 Alpine 中安装为 `imagemagick` 包，命令为 `magick`（IM7），非旧版 `convert`（IM6）。
 
 ## UI Test 验收规则
 
@@ -282,3 +390,8 @@ IMAGE_SERVICE_URL=http://image-service:8083
 4. **E2E 测试用例**：参照 UI-007/008 的 `log()` helper 模式，每个操作步骤添加 `process.stderr.write('[UI-XXX] step: ...')` 日志，包含结构化 extra 数据
    - **日志格式统一**：`[DEBUG:模块名] stepN: 描述` 或 `[UI-XXX] stepN: 描述`，关键数据以 JSON extra 输出
    - **日志粒度**：关键路径全覆盖，但避免在循环/高频回调中输出日志
+
+## 注意事项
+
+- **ImageMagick 版本**：在 Alpine 中安装为 `imagemagick` 包，命令为 `magick`（IM7），非旧版 `convert`（IM6）。
+- **路径安全**：所有文件操作必须通过 `resolve_safe_path` / `resolveSafePath` 校验，禁止直接拼接路径（参考 creator service 的 `creator/app/routers/file.py` 和 `creator/app/routers/blender.py` 模式）
