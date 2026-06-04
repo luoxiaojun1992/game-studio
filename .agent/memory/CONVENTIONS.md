@@ -123,6 +123,7 @@
 | 在前端组件中直接使用 `fetch('/api/...')` 调用后端 API | 必须使用 `config.ts` 中 `api.*` 封装函数（如 `api.getModels()`），它们通过 `VITE_API_BASE` 解析到正确的后端地址 | 生产构建（nginx）中 `/api/*` 被当作静态文件请求，返回 404 |
 | UI 测试中 `fs.mkdirSync` + `fs.writeFileSync` 直接写入后端 `output/` 目录 | 通过 mock 返回 MCP 工具调用（如 `write_game_file`），由 agent-sdk 本地执行 | 测试与后端不在同一容器/进程，本地写入的文件后端无法读取 |
 | mock 模拟 `Write`/`Bash` 等 SDK 内置工具 | CI 中无 CodeBuddy 运行时，内置工具不可执行；必须使用 MCP 工具 | 工具调用静默失败，测试流程卡住 |
+| TS 模板字符串内写 Markdown 行内代码时用反引号包裹 | 模板字符串内的 Markdown 反引号会提前终止字符串，必须转义为 \\\` 或去掉反引号用纯文本 | TS 编译报 TS1005/TS1003 错误（Docker 构建失败） |
 
 ## Session ↔ Project 关系
 - **Session 不会跨 project**：每次 `sendMessage(projectId, agentId, ...)` 都会创建全新的 SDK session，session 与 project 一一对应
