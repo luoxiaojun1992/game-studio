@@ -14,7 +14,7 @@ video-service/ (FastAPI + FFmpeg, port 8084)
 ├── app/schemas.py        # Pydantic 请求/响应模型
 ├── app/ffmpeg.py         # FFmpeg subprocess 执行器
 ├── app/operations.py     # FFmpeg 命令行参数生成器
-├── app/safe_path.py      # 路径遍历防护
+├── app/safe_path.py      # 统一路径安全校验函数（resolve_safe_path）
 ├── app/routers/
 │   ├── project.py        # 项目 CRUD（同 creator 模式）
 │   ├── video.py          # 17 个视频操作端点
@@ -75,6 +75,8 @@ server/
 | `/api/video/generate_gif` | 视频转 GIF | `input_filename`, `fps`, `width`, `output_filename` |
 | `/api/video/gif_to_video` | GIF 转视频 | `input_filename`, `target_format`, `output_filename` |
 | `/api/video/create_thumbnail` | 生成缩略图 | `filename`, `time`, `width`, `output_filename` |
+
+> **路径安全**：以上所有端点中涉及 `project_id` 拼接、`input_filename`/`output_filename`/`audio_filename`/`watermark_filename` 路径操作时，必须通过 `_project_path()` + `_safe_join()` 校验（详见 [路径安全](#路径安全) 章节）。
 
 ### 文件管理
 
@@ -259,9 +261,117 @@ EXPOSE 8084
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8084"]
 ```
 
+## 路径安全
+
+> **所有涉及文件路径操作的代码，必须在服务内部（Python）和 TS 客户端两侧统一使用安全校验函数，禁止自行拼接路径。**
+
+### 总体架构
+
+参照 creator service (Blender) 和 drawio-service 的现有模式，路径安全分为两层：
+
+| 层级 | 位置 | 函数 | 职责 |
+|------|------|------|------|
+| **微服务内部** | `video-service/app/safe_path.py` | `resolve_safe_path(base, user_path)` | 所有 FastAPI 路由中涉及 `project_id`、`filename` 拼接时统一调用 |
+| **TS 客户端** | `server/db.ts` (已有) | `resolveSafePath(baseDir, fileName)` | 下载/删除文件时校验本地输出路径 |
+
+### Python 端：`safe_path.py` 实现
+
+与 creator service、drawio-service 完全一致的 `resolve_safe_path` 函数，复制自 `creator/app/safe_path.py`：
+
+```python
+import os
+
+def resolve_safe_path(base: str, user_path: str) -> str:
+    """安全解析用户提供的路径段到受信基准目录下。
+    
+    使用 os.path.realpath + os.path.commonpath 双重校验，
+    防止路径穿越攻击（如 ../ 逃逸、符号链接逃逸）。
+    
+    Args:
+        base: 受信的绝对基准目录路径。
+        user_path: 用户提供的路径段（如 project_id、filename）。
+    
+    Returns:
+        解析后的安全绝对路径。
+    
+    Raises:
+        ValueError: 解析结果不在基准目录内时抛出。
+    """
+    root = os.path.realpath(base)
+    candidate = os.path.realpath(os.path.join(root, user_path))
+    if os.path.commonpath([root, candidate]) != root:
+        raise ValueError(
+            f"Path traversal detected: '{user_path}' resolves outside '{base}'"
+        )
+    return candidate
+```
+
+### 路由层使用规范
+
+**每个路由文件都必须遵循统一模式**，定义两个辅助函数并导入 `resolve_safe_path`：
+
+```python
+# routers/project.py, routers/video.py, routers/file.py — 公共模式
+
+from app.safe_path import resolve_safe_path
+
+PROJECTS_ROOT = "/app/data/projects"
+
+def _project_path(project_id: str) -> str:
+    """解析项目目录，带路径穿越防护。"""
+    try:
+        return resolve_safe_path(PROJECTS_ROOT, project_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+def _safe_join(base: str, filename: str) -> str:
+    """拼接文件名到基准目录，并校验结果在目录内（路径穿越防护）。"""
+    try:
+        return resolve_safe_path(base, filename)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+```
+
+### 路由覆盖范围
+
+| 路由文件 | 涉及路径操作 | 安全函数使用 |
+|---------|-------------|-------------|
+| `routers/project.py` | POST/GET/DELETE 时解析 `project_id` → 项目目录路径 | `_project_path()` |
+| `routers/video.py` | 所有 17 个操作端点中解析 `project_id` + 拼接 `input_filename`/`output_filename` | `_project_path()` + `_safe_join()` |
+| `routers/file.py` | 列出/下载/删除文件时解析 `project_id` + 拼接 `filename` | `_project_path()` + `_safe_join()` |
+
+**硬性要求**：
+- 任何路由中访问项目目录、读写文件前，**必须先调用 `_project_path()`** 校验 `project_id`
+- 任何路由中拼接用户输入的文件名时，**必须先调用 `_safe_join()`** 校验
+- 禁止在路由中直接使用 `os.path.join(PROJECTS_ROOT, project_id)` 或字符串拼接路径
+- `extract_frames` 等生成多文件的端点，其 `output_pattern` 也需通过 `_safe_join` 校验
+
+### TS 客户端端：`resolveSafePath`
+
+`server/video-service.ts` 中下载/删除文件到本地时，导入并使用 `server/db.ts` 中已有的 `resolveSafePath`：
+
+```typescript
+import { resolveSafePath } from './db.js';
+
+// 下载文件到本地
+const localPath = resolveSafePath(localOutputDir, safeFilename);
+```
+
+该函数实现：
+```typescript
+export function resolveSafePath(baseDir: string, fileName: string): string {
+  const resolvedBase = path.resolve(baseDir);
+  const candidate = path.resolve(baseDir, fileName);
+  if (!candidate.startsWith(`${resolvedBase}${path.sep}`) && candidate !== resolvedBase) {
+    throw new Error('非法文件路径');
+  }
+  return candidate;
+}
+```
+
 ### 导出路径安全
 
-视频处理工具生成的输出文件，导出到本地时路径限制在 `/app/output/{projectId}/games/latest/` 下，使用 `resolveSafePath` + `startsWith` 双重校验。
+视频处理工具生成的输出文件，导出到本地时路径限制在 `/app/output/{projectId}/games/latest/` 下，使用 `resolveSafePath` + `startsWith` 双重校验（TS 客户端端）。微服务内部输出写入则通过 `resolve_safe_path` 限制在项目目录内。
 
 ### 性能考量
 
@@ -353,3 +463,4 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8084"]
 - **GIF 质量**：`generate_gif` 默认 10fps，建议分辨率和帧率给出合理默认值，防止文件过大
 - **文字水印**：`add_text` 依赖系统字体，Alpine 中需安装 `font-noto` 或 `ttf-dejavu` 包
 - **硬件加速**：初版不引入 VAAPI/QSV/NVENC 依赖；后续版本可按需添加 `h264_vaapi` 等编码器选项
+- **路径安全**：所有文件操作必须通过 `resolve_safe_path` / `resolveSafePath` 校验，禁止直接拼接路径（参考 creator service 的 `creator/app/routers/file.py` 和 `creator/app/routers/blender.py` 模式）
