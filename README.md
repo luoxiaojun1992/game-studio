@@ -234,21 +234,56 @@ make compose-ui-test-down
 
 - Playwright videos/traces and reports are written to `tests/ui/artifacts/`.
 - UI test coverage summary is generated at `tests/ui/artifacts/ui-coverage-summary.json` with a required threshold of 90%.
-- Manual local run (requires separate terminals):
+- Manual local run (requires external services — see checklist below — plus separate terminals):
+
+External service checklist (all must be running before starting the backend):
+
+| Service | Port | Notes |
+|---------|------|-------|
+| MinIO | `:9000` (API), `:9001` (console) | `minio/minio:latest`, credentials `minioadmin/minioadmin` |
+| Star Office UI | `:19000` | Build from `star-office-ui/` |
+| Creator (Blender) | `:8080` | Build from `creator/` |
+| Draw.io service | `:8082` | Build from `drawio-service/` |
+| Draw.io export | `:8083` | `jgraph/drawio:latest` |
+| SonarQube scanner | `:8081` | Build from `sonar-scanner-service/` |
+| SonarQube | `:9002` | `sonarqube:community`, initial creds `admin/admin` |
+
+> **Tip:** `make compose-ui-test-up` starts all of these with correct wiring via Docker Compose.
 
 ```bash
 # Install dependencies once before starting services/tests
 npm ci
+cd tests/ui && npm ci && cd ../..
 
 # Terminal 1: start CodeBuddy SDK mock server
 npm run mock:server
 
-# Terminal 2: start Studio backend (real /api/*), but route CodeBuddy SDK traffic to the mock server
-CODEBUDDY_BASE_URL=http://localhost:3001 CODEBUDDY_API_KEY=mock-codebuddy-key STAR_OFFICE_UI_URL=http://127.0.0.1:19000 npm run server
+# Terminal 2: start Studio backend (real /api/*), all external services must be reachable
+CODEBUDDY_BASE_URL=http://localhost:3001 \
+CODEBUDDY_API_KEY=mock-codebuddy-key \
+MINIO_ENDPOINT=localhost:9000 \
+MINIO_ACCESS_KEY=minioadmin \
+MINIO_SECRET_KEY=minioadmin \
+MINIO_USE_SSL=false \
+MINIO_BUCKET=game-files \
+STAR_OFFICE_UI_URL=http://127.0.0.1:19000 \
+STAR_OFFICE_JOIN_KEY=ocj_example_team_01 \
+CREATOR_SERVICE_URL=http://localhost:8080 \
+DRAWIO_SERVICE_URL=http://localhost:8082 \
+SCANNER_SERVICE_URL=http://localhost:8081 \
+SONARQUBE_HOST=http://localhost:9000 \
+SONARQUBE_USER=admin \
+SONARQUBE_PASSWORD=admin \
+npm run server
 
 # Terminal 3: start UI app and point it to the real Studio backend
 VITE_API_BASE=http://localhost:3000 VITE_STAR_OFFICE_UI_URL=http://127.0.0.1:19000 npm run dev:client -- --host 0.0.0.0 --port 4173
 
-# Terminal 4: run UI tests + coverage + allure generation
-STUDIO_API_BASE=http://localhost:3000 STAR_OFFICE_API_BASE=http://localhost:19000 CODEBUDDY_MOCK_ADMIN_URL=http://localhost:3001 npm run test:ui:ci
+# Terminal 4: run UI tests + coverage + allure generation (from tests/ui/)
+cd tests/ui && \
+UI_BASE_URL=http://localhost:4173 \
+STUDIO_API_BASE=http://localhost:3000 \
+STAR_OFFICE_API_BASE=http://localhost:19000 \
+CODEBUDDY_MOCK_ADMIN_URL=http://localhost:3001 \
+npm run test:ui:ci
 ```

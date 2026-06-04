@@ -31,3 +31,36 @@ export function readMetadataJson(submitDir: string): Record<string, unknown> | n
     return null;
   }
 }
+
+/**
+ * 读取提交产物目录下所有 .js 文件内容并合并
+ * 用于 phaser-mobile 类型的生命周期规则检查
+ * 统一路径：submitDir/dist/
+ */
+export function readAllJsContent(submitDir: string): string {
+  const distDir = path.join(submitDir, 'dist');
+  const contents: string[] = [];
+
+  function walkDir(dir: string): void {
+    try {
+      const entries = fs.readdirSync(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        const fullPath = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          walkDir(fullPath);
+        } else if (entry.isFile() && entry.name.endsWith('.js')) {
+          try {
+            contents.push(fs.readFileSync(fullPath, 'utf-8'));
+          } catch {
+            // 跳过无法读取的文件
+          }
+        }
+      }
+    } catch {
+      // 跳过无法访问的目录
+    }
+  }
+
+  walkDir(distDir);
+  return contents.join('\n');
+}

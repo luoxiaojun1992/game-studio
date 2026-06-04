@@ -96,6 +96,13 @@ server/
           asset-manifest-exists.ts
           asset-manifest-schema.ts
           asset-resource-relative-path.ts
+        phaser-mobile/      # Phaser Mobile 特有规则，仅 game_type === "phaser-mobile" 时运行
+          lifecycle-phaser-game.ts
+          lifecycle-phaser-scene-preload.ts
+          lifecycle-phaser-scene-create.ts
+          lifecycle-phaser-script-tag.ts
+          asset-resource-relative-path.ts
+          asset-capacitor-config.ts
         (future-game-type)/ # 新增游戏类型时创建对应目录
           ...
 ```
@@ -181,6 +188,9 @@ class GameEngineeringChecker {
 | `html-` | common/ | 通用 | `html-doctype`, `html-root`, `html-head`, `html-body`, `html-charset`, `html-body-not-empty` |
 | `asset-` | common/ | 通用 | `asset-metadata-exists`, `asset-metadata-schema` |
 | `asset-` | h5/ | H5 特有 | `asset-manifest-exists`, `asset-manifest-schema`, `asset-resource-relative-path` |
+| `lifecycle-` | h5/ | H5 特有 | `lifecycle-exports`, `lifecycle-window-global`, `lifecycle-script-tag` |
+| `lifecycle-` | phaser-mobile/ | Phaser Mobile 特有 | `lifecycle-phaser-game`, `lifecycle-phaser-scene-preload`, `lifecycle-phaser-scene-create`, `lifecycle-phaser-script-tag` |
+| `asset-` | phaser-mobile/ | Phaser Mobile 特有 | `asset-resource-relative-path`, `asset-capacitor-config` |
 
 - 规则 `appliesTo()` 返回 `true` 时运行，返回 `false` 时跳过。
 - 新增游戏类型时，只需开发对应的规则并注册到 checker，无需新建 checker。

@@ -20,7 +20,7 @@ export const SEED_COMMON_CONTENT = `# 游戏工程规范 — 公共部分
 | game_type | 描述 | 对应规范文档 |
 |-----------|------|------------|
 | \`h5\` | H5 小游戏（浏览器运行） | \`.agent/specs/game-framework-spec/H5_GAME_ENGINEERING_FRAMEWORK.md\` + 公共部分 |
-| （后续扩展） | ... | ... |
+| \`phaser-mobile\` | Phaser 3 + Capacitor 移动端 2D 游戏 | \`.agent/specs/game-framework-spec/PHASER_MOBILE_GAME_ENGINEERING_FRAMEWORK.md\` + 公共部分 |
 
 ## 元信息规范（所有游戏类型通用）
 

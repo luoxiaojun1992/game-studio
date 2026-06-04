@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS game_engineering_specs (
 |----------|-----------|-----------|-------|-------------|
 | `common` | NULL | `common` | 游戏工程规范 — 公共部分 | 所有游戏类型共享的公共规范 |
 | `framework:h5` | `h5` | `framework` | H5 小游戏工程规范 | H5 小游戏（浏览器运行） |
+| `framework:phaser-mobile` | `phaser-mobile` | `framework` | Phaser Mobile 游戏工程规范 | Phaser 3 手游（Vite + Capacitor 打包） |
 
 - `content` 字段存储对应 `.md` 文件的完整 Markdown 内容。
 - 运行 `db:seed` 或首次启动时自动从 `.md` 文件导入，后续可通过数据库管理工具直接修改。
