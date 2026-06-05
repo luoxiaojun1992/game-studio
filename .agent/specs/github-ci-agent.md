@@ -283,3 +283,19 @@ rm -rf /tmp/ci-job-*/ /tmp/ci-artifact-*/
 - **PAT 不注入容器**：本规范仅用于宿主机上的 coding agent，不涉及任何 Docker 容器环境变量配置
 - **Artifact 有效期**：GitHub Actions artifact 默认保留 90 天，调试时注意 `expired` 字段，过期 artifact 不可下载
 - **不要为了绕过 CI 失败而跳过测试**：禁止修改 `ci.yml`、禁用 job、或将测试标记为 skip 来"通过" CI
+
+## 后续实现文档更新清单
+
+本 spec 进入实现阶段（配置 PAT 后首次使用）时，需同步更新以下 `.agent` 文档：
+
+| 文件 | 更新内容 |
+|------|---------|
+| `.agent/memory/CONVENTIONS.md` | 新增「CI 调试约定」条目：PAT 读取优先级、`gh` CLI 使用规范、调试循环安全退出条件、禁止跳过测试的红线 |
+| `.agent/memory/ARCHITECTURE.md` | 新增「GitHub Actions CI」条目：ci.yml 工作流结构（sonar-check → ui-tests）、artifact 名称与路径、workflow/job/step 关系 |
+| `.agent/memory/INDEX.md` | 新增 SPEC-013 条目，方便 agent 快速定位规范 |
+| `.agent/memory/MEMORY.md` | 记录 SPEC-013 工程决策：PAT 凭证方案选择、调试循环参数（10 次上限、60s 轮询、45min 超时） |
+| `.agent/AI_AGENT_COMMON_INSTRUCTIONS.md` | 在「测试规范」或「编码规范」章节补充 CI 调试流程说明：push 后如何检查 CI 状态、下载日志、分析失败 |
+| `.agent/specs/INDEX.md` | 更新 SPEC-013 状态为「已实现」 |
+| `.agent/specs/github-ci-agent.md` | 更新头部状态为「已实现」 |
+
+> **不相关的文档不需要修改**：`E2E_TESTING.md`、`LINT.md`、`SDK_MOCK.md`、`STAROFFICE.md`、`REUSABLE_PATTERNS.md` 与本功能无关。
