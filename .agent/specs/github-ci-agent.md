@@ -1,44 +1,41 @@
-# GitHub Actions CI Agent 规范
+# Coding Agent GitHub CI 调试规范
 
 > **SPEC-013** | 状态：设计中
 
 ## 目标
 
-为 agent 提供读取 GitHub Actions CI 执行情况、检查调试日志、判断 UI Test 是否通过、并自主修复代码直至 UI Test 全部成功的能力。
+规范 coding agent（WorkBuddy）在开发过程中读取 GitHub Actions CI 执行情况、检查调试日志、判断 UI Test 是否通过、并自主修复代码直至 UI Test 全部通过的完整工作流。
+
+**本 spec 的 "agent" 指的是 coding agent（即 WorkBuddy 自身），不是 game-dev-studio 项目内的 engineer agent 或 MCP 工具。** 本规范不涉及项目 `server/` 目录的任何代码变更。
 
 核心能力：
-1. **PAT 凭证约定**：约定 GitHub Personal Access Token 的本地存储方式（环境变量 / 本地文件），不纳入 git 版本控制
-2. **CI 状态读取**：通过 GitHub REST API 查询 workflow run 状态、job 列表、step 日志
+1. **PAT 凭证约定**：约定 GitHub Personal Access Token 的本地存储方式，不纳入 git 版本控制
+2. **CI 状态读取**：agent 通过 `gh` CLI 或 `curl` + PAT 调用 GitHub REST API，查询 workflow run 状态、job 列表、step 日志
 3. **UI Test 调试循环**：agent 读取失败日志 → 定位问题 → 修改代码 → 推送 → 等待 CI → 循环，直至 UI Test 全部通过
 
 ## 背景
 
-当前 UI Test 运行在 GitHub Actions（`ci.yml` 的 `ui-tests` job），需要 engineer agent 能够：
-- 获取最近一次 PR / push 触发的 workflow run 状态
-- 下载并检查 `allure-report` artifact 中的 Playwright 日志
-- 读取 UI Test 失败的 step stdout/stderr
-- 根据日志自主推断修复方向并迭代，直至绿灯
+当前 UI Test 运行在 GitHub Actions（`.github/workflows/ci.yml` 的 `ui-tests` job）。开发调试流程中，coding agent 需要：
+- push 代码后，自动获取本次 push 触发的 workflow run 状态
+- 下载 `allure-report` / `playwright-report` artifact 中的测试日志
+- 读取失败测试的 stdout/stderr，定位根因
+- 修改代码后再次 push，循环迭代直至 CI 绿灯
 
 ## 凭证约定
 
-### 环境变量方式（推荐）
+### 环境变量（推荐）
 
-在本地 shell 配置（`~/.zshrc` / `~/.bashrc`）中写入，或通过 `.env.local` 文件加载：
+在本地 shell 配置（`~/.zshrc` / `~/.bashrc`）中设置：
 
 ```bash
 export GITHUB_PAT="ghp_xxxxxxxxxxxx"
 ```
 
-agent 读取时使用：
+coding agent 通过 `process.env.GITHUB_PAT` 或 shell `echo $GITHUB_PAT` 读取。
 
-```typescript
-const pat = process.env.GITHUB_PAT;
-if (!pat) throw new Error('GITHUB_PAT 未配置，无法调用 GitHub API');
-```
+### 本地文件（备选）
 
-### 本地文件方式（备选）
-
-将 PAT 写入项目根目录下的 `.github-pat` 文件：
+将 PAT 写入项目根目录下的 `.github-pat` 文件（仅包含 PAT 字符串，无换行）：
 
 ```
 ghp_xxxxxxxxxxxx
@@ -48,198 +45,118 @@ agent 读取优先级：`GITHUB_PAT` 环境变量 > `.github-pat` 文件。
 
 ### .gitignore 规则
 
-以下条目必须加入 `.gitignore`，**不得纳入版本控制**：
+以下条目必须存在于 `.gitignore` 中，**不得纳入版本控制**：
 
-```
-# GitHub PAT 本地凭证文件
+```gitignore
+# GitHub PAT 本地凭证文件（SPEC-013，禁止纳入版本控制）
 /.github-pat
 ```
-
-> 环境变量不产生文件，无需特殊处理；`.env.local` 已由现有 `.gitignore` 的 `/.env` 条目覆盖，如使用不同名则需补充。
 
 ### 安全要求
 
 - PAT 权限范围：`repo`（含 `actions:read`），最小化授权
-- **禁止**将 PAT 写入任何被 git 追踪的文件（`.env`、`config.json`、`agents.ts` 等）
-- 日志中禁止打印 PAT 明文；如需 debug 可打印前 4 位：`pat.slice(0, 4) + '****'`
+- **禁止**将 PAT 写入任何被 git 追踪的文件
+- agent 日志/输出中禁止打印 PAT 明文；如需 debug 可打印前 4 位 + `****`
+- `.github-pat` 文件权限建议 `chmod 600`
 
-## GitHub API 使用规范
+## agent 操作方式
 
-所有 GitHub API 调用均使用 REST v3，base URL：`https://api.github.com`，鉴权头：
+coding agent 通过以下两种方式之一调用 GitHub API：
 
-```
-Authorization: Bearer <GITHUB_PAT>
-Accept: application/vnd.github+json
-X-GitHub-Api-Version: 2022-11-28
-```
+### 方式一：`gh` CLI（推荐）
 
-### 关键接口
+`gh` 已预装在 macOS 和 GitHub Actions runner 中，支持 `GITHUB_PAT` 环境变量鉴权。
 
-#### 1. 列出 Workflow Runs
+```bash
+# 列出最近 5 次 CI run
+gh api repos/{owner}/{repo}/actions/runs \
+  --method GET \
+  -f per_page=5 \
+  -f branch=main \
+  --jq '.workflow_runs[] | {id, status, conclusion, head_branch, created_at}'
 
-```
-GET /repos/{owner}/{repo}/actions/runs
-  ?branch={branch}
-  &event=push|pull_request
-  &per_page=5
-  &status=completed|in_progress|queued
-```
+# 获取指定 run 详情
+gh api repos/{owner}/{repo}/actions/runs/{run_id} \
+  --jq '{id, status, conclusion, head_sha, html_url}'
 
-返回最近几次 run，关注 `id`、`status`、`conclusion`（`success` / `failure` / `cancelled`）、`html_url`。
+# 列出 run 的 jobs
+gh api repos/{owner}/{repo}/actions/runs/{run_id}/jobs \
+  --jq '.jobs[] | {id, name, status, conclusion, steps: [.steps[] | {name, conclusion, number}]}'
 
-#### 2. 获取单次 Run 详情
+# 下载 job 日志（自动跟随 302 重定向）
+gh api repos/{owner}/{repo}/actions/jobs/{job_id}/logs > /tmp/ci-job-${job_id}-logs.zip
+unzip -o /tmp/ci-job-${job_id}-logs.zip -d /tmp/ci-job-${job_id}-logs/
 
-```
-GET /repos/{owner}/{repo}/actions/runs/{run_id}
-```
+# 列出 artifacts
+gh api repos/{owner}/{repo}/actions/runs/{run_id}/artifacts \
+  --jq '.artifacts[] | {id, name, size_in_bytes, expired}'
 
-#### 3. 列出 Run 的 Jobs
-
-```
-GET /repos/{owner}/{repo}/actions/runs/{run_id}/jobs
-```
-
-关注每个 job 的 `name`、`status`、`conclusion`、`steps[]`（含每步 `name`、`conclusion`、`number`）。
-
-#### 4. 下载 Job 日志
-
-```
-GET /repos/{owner}/{repo}/actions/jobs/{job_id}/logs
+# 下载 artifact
+gh api repos/{owner}/{repo}/actions/artifacts/{artifact_id}/zip > /tmp/ci-artifact-${artifact_id}.zip
+unzip -o /tmp/ci-artifact-${artifact_id}.zip -d /tmp/ci-artifact-${artifact_id}/
 ```
 
-返回 302 重定向到日志文件 URL（zip 格式），下载解压后得到文本日志。agent 应搜索 `FAILED`、`Error`、`✘` 等关键词定位失败点。
+> `gh api` 自动读取 `GITHUB_PAT` 环境变量作为鉴权，无需额外传参。
 
-#### 5. 列出 Artifacts
+### 方式二：`curl` + PAT
 
-```
-GET /repos/{owner}/{repo}/actions/runs/{run_id}/artifacts
-```
+当 `gh` CLI 不可用时，使用 `curl`：
 
-关注 `name`（`allure-report`）、`id`、`size_in_bytes`、`expired`。
+```bash
+# 设置鉴权头（每条命令引用 $GITHUB_PAT）
+GH_AUTH="-H Authorization: Bearer $GITHUB_PAT -H Accept: application/vnd.github+json"
 
-#### 6. 下载 Artifact
+# 列出 runs
+curl -s $GH_AUTH "https://api.github.com/repos/{owner}/{repo}/actions/runs?per_page=5&branch=main" | jq '.'
 
-```
-GET /repos/{owner}/{repo}/actions/artifacts/{artifact_id}/zip
-```
+# 获取 run 详情
+curl -s $GH_AUTH "https://api.github.com/repos/{owner}/{repo}/actions/runs/{run_id}" | jq '.'
 
-返回 302 重定向，需跟随跳转下载 zip，解压后读取：
-- `tests/ui/artifacts/playwright-report/results.json` — 测试结果摘要
-- `tests/ui/artifacts/allure-results/` — 详细 step 日志
-- `tests/ui/artifacts/test-results/` — Playwright raw 输出
+# 列出 jobs
+curl -s $GH_AUTH "https://api.github.com/repos/{owner}/{repo}/actions/runs/{run_id}/jobs" | jq '.'
 
-## MCP 工具设计
+# 下载 job 日志（需跟随 302）
+curl -sL $GH_AUTH -o /tmp/ci-job-logs.zip "https://api.github.com/repos/{owner}/{repo}/actions/jobs/{job_id}/logs"
 
-### 工具清单（6 个）
-
-所有工具仅 **engineer** 可用，`ENGINEER_ALLOW` 自动放行，无需审批。
-
-| 工具名 | 说明 |
-|--------|------|
-| `github_ci_list_runs` | 列出最近 N 次 workflow run（可按 branch / event 过滤） |
-| `github_ci_get_run` | 获取指定 run 详情（状态、结论、触发分支、commit SHA） |
-| `github_ci_list_jobs` | 列出指定 run 下所有 jobs 及 steps 状态 |
-| `github_ci_get_job_logs` | 下载并返回指定 job 的文本日志（自动解压，截断至指定字符数） |
-| `github_ci_list_artifacts` | 列出指定 run 的 artifacts |
-| `github_ci_download_artifact` | 下载并解压 artifact 到本地临时目录，返回解压路径 |
-
-### 工具参数规范
-
-#### `github_ci_list_runs`
-
-```typescript
-{
-  branch?: string;          // 可选，过滤分支（如 "main"、"feat/SPEC-013-xxx"）
-  event?: 'push' | 'pull_request';
-  status?: 'completed' | 'in_progress' | 'queued' | 'all';
-  per_page?: number;        // 默认 5，最大 20
-}
+# 下载 artifact（需跟随 302）
+curl -sL $GH_AUTH -o /tmp/ci-artifact.zip "https://api.github.com/repos/{owner}/{repo}/actions/artifacts/{artifact_id}/zip"
 ```
 
-#### `github_ci_get_run`
+> `curl -sL` 中 `-L` 跟随 302 重定向。GitHub API v3 的日志和 artifact 下载端点均返回 302 到预签名 S3 URL。
 
-```typescript
-{
-  run_id: number;
-}
+### 仓库信息获取
+
+agent 通过 `git remote get-url origin` 解析仓库 owner/repo：
+
+```bash
+git remote get-url origin
+# git@github.com:luoxiaojun1992/game-studio.git → owner=luoxiaojun1992, repo=game-studio
 ```
 
-#### `github_ci_list_jobs`
+解析规则：
+- SSH 格式 `git@github.com:{owner}/{repo}.git` → 提取 `{owner}/{repo}`
+- HTTPS 格式 `https://github.com/{owner}/{repo}.git` → 提取 `{owner}/{repo}`
 
-```typescript
-{
-  run_id: number;
-}
-```
+## GitHub Actions 工作流参考
 
-#### `github_ci_get_job_logs`
+当前项目 CI 配置（`.github/workflows/ci.yml`）：
 
-```typescript
-{
-  job_id: number;
-  max_chars?: number;       // 默认 20000，截断过长日志（从尾部保留）
-  filter_keyword?: string;  // 可选，只返回包含关键词的行（如 "FAILED"、"Error"）
-}
-```
+| 维度 | 值 |
+|------|------|
+| Workflow 名称 | `CI` |
+| 触发条件 | `push`（main 分支）、`pull_request`（所有分支） |
+| Jobs | `sonar-check` → `ui-tests`（串行依赖） |
+| UI Test Job 名 | `ui-tests` |
+| UI Test 超时 | 45 分钟 |
+| Artifact 名称 | `allure-report`、`sonar-report` |
+| allure-report 包含 | `tests/ui/artifacts/allure-report`、`tests/ui/artifacts/allure-results`、`tests/ui/artifacts/test-results`、`tests/ui/artifacts/ui-coverage-summary.json`、`tests/ui/artifacts/playwright-report/results.json` |
 
-#### `github_ci_list_artifacts`
+### agent 关键关注点
 
-```typescript
-{
-  run_id: number;
-}
-```
-
-#### `github_ci_download_artifact`
-
-```typescript
-{
-  artifact_id: number;
-  output_dir?: string;      // 本地解压目录，默认 /tmp/ci-artifacts/{artifact_id}
-}
-```
-
-### 输出格式
-
-工具统一返回 JSON 字符串，包含 `success: boolean` 和数据字段：
-
-```json
-// github_ci_list_runs 成功示例
-{
-  "success": true,
-  "runs": [
-    {
-      "id": 12345678,
-      "status": "completed",
-      "conclusion": "failure",
-      "branch": "feat/SPEC-013-xxx",
-      "commit_sha": "abc1234",
-      "html_url": "https://github.com/xxx/yyy/actions/runs/12345678",
-      "created_at": "2026-06-05T08:00:00Z",
-      "updated_at": "2026-06-05T08:12:00Z"
-    }
-  ]
-}
-
-// 失败示例
-{
-  "success": false,
-  "error": "GitHub API rate limit exceeded"
-}
-```
-
-## 仓库配置约定
-
-### 仓库信息读取
-
-agent 从以下优先级读取仓库 owner/repo：
-1. 环境变量 `GITHUB_REPO`（格式 `owner/repo`）
-2. `git remote get-url origin` 解析
-3. 工具参数中显式传入
-
-### 默认 Workflow 名
-
-CI workflow 名为 `CI`（对应 `ci.yml` 的 `name: CI`）；UI Test job 名为 `ui-tests`。agent 调用 `github_ci_list_jobs` 后应优先匹配 `ui-tests` job。
+1. **`ui-tests` job 的 `conclusion`**：`success` = 全通过，`failure` = 有测试失败
+2. **失败 step 的日志**：`ui-tests` job 下失败 step 的 name + 日志内容
+3. **`playwright-report/results.json`**：测试结果摘要，含每个测试用例的 status / duration / error message
+4. **`allure-results/`**：详细 step 级别日志（XML 格式），含截图附件
 
 ## UI Test 自动调试循环
 
@@ -247,30 +164,43 @@ CI workflow 名为 `CI`（对应 `ci.yml` 的 `name: CI`）；UI Test job 名为
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                   UI Test 调试循环                           │
+│              Coding Agent UI Test 调试循环                    │
 │                                                             │
-│  1. github_ci_list_runs(branch=current)                     │
-│     └─> 找到最新 run_id                                      │
+│  1. git push → 获取 push 后的 commit SHA                    │
 │                                                             │
-│  2. github_ci_get_run(run_id)                               │
-│     ├─> conclusion == "success" → 退出，UI Test 全通过       │
-│     ├─> status == "in_progress" → 等待（轮询间隔 60s）       │
-│     └─> conclusion == "failure" → 进入步骤 3                │
+│  2. 查询最新 workflow run                                    │
+│     gh api .../actions/runs?branch=<当前分支>               │
+│     └─> 找到 run_id，匹配 commit SHA                        │
 │                                                             │
-│  3. github_ci_list_jobs(run_id)                             │
-│     └─> 找到 ui-tests job_id 和失败 step                     │
+│  3. 检查 run 状态                                            │
+│     ├─> status == "in_progress" / "queued"                 │
+│     │     → 等待 60s，回到步骤 3                             │
+│     ├─> conclusion == "success"                            │
+│     │     → 退出，UI Test 全通过                              │
+│     └─> conclusion == "failure"                            │
+│         → 进入步骤 4                                        │
 │                                                             │
-│  4. github_ci_get_job_logs(job_id, filter_keyword="FAILED") │
-│     └─> 提取失败原因                                         │
+│  4. 获取 ui-tests job 详情                                  │
+│     gh api .../actions/runs/{run_id}/jobs                   │
+│     └─> 找到 name == "ui-tests" 的 job                      │
 │                                                             │
-│  5. 可选：github_ci_download_artifact                        │
-│     └─> 解压 allure-report，读取 results.json               │
+│  5. 下载失败 job 的日志                                      │
+│     gh api .../actions/jobs/{job_id}/logs > logs.zip        │
+│     unzip → 搜索 FAILED / Error / ✘                        │
 │                                                             │
-│  6. 分析日志 → 定位代码问题 → 修改代码 → git push           │
+│  6. 可选：下载 allure-report artifact                       │
+│     → 读取 playwright-report/results.json                  │
+│     → 获取失败用例名、error message、截图路径                 │
 │                                                             │
-│  7. 等待新 run 触发 → 回到步骤 1                             │
+│  7. 分析日志 → 定位代码问题 → 修改代码                       │
 │                                                             │
-│  最大迭代次数：10 次（防止无限循环）                          │
+│  8. git push → 回到步骤 2                                   │
+│                                                             │
+│  安全退出条件：                                               │
+│  - 最大迭代 10 次                                            │
+│  - 连续 3 次相同错误                                         │
+│  - run 被 cancelled / skipped                                │
+│  - 超时 45 分钟（与 CI timeout 对齐）                        │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -278,23 +208,24 @@ CI workflow 名为 `CI`（对应 `ci.yml` 的 `name: CI`）；UI Test job 名为
 
 | 条件 | 处理 |
 |------|------|
-| UI Test 全部通过（`conclusion == "success"`） | 正常退出，报告成功 |
-| 超过最大迭代次数（10 次） | 退出循环，报告超次数，等待人工介入 |
-| 连续 3 次相同错误无法修复 | 退出循环，输出错误摘要，请求人工介入 |
-| `github_ci_get_run` 返回 `cancelled` / `skipped` | 退出循环，提示 CI 被手动取消 |
+| UI Test 全部通过（`conclusion == "success"`） | 正常退出，向用户报告成功 |
+| 超过最大迭代次数（10 次） | 退出，报告迭代超次数，输出失败摘要，等待用户介入 |
+| 连续 3 次相同错误无法修复 | 退出，输出错误摘要和已尝试的修复方案，请求用户介入 |
+| run 状态为 `cancelled` | 退出，提示 CI 被手动取消，检查是否有人操作 |
+| run 状态为 `skipped` | 退出，检查上游 job（sonar-check）是否失败导致跳过 |
 
 ### 等待策略
 
-- run 状态为 `queued` 或 `in_progress` 时，每 **60 秒**轮询一次
-- 单次 run 超时上限：**45 分钟**（对应 `ci.yml` 中 `ui-tests` job 的 `timeout-minutes: 45`）
-- 轮询时使用 `github_ci_get_run` 而非 `list_runs`，减少 API 调用量
+- run 状态为 `queued` 或 `in_progress` 时，每 **60 秒**轮询一次 `gh api .../actions/runs/{run_id}`
+- 单次 run 超时上限：**45 分钟**（与 `ci.yml` 中 `timeout-minutes: 45` 对齐）
+- 轮询使用单次 run 查询（GET `/actions/runs/{run_id}`），不使用列表查询，减少 API 消耗
 
 ### 日志分析要点
 
-engineer agent 读取 job 日志时，应重点关注以下模式：
+agent 下载 job 日志后，重点搜索以下失败模式：
 
 ```
-# Playwright 失败标志
+# Playwright 测试失败
 ✘ [UI-xxx] 测试名称
 Error: ...
   at ...
@@ -303,186 +234,52 @@ Error: ...
 Error response from daemon: ...
 container exited with code ...
 
-# 依赖/编译错误
-FAILED: ...
+# 编译 / 类型错误
 error TS...
+FAILED: ...
+
+# 网络 / 依赖拉取失败
+npm ERR! ...
+ECONNREFUSED ...
 ```
 
-## TS 客户端设计
+### Artifact 中的关键文件
 
-### 文件结构
+| 文件路径 | 用途 |
+|---------|------|
+| `tests/ui/artifacts/playwright-report/results.json` | Playwright 测试结果摘要：每个用例的 status、duration、error message、attachments |
+| `tests/ui/artifacts/allure-results/` | Allure 详细结果（XML），含 step 级别日志和截图 |
+| `tests/ui/artifacts/test-results/` | Playwright raw 输出（HTML 报告源文件） |
+| `tests/ui/artifacts/ui-coverage-summary.json` | 测试覆盖率摘要 |
 
+## agent 行为规范
+
+### push 前检查
+
+在执行 `git push` 之前，agent 应确认：
+1. 代码已通过本地编译（`npx tsc --noEmit`）或至少无明显的语法错误
+2. 修改有针对性，不是盲目试探
+3. commit message 遵循 Conventional Commits 规范
+
+### push 后跟踪
+
+push 后 agent 应：
+1. 立即获取远端最新 run_id（不需要等待，通常几秒内触发）
+2. 进入等待 → 轮询循环
+3. **不要在等待期间执行其他代码修改**（避免冲突）
+
+### 日志清理
+
+下载的 CI 日志和 artifact 放在 `/tmp/` 下，agent 应在调试循环结束后清理：
+```bash
+rm -rf /tmp/ci-job-*/ /tmp/ci-artifact-*/
 ```
-server/
-├── github-ci.ts          # GitHub API 客户端（getPat、listRuns、getRun、listJobs、getJobLogs、listArtifacts、downloadArtifact）
-├── github-ci.d.ts        # TypeScript 类型定义
-└── tools.ts              # MCP 工具注册（github_ci_* 6 个工具）
-```
-
-### `github-ci.ts` 核心接口
-
-```typescript
-// PAT 读取（优先环境变量，次 .github-pat 文件）
-export function getGithubPat(): string;
-
-// 获取仓库 owner/repo（优先环境变量，次 git remote）
-export async function getRepoInfo(): Promise<{ owner: string; repo: string }>;
-
-// 核心 API 封装
-export async function listWorkflowRuns(opts: ListRunsOptions): Promise<WorkflowRun[]>;
-export async function getWorkflowRun(runId: number): Promise<WorkflowRun>;
-export async function listRunJobs(runId: number): Promise<WorkflowJob[]>;
-export async function getJobLogs(jobId: number, opts?: LogOptions): Promise<string>;
-export async function listRunArtifacts(runId: number): Promise<Artifact[]>;
-export async function downloadArtifact(artifactId: number, outputDir: string): Promise<string>;
-```
-
-### 类型定义
-
-```typescript
-interface WorkflowRun {
-  id: number;
-  name: string;
-  status: 'queued' | 'in_progress' | 'completed';
-  conclusion: 'success' | 'failure' | 'cancelled' | 'skipped' | null;
-  head_branch: string;
-  head_sha: string;
-  html_url: string;
-  created_at: string;
-  updated_at: string;
-}
-
-interface WorkflowJob {
-  id: number;
-  name: string;
-  status: 'queued' | 'in_progress' | 'completed';
-  conclusion: 'success' | 'failure' | 'cancelled' | 'skipped' | null;
-  steps: JobStep[];
-}
-
-interface JobStep {
-  name: string;
-  status: 'queued' | 'in_progress' | 'completed';
-  conclusion: 'success' | 'failure' | 'cancelled' | 'skipped' | null;
-  number: number;
-}
-
-interface Artifact {
-  id: number;
-  name: string;
-  size_in_bytes: number;
-  expired: boolean;
-  created_at: string;
-}
-
-interface ListRunsOptions {
-  branch?: string;
-  event?: 'push' | 'pull_request';
-  status?: 'completed' | 'in_progress' | 'queued';
-  per_page?: number;
-}
-
-interface LogOptions {
-  maxChars?: number;
-  filterKeyword?: string;
-}
-```
-
-## 数据模型
-
-本功能为纯 API 调用，**不新增 SQLite 表**，无需持久化。
-
-## 集成要点
-
-### 环境变量
-
-在 `docker-compose.yml` 和本地 `.env` 中均**不需要**写入 PAT（PAT 只在宿主机 shell 或本地文件中，不随容器启动注入）。
-
-agent 执行调试循环时运行在宿主机 node 进程（MCP server），可直接读取宿主机环境变量。
-
-### .gitignore 新增条目
-
-```
-# GitHub PAT 本地凭证文件
-/.github-pat
-```
-
-### 无需新增 Docker 服务
-
-本功能不涉及新微服务容器，仅在现有 MCP server（`server/tools.ts`）中注册新工具。
-
-## 输入校验规则
-
-| 字段 | 规则 |
-|------|------|
-| `run_id` / `job_id` / `artifact_id` | 正整数，> 0 |
-| `per_page` | 正整数，1-20 |
-| `max_chars` | 正整数，1000-100000 |
-| `filter_keyword` | 非空字符串，长度 ≤ 200 |
-| `output_dir` | 绝对路径，通过 `resolveSafePath` 校验不越出 `/tmp/ci-artifacts/` |
-| `branch` | 正则 `/^[a-zA-Z0-9._/\-]{1,200}$/` |
-
-## 相关文件
-
-| 文件 | 角色 |
-|------|------|
-| `server/github-ci.ts` | GitHub API HTTP 客户端 |
-| `server/github-ci.d.ts` | TypeScript 类型定义 |
-| `server/tools.ts` | 6 个 MCP 工具注册 |
-| `server/agent-manager.ts` | `ENGINEER_ALLOW` 权限 |
-| `server/agents.ts` | TOOLS_OVERVIEW + 系统提示词 |
-| `.gitignore` | 新增 `/.github-pat` |
-| `.github/workflows/ci.yml` | 只读参考，不修改 |
-
-## 测试策略
-
-1. **单元测试**：mock GitHub API 响应，验证 `getPat()` 读取优先级、`getRepoInfo()` 解析逻辑、日志截断和关键词过滤逻辑
-2. **集成测试**：使用真实 PAT 调用 GitHub API，验证 `listWorkflowRuns`、`getJobLogs`（带 302 重定向跟随）、`downloadArtifact`（zip 解压）
-3. **UI Test**：通过 engineer agent 调用 `github_ci_list_runs` → `github_ci_get_job_logs`，验证全链路可用
-
-## UI Test 验收规则
-
-提交代码前必须跑通 ui test。
-如遇网络或依赖问题，可临时修改代码解决网络问题，但禁止提交为了解决网络依赖问题所做的变更。
-
-## 主动补全 UI Test 规范
-
-新增前端交互功能（按钮、表单、弹窗、面板等）时，必须同步编写对应的 E2E 测试用例，并更新以下文档：
-1. `tests/ui/e2e/studio.spec.ts` — 添加测试用例（分配下一个 UI-XXX 编号）
-2. `.agent/memory/E2E_TESTING.md` — 更新测试矩阵、testid 对照表、测试经验
-3. `.agent/specs/` 下对应的 spec 文档 — 更新测试策略章节
-4. `.agent/specs/INDEX.md` — 如有新 spec 则更新索引
-
-## 主动更新所有相关文档规范
-
-实现新功能或做重大修改后，必须主动检查并更新所有受影响的文档，而非仅更新直接相关文件。完整检查清单：
-1. `README.md` + `README.zh-CN.md` — 功能概览、API 概览、目录结构
-2. `docs/ARCHITECTURE.md` + `docs/ARCHITECTURE.zh-CN.md` — 业务域、数据模型、运行时组件
-3. `.agent/memory/ARCHITECTURE.md` — 架构关键点、关键模块详解
-4. `.agent/memory/INDEX.md` — 快速参考
-5. `.agent/memory/E2E_TESTING.md` — 测试矩阵、testid 对照表（如有新测试）
-6. `.agent/memory/CONVENTIONS.md` — 工作约定（如有新规范）
-7. `.agent/memory/MEMORY.md` — 长期记忆（工程决策记录）
-8. `.agent/specs/` 下相关 spec 文档 — 状态、测试策略
-9. `.agent/specs/INDEX.md` — spec 索引状态
-10. `.agent/AI_AGENT_COMMON_INSTRUCTIONS.md` — 关键文件位置、API 概览
-- **文档更新禁止添加日期和敏感信息**
-- **不相关的文档不需要修改**（如 LINT.md 与本功能无关则不更新）
-
-## 详细 Debug 日志规范
-
-新增前端交互功能、后端 API 路由、E2E 测试用例时，必须同步添加 `console.log` / `process.stderr.write` debug 日志，方便测试失败时快速定位问题：
-
-1. **后端 API 路由**：在路由入口、校验步骤（PASS/FAIL）、关键操作处添加 `console.log('[DEBUG:路由名] stepN: ...')` 格式日志
-2. **前端组件**：在关键生命周期、用户操作、API 请求/响应处添加 `console.log('[DEBUG:ComponentName] ...')` 格式日志
-3. **SSE 事件处理**：在 `handleSSEEvent` 的 case 分支中添加日志，记录事件类型和关键数据
-4. **E2E 测试用例**：参照 UI-007/008 的 `log()` helper 模式，每个操作步骤添加 `process.stderr.write('[UI-XXX] step: ...')` 日志
 
 ## 注意事项
 
-- **API Rate Limit**：GitHub REST API 每小时 5000 次（PAT 鉴权），调试循环内不得每秒高频轮询；等待策略 60s 间隔足够
-- **日志大小**：job 日志可能超过 100MB（zip 压缩后约 5-20MB），下载后 `max_chars` 截断，从**尾部**保留（失败信息通常在最后）
-- **302 跳转**：`GET /actions/jobs/{id}/logs` 和 artifact 下载均返回 302，HTTP 客户端需设置 `followRedirects: true`（或手动跟随，注意跳转 URL 不含鉴权头）
-- **PAT 环境变量不注入容器**：PAT 只在宿主机 MCP server 进程中使用，不应出现在任何 docker-compose `environment` 配置中
-- **`.github-pat` 文件权限**：建议设置 `chmod 600 .github-pat`，防止其他用户读取
-- **Artifact 有效期**：GitHub Actions artifact 默认保留 90 天，调试时注意 `expired` 字段
+- **API Rate Limit**：GitHub REST API 每小时 5000 次（PAT 鉴权），调试循环 60s 间隔完全足够，不会触发限制
+- **日志大小**：job 日志可能超过 100MB（zip 后约 5-20MB），agent 下载后应用 `grep` / `tail` 定位失败点，避免全量读取
+- **302 跳转**：`gh api` 自动跟随重定向；`curl` 需 `-L` 参数；重定向后的 S3 URL 不含鉴权头
+- **PAT 不注入容器**：本规范仅用于宿主机上的 coding agent，不涉及任何 Docker 容器环境变量配置
+- **Artifact 有效期**：GitHub Actions artifact 默认保留 90 天，调试时注意 `expired` 字段，过期 artifact 不可下载
+- **不要为了绕过 CI 失败而跳过测试**：禁止修改 `ci.yml`、禁用 job、或将测试标记为 skip 来"通过" CI
