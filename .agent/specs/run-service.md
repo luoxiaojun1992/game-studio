@@ -4,10 +4,12 @@
 
 ## 目标
 
-构建游戏运行微服务（`run-service`），为 game-studio 提供已打包游戏的统一静态文件伺服和预览能力。架构复刻现有 creator service (Blender) 和 video service (FFmpeg) 模式：独立 FastAPI 容器 → HTTP → TS 客户端 → MCP 工具（仅 engineer 可用）。
+构建游戏运行微服务（`run-service`），为 game-studio 提供游戏的统一静态文件伺服和预览能力。架构复刻现有 creator service (Blender) 和 video service (FFmpeg) 模式：独立 FastAPI 容器 → HTTP → TS 客户端 → MCP 工具（仅 engineer 可用）。
 
-核心流程：backend 上传已打包的游戏产物 → run-service 读取 `metadata.json` 判断 `game_type` → 验证产物完整性 → Nginx 统一通过 `/{project_id}/` 路径伺服各项目 `dist/` 目录。
+核心流程：backend 上传游戏源码 → run-service 读取 `metadata.json` 判断 `game_type` → 验证产物完整性 → Nginx 统一通过 `/{project_id}/` 路径伺服各项目 `dist/` 目录。
 
+> **重要约束**：run-service 仅支持基于**源码**运行（即上传包含源码和 `dist/` 目录的完整项目），不支持基于 build-service 构建产物的独立运行。测试服务（test-service）将直接通过 run-service 的静态伺服端点访问游戏。
+>
 > **当前阶段**：运行服务的使用场景暂不明确，本 spec 仅定义架构和 API，不涉及 `submit_game` 等现有工具的集成变更。
 
 ## 端口分离设计
@@ -42,7 +44,7 @@ run-service/ (FastAPI + Nginx, API:8086 + Static:8087)
 ├── app/strategies.py        # GameRunner：读取 metadata.json 验证伺服策略
 ├── app/safe_path.py         # 统一路径安全校验函数（resolve_safe_path）
 ├── app/routers/
-│   ├── project.py           # 项目 CRUD + 游戏包上传
+│   ├── project.py           # 项目 CRUD + 源码上传
 │   └── file.py              # 文件列表/下载/删除
 ├── requirements.txt
 ├── nginx.conf               # Nginx 配置（统一伺服，{project_id} 路由）
@@ -91,11 +93,11 @@ Nginx 映射: /app/data/projects/abc-123/dist/
 | GET | `/api/projects/{project_id}` | 查询项目状态与伺服信息 |
 | DELETE | `/api/projects/{project_id}` | 删除项目目录及所有文件（幂等） |
 
-### 游戏包上传
+### 源码上传
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| POST | `/api/projects/{project_id}/upload` | 上传已打包的游戏产物（tar.gz），解压到项目目录。上传后自动可伺服 |
+| POST | `/api/projects/{project_id}/upload` | 上传游戏源码项目（tar.gz），解压到项目目录。上传后自动可伺服 |
 
 ### 文件管理
 
@@ -148,7 +150,7 @@ Nginx 映射: /app/data/projects/abc-123/dist/
 |------|------|
 | `project_id` | 正则 `/^[a-zA-Z0-9_-]{1,64}$/` |
 | `game_type` | 从 metadata.json 读取，必须匹配已注册类型 (`h5`、`phaser-mobile`) |
-| 上传文件大小 | 最大 200MB（已打包游戏产物上限） |
+| 上传文件大小 | 最大 200MB（游戏源码项目上限） |
 | 上传文件格式 | `application/gzip`（tar.gz） |
 
 ## 伺服策略详解
@@ -251,7 +253,7 @@ CREATE INDEX IF NOT EXISTS idx_run_projects_project ON run_projects(project_id);
 |--------|------|
 | `run_create_project` | 创建运行 project |
 | `run_delete_project` | 删除运行 project 及所有文件 |
-| `run_upload` | 上传已打包游戏产物（解压并验证，上传后自动可伺服） |
+| `run_upload` | 上传游戏源码项目（解压并验证，上传后自动可伺服） |
 | `run_status` | 查询项目伺服状态与预览地址 |
 | `run_list_files` | 列出项目文件 |
 | `run_delete_file` | 删除项目内文件 |
@@ -454,7 +456,7 @@ def _safe_join(base: str, filename: str) -> str:
 | `run-service/app/schemas.py` | Pydantic 模型 |
 | `run-service/app/strategies.py` | GameRunner：metadata.json 解析 + 策略验证 |
 | `run-service/app/safe_path.py` | 路径安全 |
-| `run-service/app/routers/project.py` | 项目路由 + 游戏包上传 |
+| `run-service/app/routers/project.py` | 项目路由 + 源码上传 |
 | `run-service/app/routers/file.py` | 文件管理路由 |
 | `server/run-service.ts` | TS HTTP 客户端 |
 | `server/run-service.d.ts` | TS 类型定义 |
@@ -467,7 +469,7 @@ def _safe_join(base: str, filename: str) -> str:
 ## 测试策略
 
 1. **单元测试**：`strategies.py` GameRunner 策略验证
-2. **集成测试**：docker-compose 拉起 run-service，curl 上传 mock 游戏包 → 访问 preview_url 验证静态伺服 → delete 项目
+2. **集成测试**：docker-compose 拉起 run-service，curl 上传 mock 游戏源码项目 → 访问 preview_url 验证静态伺服 → delete 项目
 3. **UI Test**：通过 engineer agent 调用 `run_*` 工具，验证全链路
 
 ## UI Test 验收规则

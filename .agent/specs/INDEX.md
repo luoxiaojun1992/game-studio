@@ -25,6 +25,7 @@
 | SPEC-009 | FFmpeg 视频处理微服务规范 | [video-service.md](video-service.md) | 设计中 |
 | SPEC-010 | Phaser Mobile 游戏工程规范 | [game-framework-spec/PHASER_MOBILE_GAME_ENGINEERING_FRAMEWORK.md](game-framework-spec/PHASER_MOBILE_GAME_ENGINEERING_FRAMEWORK.md) | 已实现 |
 | SPEC-012 | 游戏运行微服务规范 | [run-service.md](run-service.md) | 设计中 |
+| SPEC-013 | 游戏测试微服务规范 | [test-service.md](test-service.md) | 设计中 |
 
 ---
 
