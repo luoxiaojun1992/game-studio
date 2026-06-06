@@ -106,7 +106,7 @@ Nginx 映射: /app/data/projects/abc-123/dist/
 | GET | `/api/files/{project_id}` | 列出项目文件（递归） |
 | GET | `/api/files/{project_id}/{filename}` | 下载单文件 |
 | DELETE | `/api/files/{project_id}/{filename}` | 删除文件（幂等） |
-| DELETE | `/api/files/{project_id}` | 删除项目目录内所有文件 |
+| DELETE | `/api/files/{project_id}` | 删除项目目录（幂等） |
 
 ### 静态文件伺服（Nginx，端口 8087）
 
