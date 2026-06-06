@@ -26,6 +26,7 @@
 | SPEC-010 | Phaser Mobile 游戏工程规范 | [game-framework-spec/PHASER_MOBILE_GAME_ENGINEERING_FRAMEWORK.md](game-framework-spec/PHASER_MOBILE_GAME_ENGINEERING_FRAMEWORK.md) | 已实现 |
 | SPEC-011 | 游戏打包微服务规范 | [build-service.md](build-service.md) | 设计中 |
 | SPEC-012 | 游戏运行微服务规范 | [run-service.md](run-service.md) | 设计中 |
+| SPEC-013 | GitHub Actions CI Agent 规范 | [github-ci-agent.md](github-ci-agent.md) | 设计中 |
 
 ---
 
