@@ -6,7 +6,7 @@
 
 构建游戏打包微服务（`build-service`），为 game-studio 提供游戏源码自动化构建能力。架构复刻现有 creator service (Blender) 和 video service (FFmpeg) 模式：独立 FastAPI 容器 → HTTP → TS 客户端 → MCP 工具（仅 engineer 可用）。
 
-核心流程：backend 上传游戏源码 → build-service 读取 `metadata.json` 判断 `game_type` → 选择打包策略 → 执行构建 → backend 下载构建产物替换 `games/latest` 目录 → 与源码一起 ZIP 上传 MinIO。
+核心流程：backend 上传游戏源码 → build-service 读取 `metadata.json` 判断 `game_type` → 选择打包策略 → 执行构建 → backend 下载构建产物保存到 `games/latest` 目录 → 与源码一起 ZIP 上传 MinIO。
 
 ## 游戏类型与打包策略
 
@@ -113,7 +113,7 @@ server/
 | GET | `/api/files/{project_id}/download` | 下载整个项目目录为 tar.gz |
 | GET | `/api/files/{project_id}/{filename}` | 下载单文件 |
 | DELETE | `/api/files/{project_id}/{filename}` | 删除文件（幂等） |
-| DELETE | `/api/files/{project_id}` | 删除项目目录内所有文件 |
+| DELETE | `/api/files/{project_id}` | 删除项目目录（幂等） |
 
 > **路径安全**：以上所有端点中涉及 `project_id` 拼接、`filename` 路径操作时，必须通过 `_project_path()` + `_safe_join()` 校验（详见 [路径安全](#路径安全) 章节）。
 
