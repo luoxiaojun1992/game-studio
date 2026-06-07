@@ -968,6 +968,20 @@ test('[UI-010] should create a questionnaire proposal via structured form', asyn
 });
 
 // ═══════════════════════════════════════════
+// UI-011: Full workflow — Phaser Mobile (SPEC-010)
+// Game designer → CEO → architect → engineer (phaser-mobile game type, manual mode)
+// ═══════════════════════════════════════════
+
+test('[UI-011] should complete full workflow with phaser-mobile game type (SPEC-010)', async ({ page }) => {
+  process.stderr.write(`[UI-011] ${new Date().toISOString()} test:starting (phaser-mobile, manual mode)\n`);
+  await runFullWorkflowTest(page, {
+    testId: 'UI-011',
+    autopilot: false,
+    gameType: 'phaser-mobile',
+  });
+});
+
+// ═══════════════════════════════════════════
 // UI-012: Image Service — create and process image resources, save to game artifacts (SPEC-008)
 // Standard H5 workflow + image processing via image service MCP tools.
 // Engineer creates image resources, processes them, downloads into games/latest/assets/.
