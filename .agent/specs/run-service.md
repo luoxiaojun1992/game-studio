@@ -91,7 +91,7 @@ Nginx 映射: /app/data/projects/abc-123/dist/
 |------|------|------|
 | POST | `/api/projects/{project_id}` | 创建项目目录（幂等） |
 | GET | `/api/projects/{project_id}` | 查询项目状态与伺服信息 |
-| DELETE | `/api/projects/{project_id}` | 删除项目目录及所有文件（幂等） |
+| DELETE | `/api/projects/{project_id}` | 删除项目目录（幂等） |
 
 ### 源码上传
 
