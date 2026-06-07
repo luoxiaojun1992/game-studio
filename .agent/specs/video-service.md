@@ -37,7 +37,7 @@ server/
 |------|-------------------|---------------------------|------------------------|
 | 镜像 | ubuntu:24.04 + Blender 4.2 | alpine:3.21 + ImageMagick 7 | alpine:3.21 + FFmpeg 6 |
 | 镜像大小 | ~2GB+ | ~50MB | ~120MB |
-| 端口 | 8080 | 8083 | 8084 |
+| 端口 | 8080 | 8089 | 8084 |
 | 核心二进制 | `/opt/blender/blender` | `magick` | `ffmpeg` |
 | 执行方式 | `blender --background --python-expr <script>` | `magick <args>` | `ffmpeg -i input <filters> output` |
 | 项目存储 | `/app/data/projects/{id}` | 同 | 同 |
@@ -411,9 +411,8 @@ export function resolveSafePath(baseDir: string, fileName: string): string {
 
 ## 测试策略
 
-1. **单元测试**：`ffmpeg.py` 和 `operations.py` 独立测试
-2. **集成测试**：docker-compose 中拉起 video-service 容器，curl 调用各端点
-3. **UI Test**：通过 engineer agent 调用 video_* 工具，验证全链路
+1. **集成测试**：docker-compose 中拉起 video-service 容器，curl 调用各端点
+2. **UI Test**：通过 engineer agent 调用 video_* 工具，验证全链路
 
 ## UI Test 验收规则
 
@@ -457,6 +456,7 @@ export function resolveSafePath(baseDir: string, fileName: string): string {
 
 ## 注意事项
 
+- **project 删除**：`DELETE /api/projects/{project_id}` 为**整体目录删除**（`shutil.rmtree`），删除项目根目录及其下所有文件。与 sonar/scanner project 不同（sonar project 复用，不删除），本服务的 project 存储为独立临时工作目录，删除后无法恢复。
 - **ffprobe**：视频元信息使用 `ffprobe`（FFmpeg 自带，同包安装），非独立命令
 - **concat**：拼接需要先生成文本文件列表（`filelist.txt`），每行 `file '/path/to/video.mp4'`
 - **extract_audio**：无音频流的视频需返回明确错误信息

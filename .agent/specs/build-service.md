@@ -323,7 +323,7 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8085"]
 | scanner (Sonar) | 8081 | 已实现 |
 | drawio-service | 8082 | 已实现 |
 | drawio-export | 8083 | 已实现 |
-| image-service (ImageMagick) | ~~8083~~ → 待定 | 设计中（与 drawio-export 端口冲突） |
+| image-service (ImageMagick) | 8089 | 设计中 |
 | video-service (FFmpeg) | 8084 | 设计中 |
 | **build-service (Node.js)** | **8085** | 设计中 |
 
@@ -444,9 +444,8 @@ def _safe_join(base: str, filename: str) -> str:
 
 ## 测试策略
 
-1. **单元测试**：`strategies.py` GameEngineBuilder 策略分发、`builder.py` subprocess 执行器
-2. **集成测试**：docker-compose 拉起 build-service，curl 上传 mock 源码 → 触发构建 → 下载产物
-3. **UI Test**：通过 engineer agent 调用 `build_*` 工具，验证全链路（含 submit_game 集成）
+1. **集成测试**：docker-compose 拉起 build-service，curl 上传 mock 源码 → 触发构建 → 下载产物
+2. **UI Test**：通过 engineer agent 调用 `build_*` 工具，验证全链路（含 submit_game 集成）
 
 ## UI Test 验收规则
 
@@ -481,6 +480,7 @@ def _safe_join(base: str, filename: str) -> str:
 
 ## 注意事项
 
+- **project 删除**：`DELETE /api/projects/{project_id}` 为**整体目录删除**（`shutil.rmtree`），删除项目根目录及其下所有文件（含源码、node_modules、构建产物）。与 sonar/scanner project 不同（sonar project 复用，不删除），本服务的 project 存储为独立临时工作目录，删除后无法恢复。
 - **metadata.json 未找到**：构建前检查，缺失时返回明确错误 `"metadata.json not found in project"`
 - **game_type 未注册**：返回明确错误 `"Unknown game_type: xxx. Supported: h5, phaser-mobile"`，不执行
 - **npm 缓存**：volume 持久化 `/root/.npm`，Docker 重启后缓存保留

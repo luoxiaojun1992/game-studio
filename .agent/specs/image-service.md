@@ -9,7 +9,7 @@
 ## 架构概述
 
 ```
-image-service/ (FastAPI + ImageMagick, port 8083)
+image-service/ (FastAPI + ImageMagick, port 8089)
 ├── app/main.py           # FastAPI entrypoint + /health
 ├── app/schemas.py        # Pydantic 请求/响应模型
 ├── app/imagemagick.py    # ImageMagick subprocess 执行器
@@ -37,7 +37,7 @@ server/
 |------|-------------------|---------------------------|
 | 镜像 | ubuntu:24.04 + Blender 4.2 | alpine:3.21 + ImageMagick 7 |
 | 镜像大小 | ~2GB+ | ~50MB |
-| 端口 | 8080 | 8083 |
+| 端口 | 8080 | 8089 |
 | 核心二进制 | `/opt/blender/blender` | `magick` |
 | 执行方式 | `blender --background --python-expr <script>` | `magick <args>` |
 | 项目存储 | `/app/data/projects/{id}` | 同 |
@@ -183,15 +183,15 @@ image-service:
     dockerfile: Dockerfile
   container_name: game-studio-image-service
   ports:
-    - "${IMAGE_SERVICE_PORT:-8083}:8083"
+    - "${IMAGE_SERVICE_PORT:-8089}:8089"
   environment:
-    - IMAGE_SERVICE_PORT=8083
+    - IMAGE_SERVICE_PORT=8089
   volumes:
     - image-data:/app/data
   networks:
     - game-studio-network
   healthcheck:
-    test: ["CMD", "curl", "-f", "http://localhost:8083/health"]
+    test: ["CMD", "curl", "-f", "http://localhost:8089/health"]
     interval: 30s
     timeout: 10s
     retries: 3
@@ -201,7 +201,7 @@ image-service:
 
 Backend 环境变量：
 ```
-IMAGE_SERVICE_URL=http://image-service:8083
+IMAGE_SERVICE_URL=http://image-service:8089
 ```
 
 ## 路径安全
@@ -347,9 +347,8 @@ export function resolveSafePath(baseDir: string, fileName: string): string {
 
 ## 测试策略
 
-1. **单元测试**：`imagemagick.py` 和 `operations.py` 独立测试
-2. **集成测试**：docker-compose 中拉起 image-service 容器，curl 调用各端点
-3. **UI Test**：通过 engineer agent 调用 image_* 工具，验证全链路
+1. **集成测试**：docker-compose 中拉起 image-service 容器，curl 调用各端点
+2. **UI Test**：通过 engineer agent 调用 image_* 工具，验证全链路
 
 ## UI Test 验收规则
 
@@ -393,5 +392,6 @@ export function resolveSafePath(baseDir: string, fileName: string): string {
 
 ## 注意事项
 
+- **project 删除**：`DELETE /api/projects/{project_id}` 为**整体目录删除**（`shutil.rmtree`），删除项目根目录及其下所有文件。与 sonar/scanner project 不同（sonar project 复用，不删除），本服务的 project 存储为独立临时工作目录，删除后无法恢复。
 - **ImageMagick 版本**：在 Alpine 中安装为 `imagemagick` 包，命令为 `magick`（IM7），非旧版 `convert`（IM6）。
 - **路径安全**：所有文件操作必须通过 `resolve_safe_path` / `resolveSafePath` 校验，禁止直接拼接路径（参考 creator service 的 `creator/app/routers/file.py` 和 `creator/app/routers/blender.py` 模式）

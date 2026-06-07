@@ -351,7 +351,7 @@ exec uvicorn app.main:app --host 0.0.0.0 --port 8086
 | scanner (Sonar) | 8081 | 已实现 |
 | drawio-service | 8082 | 已实现 |
 | drawio-export | 8083 | 已实现 |
-| image-service (ImageMagick) | 待定 | 设计中 |
+| image-service (ImageMagick) | 8089 | 设计中 |
 | video-service (FFmpeg) | 8084 | 设计中 |
 | build-service (Node.js) | 8085 | 设计中 |
 | **run-service API** | **8086** | 设计中 |
@@ -468,9 +468,8 @@ def _safe_join(base: str, filename: str) -> str:
 
 ## 测试策略
 
-1. **单元测试**：`strategies.py` GameRunner 策略验证
-2. **集成测试**：docker-compose 拉起 run-service，curl 上传 mock 游戏源码项目 → 访问 preview_url 验证静态伺服 → delete 项目
-3. **UI Test**：通过 engineer agent 调用 `run_*` 工具，验证全链路
+1. **集成测试**：docker-compose 拉起 run-service，curl 上传 mock 游戏源码项目 → 访问 preview_url 验证静态伺服 → delete 项目
+2. **UI Test**：通过 engineer agent 调用 `run_*` 工具，验证全链路
 
 ## UI Test 验收规则
 
@@ -495,6 +494,7 @@ def _safe_join(base: str, filename: str) -> str:
 
 ## 注意事项
 
+- **project 删除**：`DELETE /api/projects/{project_id}` 为**整体目录删除**（`shutil.rmtree`），删除项目根目录及其下所有文件（含 dist/、上传源码等）。与 sonar/scanner project 不同（sonar project 复用，不删除），本服务的 project 存储为独立工作目录，删除后 Nginx 自动不再伺服该 project。
 - **上传即伺服**：游戏包上传成功后立即通过 Nginx 可访问，无需额外的启动/停止步骤
 - **目录覆盖**：上传新游戏包前清空旧项目目录，避免残留文件
 - **metadata.json 未找到**：上传后校验，缺失时返回错误
