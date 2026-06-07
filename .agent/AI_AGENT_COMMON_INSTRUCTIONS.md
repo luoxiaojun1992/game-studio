@@ -180,6 +180,59 @@ npm run test:ui
 - **gameCount=0**：高频根因是 mock 的 `toolCalls.arguments` 与当前 zod schema 不一致（如仍传 `project_id` 或缺必填字段）
 - **SSE reconnect bug**：`connectedRef.current` 阻止切换项目后重连
 
+### CI 调试流程（SPEC-014）
+
+coding agent 在 push 代码后自动跟踪 GitHub Actions CI 状态，下载日志定位失败，循环修复直至 UI Test 通过。
+
+#### PAT 凭证
+
+通过 `GITHUB_PAT` 环境变量（推荐）或项目根目录 `.github-pat` 文件读取 GitHub Personal Access Token。`gh api` 自动使用该凭证鉴权。
+
+#### 查询 CI 状态
+
+```bash
+# 获取仓库标识
+git remote get-url origin  # → owner/repo
+
+# 查询当前分支最近 run
+gh api repos/{owner}/{repo}/actions/runs --method GET -f branch={分支} -f per_page=5 \
+  --jq '.workflow_runs[] | {id, status, conclusion, head_sha}'
+
+# 查询指定 run 的 jobs
+gh api repos/{owner}/{repo}/actions/runs/{run_id}/jobs \
+  --jq '.jobs[] | {id, name, status, conclusion}'
+```
+
+#### 下载失败日志
+
+```bash
+# 下载 job 日志（自动跟随 302 重定向）
+gh api repos/{owner}/{repo}/actions/jobs/{job_id}/logs > /tmp/ci-job-logs.zip
+unzip -o /tmp/ci-job-logs.zip -d /tmp/ci-job-logs/
+
+# 下载 allure-report artifact
+gh api repos/{owner}/{repo}/actions/artifacts/{artifact_id}/zip > /tmp/ci-artifact.zip
+unzip -o /tmp/ci-artifact.zip -d /tmp/ci-artifact/
+
+# 关键文件
+cat /tmp/ci-artifact/tests/ui/artifacts/playwright-report/results.json | jq '.'
+```
+
+#### 调试循环
+
+```
+git push → 查询 run → 等待 conclusion (60s 间隔)
+  ├─ success → 退出
+  └─ failure → 下载 logs + artifact → 分析 → 修改代码 → git push → 循环
+```
+
+**退出条件**：全部通过 / 超 10 次 / 连续 3 次相同错误 / cancelled / skipped
+
+**安全约束**：
+- 禁止修改 `ci.yml` 绕过失败
+- 禁止在日志中打印 PAT 明文
+- 调试结束后清理 `/tmp/ci-job-*/` `/tmp/ci-artifact-*/`
+
 ### Mock Server
 - 路径：`/chat/completions` (不是 `/v1/chat/completions`)
 - 支持流式 (SSE) 和非流式响应

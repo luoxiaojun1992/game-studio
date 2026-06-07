@@ -27,7 +27,7 @@
 | SPEC-011 | 游戏打包微服务规范 | [build-service.md](build-service.md) | 设计中 |
 | SPEC-012 | 游戏运行微服务规范 | [run-service.md](run-service.md) | 设计中 |
 | SPEC-013 | 游戏测试微服务规范 | [test-service.md](test-service.md) | 设计中 |
-| SPEC-014 | GitHub Actions CI Agent 规范 | [github-ci-agent.md](github-ci-agent.md) | 设计中 |
+| SPEC-014 | GitHub Actions CI Agent 规范 | [github-ci-agent.md](github-ci-agent.md) | 已实现 |
 
 ---
 

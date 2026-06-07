@@ -140,6 +140,82 @@
 - **GameEngineeringChecker 目录模式**：直接读取 `submitDir/dist/*` 文件，SonarQube checker 也从 `submitDir` 自行打包 ZIP，两者使用同一 `LintContext.submitDir`
 - **submitDir 传递**：`submit_game` 调用 lint 时传入 `{ submitDir: targetPath, projectId: scopedProjectId }` context 已是必填参数
 
+## CI 调试约定（SPEC-014）
+
+### 标准开发循环
+
+```
+开发 → push 分支 → 晓军创建 PR → 轮询 CI 状态（120s 间隔）
+  ├─ 全部通过 → 完成
+  └─ ui-tests 失败 → 下载日志分析 → 修复代码 → push → 继续轮询
+```
+
+> 晓军负责创建 PR，agent 负责 push 后轮询 CI、分析失败、修复代码。
+
+### PAT 凭证读取优先级
+
+coding agent 通过以下优先级读取 GitHub PAT：
+
+1. **环境变量 `GITHUB_PAT`**（推荐）：通过 `process.env.GITHUB_PAT` 或 `echo $GITHUB_PAT` 读取
+2. **本地文件 `.github-pat`**（备选）：项目根目录下的纯文本文件，仅包含 PAT 字符串
+
+### `gh` CLI 使用规范
+
+- `gh api` 自动读取 `GITHUB_PAT` 环境变量鉴权，无需额外传参
+- `gh api` 自动跟随 302 重定向（日志/artifact 下载）
+- 仓库信息通过 `git remote get-url origin` 解析：`git@github.com:{owner}/{repo}.git` → `{owner}/{repo}`
+
+### 调试循环安全退出条件
+
+| 条件 | 处理 |
+|------|------|
+| 全体 UI Test 通过（`conclusion == "success"`） | 正常退出，报告成功 |
+| 超过最大迭代次数（10 次） | 退出，输出失败摘要，等待用户介入 |
+| 连续 3 次相同错误无法修复 | 退出，输出错误摘要和已尝试修复，请求用户介入 |
+| run 状态为 `cancelled` / `skipped` | 退出，提示 CI 被取消/跳过 |
+
+### 调试循环参数
+
+- 轮询间隔：**60 秒**
+- 单次 run 超时：**45 分钟**（与 `ci.yml` 中 `timeout-minutes: 45` 对齐）
+- 最大迭代：**10 次**
+
+### push 前检查
+
+在执行 `git push` 之前，agent 应确认：
+1. 代码已通过本地编译或无明显语法错误
+2. 修改有针对性，不是盲目试探
+3. commit message 遵循 Conventional Commits 规范
+
+### push 后跟踪
+
+push 后 agent 应：
+1. 立即获取远端最新 run（use `gh api .../actions/runs?branch=<分支>`）
+2. 进入等待 → 轮询循环，按 60s 间隔查询 run 状态
+3. **不要在等待期间执行其他代码修改**（避免冲突）
+
+### 日志分析重点
+
+下载 job 日志后，重点搜索失败模式：
+- `✘ [UI-xxx]` — Playwright 测试失败
+- `Error:` — Playwright error message
+- `Error response from daemon` — Docker 容器启动失败
+- `error TS...` — 编译/类型错误
+- `npm ERR!` / `ECONNREFUSED` — 依赖安装/网络失败
+
+### 禁止行为（红线）
+
+- **禁止修改 `ci.yml` 绕过 CI 失败**：不允许禁用 job、将测试标记为 skip、或缩短 timeout
+- **禁止在日志中打印 PAT 明文**：如需 debug 可打印前 4 位 + `****`
+- **禁止将 PAT 写入任何被 git 追踪的文件**
+- **日志清理**：调试循环结束后清理 `/tmp/ci-job-*/`、`/tmp/ci-artifact-*/`
+
+### PAT 安全
+
+- `.github-pat` 文件权限设为 `chmod 600`
+- PAT 权限范围：`repo`（含 `actions:read`），最小化授权
+- `.github-pat` 已在 `.gitignore` 中，不得纳入版本控制
+
 ## 游戏工程规范约定
 - **统一 `dist/` 前缀**：所有游戏类型的提交产物以 `submitDir/dist/` 为根目录，`dist/index.html` = 入口文件，`dist/metadata.json` = 元信息
 - **H5 特有结构**：额外需要 `dist/assets/manifest.json` 资源清单

@@ -13,6 +13,7 @@
 | [CONVENTIONS.md](./CONVENTIONS.md) | 工作红线、Bug 修复记录、Agent 状态持久化、SonarQube 踩坑 |
 | [LINT.md](./LINT.md) | Lint Framework 架构、LintRunner、双检查器（SonarQube + GameEngineering）、20 条规则总览、扩展指南 |
 | [REUSABLE_PATTERNS.md](./REUSABLE_PATTERNS.md) | 可复用代码片段、代码模板、设计模式汇总 |
+| [../../specs/github-ci-agent.md](../../specs/github-ci-agent.md) | SPEC-014: GitHub Actions CI Agent 调试规范 |
 
 ## 快速参考
 
