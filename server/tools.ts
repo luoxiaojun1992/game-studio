@@ -1745,7 +1745,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           image_project_id: z.string().describe('image_project_id'),
           input_pattern: z.string().min(1).max(256).describe('输入文件通配符或逗号分隔的文件名列表'),
           operation: z.string().describe('批量操作类型（resize/convert/compress）'),
-          operation_params: z.record(z.any()).optional().default({}).describe('操作参数'),
+          operation_params: z.record(z.string(), z.any()).optional().default({}).describe('操作参数'),
           output_dir: z.string().optional().default('batch_output').describe('输出目录名'),
         },
         async ({ image_project_id, input_pattern, operation, operation_params = {}, output_dir = 'batch_output' }) => {
