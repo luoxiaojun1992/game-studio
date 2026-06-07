@@ -124,7 +124,7 @@ server/
 |------|------|------|
 | POST | `/api/projects/{run_project_id}` | 创建测试项目目录（幂等） |
 | GET | `/api/projects/{run_project_id}` | 查询项目状态与测试记录 |
-| DELETE | `/api/projects/{run_project_id}` | 删除项目目录及所有文件（幂等） |
+| DELETE | `/api/projects/{run_project_id}` | 删除项目目录（幂等） |
 
 ### 测试脚本上传
 
