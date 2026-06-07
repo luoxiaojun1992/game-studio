@@ -413,7 +413,7 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8088"]
 | scanner (Sonar) | 8081 | 已实现 |
 | drawio-service | 8082 | 已实现 |
 | drawio-export | 8083 | 已实现 |
-| image-service (ImageMagick) | 待定 | 设计中 |
+| image-service (ImageMagick) | 8089 | 设计中 |
 | video-service (FFmpeg) | 8084 | 设计中 |
 | build-service (Node.js) | 8085 | 设计中 |
 | run-service API | 8086 | 设计中 |
@@ -532,9 +532,8 @@ def _safe_join(base: str, filename: str) -> str:
 
 ## 测试策略
 
-1. **单元测试**：`config_injector.py` 配置生成、`test_runner.py` 命令拼接
-2. **集成测试**：docker-compose 拉起 test-service + run-service，curl 上传测试脚本 → 触发测试 → 下载报告
-3. **UI Test**：通过 engineer agent 调用 `test_*` 工具，验证全链路
+1. **集成测试**：docker-compose 拉起 test-service + run-service，curl 上传测试脚本 → 触发测试 → 下载报告
+2. **UI Test**：通过 engineer agent 调用 `test_*` 工具，验证全链路
 
 ## UI Test 验收规则
 
@@ -559,6 +558,7 @@ def _safe_join(base: str, filename: str) -> str:
 
 ## 注意事项
 
+- **project 删除**：`DELETE /api/projects/{run_project_id}` 为**整体目录删除**（`shutil.rmtree`），删除项目根目录及其下所有文件（含测试脚本、报告、截图）。与 sonar/scanner project 不同（sonar project 复用，不删除），本服务的 project 存储为独立临时工作目录，删除后无法恢复。
 - **run_project_id 命名空间**：test-service 使用 run-service 的 project_id 作为项目标识，不是 backend service 的 project_id。确保调用方传递正确的 ID
 - **配置禁止硬编码**：测试脚本中不得出现任何 `run-service` 地址、端口、project_id 等硬编码值，必须通过 `process.env.GAME_URL` 获取
 - **Playwright 报告**：使用 HTML reporter（含内嵌截图）作为主报告格式，JSON reporter 作为机器可读摘要

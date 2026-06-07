@@ -23,5 +23,5 @@ vite.config.d.ts
 **/__pycache__
 **/*.pyc
 
-# GitHub PAT 本地凭证文件（SPEC-013，禁止纳入版本控制）
+# GitHub PAT 本地凭证文件（SPEC-014，禁止纳入版本控制）
 /.github-pat
