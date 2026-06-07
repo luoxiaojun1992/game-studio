@@ -311,3 +311,48 @@ ui-e2e                         ← Playwright CI 执行
 5. **完整测试覆盖**：UI E2E 测试模拟真实用户行为，保障核心流程质量。
 6. **国际化**：中英双语 UI，便于不同地区团队使用。
 7. **Star‑Office‑UI 集成**：与腾讯内部办公平台深度联动，提升协作效率。
+
+### GitHub Actions CI（SPEC-014）
+
+CI 通过 `.github/workflows/ci.yml` 定义，由 coding agent 通过 `gh` CLI 或 `curl` + PAT 与 GitHub REST API 交互进行自动调试。
+
+#### 工作流结构
+
+```
+push (main) / pull_request
+  ├── sonar-check          # SonarQube 质量门检查
+  │     ↓ (串行依赖)
+  └── ui-tests             # Playwright E2E 测试（45min timeout）
+```
+
+#### Job 详情
+
+| 维度 | 值 |
+|------|------|
+| Workflow 名称 | `CI` |
+| 触发条件 | `push`（main）、`pull_request`（所有分支） |
+| sonar-check | SonarQube 扫描 + 质量门检查 |
+| ui-tests | Playwright UI E2E 测试，超时 45 分钟 |
+| 串行依赖 | `sonar-check` 通过后才运行 `ui-tests` |
+
+#### Artifact 名称与路径
+
+| Artifact | 内容 |
+|----------|------|
+| `allure-report` | `tests/ui/artifacts/allure-report`、`allure-results`、`test-results`、`ui-coverage-summary.json`、`playwright-report/results.json` |
+| `sonar-report` | SonarQube 扫描报告 |
+
+#### Coding Agent 调试流程
+
+1. `git push` → 获取 push 后的 commit SHA
+2. 查询最新 workflow run（`gh api .../actions/runs?branch=<分支>`）
+3. 轮询 run 状态（60s 间隔），等待 `conclusion`
+4. 若失败：下载 `ui-tests` job 日志 + `allure-report` artifact
+5. 分析失败日志 → 定位代码问题 → 修改 → push → 循环
+6. 退出条件：全部通过 / 超 10 次迭代 / 连续 3 次相同错误 / cancelled / skipped
+
+#### PAT 凭证
+
+- 优先级：`GITHUB_PAT` 环境变量 > `.github-pat` 本地文件
+- PAT 文件禁止纳入 git 版本控制（已在 `.gitignore` 中）
+- `gh api` 自动读取 `GITHUB_PAT` 环境变量鉴权

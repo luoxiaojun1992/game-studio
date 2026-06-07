@@ -1,6 +1,6 @@
 # Coding Agent GitHub CI 调试规范
 
-> **SPEC-014** | 状态：设计中
+> **SPEC-014** | 状态：已实现
 
 ## 目标
 
