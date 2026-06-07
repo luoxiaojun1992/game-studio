@@ -477,6 +477,11 @@ class AgentManager extends EventEmitter {
         'blender_create_project', 'blender_list_projects', 'blender_delete_project',
         'blender_create_mesh', 'blender_add_material', 'blender_export_model',
         'blender_download_model_file', 'blender_delete_model_file',
+        'image_create_project', 'image_list_projects', 'image_delete_project',
+        'image_resize', 'image_crop', 'image_convert', 'image_compress',
+        'image_watermark', 'image_composite', 'image_flip_rotate',
+        'image_add_margin', 'image_color_adjust', 'image_info',
+        'image_batch', 'image_sprite_sheet', 'image_download_file', 'image_delete_file',
         'get_game_types', 'get_game_framework_spec', 'get_common_spec',
       ];
 
@@ -504,6 +509,24 @@ class AgentManager extends EventEmitter {
         'blender_export_model',
         'blender_download_model_file',
         'blender_delete_model_file',
+        // Image tools
+        'image_create_project',
+        'image_list_projects',
+        'image_delete_project',
+        'image_resize',
+        'image_crop',
+        'image_convert',
+        'image_compress',
+        'image_watermark',
+        'image_composite',
+        'image_flip_rotate',
+        'image_add_margin',
+        'image_color_adjust',
+        'image_info',
+        'image_batch',
+        'image_sprite_sheet',
+        'image_download_file',
+        'image_delete_file',
       ]);
       const READ_ONLY_SDK_TOOLS = ['Read', 'Grep', 'WebSearch', 'WebFetch', 'Glob'];
 

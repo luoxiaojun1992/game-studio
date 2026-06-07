@@ -56,6 +56,7 @@ services:
       - MINIO_BUCKET=game-files
       - CREATOR_SERVICE_URL=http://creator:8080
       - DRAWIO_SERVICE_URL=http://drawio-service:8082
+      - IMAGE_SERVICE_URL=http://image-service:8089
       - SCANNER_SERVICE_URL=http://scanner:8081
       - STAR_OFFICE_JOIN_KEY=ocj_example_team_01
       - SONARQUBE_HOST=http://sonarqube:9000
@@ -73,6 +74,8 @@ services:
       creator:
         condition: service_healthy
       drawio-service:
+        condition: service_healthy
+      image-service:
         condition: service_healthy
       scanner:
         condition: service_healthy
@@ -123,6 +126,25 @@ services:
       timeout: 10s
       retries: 5
       start_period: 30s
+
+  image-service:
+    build:
+      context: ./image-service
+      dockerfile: Dockerfile
+    environment:
+      - IMAGE_SERVICE_PORT=8089
+    ports:
+      - "8089:8089"
+    volumes:
+      - image-data:/app/data
+    networks:
+      - game-studio-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8089/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
 
   drawio-service:
     build:
@@ -268,6 +290,7 @@ volumes:
   sonarqube-logs:
   sonarqube-extensions:
   drawio-data:
+  image-data:
 
 networks:
   game-studio-network:
