@@ -71,18 +71,26 @@
 
 ## UI-012 图片处理工作流测试（SPEC-008）
 - **全流程**：标准 H5 工作流 + image service MCP 工具调用
-- **Mock 链路**（engineer 阶段新增 12 步）：
-  1. `image_create_project`：创建图片 project（id=img-proj-001, name=game-assets）
-  2. `image_info`：查询图片元信息
-  3. `image_resize`：缩放 background_raw.png → 800×600 background.png
-  4. `image_compress`：压缩 ui_sprite.png → 质量 60
-  5. `image_convert`：background.png → background.webp
-  6. `image_watermark`：添加文字水印 "MyGame" → bg_watermarked.webp
-  7. `image_composite`：合成 HUD 图层 → game_screen.webp
-  8. `image_sprite_sheet`：拼合精灵图 → spritesheet.png
-  9. `image_download_file`：下载 game_screen.webp 到本地
-  10. `image_download_file`：下载 spritesheet.png 到本地
-  11. `image_delete_project`：清理 image service 容器
+- **Mock 链路**（engineer 阶段新增 16 步，含 write+upload 拆分）：
+  1. `image_create_project`：创建图片 project（test mode → 固定 id=img-proj-001）
+  2. `image_write_file`：写入 background_raw.png 到本地 images/ 目录（base64）
+  3. `image_upload_file`：上传 background_raw.png 到 image service
+  4. `image_write_file`：写入 ui_sprite.png 到本地
+  5. `image_upload_file`：上传 ui_sprite.png
+  6. `image_write_file`：写入 icon_a.png 到本地
+  7. `image_upload_file`：上传 icon_a.png
+  8. `image_write_file`：写入 icon_b.png 到本地
+  9. `image_upload_file`：上传 icon_b.png
+  10. `image_resize`：缩放 background_raw.png → 800×600 background.png
+  11. `image_info`：查询 background.png 元信息（resize 之后才能查到）
+  12. `image_compress`：压缩 ui_sprite.png → 质量 60
+  13. `image_convert`：background.png → background.webp（需 libwebp）
+  14. `image_watermark`：文字水印 "MyGame" → bg_watermarked.webp
+  15. `image_composite`：合成 HUD 图层 → game_screen.webp
+  16. `image_sprite_sheet`：拼合精灵图 → spritesheet.png（2×2 网格）
+  17. `image_download_file`：下载 game_screen.webp 到本地
+  18. `image_download_file`：下载 spritesheet.png 到本地
+  19. `image_delete_project`：清理 image service 容器
 - **断言策略**：成功完成标准工作流（3 handoffs + 1 game），图片处理不影响游戏 count 断言
 
 
@@ -141,7 +149,7 @@
 | UI-009 | 手动创建提案 | ✅ | 表单填写 + SSE 更新 |
 | UI-010 | 问卷提案创建 | ✅ | 分步表单 + SSE 更新 + 来源标签 |
 | UI-011 | Phaser Mobile 工作流 | ✅ | SPEC-010: phaser-mobile game type + manual mode |
-| UI-012 | 图片处理工作流 (SPEC-008) | ✅ | image_create_project → resize/compress/convert/watermark/composite → image_download_file → submit_game |
+| UI-012 | 图片处理工作流 (SPEC-008) | ✅ | image_create → write_file→upload_file×4 → resize→info→compress→convert→watermark→composite→sprite-sheet → download_file×2 → delete_project |
 
 ## Lint Framework 集成验证
 
