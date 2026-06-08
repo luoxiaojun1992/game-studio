@@ -29,14 +29,23 @@ def _project_path(project_id: str) -> str:
 )
 async def create_project(project_id: str) -> ProjectCreateResponse:
     """Create an empty project directory inside /app/data/projects/{project_id}."""
+    import sys
     validated = _validate_project_id(project_id)
     path = _project_path(validated)
+    print(f"[DEBUG:project] create_project START project_id={validated} path={path}", flush=True)
+    print(f"[DEBUG:project] PROJECTS_ROOT={PROJECTS_ROOT} exists={os.path.isdir(PROJECTS_ROOT)}", flush=True)
     if os.path.isdir(path):
+        print(f"[DEBUG:project] create_project ALREADY_EXISTS project_id={validated}", flush=True)
         return JSONResponse(
             status_code=status.HTTP_200_OK,
             content={"project_id": validated, "message": "already exists"},
         )
-    os.makedirs(path, exist_ok=True)
+    try:
+        os.makedirs(path, exist_ok=True)
+        print(f"[DEBUG:project] create_project CREATED project_id={validated} path={path} dir_exists={os.path.isdir(path)}", flush=True)
+    except Exception as e:
+        print(f"[DEBUG:project] create_project ERROR project_id={validated} error={str(e)}", flush=True)
+        raise HTTPException(status_code=500, detail=f"Failed to create project: {str(e)}")
     return ProjectCreateResponse(project_id=validated)
 
 

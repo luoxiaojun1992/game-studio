@@ -67,6 +67,8 @@ def _safe_join(base: str, filename: str) -> str:
 def _check_project_exists(project_path: str, project_id: str):
     """Raise 404 if project directory does not exist."""
     if not os.path.isdir(project_path):
+        import sys
+        print(f"[DEBUG:image] _check_project_exists 404 project_id={project_id} path={project_path} PROJECTS_ROOT={PROJECTS_ROOT} dirs={os.listdir(PROJECTS_ROOT) if os.path.isdir(PROJECTS_ROOT) else 'ROOT_MISSING'}", flush=True)
         raise HTTPException(status_code=404, detail=f"Project not found: {project_id}")
 
 
