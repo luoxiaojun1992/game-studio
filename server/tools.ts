@@ -1370,11 +1370,14 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         '创建图片处理 project（仅 engineer 可用）。在 backend 数据库创建记录，然后调用 image service 创建容器内项目目录，返回 image_project_id。建议在完成图片处理后调用 image_delete_project 清理资源。',
         {
           name: z.string().min(1).max(50).describe('图片 project 名称'),
+          image_project_id: z.string().min(1).max(64).optional()
+            .describe('可选，指定 image_project_id（默认自动生成 UUID）。测试场景下可传入固定 ID 确保后续工具 mock 一致'),
         },
-        async ({ name }) => {
+        async ({ name, image_project_id: customId }) => {
           const opts: CreateImageProjectOptions = {
             projectId: scopedProjectId,
             name,
+            imageProjectId: customId?.trim() || undefined,
             agentId,
             logFn: log,
           };
