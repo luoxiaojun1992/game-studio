@@ -502,7 +502,7 @@ const runFullWorkflowTest = async (
     log('mocks:image-create-project', { projectId });
     await setMockExpectation(projectId, 'engineer', {
       content: '正在创建图片处理 project...',
-      toolCalls: [{ name: 'image_create_project', arguments: { name: 'game-assets', image_project_id: 'img-proj-001' } }]
+      toolCalls: [{ name: 'image_create_project', arguments: { name: 'game-assets' } }]
     });
     log('mocks:image-create-project-queued');
 

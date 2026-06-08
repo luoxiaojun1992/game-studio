@@ -57,6 +57,7 @@ services:
       - CREATOR_SERVICE_URL=http://creator:8080
       - DRAWIO_SERVICE_URL=http://drawio-service:8082
       - IMAGE_SERVICE_URL=http://image-service:8089
+      - IMAGE_SERVICE_TEST_MODE=true
       - SCANNER_SERVICE_URL=http://scanner:8081
       - STAR_OFFICE_JOIN_KEY=ocj_example_team_01
       - SONARQUBE_HOST=http://sonarqube:9000
