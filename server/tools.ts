@@ -1094,19 +1094,29 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           name: z.string().min(1).max(50).describe('建模 project 名称'),
         },
         async ({ name }) => {
+          // 测试模式：使用固定 project ID 确保 mock 链路一致性
+          const isTestMode = process.env.CREATOR_SERVICE_TEST_MODE === 'true';
+          const testProjectId = isTestMode ? 'bld-proj-001' : undefined;
           const opts: CreateBlenderProjectOptions = {
             projectId: scopedProjectId,
             name,
+            blenderProjectId: testProjectId,
             agentId,
             logFn: log,
           };
-          const { dbId, blenderProjectId } = await createBlenderProject(opts);
-          return {
-            content: [{
-              type: 'text' as const,
-              text: `建模 project 已创建 (DB ID: ${dbId.slice(0, 8)}, blender_project_id: ${blenderProjectId})，名称: ${name}`,
-            }]
-          };
+          try {
+            const { dbId, blenderProjectId } = await createBlenderProject(opts);
+            return {
+              content: [{
+                type: 'text' as const,
+                text: `建模 project 已创建 (DB ID: ${dbId.slice(0, 8)}, blender_project_id: ${blenderProjectId})，名称: ${name}`,
+              }]
+            };
+          } catch (error: any) {
+            return {
+              content: [{ type: 'text' as const, text: `创建建模 project 失败：${error?.message || String(error)}` }]
+            };
+          }
         }
       ),
 
@@ -2008,19 +2018,29 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           name: z.string().min(1).max(50).describe('图表 project 名称'),
         },
         async ({ name }) => {
+          // 测试模式：使用固定 project ID 确保 mock 链路一致性
+          const isTestMode = process.env.DRAWIO_SERVICE_TEST_MODE === 'true';
+          const testProjectId = isTestMode ? 'drw-proj-001' : undefined;
           const opts: CreateDrawioProjectOptions = {
             projectId: scopedProjectId,
             name,
+            drawioProjectId: testProjectId,
             agentId,
             logFn: log,
           };
-          const { dbId, drawioProjectId } = await createDrawioProject(opts);
-          return {
-            content: [{
-              type: 'text' as const,
-              text: `图表 project 已创建 (DB ID: ${dbId.slice(0, 8)}, drawio_project_id: ${drawioProjectId})，名称: ${name}`,
-            }]
-          };
+          try {
+            const { dbId, drawioProjectId } = await createDrawioProject(opts);
+            return {
+              content: [{
+                type: 'text' as const,
+                text: `图表 project 已创建 (DB ID: ${dbId.slice(0, 8)}, drawio_project_id: ${drawioProjectId})，名称: ${name}`,
+              }]
+            };
+          } catch (error: any) {
+            return {
+              content: [{ type: 'text' as const, text: `创建图表 project 失败：${error?.message || String(error)}` }]
+            };
+          }
         }
       ),
 
