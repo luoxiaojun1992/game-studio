@@ -369,6 +369,24 @@ Backend 环境变量：
 TEST_SERVICE_URL=http://test-service:8088
 ```
 
+### 测试模式 Toggle
+
+UI test 模式下需启用固定 project ID，避免 mock 链路中 UUID 不匹配：
+
+| 环境变量 | 值 | 效果 |
+|---------|-----|------|
+| `TEST_SERVICE_TEST_MODE` | `true`（仅 `docker-compose.ui-test.yml`） | `test_create_project` 使用固定 ID `test-proj-001` |
+| 未设置 | —（生产默认） | 正常 UUID 生成 |
+
+> 原理同 `IMAGE_SERVICE_TEST_MODE`，确保 mock 链路中项目 ID 一致性。
+
+在 `docker-compose.ui-test.yml` 中配置：
+```yaml
+studio-backend:
+  environment:
+    - TEST_SERVICE_TEST_MODE=true
+```
+
 ### Dockerfile
 
 ```dockerfile

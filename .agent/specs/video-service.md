@@ -264,6 +264,26 @@ Backend 环境变量：
 VIDEO_SERVICE_URL=http://video-service:8084
 ```
 
+### 测试模式 Toggle
+
+UI test 模式下需启用固定 `video_project_id`，避免 mock 链路中 UUID 不匹配导致 404：
+
+| 环境变量 | 值 | 效果 |
+|---------|-----|------|
+| `VIDEO_SERVICE_TEST_MODE` | `true`（仅 `docker-compose.ui-test.yml`） | `video_create_project` 使用固定 ID `vid-proj-001` |
+| 未设置 | —（生产默认） | 正常 UUID 生成 |
+
+**原理**：与 `IMAGE_SERVICE_TEST_MODE` 完全一致。UI test mock 链中后续工具（upload/trim/convert 等）的 `video_project_id` 硬编码为 `'vid-proj-001'`，必须与 `video_create_project` 创建的实际 ID 一致。生产环境不受影响。
+
+在 `docker-compose.ui-test.yml` 中配置：
+```yaml
+studio-backend:
+  environment:
+    - VIDEO_SERVICE_TEST_MODE=true
+```
+
+> 注意：此 toggle 仅用于解决 mock 链路 ID 一致性问题，不改变任何业务逻辑。生产环境的 `docker-compose.yml` 中不应设置此变量。
+
 ### Dockerfile
 
 ```dockerfile

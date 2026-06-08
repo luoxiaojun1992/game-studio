@@ -228,6 +228,26 @@ Backend 环境变量：
 IMAGE_SERVICE_URL=http://image-service:8089
 ```
 
+### 测试模式 Toggle
+
+UI test 模式下需启用固定 `image_project_id`，避免 mock 链路中 UUID 不匹配导致 404：
+
+| 环境变量 | 值 | 效果 |
+|---------|-----|------|
+| `IMAGE_SERVICE_TEST_MODE` | `true`（仅 `docker-compose.ui-test.yml`） | `image_create_project` 使用固定 ID `img-proj-001` |
+| 未设置 | —（生产默认） | 正常 UUID 生成 |
+
+**原理**：UI test 通过 mock 预定义所有工具调用参数。mock 链中后续工具（upload/resize/composite 等）的 `image_project_id` 硬编码为 `'img-proj-001'`，必须与 `image_create_project` 创建的实际 ID 一致。生产环境不受影响（不设此变量）。
+
+在 `docker-compose.ui-test.yml` 中配置：
+```yaml
+studio-backend:
+  environment:
+    - IMAGE_SERVICE_TEST_MODE=true
+```
+
+> 注意：此 toggle 仅用于解决 mock 链路 ID 一致性问题，不改变任何业务逻辑。生产环境的 `docker-compose.yml` 中不应设置此变量。
+
 ## 图片写入与上传工作流
 
 Engineer agent 向 image service 写入素材图片的完整流程：
