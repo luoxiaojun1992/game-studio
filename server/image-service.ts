@@ -64,12 +64,9 @@ export async function createImageProject(opts: CreateImageProjectOptions): Promi
 
   // 2. 调用 image service 创建项目目录
   try {
-    const apiPath = `/api/projects/${imageProjectId}`;
-    console.error(`[DEBUG createImageProject] calling ${IMAGE_SERVICE_URL}${apiPath}`);
-    const res = await imageFetch(apiPath, {
+    const res = await imageFetch(`/api/projects/${imageProjectId}`, {
       method: 'POST',
     });
-    console.error(`[DEBUG createImageProject] SUCCESS project_id=${res?.project_id} imageProjectId=${imageProjectId}`);
     const returnedId: string = res?.project_id || imageProjectId;
     if (returnedId !== imageProjectId) {
       db.updateImageProject(dbId, { image_project_id: returnedId });
@@ -77,7 +74,6 @@ export async function createImageProject(opts: CreateImageProjectOptions): Promi
     log(agentId, '创建图片 project', `id=${dbId}, image_project_id=${returnedId}`, 'success');
     return { dbId, imageProjectId: returnedId };
   } catch (error: any) {
-    console.error(`[DEBUG createImageProject] ERROR imageProjectId=${imageProjectId} ${error?.message || String(error)}`);
     db.deleteImageProject(dbId);
     throw new Error(`创建图片 project 失败：${error?.message || String(error)}`);
   }

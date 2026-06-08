@@ -578,13 +578,6 @@ const runFullWorkflowTest = async (
     });
     log('mocks:image-upload-icon-b-queued');
 
-    log('mocks:image-info-query', { projectId });
-    await setMockExpectation(projectId, 'engineer', {
-      content: '正在查询图片信息...',
-      toolCalls: [{ name: 'image_info', arguments: { image_project_id: 'img-proj-001', filename: 'background.png' } }]
-    });
-    log('mocks:image-info-query-queued');
-
     log('mocks:image-resize', { projectId });
     await setMockExpectation(projectId, 'engineer', {
       content: '正在缩放背景图...',
@@ -601,6 +594,14 @@ const runFullWorkflowTest = async (
       }]
     });
     log('mocks:image-resize-queued');
+
+    // 在 resize 之后查询 background.png（此时文件已由 ImageMagick 生成）
+    log('mocks:image-info-query', { projectId });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在查询图片信息...',
+      toolCalls: [{ name: 'image_info', arguments: { image_project_id: 'img-proj-001', filename: 'background.png' } }]
+    });
+    log('mocks:image-info-query-queued');
 
     log('mocks:image-compress', { projectId });
     await setMockExpectation(projectId, 'engineer', {
