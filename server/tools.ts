@@ -1374,6 +1374,7 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         async ({ name }) => {
           // 测试模式：使用固定 project ID 确保 mock 链路一致性
           const isTestMode = process.env.IMAGE_SERVICE_TEST_MODE === 'true';
+          console.error(`[DEBUG image_create_project] agentId=${agentId} projectId=${scopedProjectId} name=${name} testMode=${isTestMode} IMAGE_SERVICE_URL=${process.env.IMAGE_SERVICE_URL || 'default'}`);
           const testProjectId = isTestMode ? 'img-proj-001' : undefined;
           const opts: CreateImageProjectOptions = {
             projectId: scopedProjectId,
@@ -1382,13 +1383,21 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
             agentId,
             logFn: log,
           };
-          const { dbId, imageProjectId } = await createImageProject(opts);
-          return {
-            content: [{
-              type: 'text' as const,
-              text: `图片 project 已创建 (DB ID: ${dbId.slice(0, 8)}, image_project_id: ${imageProjectId})，名称: ${name}`,
-            }]
-          };
+          try {
+            const { dbId, imageProjectId } = await createImageProject(opts);
+            console.error(`[DEBUG image_create_project] SUCCESS dbId=${dbId.slice(0, 8)} imageProjectId=${imageProjectId}`);
+            return {
+              content: [{
+                type: 'text' as const,
+                text: `图片 project 已创建 (DB ID: ${dbId.slice(0, 8)}, image_project_id: ${imageProjectId})，名称: ${name}`,
+              }]
+            };
+          } catch (error: any) {
+            console.error(`[DEBUG image_create_project] ERROR ${error?.message || String(error)}`);
+            return {
+              content: [{ type: 'text' as const, text: `创建图片 project 失败：${error?.message || String(error)}` }]
+            };
+          }
         }
       ),
 
