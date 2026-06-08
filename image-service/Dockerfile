@@ -2,12 +2,13 @@
 # Uses alpine:3.21 for minimal image size (~50MB)
 FROM alpine:3.21
 
-# Install Python + ImageMagick + curl
+# Install Python + ImageMagick + curl + WebP support
 RUN apk add --no-cache \
     python3 \
     py3-pip \
     curl \
     imagemagick \
+    libwebp \
     font-noto
 
 WORKDIR /app
