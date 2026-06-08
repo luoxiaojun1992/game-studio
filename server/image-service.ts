@@ -39,21 +39,33 @@ export async function imageFetch(path: string, init?: RequestInit): Promise<any>
 
 export interface CreateImageProjectOptions {
   projectId: string;   // studio project id（闭包锚点）
-  imageProjectId?: string;  // 可选，默认 uuidv4
   name: string;
   agentId: AgentRole;
   logFn?: (agentId: AgentRole, action: string, detail: string, level: 'info' | 'warn' | 'error' | 'success') => void;
 }
 
 export async function createImageProject(opts: CreateImageProjectOptions): Promise<{ dbId: string; imageProjectId: string }> {
-  const { projectId, imageProjectId: maybeIpId, name, agentId, logFn } = opts;
+  const { projectId, name, agentId, logFn } = opts;
   const log = logFn || (() => {});
   const now = new Date().toISOString();
-  const dbId = uuidv4();
-  const imageProjectId = maybeIpId || uuidv4();
 
-  // 1. 在 backend DB 创建记录
-  const record = db.createImageProject({
+  // 1. 调用 image service 创建项目目录（微服务内部生成 project_id）
+  let imageProjectId: string;
+  try {
+    const res = await imageFetch('/api/projects', {
+      method: 'POST',
+    });
+    imageProjectId = res?.project_id;
+    if (!imageProjectId) {
+      throw new Error('image service 未返回 project_id');
+    }
+  } catch (error: any) {
+    throw new Error(`创建图片 project 失败：${error?.message || String(error)}`);
+  }
+
+  // 2. 在 backend DB 创建记录
+  const dbId = uuidv4();
+  db.createImageProject({
     id: dbId,
     project_id: projectId,
     image_project_id: imageProjectId,
@@ -62,21 +74,8 @@ export async function createImageProject(opts: CreateImageProjectOptions): Promi
     updated_at: now,
   });
 
-  // 2. 调用 image service 创建项目目录
-  try {
-    const res = await imageFetch(`/api/projects/${imageProjectId}`, {
-      method: 'POST',
-    });
-    const returnedId: string = res?.project_id || imageProjectId;
-    if (returnedId !== imageProjectId) {
-      db.updateImageProject(dbId, { image_project_id: returnedId });
-    }
-    log(agentId, '创建图片 project', `id=${dbId}, image_project_id=${returnedId}`, 'success');
-    return { dbId, imageProjectId: returnedId };
-  } catch (error: any) {
-    db.deleteImageProject(dbId);
-    throw new Error(`创建图片 project 失败：${error?.message || String(error)}`);
-  }
+  log(agentId, '创建图片 project', `id=${dbId}, image_project_id=${imageProjectId}`, 'success');
+  return { dbId, imageProjectId };
 }
 
 export function listImageProjects(projectId: string, limit = 20): db.DbImageProject[] {

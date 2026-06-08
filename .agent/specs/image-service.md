@@ -50,7 +50,7 @@ server/
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| POST | `/api/projects/{project_id}` | 创建项目目录（幂等） |
+| POST | `/api/projects` | 创建项目目录（ID 由微服务生成，幂等） |
 | GET | `/api/projects/{project_id}` | 查询项目状态 |
 | DELETE | `/api/projects/{project_id}` | 删除项目目录（幂等） |
 
@@ -230,23 +230,23 @@ IMAGE_SERVICE_URL=http://image-service:8089
 
 ### 测试模式 Toggle
 
-UI test 模式下需启用固定 `image_project_id`，避免 mock 链路中 UUID 不匹配导致 404：
+UI test 模式下需启用固定 project_id，避免 mock 链路中 UUID 不匹配导致 404。Toggle 在**微服务内部**判断，studio backend 不感知：
 
 | 环境变量 | 值 | 效果 |
 |---------|-----|------|
-| `IMAGE_SERVICE_TEST_MODE` | `true`（仅 `docker-compose.ui-test.yml`） | `image_create_project` 使用固定 ID `img-proj-001` |
+| `IMAGE_SERVICE_TEST_MODE` | `true`（仅 `docker-compose.ui-test.yml`，在 image-service 容器上） | `POST /api/projects` 返回固定 ID `img-proj-001` |
 | 未设置 | —（生产默认） | 正常 UUID 生成 |
 
-**原理**：UI test 通过 mock 预定义所有工具调用参数。mock 链中后续工具（upload/resize/composite 等）的 `image_project_id` 硬编码为 `'img-proj-001'`，必须与 `image_create_project` 创建的实际 ID 一致。生产环境不受影响（不设此变量）。
+**原理**：微服务的 `POST /api/projects` 不再接受外部传入的 project_id，而是内部生成（test mode 用固定值）。studio backend 调用该接口后获得 project_id，用于后续所有操作。mock 链中所有后续工具的 `image_project_id` 硬编码为 `'img-proj-001'`，与微服务返回的固定 ID 一致。
 
-在 `docker-compose.ui-test.yml` 中配置：
+在 `docker-compose.ui-test.yml` 中配置（微服务容器环境变量）：
 ```yaml
-studio-backend:
+image-service:
   environment:
     - IMAGE_SERVICE_TEST_MODE=true
 ```
 
-> 注意：此 toggle 仅用于解决 mock 链路 ID 一致性问题，不改变任何业务逻辑。生产环境的 `docker-compose.yml` 中不应设置此变量。
+> 注意：此 toggle 仅用于解决 mock 链路 ID 一致性问题，不改变任何业务逻辑。生产环境的 `docker-compose.yml` 中不应设置此变量。studio backend 不感知 test mode。
 
 ## 图片写入与上传工作流
 

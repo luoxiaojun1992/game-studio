@@ -281,18 +281,18 @@ BUILD_SERVICE_URL=http://build-service:8085
 
 ### 测试模式 Toggle
 
-UI test 模式下需启用固定 `build_project_id`，避免 mock 链路中 UUID 不匹配导致 404：
+UI test 模式下需启用固定 project_id，避免 mock 链路中 UUID 不匹配导致 404。Toggle 在**微服务内部**判断：
 
 | 环境变量 | 值 | 效果 |
 |---------|-----|------|
-| `BUILD_SERVICE_TEST_MODE` | `true`（仅 `docker-compose.ui-test.yml`） | `build_create_project` 使用固定 ID `build-proj-001` |
+| `BUILD_SERVICE_TEST_MODE` | `true`（仅 `docker-compose.ui-test.yml`，在 build-service 容器上） | `POST /api/projects` 返回固定 ID `build-proj-001` |
 | 未设置 | —（生产默认） | 正常 UUID 生成 |
 
-> 原理同 `IMAGE_SERVICE_TEST_MODE`，确保 mock 链路中项目 ID 一致性。
+> 原理同 `IMAGE_SERVICE_TEST_MODE`。微服务的 `POST /api/projects` 不接受外部传入的 project_id，内部生成。studio backend 不感知 test mode。
 
-在 `docker-compose.ui-test.yml` 中配置：
+在 `docker-compose.ui-test.yml` 中配置（微服务容器环境变量）：
 ```yaml
-studio-backend:
+build-service:
   environment:
     - BUILD_SERVICE_TEST_MODE=true
 ```

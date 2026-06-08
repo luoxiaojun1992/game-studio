@@ -297,18 +297,18 @@ RUN_SERVICE_SERVE_URL=http://run-service:8087
 
 ### 测试模式 Toggle
 
-UI test 模式下需启用固定 `run_project_id`，避免 mock 链路中 UUID 不匹配导致 404：
+UI test 模式下需启用固定 project_id，避免 mock 链路中 UUID 不匹配导致 404。Toggle 在**微服务内部**判断：
 
 | 环境变量 | 值 | 效果 |
 |---------|-----|------|
-| `RUN_SERVICE_TEST_MODE` | `true`（仅 `docker-compose.ui-test.yml`） | `run_create_project` 使用固定 ID `run-proj-001` |
+| `RUN_SERVICE_TEST_MODE` | `true`（仅 `docker-compose.ui-test.yml`，在 run-service 容器上） | `POST /api/projects` 返回固定 ID `run-proj-001` |
 | 未设置 | —（生产默认） | 正常 UUID 生成 |
 
-> 原理同 `IMAGE_SERVICE_TEST_MODE`。UI test mock 链中后续工具（upload/serve/delete 等）的 `run_project_id` 硬编码为 `'run-proj-001'`，必须与 `run_create_project` 创建的实际 ID 一致。
+> 原理同 `IMAGE_SERVICE_TEST_MODE`。微服务的 `POST /api/projects` 不接受外部传入的 project_id，内部生成。studio backend 不感知 test mode。
 
-在 `docker-compose.ui-test.yml` 中配置：
+在 `docker-compose.ui-test.yml` 中配置（微服务容器环境变量）：
 ```yaml
-studio-backend:
+run-service:
   environment:
     - RUN_SERVICE_TEST_MODE=true
 ```

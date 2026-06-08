@@ -39,21 +39,33 @@ export async function drawioFetch(path: string, init?: RequestInit): Promise<any
 
 export interface CreateDrawioProjectOptions {
   projectId: string;   // studio project id（闭包锚点）
-  drawioProjectId?: string;  // 可选，默认 uuidv4
   name: string;
   agentId: AgentRole;
   logFn?: (agentId: AgentRole, action: string, detail: string, level: 'info' | 'warn' | 'error' | 'success') => void;
 }
 
 export async function createDrawioProject(opts: CreateDrawioProjectOptions): Promise<{ dbId: string; drawioProjectId: string }> {
-  const { projectId, drawioProjectId: maybeDpId, name, agentId, logFn } = opts;
+  const { projectId, name, agentId, logFn } = opts;
   const log = logFn || (() => {});
   const now = new Date().toISOString();
-  const dbId = uuidv4();
-  const drawioProjectId = maybeDpId || uuidv4();
 
-  // 1. 在 backend DB 创建记录
-  const record = db.createDrawioProject({
+  // 1. 调用 drawio service 创建项目目录（微服务内部生成 project_id）
+  let drawioProjectId: string;
+  try {
+    const res = await drawioFetch('/api/projects', {
+      method: 'POST',
+    });
+    drawioProjectId = res?.project_id;
+    if (!drawioProjectId) {
+      throw new Error('drawio service 未返回 project_id');
+    }
+  } catch (error: any) {
+    throw new Error(`创建图表 project 失败：${error?.message || String(error)}`);
+  }
+
+  // 2. 在 backend DB 创建记录
+  const dbId = uuidv4();
+  db.createDrawioProject({
     id: dbId,
     project_id: projectId,
     drawio_project_id: drawioProjectId,
@@ -62,21 +74,8 @@ export async function createDrawioProject(opts: CreateDrawioProjectOptions): Pro
     updated_at: now,
   });
 
-  // 2. 调用 drawio service 创建项目目录
-  try {
-    const res = await drawioFetch(`/api/projects/${drawioProjectId}`, {
-      method: 'POST',
-    });
-    const returnedId: string = res?.project_id || drawioProjectId;
-    if (returnedId !== drawioProjectId) {
-      db.updateDrawioProject(dbId, { drawio_project_id: returnedId });
-    }
-    log(agentId, '创建图表 project', `id=${dbId}, drawio_project_id=${returnedId}`, 'success');
-    return { dbId, drawioProjectId: returnedId };
-  } catch (error: any) {
-    db.deleteDrawioProject(dbId);
-    throw new Error(`创建图表 project 失败：${error?.message || String(error)}`);
-  }
+  log(agentId, '创建图表 project', `id=${dbId}, drawio_project_id=${drawioProjectId}`, 'success');
+  return { dbId, drawioProjectId };
 }
 
 export function listDrawioProjects(projectId: string, limit = 20): db.DbDrawioProject[] {

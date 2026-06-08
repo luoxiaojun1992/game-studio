@@ -1094,13 +1094,9 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           name: z.string().min(1).max(50).describe('建模 project 名称'),
         },
         async ({ name }) => {
-          // 测试模式：使用固定 project ID 确保 mock 链路一致性
-          const isTestMode = process.env.CREATOR_SERVICE_TEST_MODE === 'true';
-          const testProjectId = isTestMode ? 'bld-proj-001' : undefined;
           const opts: CreateBlenderProjectOptions = {
             projectId: scopedProjectId,
             name,
-            blenderProjectId: testProjectId,
             agentId,
             logFn: log,
           };
@@ -1382,13 +1378,9 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           name: z.string().min(1).max(50).describe('图片 project 名称'),
         },
         async ({ name }) => {
-          // 测试模式：使用固定 project ID 确保 mock 链路一致性
-          const isTestMode = process.env.IMAGE_SERVICE_TEST_MODE === 'true';
-          const testProjectId = isTestMode ? 'img-proj-001' : undefined;
           const opts: CreateImageProjectOptions = {
             projectId: scopedProjectId,
             name,
-            imageProjectId: testProjectId,
             agentId,
             logFn: log,
           };
@@ -2018,13 +2010,9 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           name: z.string().min(1).max(50).describe('图表 project 名称'),
         },
         async ({ name }) => {
-          // 测试模式：使用固定 project ID 确保 mock 链路一致性
-          const isTestMode = process.env.DRAWIO_SERVICE_TEST_MODE === 'true';
-          const testProjectId = isTestMode ? 'drw-proj-001' : undefined;
           const opts: CreateDrawioProjectOptions = {
             projectId: scopedProjectId,
             name,
-            drawioProjectId: testProjectId,
             agentId,
             logFn: log,
           };
