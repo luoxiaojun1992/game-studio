@@ -20,7 +20,7 @@ image-service/ (FastAPI + ImageMagick, port 8089)
 │   ├── image.py          # 12 个图片操作端点
 │   └── file.py           # 文件列表/下载/上传/删除
 ├── requirements.txt
-└── Dockerfile (alpine:3.21 + imagemagick, ~50MB)
+└── Dockerfile (alpine:3.21 + imagemagick + libwebp + font-noto, ~50MB)
 
 server/
 ├── image-service.ts      # TS 客户端 (imageFetch, createImageProject, ...)
@@ -125,7 +125,7 @@ server/
 | crop | `magick input.png -crop 128x128+32+32 output.png` |
 | convert | `magick input.png output.webp` |
 | compress | `magick input.png -quality 80 output.jpg` |
-| watermark (text) | `magick input.png -font Arial -pointsize 24 -fill "rgba(255,255,255,0.5)" -annotate +10+10 "watermark" output.png` |
+| watermark (text) | `magick input.png -pointsize 24 -fill "rgba(255,255,255,0.5)" -gravity southeast -annotate +10+10 "watermark" output.png` |
 | composite | `magick base.png overlay.png -gravity center -composite output.png` |
 | rotate | `magick input.png -rotate 90 output.png` |
 | add-margin | `magick input.png -bordercolor transparent -border 10x20 output.png` |
@@ -480,3 +480,5 @@ export function resolveSafePath(baseDir: string, fileName: string): string {
 - **project 删除**：`DELETE /api/projects/{project_id}` 为**整体目录删除**（`shutil.rmtree`），删除项目根目录及其下所有文件。与 sonar/scanner project 不同（sonar project 复用，不删除），本服务的 project 存储为独立临时工作目录，删除后无法恢复。
 - **ImageMagick 版本**：在 Alpine 中安装为 `imagemagick` 包，命令为 `magick`（IM7），非旧版 `convert`（IM6）。
 - **路径安全**：所有文件操作必须通过 `resolve_safe_path` / `resolveSafePath` 校验，禁止直接拼接路径（参考 creator service 的 `creator/app/routers/file.py` 和 `creator/app/routers/blender.py` 模式）
+- **WebP 支持**：Alpine 的 `imagemagick` 包默认不含 WebP 编码器，需额外安装 `libwebp` 包，否则 `convert(PNG→WebP)` 会抛出 ImageMagickError（422）。
+- **字体**：文字水印（`add_text` / `watermark`）不强制指定 `-font` 参数，由 ImageMagick 使用系统默认字体。Alpine 中安装 `font-noto` 提供基础字体支持。
