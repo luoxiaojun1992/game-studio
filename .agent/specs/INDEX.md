@@ -28,6 +28,8 @@
 | SPEC-012 | 游戏运行微服务规范 | [run-service.md](run-service.md) | 设计中 |
 | SPEC-013 | 游戏测试微服务规范 | [test-service.md](test-service.md) | 设计中 |
 | SPEC-014 | GitHub Actions CI Agent 规范 | [github-ci-agent.md](github-ci-agent.md) | 已实现 |
+| SPEC-015 | Creator (Blender) 建模微服务规范 | [creator-service.md](creator-service.md) | 已实现 |
+| SPEC-016 | Draw.io 图表微服务规范 | [drawio-service.md](drawio-service.md) | 已实现 |
 
 ---
 
