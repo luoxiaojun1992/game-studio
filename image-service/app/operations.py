@@ -111,7 +111,6 @@ def watermark_text(
     opacity_pct = int(opacity * 100)
     return [
         "magick", input_path,
-        "-font", "Noto-Sans-CJK-SC",
         "-pointsize", str(font_size),
         "-fill", f"rgba(255,255,255,{opacity_pct}%)",
         "-gravity", position,
