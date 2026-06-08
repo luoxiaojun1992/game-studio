@@ -509,62 +509,74 @@ const runFullWorkflowTest = async (
     // 生成最小 PNG base64（1x1 红色像素）作为测试图片
     const tinyPngB64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==';
 
+    // 写入本地图片文件
     log('mocks:image-write-bg-raw', { projectId });
     await setMockExpectation(projectId, 'engineer', {
-      content: '正在上传原始背景图...',
+      content: '正在写入原始背景图到本地...',
       toolCalls: [{
         name: 'image_write_file',
-        arguments: {
-          image_project_id: 'img-proj-001',
-          filename: 'background_raw.png',
-          content: tinyPngB64,
-        }
+        arguments: { filename: 'background_raw.png', content: tinyPngB64 }
       }]
     });
     log('mocks:image-write-bg-raw-queued');
 
+    log('mocks:image-upload-bg-raw', { projectId });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在上传背景图到 image service...',
+      toolCalls: [{ name: 'image_upload_file', arguments: { image_project_id: 'img-proj-001', filename: 'background_raw.png' } }]
+    });
+    log('mocks:image-upload-bg-raw-queued');
+
     log('mocks:image-write-ui-sprite', { projectId });
     await setMockExpectation(projectId, 'engineer', {
-      content: '正在上传UI精灵素材...',
+      content: '正在写入UI精灵素材到本地...',
       toolCalls: [{
         name: 'image_write_file',
-        arguments: {
-          image_project_id: 'img-proj-001',
-          filename: 'ui_sprite.png',
-          content: tinyPngB64,
-        }
+        arguments: { filename: 'ui_sprite.png', content: tinyPngB64 }
       }]
     });
     log('mocks:image-write-ui-sprite-queued');
 
-    // 上传额外的小图标用于精灵图
+    log('mocks:image-upload-ui-sprite', { projectId });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在上传UI精灵到 image service...',
+      toolCalls: [{ name: 'image_upload_file', arguments: { image_project_id: 'img-proj-001', filename: 'ui_sprite.png' } }]
+    });
+    log('mocks:image-upload-ui-sprite-queued');
+
     log('mocks:image-write-icon-a', { projectId });
     await setMockExpectation(projectId, 'engineer', {
-      content: '正在上传图标素材...',
+      content: '正在写入图标A到本地...',
       toolCalls: [{
         name: 'image_write_file',
-        arguments: {
-          image_project_id: 'img-proj-001',
-          filename: 'icon_a.png',
-          content: tinyPngB64,
-        }
+        arguments: { filename: 'icon_a.png', content: tinyPngB64 }
       }]
     });
     log('mocks:image-write-icon-a-queued');
 
+    log('mocks:image-upload-icon-a', { projectId });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在上传图标A到 image service...',
+      toolCalls: [{ name: 'image_upload_file', arguments: { image_project_id: 'img-proj-001', filename: 'icon_a.png' } }]
+    });
+    log('mocks:image-upload-icon-a-queued');
+
     log('mocks:image-write-icon-b', { projectId });
     await setMockExpectation(projectId, 'engineer', {
-      content: '正在上传图标素材...',
+      content: '正在写入图标B到本地...',
       toolCalls: [{
         name: 'image_write_file',
-        arguments: {
-          image_project_id: 'img-proj-001',
-          filename: 'icon_b.png',
-          content: tinyPngB64,
-        }
+        arguments: { filename: 'icon_b.png', content: tinyPngB64 }
       }]
     });
     log('mocks:image-write-icon-b-queued');
+
+    log('mocks:image-upload-icon-b', { projectId });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在上传图标B到 image service...',
+      toolCalls: [{ name: 'image_upload_file', arguments: { image_project_id: 'img-proj-001', filename: 'icon_b.png' } }]
+    });
+    log('mocks:image-upload-icon-b-queued');
 
     log('mocks:image-info-query', { projectId });
     await setMockExpectation(projectId, 'engineer', {

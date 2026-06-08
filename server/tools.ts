@@ -1802,16 +1802,13 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
 
       tool(
         'image_write_file',
-        '将图片文件上传到 image service 项目容器目录（仅 engineer 可用）。接受 base64 编码的图片内容，工具内部将 base64 还原为二进制图片后上传到 image service。必须先调用 image_create_project 创建 project。',
+        '将图片文件写入到本地图片产出目录（仅 engineer 可用）。接受 base64 编码的图片内容，工具内部将 base64 还原为二进制图片后写入本地文件系统。文件写入路径: output/{当前项目ID}/images/{filename}。写入后需调用 image_upload_file 上传到 image service 容器。',
         {
-          image_project_id: z.string().describe('image_project_id（来自 image_create_project 的返回值）'),
-          filename: z.string().min(1).max(128).describe('文件名（如 background_raw.png、ui_sprite.png）'),
+          filename: z.string().min(1).max(128).describe('文件名（如 background_raw.png、ui_sprite.png）。禁止路径分隔符'),
           content: z.string().min(1).describe('base64 编码的图片内容'),
         },
-        async ({ image_project_id, filename, content }) => {
-          if (!image_project_id || typeof image_project_id !== 'string') {
-            throw new Error('image_project_id 不能为空');
-          }
+        async ({ filename, content }) => {
+          validateAgentPermission(['engineer'], '写入图片文件');
           if (!filename || typeof filename !== 'string' || !filename.trim()) {
             throw new Error('filename 不能为空');
           }
@@ -1822,18 +1819,110 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           if (filename.includes('/') || filename.includes('\\')) {
             throw new Error('filename 不能包含路径分隔符');
           }
-          const opts: UploadImageFileOptions = {
-            imageProjectId: image_project_id.trim(),
-            filename: filename.trim(),
-            content,
-            agentId,
-            logFn: log,
-          };
-          const { sizeBytes } = await uploadImageFile(opts);
-          const sizeKB = (sizeBytes / 1024).toFixed(1);
-          return {
-            content: [{ type: 'text' as const, text: `图片已上传：${filename} (${sizeKB} KB) -> image project ${image_project_id}` }]
-          };
+
+          console.error("[DEBUG image_write_file] START agentId=" + agentId + " projectId=" + scopedProjectId + " filename=" + filename + " contentLength=" + content.length);
+
+          const outputDir = path.resolve(_toolsDirname, '..', 'output', scopedProjectId);
+          const imagesDir = path.join(outputDir, 'images');
+          const fullPath = path.join(imagesDir, filename.trim());
+
+          // 安全检查：确保路径在 images 目录下（防止路径越权）
+          const resolvedPath = path.resolve(fullPath);
+          if (!resolvedPath.startsWith(imagesDir + path.sep) && resolvedPath !== imagesDir) {
+            console.error("[DEBUG image_write_file] 路径越权 imagesDir=" + imagesDir + " resolvedPath=" + resolvedPath);
+            return {
+              content: [{ type: 'text' as const, text: '写入图片文件失败：路径越权，只能写入 images 目录下。' }]
+            };
+          }
+
+          try {
+            // 解码 base64 → Buffer
+            const buffer = Buffer.from(content, 'base64');
+
+            // 创建目录
+            const dirPath = path.dirname(resolvedPath);
+            fs.mkdirSync(dirPath, { recursive: true });
+
+            // 写入文件（二进制）
+            fs.writeFileSync(resolvedPath, buffer);
+            const sizeKB = (buffer.length / 1024).toFixed(1);
+            console.error("[DEBUG image_write_file] SUCCESS wrote " + resolvedPath + " size=" + sizeKB + "KB");
+
+            log(agentId, '写入图片文件', '文件: ' + filename.trim() + ' | 大小: ' + sizeKB + ' KB', 'success');
+            return {
+              content: [{ type: 'text' as const, text: `图片文件已写入：output/${scopedProjectId}/images/${filename.trim()} (${sizeKB} KB)` }]
+            };
+          } catch (error: any) {
+            console.error("[DEBUG image_write_file] ERROR " + error.message);
+            return {
+              content: [{ type: 'text' as const, text: '写入图片文件失败：' + (error?.message || String(error)) }]
+            };
+          }
+        }
+      ),
+
+      tool(
+        'image_upload_file',
+        '将本地图片文件上传到 image service 容器目录（仅 engineer 可用）。从 output/{当前项目ID}/images/{filename} 读取文件，base64 编码后上传到 image service 对应 project。必须先调用 image_write_file 写入本地文件，再调用本工具上传。',
+        {
+          image_project_id: z.string().describe('image_project_id（来自 image_create_project 的返回值）'),
+          filename: z.string().min(1).max(128).describe('文件名（需与 image_write_file 写入的一致）'),
+        },
+        async ({ image_project_id, filename }) => {
+          validateAgentPermission(['engineer'], '上传图片文件');
+          if (!image_project_id || typeof image_project_id !== 'string') {
+            throw new Error('image_project_id 不能为空');
+          }
+          if (!filename || typeof filename !== 'string' || !filename.trim()) {
+            throw new Error('filename 不能为空');
+          }
+          if (filename.includes('/') || filename.includes('\\')) {
+            throw new Error('filename 不能包含路径分隔符');
+          }
+
+          console.error("[DEBUG image_upload_file] START projectId=" + scopedProjectId + " ip=" + image_project_id + " filename=" + filename);
+
+          const outputDir = path.resolve(_toolsDirname, '..', 'output', scopedProjectId);
+          const imagesDir = path.join(outputDir, 'images');
+          const localPath = path.resolve(imagesDir, filename.trim());
+
+          // 安全检查
+          if (!localPath.startsWith(imagesDir + path.sep) && localPath !== imagesDir) {
+            return {
+              content: [{ type: 'text' as const, text: '上传图片文件失败：路径越权。' }]
+            };
+          }
+
+          if (!fs.existsSync(localPath)) {
+            return {
+              content: [{ type: 'text' as const, text: `上传图片文件失败：本地文件不存在（${localPath}）。请先调用 image_write_file。` }]
+            };
+          }
+
+          try {
+            // 读取文件 → base64 编码
+            const buffer = fs.readFileSync(localPath);
+            const content = buffer.toString('base64');
+
+            const opts: UploadImageFileOptions = {
+              imageProjectId: image_project_id.trim(),
+              filename: filename.trim(),
+              content,
+              agentId,
+              logFn: log,
+            };
+            const { sizeBytes } = await uploadImageFile(opts);
+            const sizeKB = (sizeBytes / 1024).toFixed(1);
+            console.error("[DEBUG image_upload_file] SUCCESS uploaded " + filename + " size=" + sizeKB + "KB");
+            return {
+              content: [{ type: 'text' as const, text: `图片已上传到 image service：${filename} (${sizeKB} KB) -> project ${image_project_id}` }]
+            };
+          } catch (error: any) {
+            console.error("[DEBUG image_upload_file] ERROR " + error.message);
+            return {
+              content: [{ type: 'text' as const, text: '上传图片文件失败：' + (error?.message || String(error)) }]
+            };
+          }
         }
       ),
 
