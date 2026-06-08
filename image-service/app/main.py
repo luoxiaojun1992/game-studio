@@ -1,0 +1,56 @@
+"""
+Image Service — FastAPI entry point.
+
+Mounts all routers and exposes a /health check endpoint.
+"""
+
+import os
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.routers import image, file, project
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: ensure projects root exists
+    os.makedirs("/app/data/projects", exist_ok=True)
+    yield
+    # Shutdown: nothing to clean up
+
+
+app = FastAPI(
+    title="Image Service",
+    description="ImageMagick-based image processing micro-service for game-studio",
+    version="1.0.0",
+    lifespan=lifespan,
+)
+
+# CORS: allow studio-frontend to call this service from the browser
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Register routers
+app.include_router(project.router)
+app.include_router(file.router)
+app.include_router(image.router)
+
+
+@app.get("/health", tags=["health"])
+async def health_check():
+    """Liveness probe for the healthcheck."""
+    return {"status": "ok"}
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    port = int(os.getenv("IMAGE_SERVICE_PORT", "8089"))
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=False)

@@ -18,7 +18,7 @@ video-service/ (FastAPI + FFmpeg, port 8084)
 ├── app/routers/
 │   ├── project.py        # 项目 CRUD（同 creator 模式）
 │   ├── video.py          # 17 个视频操作端点
-│   └── file.py           # 文件列表/下载/删除
+│   └── file.py           # 文件列表/下载/上传/删除
 ├── requirements.txt
 └── Dockerfile (alpine:3.21 + ffmpeg, ~120MB)
 
@@ -84,7 +84,10 @@ server/
 |------|------|------|
 | GET | `/api/files/{project_id}` | 列出项目文件 |
 | GET | `/api/files/{project_id}/{filename}` | 下载文件 |
+| POST | `/api/files/{project_id}/{filename}` | 上传文件（base64 编码，`{ "content": "<base64>" }`） |
 | DELETE | `/api/files/{project_id}/{filename}` | 删除文件（幂等） |
+
+> **上传端点说明**：Request body 为 JSON，`content` 字段为 base64 编码的文件内容。服务端解码后写入项目目录，单文件上限 500MB（视频文件更大）。路径安全由 `_project_path()` + `_safe_join()` 保证。
 
 ### 通用响应格式
 
@@ -179,15 +182,31 @@ CREATE INDEX IF NOT EXISTS idx_video_projects_project ON video_projects(project_
 
 结构与 `blender_projects` / `image_projects` 完全一致，仅表名和列名替换。
 
-## MCP 工具清单（20 个）
+## MCP 工具清单（22 个）
 
 所有工具仅 **engineer** 可用，无需审批，`ENGINEER_ALLOW` 自动放行。
+
+### 项目管理（3 个）
 
 | 工具名 | 说明 |
 |--------|------|
 | `video_create_project` | 创建视频处理 project |
 | `video_list_projects` | 列出视频 project |
 | `video_delete_project` | 删除视频 project |
+
+### 视频文件写入与传输（2 个）
+
+| 工具名 | 说明 | 参数 |
+|--------|------|------|
+| `video_write_file` | 写入视频文件到本地 videos/ 目录（base64 → 二进制） | `filename`, `content`(base64) |
+| `video_upload_file` | 上传本地视频到 video service 容器 | `video_project_id`, `filename` |
+
+> **职责分离**：`video_write_file` 只做本地文件写入，路径隔离参考 `write_game_file`（`output/{projectId}/videos/{filename}`）。`video_upload_file` 从本地读取文件 → base64 编码 → POST 到 video service。与 image service 的 `image_write_file`/`image_upload_file` 模式完全一致。
+
+### 视频操作（17 个）
+
+| 工具名 | 说明 |
+|--------|------|
 | `video_info` | 获取视频元信息（时长、分辨率、编码等） |
 | `video_convert` | 格式转换（MP4 ↔ WebM ↔ MOV） |
 | `video_trim` | 截取视频片段 |
@@ -205,7 +224,12 @@ CREATE INDEX IF NOT EXISTS idx_video_projects_project ON video_projects(project_
 | `video_generate_gif` | 视频片段转 GIF |
 | `video_gif_to_video` | GIF 转视频格式 |
 | `video_create_thumbnail` | 生成视频缩略图 |
-| `video_download_file` | 下载文件到本地 |
+
+### 文件管理（2 个）
+
+| 工具名 | 说明 |
+|--------|------|
+| `video_download_file` | 从 video service 下载文件到本地 |
 | `video_delete_file` | 删除远程文件 |
 
 ## 集成要点
@@ -240,6 +264,26 @@ Backend 环境变量：
 VIDEO_SERVICE_URL=http://video-service:8084
 ```
 
+### 测试模式 Toggle
+
+UI test 模式下需启用固定 project_id，避免 mock 链路中 UUID 不匹配导致 404。Toggle 在**微服务内部**判断，studio backend 不感知：
+
+| 环境变量 | 值 | 效果 |
+|---------|-----|------|
+| `VIDEO_SERVICE_TEST_MODE` | `true`（仅 `docker-compose.ui-test.yml`，在 video-service 容器上） | `POST /api/projects` 返回固定 ID `vid-proj-001` |
+| 未设置 | —（生产默认） | 正常 UUID 生成 |
+
+**原理**：与 `IMAGE_SERVICE_TEST_MODE` 完全一致。微服务的 `POST /api/projects` 不接受外部传入的 project_id，内部生成。studio backend 调用后获得 project_id，用于后续所有操作。UI test mock 链中后续工具的 `video_project_id` 硬编码为 `'vid-proj-001'`。
+
+在 `docker-compose.ui-test.yml` 中配置（微服务容器环境变量）：
+```yaml
+video-service:
+  environment:
+    - VIDEO_SERVICE_TEST_MODE=true
+```
+
+> 注意：此 toggle 仅用于解决 mock 链路 ID 一致性问题。生产环境的 `docker-compose.yml` 中不应设置此变量。studio backend 不感知 test mode。
+
 ### Dockerfile
 
 ```dockerfile
@@ -260,6 +304,46 @@ EXPOSE 8084
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8084"]
 ```
+
+## 视频写入与上传工作流
+
+Engineer agent 向 video service 写入素材视频的完整流程，与 image service 的 `image_write_file`/`image_upload_file` 模式完全一致：
+
+```
+video_write_file          video_upload_file        video service
+ (本地 videos/ 目录)       (POST 上传)              (容器文件系统)
+      │                        │                        │
+      │ base64 → Buffer        │                        │
+      │ writeFileSync          │                        │
+      ├──── output/{pid}/      │                        │
+      │     videos/            │                        │
+      │     intro.mp4 ─────→  │  readFile → b64        │
+      │                        │  POST /api/files/      │
+      │                        │  {pid}/{filename} ────→│ decode → write
+      │                        │                        │ /app/data/projects/
+      │                        │                        │ {pid}/intro.mp4
+```
+
+**步骤说明**：
+1. `video_write_file` 接收 base64 视频 → 解码为 Buffer → 写入 `output/{projectId}/videos/{filename}`
+   - 路径隔离：`resolvedPath.startsWith(videosDir + sep)` 校验
+   - 文件名校验：禁止 `/` `\`
+2. `video_upload_file` 从本地读取 → base64 编码 → POST 到 video service `/api/files/{project_id}/{filename}`
+   - 上传前检查本地文件是否存在
+   - 同路径隔离校验
+3. video service 接收 JSON body `{ "content": "<base64>" }` → 解码 → 写入项目目录
+   - 服务端路径安全：`_project_path()` + `_safe_join()`
+   - 大小限制：500MB（视频文件更大）
+
+**与 image service 写入工具的对照**：
+
+| 维度 | image_write_file | video_write_file |
+|------|-----------------|-----------------|
+| 输出目录 | `output/{pid}/images/` | `output/{pid}/videos/` |
+| 内容格式 | base64 PNG/JPG → Buffer | base64 MP4/WebM → Buffer |
+| 上传大小限制 | 50MB | 500MB |
+| 路径隔离 | `startsWith(imagesDir + sep)` | `startsWith(videosDir + sep)` |
+| 对应上传工具 | `image_upload_file` | `video_upload_file` |
 
 ## 路径安全
 
@@ -338,7 +422,7 @@ def _safe_join(base: str, filename: str) -> str:
 |---------|-------------|-------------|
 | `routers/project.py` | POST/GET/DELETE 时解析 `project_id` → 项目目录路径 | `_project_path()` |
 | `routers/video.py` | 所有 17 个操作端点中解析 `project_id` + 拼接 `input_filename`/`output_filename` | `_project_path()` + `_safe_join()` |
-| `routers/file.py` | 列出/下载/删除文件时解析 `project_id` + 拼接 `filename` | `_project_path()` + `_safe_join()` |
+| `routers/file.py` | 列出/下载/上传/删除文件时解析 `project_id` + 拼接 `filename` | `_project_path()` + `_safe_join()` |
 
 **硬性要求**：
 - 任何路由中访问项目目录、读写文件前，**必须先调用 `_project_path()`** 校验 `project_id`
@@ -370,6 +454,8 @@ export function resolveSafePath(baseDir: string, fileName: string): string {
 ```
 
 ### 导出路径安全
+
+视频写入工具（`video_write_file`）的本地输出路径限制在 `output/{projectId}/videos/` 下，使用 `resolvedPath.startsWith(videosDir + sep)` 校验（参考 `write_game_file` 和 `image_write_file` 模式）。
 
 视频处理工具生成的输出文件，导出到本地时路径限制在 `/app/output/{projectId}/games/latest/` 下，使用 `resolveSafePath` + `startsWith` 双重校验（TS 客户端端）。微服务内部输出写入则通过 `resolve_safe_path` 限制在项目目录内。
 
@@ -403,7 +489,7 @@ export function resolveSafePath(baseDir: string, fileName: string): string {
 | `server/video-service.ts` | TS HTTP 客户端 |
 | `server/video-service.d.ts` | TS 类型定义 |
 | `server/db.ts` | video_projects 表 + CRUD |
-| `server/tools.ts` | 20 个 MCP 工具 |
+| `server/tools.ts` | 22 个 MCP 工具 |
 | `server/agent-manager.ts` | ENGINEER_ALLOW 权限 |
 | `server/agents.ts` | TOOLS_OVERVIEW + 系统提示词 |
 | `docker-compose.yml` | video-service 容器 |

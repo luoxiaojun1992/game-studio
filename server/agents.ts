@@ -101,6 +101,25 @@ const TOOLS_OVERVIEW = `
 | \`blender_download_model_file\` | 从 creator service 下载模型文件到本地 output 目录 | **engineer** |
 | \`blender_delete_model_file\` | 删除 creator 远程模型文件（幂等） | **engineer** |
 | \`blender_list_objects\` | 分页列出 Blender 场景中的对象（供 add_material/export 引用 object_name） | **engineer** |
+| \`image_create_project\` | 创建图片处理 project（调用 image service） | **engineer** |
+| \`image_list_projects\` | 列出当前项目下所有图片处理 project | **engineer** |
+| \`image_delete_project\` | 删除图片处理 project（清理 image service 端容器存储） | **engineer** |
+| \`image_resize\` | 缩放图片到指定尺寸 | **engineer** |
+| \`image_crop\` | 裁剪图片指定区域 | **engineer** |
+| \`image_convert\` | 转换图片格式（PNG/JPG/WEBP/AVIF/GIF/BMP） | **engineer** |
+| \`image_compress\` | 压缩图片（质量控制 1-100） | **engineer** |
+| \`image_watermark\` | 添加文字/图片水印 | **engineer** |
+| \`image_composite\` | 合成叠加两张图片 | **engineer** |
+| \`image_flip_rotate\` | 翻转（水平/垂直）或旋转图片 | **engineer** |
+| \`image_add_margin\` | 为图片四周添加边距 | **engineer** |
+| \`image_color_adjust\` | 调整图片亮度/对比度/饱和度/色相 | **engineer** |
+| \`image_info\` | 获取图片元信息（尺寸/格式/色彩空间等） | **engineer** |
+| \`image_batch\` | 批量处理多个图片 | **engineer** |
+| \`image_sprite_sheet\` | 将多张图片拼合成精灵图（sprite sheet） | **engineer** |
+| \`image_write_file\` | 写入图片文件到本地 images 目录（base64 → 二进制），路径隔离参考 write_game_file | **engineer** |
+| \`image_upload_file\` | 上传本地图片文件到 image service 容器目录 | **engineer** |
+| \`image_download_file\` | 从 image service 下载图片文件到本地 output 目录 | **engineer** |
+| \`image_delete_file\` | 删除 image service 远程图片文件（幂等） | **engineer** |
 | \`get_game_types\` | 获取所有已注册的游戏类型列表（开发前确认支持的游戏类型） | **engineer** |
 | \`get_game_framework_spec\` | 根据游戏类型获取对应的工程框架规范（Engineer Agent 开发前 MUST 调用） | **engineer** |
 | \`get_common_spec\` | 获取所有游戏类型共享的公共工程规范 | **engineer** |
@@ -207,6 +226,35 @@ export const AGENT_DEFINITIONS: Record<AgentRole, AgentDefinition> = {
 
 - \`blender_download_model_file\`：将模型文件下载到本地 output 目录（可供 submit_game 打包上传 MinIO）
 - \`blender_delete_project\`：清理 creator 端容器存储（不删除本地文件）
+
+## 图片处理工具（仅 engineer 可用）
+你还可以使用 ImageMagick 图片处理工具（通过 image service 操作远程容器）：
+- \`image_create_project\`：创建图片处理 project（每个 project 对应 image service 一个独立容器目录）
+- \`image_resize\` / \`image_crop\` / \`image_convert\` / \`image_compress\`：缩放、裁剪、格式转换、压缩
+- \`image_watermark\` / \`image_composite\` / \`image_flip_rotate\`：水印、合成、翻转旋转
+- \`image_add_margin\` / \`image_color_adjust\`：边距、色彩调整
+- \`image_info\`：获取图片元信息
+- \`image_batch\` / \`image_sprite_sheet\`：批量处理、精灵图拼合
+- \`image_download_file\`：将图片文件下载到本地 output 目录（可放入 games/latest/assets 供 submit_game 打包上传）
+- \`image_delete_file\`：清理 image service 远程文件
+- \`image_delete_project\`：清理 image service 端容器存储
+
+图片处理工作流示例：
+1. \`image_create_project\` 创建 project
+2. \`image_write_file\` 写入素材图片到本地 images/ 目录（base64 编码）
+3. \`image_upload_file\` 将本地图片上传到 image service 容器目录
+4. 调用 \`image_resize\` / \`image_convert\` 等工具处理图片
+5. \`image_download_file\` 将处理后的图片下载到 games/latest/assets/
+6. \`image_delete_project\` 清理容器资源
+
+\`image_write_file\` 参数说明（仅本地文件写入）：
+- \`filename\`：文件名（如 background_raw.png），禁止路径分隔符
+- \`content\`：base64 编码的图片二进制数据
+- 写入路径：output/{projectId}/images/{filename}
+
+\`image_upload_file\` 参数说明（上传到 image service）：
+- \`image_project_id\`：目标 project ID
+- \`filename\`：需与 image_write_file 写入的文件名一致
 
 重要：实现前仍需遵守方案审批流程；但成品完成后必须主动调用工具提交产物。
 

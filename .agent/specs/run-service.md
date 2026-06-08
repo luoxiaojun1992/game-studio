@@ -295,6 +295,24 @@ RUN_SERVICE_URL=http://run-service:8086
 RUN_SERVICE_SERVE_URL=http://run-service:8087
 ```
 
+### 测试模式 Toggle
+
+UI test 模式下需启用固定 project_id，避免 mock 链路中 UUID 不匹配导致 404。Toggle 在**微服务内部**判断：
+
+| 环境变量 | 值 | 效果 |
+|---------|-----|------|
+| `RUN_SERVICE_TEST_MODE` | `true`（仅 `docker-compose.ui-test.yml`，在 run-service 容器上） | `POST /api/projects` 返回固定 ID `run-proj-001` |
+| 未设置 | —（生产默认） | 正常 UUID 生成 |
+
+> 原理同 `IMAGE_SERVICE_TEST_MODE`。微服务的 `POST /api/projects` 不接受外部传入的 project_id，内部生成。studio backend 不感知 test mode。
+
+在 `docker-compose.ui-test.yml` 中配置（微服务容器环境变量）：
+```yaml
+run-service:
+  environment:
+    - RUN_SERVICE_TEST_MODE=true
+```
+
 ### Dockerfile
 
 ```dockerfile
@@ -461,7 +479,7 @@ def _safe_join(base: str, filename: str) -> str:
 | `server/run-service.ts` | TS HTTP 客户端 |
 | `server/run-service.d.ts` | TS 类型定义 |
 | `server/db.ts` | run_projects 表 + CRUD |
-| `server/tools.ts` | 6 个 MCP 工具 |
+| `server/tools.ts` | 6 个 MCP 工具（含 run_write_file/run_upload_file 预留） |
 | `server/agent-manager.ts` | ENGINEER_ALLOW 权限 |
 | `server/agents.ts` | TOOLS_OVERVIEW + 系统提示词 |
 | `docker-compose.yml` | run-service 容器 |

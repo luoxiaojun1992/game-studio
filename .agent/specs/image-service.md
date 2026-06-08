@@ -1,6 +1,6 @@
 # ImageMagick 图片处理微服务规范
 
-> **SPEC-008** | 状态：设计中
+> **SPEC-008** | 状态：已实现
 
 ## 目标
 
@@ -18,9 +18,9 @@ image-service/ (FastAPI + ImageMagick, port 8089)
 ├── app/routers/
 │   ├── project.py        # 项目 CRUD（同 creator 模式）
 │   ├── image.py          # 12 个图片操作端点
-│   └── file.py           # 文件列表/下载/删除
+│   └── file.py           # 文件列表/下载/上传/删除
 ├── requirements.txt
-└── Dockerfile (alpine:3.21 + imagemagick, ~50MB)
+└── Dockerfile (alpine:3.21 + imagemagick + libwebp + font-noto, ~50MB)
 
 server/
 ├── image-service.ts      # TS 客户端 (imageFetch, createImageProject, ...)
@@ -50,7 +50,7 @@ server/
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| POST | `/api/projects/{project_id}` | 创建项目目录（幂等） |
+| POST | `/api/projects` | 创建项目目录（ID 由微服务生成，幂等） |
 | GET | `/api/projects/{project_id}` | 查询项目状态 |
 | DELETE | `/api/projects/{project_id}` | 删除项目目录（幂等） |
 
@@ -79,7 +79,10 @@ server/
 |------|------|------|
 | GET | `/api/files/{project_id}` | 列出项目文件 |
 | GET | `/api/files/{project_id}/{filename}` | 下载文件 |
+| POST | `/api/files/{project_id}/{filename}` | 上传文件（base64 编码，`{ "content": "<base64>" }`） |
 | DELETE | `/api/files/{project_id}/{filename}` | 删除文件（幂等） |
+
+> **上传端点说明**：Request body 为 JSON，`content` 字段为 base64 编码的文件内容。服务端解码后写入项目目录，单文件上限 50MB。路径安全由 `_project_path()` + `_safe_join()` 保证。
 
 ### 通用响应格式
 
@@ -122,7 +125,7 @@ server/
 | crop | `magick input.png -crop 128x128+32+32 output.png` |
 | convert | `magick input.png output.webp` |
 | compress | `magick input.png -quality 80 output.jpg` |
-| watermark (text) | `magick input.png -font Arial -pointsize 24 -fill "rgba(255,255,255,0.5)" -annotate +10+10 "watermark" output.png` |
+| watermark (text) | `magick input.png -pointsize 24 -fill "rgba(255,255,255,0.5)" -gravity southeast -annotate +10+10 "watermark" output.png` |
 | composite | `magick base.png overlay.png -gravity center -composite output.png` |
 | rotate | `magick input.png -rotate 90 output.png` |
 | add-margin | `magick input.png -bordercolor transparent -border 10x20 output.png` |
@@ -148,15 +151,31 @@ CREATE INDEX IF NOT EXISTS idx_image_projects_project ON image_projects(project_
 
 结构与 `blender_projects` 完全一致，仅表名和列名替换。
 
-## MCP 工具清单（17 个）
+## MCP 工具清单（19 个）
 
 所有工具仅 **engineer** 可用，无需审批，`ENGINEER_ALLOW` 自动放行。
+
+### 项目管理（3 个）
 
 | 工具名 | 说明 |
 |--------|------|
 | `image_create_project` | 创建图片处理 project |
 | `image_list_projects` | 列出图片 project |
 | `image_delete_project` | 删除图片 project |
+
+### 图片文件写入与传输（2 个）
+
+| 工具名 | 说明 | 参数 |
+|--------|------|------|
+| `image_write_file` | 写入图片文件到本地 images/ 目录（base64 → 二进制） | `filename`, `content`(base64) |
+| `image_upload_file` | 上传本地图片到 image service 容器 | `image_project_id`, `filename` |
+
+> **职责分离**：`image_write_file` 只做本地文件写入，路径隔离参考 `write_game_file`（`output/{projectId}/images/{filename}`）。`image_upload_file` 从本地读取文件 → base64 编码 → POST 到 image service。两个工具各司其职，不耦合。
+
+### 图片操作（12 个）
+
+| 工具名 | 说明 |
+|--------|------|
 | `image_resize` | 缩放图片 |
 | `image_crop` | 裁剪图片 |
 | `image_convert` | 格式转换 (PNG↔JPG↔WEBP↔AVIF) |
@@ -169,7 +188,12 @@ CREATE INDEX IF NOT EXISTS idx_image_projects_project ON image_projects(project_
 | `image_info` | 获取图片元信息 |
 | `image_batch` | 批量处理 |
 | `image_sprite_sheet` | 精灵图拼合 |
-| `image_download_file` | 下载文件到本地 |
+
+### 文件管理（2 个）
+
+| 工具名 | 说明 |
+|--------|------|
+| `image_download_file` | 从 image service 下载文件到本地 |
 | `image_delete_file` | 删除远程文件 |
 
 ## 集成要点
@@ -203,6 +227,65 @@ Backend 环境变量：
 ```
 IMAGE_SERVICE_URL=http://image-service:8089
 ```
+
+### 测试模式 Toggle
+
+UI test 模式下需启用固定 project_id，避免 mock 链路中 UUID 不匹配导致 404。Toggle 在**微服务内部**判断，studio backend 不感知：
+
+| 环境变量 | 值 | 效果 |
+|---------|-----|------|
+| `IMAGE_SERVICE_TEST_MODE` | `true`（仅 `docker-compose.ui-test.yml`，在 image-service 容器上） | `POST /api/projects` 返回固定 ID `img-proj-001` |
+| 未设置 | —（生产默认） | 正常 UUID 生成 |
+
+**原理**：微服务的 `POST /api/projects` 不再接受外部传入的 project_id，而是内部生成（test mode 用固定值）。studio backend 调用该接口后获得 project_id，用于后续所有操作。mock 链中所有后续工具的 `image_project_id` 硬编码为 `'img-proj-001'`，与微服务返回的固定 ID 一致。
+
+在 `docker-compose.ui-test.yml` 中配置（微服务容器环境变量）：
+```yaml
+image-service:
+  environment:
+    - IMAGE_SERVICE_TEST_MODE=true
+```
+
+> 注意：此 toggle 仅用于解决 mock 链路 ID 一致性问题，不改变任何业务逻辑。生产环境的 `docker-compose.yml` 中不应设置此变量。studio backend 不感知 test mode。
+
+## 图片写入与上传工作流
+
+Engineer agent 向 image service 写入素材图片的完整流程：
+
+```
+image_write_file          image_upload_file         image service
+ (本地 images/ 目录)       (POST 上传)              (容器文件系统)
+      │                        │                        │
+      │ base64 → Buffer        │                        │
+      │ writeFileSync          │                        │
+      ├──── output/{pid}/      │                        │
+      │     images/            │                        │
+      │     bg_raw.png ────→  │  readFile → b64        │
+      │                        │  POST /api/files/      │
+      │                        │  {pid}/{filename} ────→│ decode → write
+      │                        │                        │ /app/data/projects/
+      │                        │                        │ {pid}/bg_raw.png
+```
+
+**步骤说明**：
+1. `image_write_file` 接收 base64 图片 → 解码为 Buffer → 写入 `output/{projectId}/images/{filename}`
+   - 路径隔离：`resolvedPath.startsWith(imagesDir + sep)` 校验
+   - 文件名校验：禁止 `/` `\`
+2. `image_upload_file` 从本地读取 → base64 编码 → POST 到 image service `/api/files/{project_id}/{filename}`
+   - 上传前检查本地文件是否存在
+   - 同路径隔离校验
+3. image service 接收 JSON body `{ "content": "<base64>" }` → 解码 → 写入项目目录
+   - 服务端路径安全：`_project_path()` + `_safe_join()`
+   - 大小限制：50MB
+
+**与 `write_game_file` 的对照**：
+
+| 维度 | write_game_file | image_write_file |
+|------|----------------|-----------------|
+| 输出目录 | `output/{pid}/games/latest/` | `output/{pid}/images/` |
+| 内容格式 | utf-8 文本 | base64 → Buffer 二进制 |
+| 路径隔离 | `startsWith(latestDir + sep)` | `startsWith(imagesDir + sep)` |
+| 上传工具 | 无（`submit_game` 打包 ZIP） | `image_upload_file`（POST 到 image service） |
 
 ## 路径安全
 
@@ -314,6 +397,8 @@ export function resolveSafePath(baseDir: string, fileName: string): string {
 
 ### 导出路径安全
 
+图片写入工具（`image_write_file`）的本地输出路径限制在 `output/{projectId}/images/` 下，使用 `resolvedPath.startsWith(imagesDir + sep)` 校验（参考 `write_game_file` 模式）。
+
 图片处理工具生成的输出文件，导出到本地时路径限制在 `/app/output/{projectId}/games/latest/` 下，使用 `resolveSafePath` + `startsWith` 双重校验（TS 客户端端）。微服务内部输出写入则通过 `resolve_safe_path` 限制在项目目录内。
 
 ### 成本
@@ -339,7 +424,7 @@ export function resolveSafePath(baseDir: string, fileName: string): string {
 | `server/image-service.ts` | TS HTTP 客户端 |
 | `server/image-service.d.ts` | TS 类型定义 |
 | `server/db.ts` | image_projects 表 + CRUD |
-| `server/tools.ts` | 17 个 MCP 工具 |
+| `server/tools.ts` | 19 个 MCP 工具 |
 | `server/agent-manager.ts` | ENGINEER_ALLOW 权限 |
 | `server/agents.ts` | TOOLS_OVERVIEW + 系统提示词 |
 | `docker-compose.yml` | image-service 容器 |
@@ -395,3 +480,5 @@ export function resolveSafePath(baseDir: string, fileName: string): string {
 - **project 删除**：`DELETE /api/projects/{project_id}` 为**整体目录删除**（`shutil.rmtree`），删除项目根目录及其下所有文件。与 sonar/scanner project 不同（sonar project 复用，不删除），本服务的 project 存储为独立临时工作目录，删除后无法恢复。
 - **ImageMagick 版本**：在 Alpine 中安装为 `imagemagick` 包，命令为 `magick`（IM7），非旧版 `convert`（IM6）。
 - **路径安全**：所有文件操作必须通过 `resolve_safe_path` / `resolveSafePath` 校验，禁止直接拼接路径（参考 creator service 的 `creator/app/routers/file.py` 和 `creator/app/routers/blender.py` 模式）
+- **WebP 支持**：Alpine 的 `imagemagick` 包默认不含 WebP 编码器，需额外安装 `libwebp` 包，否则 `convert(PNG→WebP)` 会抛出 ImageMagickError（422）。
+- **字体**：文字水印（`add_text` / `watermark`）不强制指定 `-font` 参数，由 ImageMagick 使用系统默认字体。Alpine 中安装 `font-noto` 提供基础字体支持。

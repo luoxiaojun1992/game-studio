@@ -154,6 +154,8 @@ interface WorkflowOptions {
   autopilot: boolean;
   /** Game type for mock data: affects file writes and spec queries. Defaults to 'h5'. */
   gameType?: 'h5' | 'phaser-mobile';
+  /** Enable image processing workflow (SPEC-008): creates image resources, processes them, saves to game artifacts */
+  withImageProcessing?: boolean;
 }
 
 const runFullWorkflowTest = async (
@@ -495,6 +497,231 @@ const runFullWorkflowTest = async (
     log('mocks:write-manifest-json-queued');
   }
 
+  // ── Image Processing (SPEC-008): create and process image resources ──
+  if (opts.withImageProcessing) {
+    log('mocks:image-create-project', { projectId });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在创建图片处理 project...',
+      toolCalls: [{ name: 'image_create_project', arguments: { name: 'game-assets' } }]
+    });
+    log('mocks:image-create-project-queued');
+
+    // 生成最小 PNG base64（1x1 红色像素）作为测试图片
+    const tinyPngB64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==';
+
+    // 写入本地图片文件
+    log('mocks:image-write-bg-raw', { projectId });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在写入原始背景图到本地...',
+      toolCalls: [{
+        name: 'image_write_file',
+        arguments: { filename: 'background_raw.png', content: tinyPngB64 }
+      }]
+    });
+    log('mocks:image-write-bg-raw-queued');
+
+    log('mocks:image-upload-bg-raw', { projectId });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在上传背景图到 image service...',
+      toolCalls: [{ name: 'image_upload_file', arguments: { image_project_id: 'img-proj-001', filename: 'background_raw.png' } }]
+    });
+    log('mocks:image-upload-bg-raw-queued');
+
+    log('mocks:image-write-ui-sprite', { projectId });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在写入UI精灵素材到本地...',
+      toolCalls: [{
+        name: 'image_write_file',
+        arguments: { filename: 'ui_sprite.png', content: tinyPngB64 }
+      }]
+    });
+    log('mocks:image-write-ui-sprite-queued');
+
+    log('mocks:image-upload-ui-sprite', { projectId });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在上传UI精灵到 image service...',
+      toolCalls: [{ name: 'image_upload_file', arguments: { image_project_id: 'img-proj-001', filename: 'ui_sprite.png' } }]
+    });
+    log('mocks:image-upload-ui-sprite-queued');
+
+    log('mocks:image-write-icon-a', { projectId });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在写入图标A到本地...',
+      toolCalls: [{
+        name: 'image_write_file',
+        arguments: { filename: 'icon_a.png', content: tinyPngB64 }
+      }]
+    });
+    log('mocks:image-write-icon-a-queued');
+
+    log('mocks:image-upload-icon-a', { projectId });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在上传图标A到 image service...',
+      toolCalls: [{ name: 'image_upload_file', arguments: { image_project_id: 'img-proj-001', filename: 'icon_a.png' } }]
+    });
+    log('mocks:image-upload-icon-a-queued');
+
+    log('mocks:image-write-icon-b', { projectId });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在写入图标B到本地...',
+      toolCalls: [{
+        name: 'image_write_file',
+        arguments: { filename: 'icon_b.png', content: tinyPngB64 }
+      }]
+    });
+    log('mocks:image-write-icon-b-queued');
+
+    log('mocks:image-upload-icon-b', { projectId });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在上传图标B到 image service...',
+      toolCalls: [{ name: 'image_upload_file', arguments: { image_project_id: 'img-proj-001', filename: 'icon_b.png' } }]
+    });
+    log('mocks:image-upload-icon-b-queued');
+
+    log('mocks:image-resize', { projectId });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在缩放背景图...',
+      toolCalls: [{
+        name: 'image_resize',
+        arguments: {
+          image_project_id: 'img-proj-001',
+          input_filename: 'background_raw.png',
+          width: 800,
+          height: 600,
+          keep_aspect: true,
+          output_filename: 'background.png'
+        }
+      }]
+    });
+    log('mocks:image-resize-queued');
+
+    // 在 resize 之后查询 background.png（此时文件已由 ImageMagick 生成）
+    log('mocks:image-info-query', { projectId });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在查询图片信息...',
+      toolCalls: [{ name: 'image_info', arguments: { image_project_id: 'img-proj-001', filename: 'background.png' } }]
+    });
+    log('mocks:image-info-query-queued');
+
+    log('mocks:image-compress', { projectId });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在压缩UI元素...',
+      toolCalls: [{
+        name: 'image_compress',
+        arguments: {
+          image_project_id: 'img-proj-001',
+          input_filename: 'ui_sprite.png',
+          quality: 60,
+          output_filename: 'ui_sprite_compressed.png'
+        }
+      }]
+    });
+    log('mocks:image-compress-queued');
+
+    log('mocks:image-convert-webp', { projectId });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在转换为 WebP 格式...',
+      toolCalls: [{
+        name: 'image_convert',
+        arguments: {
+          image_project_id: 'img-proj-001',
+          input_filename: 'background.png',
+          target_format: 'webp',
+          output_filename: 'background.webp'
+        }
+      }]
+    });
+    log('mocks:image-convert-webp-queued');
+
+    log('mocks:image-watermark', { projectId });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在添加水印...',
+      toolCalls: [{
+        name: 'image_watermark',
+        arguments: {
+          image_project_id: 'img-proj-001',
+          input_filename: 'background.webp',
+          content: 'MyGame',
+          type: 'text',
+          position: 'southeast',
+          opacity: 0.3,
+          output_filename: 'bg_watermarked.webp'
+        }
+      }]
+    });
+    log('mocks:image-watermark-queued');
+
+    // Composite overlay onto background
+    log('mocks:image-composite', { projectId });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在合成HUD图层...',
+      toolCalls: [{
+        name: 'image_composite',
+        arguments: {
+          image_project_id: 'img-proj-001',
+          base_filename: 'bg_watermarked.webp',
+          overlay_filename: 'ui_sprite_compressed.png',
+          gravity: 'center',
+          output_filename: 'game_screen.webp'
+        }
+      }]
+    });
+    log('mocks:image-composite-queued');
+
+    // Download processed images to games/latest/assets/
+    log('mocks:image-download-bg', { projectId });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在下载处理后的背景图到游戏目录...',
+      toolCalls: [{
+        name: 'image_download_file',
+        arguments: {
+          image_project_id: 'img-proj-001',
+          filename: 'game_screen.webp'
+        }
+      }]
+    });
+    log('mocks:image-download-bg-queued');
+
+    // Download sprite sheet
+    log('mocks:image-sprite-sheet', { projectId });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在生成精灵图...',
+      toolCalls: [{
+        name: 'image_sprite_sheet',
+        arguments: {
+          image_project_id: 'img-proj-001',
+          files: ['ui_sprite_compressed.png', 'icon_a.png', 'icon_b.png'],
+          columns: 2,
+          rows: 2,
+          output_filename: 'spritesheet.png'
+        }
+      }]
+    });
+    log('mocks:image-sprite-sheet-queued');
+
+    // Download sprite sheet
+    log('mocks:image-download-ss', { projectId });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在下载精灵图到游戏目录...',
+      toolCalls: [{
+        name: 'image_download_file',
+        arguments: {
+          image_project_id: 'img-proj-001',
+          filename: 'spritesheet.png'
+        }
+      }]
+    });
+    log('mocks:image-download-ss-queued');
+
+    // Clean up image project
+    log('mocks:image-delete-project', { projectId });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '清理图片 project...',
+      toolCalls: [{ name: 'image_delete_project', arguments: { image_project_id: 'img-proj-001' } }]
+    });
+    log('mocks:image-delete-project-queued');
+  }
+
   log('mocks:queue-submit-game', { projectId });
   await setMockExpectation(projectId, 'engineer', {
     content: '游戏已提交。',
@@ -824,5 +1051,21 @@ test('[UI-011] should complete full workflow with phaser-mobile game type (SPEC-
     testId: 'UI-011',
     autopilot: false,
     gameType: 'phaser-mobile',
+  });
+});
+
+// ═══════════════════════════════════════════
+// UI-012: Image Service — create and process image resources, save to game artifacts (SPEC-008)
+// Standard H5 workflow + image processing via image service MCP tools.
+// Engineer creates image resources, processes them, downloads into games/latest/assets/.
+// ═══════════════════════════════════════════
+
+test('[UI-012] should process images and save to game artifacts (SPEC-008)', async ({ page }) => {
+  process.stderr.write(`[UI-012] ${new Date().toISOString()} test:starting (H5 workflow + image service)\n`);
+  await runFullWorkflowTest(page, {
+    testId: 'UI-012',
+    autopilot: false,
+    gameType: 'h5',
+    withImageProcessing: true,
   });
 });

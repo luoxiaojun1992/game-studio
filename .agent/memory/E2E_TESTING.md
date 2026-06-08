@@ -49,7 +49,8 @@
 
 ### Mock 队列编排策略
 - **预队列所有 mock**：在发送指令前一次性排队所有 agent 响应
-- **链路**：game_designer→ceo→architect→engineer，engineer 执行游戏规范查询（get_game_types / get_game_framework_spec / get_common_spec）→ submit_proposal → write_game_file → submit_game → save_memory → text
+- **链路**：game_designer→ceo→architect→engineer，engineer 执行游戏规范查询（get_game_types / get_game_framework_spec / get_common_spec）→ submit_proposal → write_game_file → **[image processing mocks]** → submit_game → save_memory → text
+- **Image Processing (SPEC-008)**：在 engineer 阶段插入 image_create_project → image_info → image_resize → image_compress → image_convert → image_watermark → image_composite → image_sprite_sheet → image_download_file (×2) → image_delete_project，共 12 个额外 mock 步骤
 - **per-agent 路由**：mock server 通过 HTTP headers 中的 `(projectId, agentRole)` 路由到独立队列，无 FIFO 跨 agent 干扰
 - **游戏文件结构 mock**：必须使用 `dist/` 前缀（`dist/index.html`, `dist/metadata.json`, `dist/assets/manifest.json`）以通过 GameEngineeringChecker 验证
 - **H5 生命周期 mock**：index.html 中必须包含 `<script>` 标签、6 个生命周期方法定义（init/start/pause/resume/resize/destroy）和 `window.__GAME__` 赋值
@@ -63,6 +64,27 @@
 - **问卷提案流程**：切换策划案 tab → 点击问卷提案按钮 → 填写核心信息（game_name/genre/one_liner/core_mechanic/target_audience/game_objectives）→ 下一步 → 填写扩展信息（可选）→ 提交
 - **data-testid 链路**：`create-questionnaire-proposal-btn` → `q-game-name` → `q-game-genre` → `q-one-liner` → `q-core-mechanic` → `q-target-audience` → `q-game-objectives` → `q-next-step` → `q-level-design` → `q-tech-req` → `q-duration` → `q-submit`
 - **断言策略**：提交后弹窗关闭 + 列表数量增加 + 标题文本可见 + 紫色"问卷"来源标签可见
+
+## UI-011 Phaser Mobile 工作流测试（SPEC-010）
+- **全流程**：game_designer→ceo→architect→engineer (phaser-mobile + manual mode)
+- **特殊 mock**：Phaser game.js（包含 `new Phaser.Game()` + Scene preload/create 方法）、capacitor.config.json、metadata.json（game_type: phaser-mobile）
+
+## UI-012 图片处理工作流测试（SPEC-008）
+- **全流程**：标准 H5 工作流 + image service MCP 工具调用
+- **Mock 链路**（engineer 阶段新增 12 步）：
+  1. `image_create_project`：创建图片 project（id=img-proj-001, name=game-assets）
+  2. `image_info`：查询图片元信息
+  3. `image_resize`：缩放 background_raw.png → 800×600 background.png
+  4. `image_compress`：压缩 ui_sprite.png → 质量 60
+  5. `image_convert`：background.png → background.webp
+  6. `image_watermark`：添加文字水印 "MyGame" → bg_watermarked.webp
+  7. `image_composite`：合成 HUD 图层 → game_screen.webp
+  8. `image_sprite_sheet`：拼合精灵图 → spritesheet.png
+  9. `image_download_file`：下载 game_screen.webp 到本地
+  10. `image_download_file`：下载 spritesheet.png 到本地
+  11. `image_delete_project`：清理 image service 容器
+- **断言策略**：成功完成标准工作流（3 handoffs + 1 game），图片处理不影响游戏 count 断言
+
 
 ## data-testid 完整对照表（32 个，覆盖率 100%）
 
@@ -104,7 +126,7 @@
 | `proposal-item-*` | ProposalList | 提案列表项（ID 后缀） |
 | `game-card-*` | GameList | 游戏卡片（ID 后缀） |
 
-## 测试矩阵总览（10 个用例）
+## 测试矩阵总览（12 个用例）
 
 | 用例 ID | 类别 | 是否需要 Mock | 核心验证 |
 |:---|:---|:---:|:---|
@@ -118,6 +140,8 @@
 | UI-008 | 完整工作流（自动） | ✅ | 同上 + autopilot |
 | UI-009 | 手动创建提案 | ✅ | 表单填写 + SSE 更新 |
 | UI-010 | 问卷提案创建 | ✅ | 分步表单 + SSE 更新 + 来源标签 |
+| UI-011 | Phaser Mobile 工作流 | ✅ | SPEC-010: phaser-mobile game type + manual mode |
+| UI-012 | 图片处理工作流 (SPEC-008) | ✅ | image_create_project → resize/compress/convert/watermark/composite → image_download_file → submit_game |
 
 ## Lint Framework 集成验证
 

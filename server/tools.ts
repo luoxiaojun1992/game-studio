@@ -53,6 +53,42 @@ import {
   type DrawioAddShapeOptions,
   type DrawioAddConnectorOptions,
 } from './drawio-service.js';
+import {
+  createImageProject,
+  listImageProjects,
+  deleteImageProject,
+  imageResize,
+  imageCrop,
+  imageConvert,
+  imageCompress,
+  imageWatermark,
+  imageComposite,
+  imageFlipRotate,
+  imageAddMargin,
+  imageColorAdjust,
+  imageGetInfo,
+  imageBatch,
+  imageSpriteSheet,
+  uploadImageFile,
+  downloadImageFile,
+  deleteImageFile,
+  type CreateImageProjectOptions,
+  type DeleteImageProjectOptions,
+  type ImageResizeOptions,
+  type ImageCropOptions,
+  type ImageConvertOptions,
+  type ImageCompressOptions,
+  type ImageWatermarkOptions,
+  type ImageCompositeOptions,
+  type ImageFlipRotateOptions,
+  type ImageAddMarginOptions,
+  type ImageColorAdjustOptions,
+  type ImageBatchOptions,
+  type ImageSpriteSheetOptions,
+  type UploadImageFileOptions,
+  type DownloadImageFileOptions,
+  type DeleteImageFileOptions,
+} from './image-service.js';
 
 /**
  */
@@ -1064,13 +1100,19 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
             agentId,
             logFn: log,
           };
-          const { dbId, blenderProjectId } = await createBlenderProject(opts);
-          return {
-            content: [{
-              type: 'text' as const,
-              text: `建模 project 已创建 (DB ID: ${dbId.slice(0, 8)}, blender_project_id: ${blenderProjectId})，名称: ${name}`,
-            }]
-          };
+          try {
+            const { dbId, blenderProjectId } = await createBlenderProject(opts);
+            return {
+              content: [{
+                type: 'text' as const,
+                text: `建模 project 已创建 (DB ID: ${dbId.slice(0, 8)}, blender_project_id: ${blenderProjectId})，名称: ${name}`,
+              }]
+            };
+          } catch (error: any) {
+            return {
+              content: [{ type: 'text' as const, text: `创建建模 project 失败：${error?.message || String(error)}` }]
+            };
+          }
         }
       ),
 
@@ -1327,6 +1369,638 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         }
       ),
 
+      // ---- Image / 图片处理工具（仅 engineer 可用）----
+
+      tool(
+        'image_create_project',
+        '创建图片处理 project（仅 engineer 可用）。在 backend 数据库创建记录，然后调用 image service 创建容器内项目目录，返回 image_project_id。建议在完成图片处理后调用 image_delete_project 清理资源。',
+        {
+          name: z.string().min(1).max(50).describe('图片 project 名称'),
+        },
+        async ({ name }) => {
+          const opts: CreateImageProjectOptions = {
+            projectId: scopedProjectId,
+            name,
+            agentId,
+            logFn: log,
+          };
+          try {
+            const { dbId, imageProjectId } = await createImageProject(opts);
+            return {
+              content: [{
+                type: 'text' as const,
+                text: `图片 project 已创建 (DB ID: ${dbId.slice(0, 8)}, image_project_id: ${imageProjectId})，名称: ${name}`,
+              }]
+            };
+          } catch (error: any) {
+            return {
+              content: [{ type: 'text' as const, text: `创建图片 project 失败：${error?.message || String(error)}` }]
+            };
+          }
+        }
+      ),
+
+      tool(
+        'image_list_projects',
+        '列出当前 studio project 下所有图片处理 project（仅 engineer 可用）。',
+        {
+          limit: z.number().min(1).max(50).optional().default(20).describe('返回条数上限'),
+        },
+        async ({ limit }) => {
+          const records = listImageProjects(scopedProjectId, limit || 20);
+          if (records.length === 0) {
+            return { content: [{ type: 'text' as const, text: '暂无图片 project。' }] };
+          }
+          const lines = records.map(r =>
+            `[${r.id.slice(0, 8)}] ${r.name} | image_project_id=${r.image_project_id} | ${r.created_at.slice(0, 10)}`
+          ).join('\n');
+          return { content: [{ type: 'text' as const, text: lines }] };
+        }
+      ),
+
+      tool(
+        'image_delete_project',
+        '删除图片处理 project（仅 engineer 可用）。先调用 image service 删除远程目录（幂等），再删除 backend DB 记录。建议完成图片文件下载后主动调用以释放容器存储空间。',
+        {
+          image_project_id: z.string().describe('image_project_id（来自 image_create_project 的返回值）'),
+        },
+        async ({ image_project_id }) => {
+          if (!image_project_id || typeof image_project_id !== 'string') {
+            throw new Error('image_project_id 不能为空');
+          }
+          const opts: DeleteImageProjectOptions = {
+            projectId: scopedProjectId,
+            imageProjectId: image_project_id.trim(),
+            agentId,
+            logFn: log,
+          };
+          await deleteImageProject(opts);
+          return {
+            content: [{ type: 'text' as const, text: `图片 project 已删除 (image_project_id: ${image_project_id})` }]
+          };
+        }
+      ),
+
+      tool(
+        'image_resize',
+        '缩放图片到指定尺寸（仅 engineer 可用）。支持保持纵横比填充模式。',
+        {
+          image_project_id: z.string().describe('image_project_id'),
+          input_filename: z.string().min(1).max(128).describe('输入文件名'),
+          width: z.number().int().min(1).max(16384).describe('目标宽度（像素）'),
+          height: z.number().int().min(1).max(16384).describe('目标高度（像素）'),
+          keep_aspect: z.boolean().optional().default(true).describe('是否保持纵横比'),
+          output_filename: z.string().min(1).max(128).describe('输出文件名'),
+        },
+        async ({ image_project_id, input_filename, width, height, keep_aspect, output_filename }) => {
+          if (!image_project_id || typeof image_project_id !== 'string') {
+            throw new Error('image_project_id 不能为空');
+          }
+          const opts: ImageResizeOptions = {
+            imageProjectId: image_project_id.trim(),
+            inputFilename: input_filename,
+            width,
+            height,
+            keepAspect: keep_aspect,
+            outputFilename: output_filename,
+            agentId,
+            logFn: log,
+          };
+          const output = await imageResize(opts);
+          return {
+            content: [{ type: 'text' as const, text: `已缩放图片：${output_filename} (${width}x${height})。${output}` }]
+          };
+        }
+      ),
+
+      tool(
+        'image_crop',
+        '裁剪图片（仅 engineer 可用）。从指定坐标裁剪指定尺寸的区域。',
+        {
+          image_project_id: z.string().describe('image_project_id'),
+          input_filename: z.string().min(1).max(128).describe('输入文件名'),
+          width: z.number().int().min(1).max(16384).describe('裁剪宽度（像素）'),
+          height: z.number().int().min(1).max(16384).describe('裁剪高度（像素）'),
+          x: z.number().int().min(0).max(16384).optional().default(0).describe('起始 X 坐标'),
+          y: z.number().int().min(0).max(16384).optional().default(0).describe('起始 Y 坐标'),
+          output_filename: z.string().min(1).max(128).describe('输出文件名'),
+        },
+        async ({ image_project_id, input_filename, width, height, x = 0, y = 0, output_filename }) => {
+          if (!image_project_id || typeof image_project_id !== 'string') {
+            throw new Error('image_project_id 不能为空');
+          }
+          const opts: ImageCropOptions = {
+            imageProjectId: image_project_id.trim(),
+            inputFilename: input_filename,
+            width,
+            height,
+            x,
+            y,
+            outputFilename: output_filename,
+            agentId,
+            logFn: log,
+          };
+          const output = await imageCrop(opts);
+          return {
+            content: [{ type: 'text' as const, text: `已裁剪图片：${output_filename} (${width}x${height}+${x}+${y})。${output}` }]
+          };
+        }
+      ),
+
+      tool(
+        'image_convert',
+        '转换图片格式（仅 engineer 可用）。支持 PNG/JPG/WEBP/AVIF/GIF/BMP 互转。',
+        {
+          image_project_id: z.string().describe('image_project_id'),
+          input_filename: z.string().min(1).max(128).describe('输入文件名'),
+          target_format: z.enum(['png', 'jpg', 'webp', 'avif', 'gif', 'bmp']).describe('目标格式'),
+          output_filename: z.string().min(1).max(128).describe('输出文件名'),
+        },
+        async ({ image_project_id, input_filename, target_format, output_filename }) => {
+          if (!image_project_id || typeof image_project_id !== 'string') {
+            throw new Error('image_project_id 不能为空');
+          }
+          const opts: ImageConvertOptions = {
+            imageProjectId: image_project_id.trim(),
+            inputFilename: input_filename,
+            targetFormat: target_format,
+            outputFilename: output_filename,
+            agentId,
+            logFn: log,
+          };
+          const output = await imageConvert(opts);
+          return {
+            content: [{ type: 'text' as const, text: `已转换格式：${output_filename} -> ${target_format}。${output}` }]
+          };
+        }
+      ),
+
+      tool(
+        'image_compress',
+        '压缩图片（仅 engineer 可用）。通过调整质量参数控制文件大小。',
+        {
+          image_project_id: z.string().describe('image_project_id'),
+          input_filename: z.string().min(1).max(128).describe('输入文件名'),
+          quality: z.number().int().min(1).max(100).describe('压缩质量（1-100），越低压缩率越高'),
+          output_filename: z.string().min(1).max(128).describe('输出文件名'),
+        },
+        async ({ image_project_id, input_filename, quality, output_filename }) => {
+          if (!image_project_id || typeof image_project_id !== 'string') {
+            throw new Error('image_project_id 不能为空');
+          }
+          const opts: ImageCompressOptions = {
+            imageProjectId: image_project_id.trim(),
+            inputFilename: input_filename,
+            quality,
+            outputFilename: output_filename,
+            agentId,
+            logFn: log,
+          };
+          const output = await imageCompress(opts);
+          return {
+            content: [{ type: 'text' as const, text: `已压缩图片：${output_filename} (quality=${quality})。${output}` }]
+          };
+        }
+      ),
+
+      tool(
+        'image_watermark',
+        '为图片添加水印（仅 engineer 可用）。支持文字水印和图片水印两种类型。',
+        {
+          image_project_id: z.string().describe('image_project_id'),
+          input_filename: z.string().min(1).max(128).describe('输入文件名'),
+          type: z.enum(['text', 'image']).optional().default('text').describe('水印类型：text 文字水印 / image 图片水印'),
+          content: z.string().max(256).optional().describe('水印文字内容或水印图片文件名'),
+          position: z.string().optional().default('southeast').describe('水印位置（center/north/south/east/west/northeast/northwest/southeast/southwest）'),
+          opacity: z.number().min(0).max(1).optional().default(0.5).describe('水印透明度（0-1）'),
+          output_filename: z.string().min(1).max(128).describe('输出文件名'),
+        },
+        async ({ image_project_id, input_filename, type = 'text', content, position = 'southeast', opacity = 0.5, output_filename }) => {
+          if (!image_project_id || typeof image_project_id !== 'string') {
+            throw new Error('image_project_id 不能为空');
+          }
+          if (!content || !content.trim()) {
+            throw new Error('content 不能为空');
+          }
+          const opts: ImageWatermarkOptions = {
+            imageProjectId: image_project_id.trim(),
+            inputFilename: input_filename,
+            type,
+            content: content.trim(),
+            position,
+            opacity,
+            outputFilename: output_filename,
+            agentId,
+            logFn: log,
+          };
+          const output = await imageWatermark(opts);
+          return {
+            content: [{ type: 'text' as const, text: `已添加水印：${output_filename}。${output}` }]
+          };
+        }
+      ),
+
+      tool(
+        'image_composite',
+        '合成两张图片（仅 engineer 可用）。将一张图片叠加到另一张上面。',
+        {
+          image_project_id: z.string().describe('image_project_id'),
+          base_filename: z.string().min(1).max(128).describe('底图文件名'),
+          overlay_filename: z.string().min(1).max(128).describe('叠加图片文件名'),
+          gravity: z.string().optional().default('center').describe('对齐方式（center/north/south/east/west 等）'),
+          x: z.number().int().optional().default(0).describe('X 偏移（像素）'),
+          y: z.number().int().optional().default(0).describe('Y 偏移（像素）'),
+          output_filename: z.string().min(1).max(128).describe('输出文件名'),
+        },
+        async ({ image_project_id, base_filename, overlay_filename, gravity = 'center', x = 0, y = 0, output_filename }) => {
+          if (!image_project_id || typeof image_project_id !== 'string') {
+            throw new Error('image_project_id 不能为空');
+          }
+          const opts: ImageCompositeOptions = {
+            imageProjectId: image_project_id.trim(),
+            baseFilename: base_filename,
+            overlayFilename: overlay_filename,
+            gravity,
+            x,
+            y,
+            outputFilename: output_filename,
+            agentId,
+            logFn: log,
+          };
+          const output = await imageComposite(opts);
+          return {
+            content: [{ type: 'text' as const, text: `已合成图片：${output_filename}。${output}` }]
+          };
+        }
+      ),
+
+      tool(
+        'image_flip_rotate',
+        '翻转或旋转图片（仅 engineer 可用）。支持水平/垂直翻转和任意角度旋转。',
+        {
+          image_project_id: z.string().describe('image_project_id'),
+          input_filename: z.string().min(1).max(128).describe('输入文件名'),
+          mode: z.enum(['flip', 'flop', 'rotate', 'transpose', 'transverse']).describe('模式：flip 垂直翻转 / flop 水平翻转 / rotate 旋转 / transpose / transverse'),
+          angle: z.number().int().min(0).max(360).optional().default(90).describe('旋转角度（仅 rotate 模式有效）'),
+          output_filename: z.string().min(1).max(128).describe('输出文件名'),
+        },
+        async ({ image_project_id, input_filename, mode, angle = 90, output_filename }) => {
+          if (!image_project_id || typeof image_project_id !== 'string') {
+            throw new Error('image_project_id 不能为空');
+          }
+          const opts: ImageFlipRotateOptions = {
+            imageProjectId: image_project_id.trim(),
+            inputFilename: input_filename,
+            mode,
+            angle,
+            outputFilename: output_filename,
+            agentId,
+            logFn: log,
+          };
+          const output = await imageFlipRotate(opts);
+          return {
+            content: [{ type: 'text' as const, text: `已${mode}图片：${output_filename}。${output}` }]
+          };
+        }
+      ),
+
+      tool(
+        'image_add_margin',
+        '为图片添加边距（仅 engineer 可用）。在图片四周添加指定颜色的边距。',
+        {
+          image_project_id: z.string().describe('image_project_id'),
+          input_filename: z.string().min(1).max(128).describe('输入文件名'),
+          top: z.number().int().min(0).max(4096).optional().default(0).describe('上边距（像素）'),
+          right: z.number().int().min(0).max(4096).optional().default(0).describe('右边距（像素）'),
+          bottom: z.number().int().min(0).max(4096).optional().default(0).describe('下边距（像素）'),
+          left: z.number().int().min(0).max(4096).optional().default(0).describe('左边距（像素）'),
+          color: z.string().max(32).optional().default('transparent').describe('边距颜色（名称/#hex/transparent）'),
+          output_filename: z.string().min(1).max(128).describe('输出文件名'),
+        },
+        async ({ image_project_id, input_filename, top = 0, right = 0, bottom = 0, left = 0, color = 'transparent', output_filename }) => {
+          if (!image_project_id || typeof image_project_id !== 'string') {
+            throw new Error('image_project_id 不能为空');
+          }
+          const opts: ImageAddMarginOptions = {
+            imageProjectId: image_project_id.trim(),
+            inputFilename: input_filename,
+            top,
+            right,
+            bottom,
+            left,
+            color,
+            outputFilename: output_filename,
+            agentId,
+            logFn: log,
+          };
+          const output = await imageAddMargin(opts);
+          return {
+            content: [{ type: 'text' as const, text: `已添加边距：${output_filename}。${output}` }]
+          };
+        }
+      ),
+
+      tool(
+        'image_color_adjust',
+        '调整图片色彩（仅 engineer 可用）。调整亮度、对比度、饱和度、色相。',
+        {
+          image_project_id: z.string().describe('image_project_id'),
+          input_filename: z.string().min(1).max(128).describe('输入文件名'),
+          brightness: z.number().int().min(-100).max(100).optional().default(0).describe('亮度调整（-100 到 100）'),
+          contrast: z.number().int().min(-100).max(100).optional().default(0).describe('对比度调整（-100 到 100）'),
+          saturation: z.number().int().min(0).max(200).optional().default(100).describe('饱和度（100=原值）'),
+          hue: z.number().int().min(0).max(200).optional().default(100).describe('色相（100=原值）'),
+          output_filename: z.string().min(1).max(128).describe('输出文件名'),
+        },
+        async ({ image_project_id, input_filename, brightness = 0, contrast = 0, saturation = 100, hue = 100, output_filename }) => {
+          if (!image_project_id || typeof image_project_id !== 'string') {
+            throw new Error('image_project_id 不能为空');
+          }
+          const opts: ImageColorAdjustOptions = {
+            imageProjectId: image_project_id.trim(),
+            inputFilename: input_filename,
+            brightness,
+            contrast,
+            saturation,
+            hue,
+            outputFilename: output_filename,
+            agentId,
+            logFn: log,
+          };
+          const output = await imageColorAdjust(opts);
+          return {
+            content: [{ type: 'text' as const, text: `已调整色彩：${output_filename}。${output}` }]
+          };
+        }
+      ),
+
+      tool(
+        'image_info',
+        '获取图片元信息（仅 engineer 可用）。返回尺寸、格式、色彩空间、文件大小等。',
+        {
+          image_project_id: z.string().describe('image_project_id'),
+          filename: z.string().min(1).max(128).describe('要查询的文件名'),
+        },
+        async ({ image_project_id, filename }) => {
+          if (!image_project_id || typeof image_project_id !== 'string') {
+            throw new Error('image_project_id 不能为空');
+          }
+          const info = await imageGetInfo({ imageProjectId: image_project_id.trim(), filename });
+          return {
+            content: [{ type: 'text' as const, text: JSON.stringify(info, null, 2) }]
+          };
+        }
+      ),
+
+      tool(
+        'image_batch',
+        '批量处理图片（仅 engineer 可用）。对多个图片执行相同的操作。',
+        {
+          image_project_id: z.string().describe('image_project_id'),
+          input_pattern: z.string().min(1).max(256).describe('输入文件通配符或逗号分隔的文件名列表'),
+          operation: z.string().describe('批量操作类型（resize/convert/compress）'),
+          operation_params: z.record(z.string(), z.any()).optional().default({}).describe('操作参数'),
+          output_dir: z.string().optional().default('batch_output').describe('输出目录名'),
+        },
+        async ({ image_project_id, input_pattern, operation, operation_params = {}, output_dir = 'batch_output' }) => {
+          if (!image_project_id || typeof image_project_id !== 'string') {
+            throw new Error('image_project_id 不能为空');
+          }
+          const opts: ImageBatchOptions = {
+            imageProjectId: image_project_id.trim(),
+            inputPattern: input_pattern,
+            operation,
+            operationParams: operation_params,
+            outputDir: output_dir,
+            agentId,
+            logFn: log,
+          };
+          const output = await imageBatch(opts);
+          return {
+            content: [{ type: 'text' as const, text: `批量处理完成。${output}` }]
+          };
+        }
+      ),
+
+      tool(
+        'image_sprite_sheet',
+        '创建精灵图（仅 engineer 可用）。将多张图片拼合成一张网格图。',
+        {
+          image_project_id: z.string().describe('image_project_id'),
+          files: z.array(z.string().min(1).max(128)).min(1).max(256).describe('要拼合的图片文件名列表'),
+          columns: z.number().int().min(1).max(64).describe('列数'),
+          rows: z.number().int().min(1).max(64).describe('行数'),
+          output_filename: z.string().min(1).max(128).describe('输出文件名'),
+        },
+        async ({ image_project_id, files, columns, rows, output_filename }) => {
+          if (!image_project_id || typeof image_project_id !== 'string') {
+            throw new Error('image_project_id 不能为空');
+          }
+          const opts: ImageSpriteSheetOptions = {
+            imageProjectId: image_project_id.trim(),
+            files,
+            columns,
+            rows,
+            outputFilename: output_filename,
+            agentId,
+            logFn: log,
+          };
+          const output = await imageSpriteSheet(opts);
+          return {
+            content: [{ type: 'text' as const, text: `精灵图已创建：${output_filename} (${columns}x${rows})。${output}` }]
+          };
+        }
+      ),
+
+      tool(
+        'image_write_file',
+        '将图片文件写入到本地图片产出目录（仅 engineer 可用）。接受 base64 编码的图片内容，工具内部将 base64 还原为二进制图片后写入本地文件系统。文件写入路径: output/{当前项目ID}/images/{filename}。写入后需调用 image_upload_file 上传到 image service 容器。',
+        {
+          filename: z.string().min(1).max(128).describe('文件名（如 background_raw.png、ui_sprite.png）。禁止路径分隔符'),
+          content: z.string().min(1).describe('base64 编码的图片内容'),
+        },
+        async ({ filename, content }) => {
+          validateAgentPermission(['engineer'], '写入图片文件');
+          if (!filename || typeof filename !== 'string' || !filename.trim()) {
+            throw new Error('filename 不能为空');
+          }
+          if (!content || typeof content !== 'string') {
+            throw new Error('content 不能为空');
+          }
+          // 文件名安全校验（禁止路径分隔符）
+          if (filename.includes('/') || filename.includes('\\')) {
+            throw new Error('filename 不能包含路径分隔符');
+          }
+
+          console.error("[DEBUG image_write_file] START agentId=" + agentId + " projectId=" + scopedProjectId + " filename=" + filename + " contentLength=" + content.length);
+
+          const outputDir = path.resolve(_toolsDirname, '..', 'output', scopedProjectId);
+          const imagesDir = path.join(outputDir, 'images');
+          const fullPath = path.join(imagesDir, filename.trim());
+
+          // 安全检查：确保路径在 images 目录下（防止路径越权）
+          const resolvedPath = path.resolve(fullPath);
+          if (!resolvedPath.startsWith(imagesDir + path.sep) && resolvedPath !== imagesDir) {
+            console.error("[DEBUG image_write_file] 路径越权 imagesDir=" + imagesDir + " resolvedPath=" + resolvedPath);
+            return {
+              content: [{ type: 'text' as const, text: '写入图片文件失败：路径越权，只能写入 images 目录下。' }]
+            };
+          }
+
+          try {
+            // 解码 base64 → Buffer
+            const buffer = Buffer.from(content, 'base64');
+
+            // 创建目录
+            const dirPath = path.dirname(resolvedPath);
+            fs.mkdirSync(dirPath, { recursive: true });
+
+            // 写入文件（二进制）
+            fs.writeFileSync(resolvedPath, buffer);
+            const sizeKB = (buffer.length / 1024).toFixed(1);
+            console.error("[DEBUG image_write_file] SUCCESS wrote " + resolvedPath + " size=" + sizeKB + "KB");
+
+            log(agentId, '写入图片文件', '文件: ' + filename.trim() + ' | 大小: ' + sizeKB + ' KB', 'success');
+            return {
+              content: [{ type: 'text' as const, text: `图片文件已写入：output/${scopedProjectId}/images/${filename.trim()} (${sizeKB} KB)` }]
+            };
+          } catch (error: any) {
+            console.error("[DEBUG image_write_file] ERROR " + error.message);
+            return {
+              content: [{ type: 'text' as const, text: '写入图片文件失败：' + (error?.message || String(error)) }]
+            };
+          }
+        }
+      ),
+
+      tool(
+        'image_upload_file',
+        '将本地图片文件上传到 image service 容器目录（仅 engineer 可用）。从 output/{当前项目ID}/images/{filename} 读取文件，base64 编码后上传到 image service 对应 project。必须先调用 image_write_file 写入本地文件，再调用本工具上传。',
+        {
+          image_project_id: z.string().describe('image_project_id（来自 image_create_project 的返回值）'),
+          filename: z.string().min(1).max(128).describe('文件名（需与 image_write_file 写入的一致）'),
+        },
+        async ({ image_project_id, filename }) => {
+          validateAgentPermission(['engineer'], '上传图片文件');
+          if (!image_project_id || typeof image_project_id !== 'string') {
+            throw new Error('image_project_id 不能为空');
+          }
+          if (!filename || typeof filename !== 'string' || !filename.trim()) {
+            throw new Error('filename 不能为空');
+          }
+          if (filename.includes('/') || filename.includes('\\')) {
+            throw new Error('filename 不能包含路径分隔符');
+          }
+
+          console.error("[DEBUG image_upload_file] START projectId=" + scopedProjectId + " ip=" + image_project_id + " filename=" + filename);
+
+          const outputDir = path.resolve(_toolsDirname, '..', 'output', scopedProjectId);
+          const imagesDir = path.join(outputDir, 'images');
+          const localPath = path.resolve(imagesDir, filename.trim());
+
+          // 安全检查
+          if (!localPath.startsWith(imagesDir + path.sep) && localPath !== imagesDir) {
+            return {
+              content: [{ type: 'text' as const, text: '上传图片文件失败：路径越权。' }]
+            };
+          }
+
+          if (!fs.existsSync(localPath)) {
+            return {
+              content: [{ type: 'text' as const, text: `上传图片文件失败：本地文件不存在（${localPath}）。请先调用 image_write_file。` }]
+            };
+          }
+
+          try {
+            // 读取文件 → base64 编码
+            const buffer = fs.readFileSync(localPath);
+            const content = buffer.toString('base64');
+
+            const opts: UploadImageFileOptions = {
+              imageProjectId: image_project_id.trim(),
+              filename: filename.trim(),
+              content,
+              agentId,
+              logFn: log,
+            };
+            const { sizeBytes } = await uploadImageFile(opts);
+            const sizeKB = (sizeBytes / 1024).toFixed(1);
+            console.error("[DEBUG image_upload_file] SUCCESS uploaded " + filename + " size=" + sizeKB + "KB");
+            return {
+              content: [{ type: 'text' as const, text: `图片已上传到 image service：${filename} (${sizeKB} KB) -> project ${image_project_id}` }]
+            };
+          } catch (error: any) {
+            console.error("[DEBUG image_upload_file] ERROR " + error.message);
+            return {
+              content: [{ type: 'text' as const, text: '上传图片文件失败：' + (error?.message || String(error)) }]
+            };
+          }
+        }
+      ),
+
+      tool(
+        'image_download_file',
+        '从 image service 下载图片文件到 backend 本地 output 目录（仅 engineer 可用）。下载完成后应主动调用 image_delete_file 清理远程资源。',
+        {
+          image_project_id: z.string().describe('image_project_id'),
+          filename: z.string().min(1).max(128).describe('要下载的文件名'),
+        },
+        async ({ image_project_id, filename }) => {
+          if (!image_project_id || typeof image_project_id !== 'string') {
+            throw new Error('image_project_id 不能为空');
+          }
+          if (!filename || typeof filename !== 'string' || !filename.trim()) {
+            throw new Error('filename 不能为空');
+          }
+          const pathModule = await import('path');
+          const localOutputDir = pathModule.resolve(_toolsDirname, '..', 'output', scopedProjectId, 'images');
+          const opts: DownloadImageFileOptions = {
+            imageProjectId: image_project_id.trim(),
+            filename: filename.trim(),
+            localOutputDir,
+            agentId,
+            logFn: log,
+          };
+          const { localPath, sizeBytes } = await downloadImageFile(opts);
+          return {
+            content: [{
+              type: 'text' as const,
+              text: `文件已下载到：${localPath} (${sizeBytes} bytes)`,
+            }]
+          };
+        }
+      ),
+
+      tool(
+        'image_delete_file',
+        '删除 image service 远程图片文件（幂等）（仅 engineer 可用）。下载到本地后应先调用此工具删除远程文件以释放容器存储空间。',
+        {
+          image_project_id: z.string().describe('image_project_id'),
+          filename: z.string().min(1).max(128).describe('要删除的文件名'),
+        },
+        async ({ image_project_id, filename }) => {
+          if (!image_project_id || typeof image_project_id !== 'string') {
+            throw new Error('image_project_id 不能为空');
+          }
+          if (!filename || typeof filename !== 'string' || !filename.trim()) {
+            throw new Error('filename 不能为空');
+          }
+          const pathModule = await import('path');
+          const localOutputDir = pathModule.resolve(_toolsDirname, '..', 'output', scopedProjectId, 'images');
+          const opts: DeleteImageFileOptions = {
+            imageProjectId: image_project_id.trim(),
+            filename: filename.trim(),
+            localOutputDir,
+            agentId,
+            logFn: log,
+          };
+          await deleteImageFile(opts);
+          return {
+            content: [{ type: 'text' as const, text: `已删除图片文件：${filename}（远程 + 本地）` }]
+          };
+        }
+      ),
+
       // ---- Draw.io / 图表工具（全员可用）----
 
       tool(
@@ -1342,13 +2016,19 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
             agentId,
             logFn: log,
           };
-          const { dbId, drawioProjectId } = await createDrawioProject(opts);
-          return {
-            content: [{
-              type: 'text' as const,
-              text: `图表 project 已创建 (DB ID: ${dbId.slice(0, 8)}, drawio_project_id: ${drawioProjectId})，名称: ${name}`,
-            }]
-          };
+          try {
+            const { dbId, drawioProjectId } = await createDrawioProject(opts);
+            return {
+              content: [{
+                type: 'text' as const,
+                text: `图表 project 已创建 (DB ID: ${dbId.slice(0, 8)}, drawio_project_id: ${drawioProjectId})，名称: ${name}`,
+              }]
+            };
+          } catch (error: any) {
+            return {
+              content: [{ type: 'text' as const, text: `创建图表 project 失败：${error?.message || String(error)}` }]
+            };
+          }
         }
       ),
 

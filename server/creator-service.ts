@@ -39,21 +39,33 @@ export async function creatorFetch(path: string, init?: RequestInit): Promise<an
 
 export interface CreateBlenderProjectOptions {
   projectId: string;   // studio project id（闭包锚点）
-  blenderProjectId?: string;  // 可选，默认 uuidv4
   name: string;
   agentId: AgentRole;
   logFn?: (agentId: AgentRole, action: string, detail: string, level: 'info' | 'warn' | 'error' | 'success') => void;
 }
 
 export async function createBlenderProject(opts: CreateBlenderProjectOptions): Promise<{ dbId: string; blenderProjectId: string }> {
-  const { projectId, blenderProjectId: maybeBpId, name, agentId, logFn } = opts;
+  const { projectId, name, agentId, logFn } = opts;
   const log = logFn || (() => {});
   const now = new Date().toISOString();
-  const dbId = uuidv4();
-  const blenderProjectId = maybeBpId || uuidv4();
 
-  // 1. 在 backend DB 创建记录（blender_project_id 待填）
-  const record = db.createBlenderProject({
+  // 1. 调用 creator service 创建项目目录（微服务内部生成 project_id）
+  let blenderProjectId: string;
+  try {
+    const res = await creatorFetch('/api/projects', {
+      method: 'POST',
+    });
+    blenderProjectId = res?.project_id;
+    if (!blenderProjectId) {
+      throw new Error('creator service 未返回 project_id');
+    }
+  } catch (error: any) {
+    throw new Error(`创建建模 project 失败：${error?.message || String(error)}`);
+  }
+
+  // 2. 在 backend DB 创建记录
+  const dbId = uuidv4();
+  db.createBlenderProject({
     id: dbId,
     project_id: projectId,
     blender_project_id: blenderProjectId,
@@ -62,21 +74,8 @@ export async function createBlenderProject(opts: CreateBlenderProjectOptions): P
     updated_at: now,
   });
 
-  // 2. 调用 creator service 创建项目目录
-  try {
-    const res = await creatorFetch(`/api/projects/${blenderProjectId}`, {
-      method: 'POST',
-    });
-    const returnedId: string = res?.project_id || blenderProjectId;
-    if (returnedId !== blenderProjectId) {
-      db.updateBlenderProject(dbId, { blender_project_id: returnedId });
-    }
-    log(agentId, '创建建模 project', `id=${dbId}, blender_project_id=${returnedId}`, 'success');
-    return { dbId, blenderProjectId: returnedId };
-  } catch (error: any) {
-    db.deleteBlenderProject(dbId);
-    throw new Error(`创建建模 project 失败：${error?.message || String(error)}`);
-  }
+  log(agentId, '创建建模 project', `id=${dbId}, blender_project_id=${blenderProjectId}`, 'success');
+  return { dbId, blenderProjectId };
 }
 
 export function listBlenderProjects(projectId: string, limit = 20): db.DbBlenderProject[] {

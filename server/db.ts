@@ -321,6 +321,18 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_drawio_projects_project ON drawio_projects(project_id);
 
+  -- Image 图片处理项目表（关联 studio project 与 image service project）
+  CREATE TABLE IF NOT EXISTS image_projects (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL,
+    image_project_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_image_projects_project ON image_projects(project_id);
+
   -- 策划案附件表（关联策划案与 MinIO 存储文件）
   CREATE TABLE IF NOT EXISTS proposal_attachments (
     id TEXT PRIMARY KEY,
@@ -476,6 +488,15 @@ export interface DbDrawioProject {
   id: string;
   project_id: string;
   drawio_project_id: string;
+  name: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DbImageProject {
+  id: string;
+  project_id: string;
+  image_project_id: string;
   name: string;
   created_at: string;
   updated_at: string;
@@ -1580,6 +1601,68 @@ export function updateDrawioProject(id: string, updates: { drawio_project_id?: s
 
 export function deleteDrawioProject(id: string): boolean {
   const stmt = db.prepare('DELETE FROM drawio_projects WHERE id = ?');
+  const result = stmt.run(id);
+  return result.changes > 0;
+}
+
+// ============================================================================
+// ImageProject CRUD（图片 project，关联 studio project 与 image service）
+// ============================================================================
+
+export function getImageProjects(projectId: string): DbImageProject[] {
+  const stmt = db.prepare('SELECT * FROM image_projects WHERE project_id = ? ORDER BY created_at DESC');
+  return stmt.all(projectId) as DbImageProject[];
+}
+
+export function getImageProject(id: string): DbImageProject | null {
+  const stmt = db.prepare('SELECT * FROM image_projects WHERE id = ?');
+  const result = stmt.get(id) as DbImageProject | undefined;
+  return result ?? null;
+}
+
+export function createImageProject(data: {
+  id: string;
+  project_id: string;
+  image_project_id: string;
+  name: string;
+  created_at: string;
+  updated_at: string;
+}): DbImageProject {
+  const normalizedProjectId = normalizeAndValidateRequiredText(data.project_id, 'project_id');
+  const normalizedName = normalizeAndValidateRequiredText(data.name, 'name');
+  if (normalizedName.length > MAX_FILENAME_LENGTH) {
+    throw new Error(`name 长度不能超过 ${MAX_FILENAME_LENGTH}`);
+  }
+  const stmt = db.prepare(`
+    INSERT INTO image_projects (id, project_id, image_project_id, name, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `);
+  stmt.run(data.id, normalizedProjectId, data.image_project_id, normalizedName, data.created_at, data.updated_at);
+  return {
+    ...data,
+    project_id: normalizedProjectId,
+    name: normalizedName,
+  };
+}
+
+export function updateImageProject(id: string, updates: { image_project_id?: string }): boolean {
+  const fields: string[] = [];
+  const values: any[] = [];
+  if (updates.image_project_id !== undefined) {
+    fields.push('image_project_id = ?');
+    values.push(updates.image_project_id);
+  }
+  if (fields.length === 0) return false;
+  fields.push('updated_at = ?');
+  values.push(new Date().toISOString());
+  values.push(id);
+  const stmt = db.prepare(`UPDATE image_projects SET ${fields.join(', ')} WHERE id = ?`);
+  const result = stmt.run(...values);
+  return result.changes > 0;
+}
+
+export function deleteImageProject(id: string): boolean {
+  const stmt = db.prepare('DELETE FROM image_projects WHERE id = ?');
   const result = stmt.run(id);
   return result.changes > 0;
 }

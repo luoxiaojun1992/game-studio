@@ -21,13 +21,15 @@
 | SPEC-005 | H5 小游戏工程规范 | [game-framework-spec/H5_GAME_ENGINEERING_FRAMEWORK.md](game-framework-spec/H5_GAME_ENGINEERING_FRAMEWORK.md) | 已实现 |
 | SPEC-006 | 游戏成品提交与 Lint 功能变更计划 | [game-submission-lint-change-plan.md](game-submission-lint-change-plan.md) | 已实现 |
 | SPEC-007 | 基于问卷的游戏策划案提交功能规范 | [questionnaire-proposal.md](questionnaire-proposal.md) | 已实现 |
-| SPEC-008 | ImageMagick 图片处理微服务规范 | [image-service.md](image-service.md) | 设计中 |
+| SPEC-008 | ImageMagick 图片处理微服务规范 | [image-service.md](image-service.md) | 已实现 |
 | SPEC-009 | FFmpeg 视频处理微服务规范 | [video-service.md](video-service.md) | 设计中 |
 | SPEC-010 | Phaser Mobile 游戏工程规范 | [game-framework-spec/PHASER_MOBILE_GAME_ENGINEERING_FRAMEWORK.md](game-framework-spec/PHASER_MOBILE_GAME_ENGINEERING_FRAMEWORK.md) | 已实现 |
 | SPEC-011 | 游戏打包微服务规范 | [build-service.md](build-service.md) | 设计中 |
 | SPEC-012 | 游戏运行微服务规范 | [run-service.md](run-service.md) | 设计中 |
 | SPEC-013 | 游戏测试微服务规范 | [test-service.md](test-service.md) | 设计中 |
 | SPEC-014 | GitHub Actions CI Agent 规范 | [github-ci-agent.md](github-ci-agent.md) | 已实现 |
+| SPEC-015 | Creator (Blender) 建模微服务规范 | [creator-service.md](creator-service.md) | 已实现 |
+| SPEC-016 | Draw.io 图表微服务规范 | [drawio-service.md](drawio-service.md) | 已实现 |
 
 ---
 
