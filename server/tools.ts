@@ -69,6 +69,7 @@ import {
   imageGetInfo,
   imageBatch,
   imageSpriteSheet,
+  uploadImageFile,
   downloadImageFile,
   deleteImageFile,
   type CreateImageProjectOptions,
@@ -84,6 +85,7 @@ import {
   type ImageColorAdjustOptions,
   type ImageBatchOptions,
   type ImageSpriteSheetOptions,
+  type UploadImageFileOptions,
   type DownloadImageFileOptions,
   type DeleteImageFileOptions,
 } from './image-service.js';
@@ -1794,6 +1796,43 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           const output = await imageSpriteSheet(opts);
           return {
             content: [{ type: 'text' as const, text: `精灵图已创建：${output_filename} (${columns}x${rows})。${output}` }]
+          };
+        }
+      ),
+
+      tool(
+        'image_write_file',
+        '将图片文件上传到 image service 项目容器目录（仅 engineer 可用）。接受 base64 编码的图片内容，工具内部将 base64 还原为二进制图片后上传到 image service。必须先调用 image_create_project 创建 project。',
+        {
+          image_project_id: z.string().describe('image_project_id（来自 image_create_project 的返回值）'),
+          filename: z.string().min(1).max(128).describe('文件名（如 background_raw.png、ui_sprite.png）'),
+          content: z.string().min(1).describe('base64 编码的图片内容'),
+        },
+        async ({ image_project_id, filename, content }) => {
+          if (!image_project_id || typeof image_project_id !== 'string') {
+            throw new Error('image_project_id 不能为空');
+          }
+          if (!filename || typeof filename !== 'string' || !filename.trim()) {
+            throw new Error('filename 不能为空');
+          }
+          if (!content || typeof content !== 'string') {
+            throw new Error('content 不能为空');
+          }
+          // 文件名安全校验（禁止路径分隔符）
+          if (filename.includes('/') || filename.includes('\\')) {
+            throw new Error('filename 不能包含路径分隔符');
+          }
+          const opts: UploadImageFileOptions = {
+            imageProjectId: image_project_id.trim(),
+            filename: filename.trim(),
+            content,
+            agentId,
+            logFn: log,
+          };
+          const { sizeBytes } = await uploadImageFile(opts);
+          const sizeKB = (sizeBytes / 1024).toFixed(1);
+          return {
+            content: [{ type: 'text' as const, text: `图片已上传：${filename} (${sizeKB} KB) -> image project ${image_project_id}` }]
           };
         }
       ),

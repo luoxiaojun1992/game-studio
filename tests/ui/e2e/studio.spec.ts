@@ -506,6 +506,66 @@ const runFullWorkflowTest = async (
     });
     log('mocks:image-create-project-queued');
 
+    // 生成最小 PNG base64（1x1 红色像素）作为测试图片
+    const tinyPngB64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==';
+
+    log('mocks:image-write-bg-raw', { projectId });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在上传原始背景图...',
+      toolCalls: [{
+        name: 'image_write_file',
+        arguments: {
+          image_project_id: 'img-proj-001',
+          filename: 'background_raw.png',
+          content: tinyPngB64,
+        }
+      }]
+    });
+    log('mocks:image-write-bg-raw-queued');
+
+    log('mocks:image-write-ui-sprite', { projectId });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在上传UI精灵素材...',
+      toolCalls: [{
+        name: 'image_write_file',
+        arguments: {
+          image_project_id: 'img-proj-001',
+          filename: 'ui_sprite.png',
+          content: tinyPngB64,
+        }
+      }]
+    });
+    log('mocks:image-write-ui-sprite-queued');
+
+    // 上传额外的小图标用于精灵图
+    log('mocks:image-write-icon-a', { projectId });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在上传图标素材...',
+      toolCalls: [{
+        name: 'image_write_file',
+        arguments: {
+          image_project_id: 'img-proj-001',
+          filename: 'icon_a.png',
+          content: tinyPngB64,
+        }
+      }]
+    });
+    log('mocks:image-write-icon-a-queued');
+
+    log('mocks:image-write-icon-b', { projectId });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在上传图标素材...',
+      toolCalls: [{
+        name: 'image_write_file',
+        arguments: {
+          image_project_id: 'img-proj-001',
+          filename: 'icon_b.png',
+          content: tinyPngB64,
+        }
+      }]
+    });
+    log('mocks:image-write-icon-b-queued');
+
     log('mocks:image-info-query', { projectId });
     await setMockExpectation(projectId, 'engineer', {
       content: '正在查询图片信息...',

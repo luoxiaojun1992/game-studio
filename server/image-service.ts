@@ -463,6 +463,32 @@ export async function imageSpriteSheet(opts: ImageSpriteSheetOptions): Promise<s
 
 export { IMAGE_SERVICE_URL };
 
+// ---------------------------------------------------------------------------
+// 文件上传（base64 → image service 项目目录）
+// ---------------------------------------------------------------------------
+
+export interface UploadImageFileOptions {
+  imageProjectId: string;
+  filename: string;
+  content: string;        // base64 编码的图片内容
+  agentId: AgentRole;
+  logFn?: (agentId: AgentRole, action: string, detail: string, level: 'info' | 'warn' | 'error' | 'success') => void;
+}
+
+export async function uploadImageFile(opts: UploadImageFileOptions): Promise<{ sizeBytes: number }> {
+  const { imageProjectId: ipId, filename, content, agentId, logFn } = opts;
+  const log = logFn || (() => {});
+
+  const res = await imageFetch(`/api/files/${ipId}/${encodeURIComponent(filename.trim())}`, {
+    method: 'POST',
+    body: JSON.stringify({ content }),
+  });
+
+  const sizeBytes = res?.size_bytes || 0;
+  log(agentId, '上传图片文件', `${filename} -> image-project=${ipId}, size=${sizeBytes}`, 'success');
+  return { sizeBytes };
+}
+
 export interface DownloadImageFileOptions {
   imageProjectId: string;
   filename: string;

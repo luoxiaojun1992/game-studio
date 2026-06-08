@@ -481,7 +481,7 @@ class AgentManager extends EventEmitter {
         'image_resize', 'image_crop', 'image_convert', 'image_compress',
         'image_watermark', 'image_composite', 'image_flip_rotate',
         'image_add_margin', 'image_color_adjust', 'image_info',
-        'image_batch', 'image_sprite_sheet', 'image_download_file', 'image_delete_file',
+        'image_batch', 'image_sprite_sheet', 'image_write_file', 'image_download_file', 'image_delete_file',
         'get_game_types', 'get_game_framework_spec', 'get_common_spec',
       ];
 
@@ -525,6 +525,7 @@ class AgentManager extends EventEmitter {
         'image_info',
         'image_batch',
         'image_sprite_sheet',
+        'image_write_file',
         'image_download_file',
         'image_delete_file',
       ]);

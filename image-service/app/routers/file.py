@@ -1,13 +1,15 @@
 """
-File management routes (list / download / delete image files).
+File management routes (list / download / upload / delete image files).
 """
+import base64
 import os
 from datetime import datetime
 from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import FileResponse, JSONResponse
+from pydantic import BaseModel, Field, field_validator
 
 from app.safe_path import resolve_safe_path
-from app.schemas import FileItem, FileListResponse, _validate_project_id
+from app.schemas import FileItem, FileListResponse, _validate_project_id, _validate_filename
 
 router = APIRouter(prefix="/api/files", tags=["files"])
 
@@ -90,6 +92,59 @@ async def download_file(project_id: str, filename: str) -> FileResponse:
         filename=filename,
         media_type=media_type,
     )
+
+
+@router.post(
+    "/{project_id}/{filename}",
+    status_code=status.HTTP_201_CREATED,
+    summary="Upload an image file (base64 encoded)",
+)
+async def upload_file(project_id: str, filename: str, body: dict) -> dict:
+    """
+    Upload a file to the project directory.
+
+    Request body:
+        - content (str): Base64-encoded file content
+        - content_type (str, optional): MIME type hint (e.g. 'image/png')
+
+    The file is decoded from base64 and written to the project directory.
+    """
+    validated_pid = _validate_project_id(project_id)
+    project_path = _project_path(validated_pid)
+    if not os.path.isdir(project_path):
+        raise HTTPException(status_code=404, detail=f"Project not found: {project_id}")
+
+    content_b64 = body.get("content", "")
+    if not content_b64:
+        raise HTTPException(status_code=400, detail="Missing required field: content (base64)")
+
+    # Validate filename
+    _validate_filename(filename)
+    safe_path = _safe_join(project_path, filename)
+
+    # Decode base64 and write
+    try:
+        raw_bytes = base64.b64decode(content_b64)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid base64 content: {str(e)}")
+
+    # Size limit: 50MB
+    max_size = 50 * 1024 * 1024
+    if len(raw_bytes) > max_size:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File too large: {len(raw_bytes)} bytes (max {max_size} bytes)"
+        )
+
+    with open(safe_path, "wb") as f:
+        f.write(raw_bytes)
+
+    return {
+        "success": True,
+        "filename": filename,
+        "size_bytes": len(raw_bytes),
+        "message": f"File uploaded: {filename} ({len(raw_bytes)} bytes)",
+    }
 
 
 @router.delete(

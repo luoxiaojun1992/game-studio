@@ -116,6 +116,7 @@ const TOOLS_OVERVIEW = `
 | \`image_info\` | 获取图片元信息（尺寸/格式/色彩空间等） | **engineer** |
 | \`image_batch\` | 批量处理多个图片 | **engineer** |
 | \`image_sprite_sheet\` | 将多张图片拼合成精灵图（sprite sheet） | **engineer** |
+| \`image_write_file\` | 上传图片文件到 image service（base64 编码，工具内部还原为二进制） | **engineer** |
 | \`image_download_file\` | 从 image service 下载图片文件到本地 output 目录 | **engineer** |
 | \`image_delete_file\` | 删除 image service 远程图片文件（幂等） | **engineer** |
 | \`get_game_types\` | 获取所有已注册的游戏类型列表（开发前确认支持的游戏类型） | **engineer** |
@@ -239,10 +240,15 @@ export const AGENT_DEFINITIONS: Record<AgentRole, AgentDefinition> = {
 
 图片处理工作流示例：
 1. \`image_create_project\` 创建 project
-2. 使用 \`write_game_file\` 上传素材图片到 image service project 目录（写入 /app/output/{projectId}/images/ 后，通过 download 工具上传到容器）
-3. 调用 \`image_resize\` 等工具处理图片
+2. \`image_write_file\` 上传素材图片（base64 编码，如 PNG/JPG）到 image service 容器目录
+3. 调用 \`image_resize\` / \`image_convert\` 等工具处理图片
 4. \`image_download_file\` 将处理后的图片下载到 games/latest/assets/
 5. \`image_delete_project\` 清理容器资源
+
+\`image_write_file\` 参数说明：
+- \`image_project_id\`：目标 project ID
+- \`filename\`：文件名（如 background_raw.png），禁止路径分隔符
+- \`content\`：base64 编码的图片二进制数据
 
 重要：实现前仍需遵守方案审批流程；但成品完成后必须主动调用工具提交产物。
 
