@@ -1,0 +1,22 @@
+{
+  "title": "微服务星型架构",
+  "subtitle": "Studio Backend 居中调度 · 8 个微服务协同",
+  "center": {
+    "name": "Studio Backend",
+    "icon": "🖥️",
+    "details": ["Express · SQLite · SSE", "Port 3000 · 统一调度"],
+    "color": "#3b82f6"
+  },
+  "services": [
+    {"name": "Creator",   "icon": "🧊", "label": "Blender 3D · 已实现", "color": "#3b82f6"},
+    {"name": "DrawIO",    "icon": "📐", "label": "Draw.io · 已实现", "color": "#10b981"},
+    {"name": "Image",     "icon": "🖼️", "label": "ImageMagick · 已实现", "color": "#f59e0b"},
+    {"name": "Video",     "icon": "🎬", "label": "FFmpeg · Spec", "color": "#ef4444"},
+    {"name": "SonarQube", "icon": "🔍", "label": "代码质量 · 已实现", "color": "#8b5cf6"},
+    {"name": "Build",     "icon": "📦", "label": "打包构建 · Spec", "color": "#06b6d4"},
+    {"name": "Run",       "icon": "▶️", "label": "游戏运行 · Spec", "color": "#14b8a6"},
+    {"name": "Test",      "icon": "🧪", "label": "自动化测试 · Spec", "color": "#a855f7"}
+  ],
+  "animation_speed_ms": 400,
+  "pulse_interval_ms": 2000
+}
