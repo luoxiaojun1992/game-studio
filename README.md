@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./docs/images/brand/logo.svg" alt="Game Dev Studio" width="120" />
+</p>
+
 # Game Dev Studio
 
 [中文文档 (Chinese)](./README.zh-CN.md)
