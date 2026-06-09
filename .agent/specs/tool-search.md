@@ -129,7 +129,7 @@ export const TOOL_META_DEFINITIONS: ToolMeta[] = [
 
 ```typescript
 export function createStudioToolsServer(...): SdkMcpServerResult {
-  // AGENT_ID_ENUM 已提至模块级别，此处不再定义
+  // AGENT_ID_ENUM 已提至模块级别，供 create_handoff / split_dev_test_tasks / get_proposals / get_pending_handoffs 的 schema 共用枚举校验
 
   // 将元数据列表转为 lookup map，方便按 name 定位
   const toolMetaMap = new Map(TOOL_META_DEFINITIONS.map(m => [m.name, m]));
@@ -257,7 +257,7 @@ export interface ToolMeta<Schema extends AnyZodRawShape = AnyZodRawShape> {
 
 | 风险 | 结论 | 对策 |
 |------|------|------|
-| R1: `inputSchema` 中使用了局部变量 `AGENT_ID_ENUM` | ✅ 已解决 | `AGENT_ID_ENUM = z.enum(AGENT_IDS)`，依赖链全为模块级常量（`AGENT_IDS` 从 `./agents.js` import）。直接移至 import 区下方定义即可。 |
+| R1: `inputSchema` 中使用了局部变量 `AGENT_ID_ENUM` | ✅ 已解决 | 保留 `AGENT_ID_ENUM = z.enum(AGENT_IDS)` 枚举校验，提至模块级（`AGENT_IDS` 为静态 import）。4 个依赖 tool（`create_handoff`、`split_dev_test_tasks`、`get_proposals`、`get_pending_handoffs`）的 schema 继续引用，`get_agents` 提供 agent ID 查询能力，枚举值与 `get_agents` 返回的 id 对齐。 |
 | R2: `get_game_framework_spec` 的 schema 使用 IIFE 动态生成 enum | ✅ 已解决 | 已有 `get_game_types` 工具供 agent 获取 game type 列表，schema 改用 `z.string()` 即可。Agent 先调 `get_game_types`，再拿着结果调 `get_game_framework_spec`。Handler 中"未找到"的返回已覆盖无效类型，无需 SDK 层 enum 校验。`TOOL_META_DEFINITIONS` 保持纯静态数组。 |
 | R3: 某些 inputSchema 使用了自定义 transformer（如 `singleLineTitleSchema`） | — | 这些 transformer 是纯函数，在函数外部可以用；不需要依赖作用域内的变量 |
 | R4: 重构后 handler 的闭包依赖 | — | handler 继续在 `createStudioToolsServer()` 内部定义，对 `scopedProjectId` / `agentId` 等变量的访问不变——重构不影响 handler 的逻辑 |
