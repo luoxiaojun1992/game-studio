@@ -213,6 +213,26 @@ Main endpoints (prefix `/api`):
 
 See [DEVELOPMENT.md](./docs/DEVELOPMENT.md).
 
+## Roadmap
+
+Based on [technical specs](./.agent/specs/INDEX.md):
+
+| Spec | Feature | Status |
+|------|---------|--------|
+| SPEC-001 | XSS sanitization for proposal content | ✅ Implemented |
+| SPEC-002~005 | Game Engineering Framework — H5 (common spec, tools, checker) | ✅ Implemented |
+| SPEC-006 | Game submission lint pipeline redesign | ✅ Implemented |
+| SPEC-007 | Questionnaire-based game design proposal | ✅ Implemented |
+| SPEC-008 | ImageMagick image processing microservice | ✅ Implemented |
+| SPEC-009 | FFmpeg video processing microservice (in-game video for engineer agent) | 🚧 In Design |
+| SPEC-010 | Phaser Mobile game engineering spec | ✅ Implemented |
+| SPEC-011 | Game build microservice | 🚧 In Design |
+| SPEC-012 | Game run/serving microservice | 🚧 In Design |
+| SPEC-013 | Playwright game testing microservice | 🚧 In Design |
+| SPEC-014 | GitHub Actions CI Agent | ✅ Implemented |
+| SPEC-015 | Creator (Blender) modeling microservice | ✅ Implemented |
+| SPEC-016 | Draw.io diagram microservice | ✅ Implemented |
+
 ## Architecture Documentation
 
 See [ARCHITECTURE.md](./docs/ARCHITECTURE.md).

@@ -216,8 +216,25 @@ game-studio/
 
 详见 [ARCHITECTURE.zh-CN.md](./docs/ARCHITECTURE.zh-CN.md)。
 
+## 路线图
 
-## UI 测试
+基于 [技术规范](./.agent/specs/INDEX.md)：
+
+| Spec | 功能 | 状态 |
+|------|------|------|
+| SPEC-001 | 提案内容 XSS 安全过滤 | ✅ 已实现 |
+| SPEC-002~005 | 游戏工程框架 — H5（公共规范、工具、检查器） | ✅ 已实现 |
+| SPEC-006 | 游戏提交 Lint 管道重构 | ✅ 已实现 |
+| SPEC-007 | 基于问卷的游戏策划案提交 | ✅ 已实现 |
+| SPEC-008 | ImageMagick 图片处理微服务 | ✅ 已实现 |
+| SPEC-009 | FFmpeg 视频处理微服务（供 engineer agent 制作游戏中视频素材） | 🚧 设计中 |
+| SPEC-010 | Phaser Mobile 游戏工程规范 | ✅ 已实现 |
+| SPEC-011 | 游戏构建微服务 | 🚧 设计中 |
+| SPEC-012 | 游戏运行/伺服微服务 | 🚧 设计中 |
+| SPEC-013 | Playwright 游戏测试微服务 | 🚧 设计中 |
+| SPEC-014 | GitHub Actions CI Agent | ✅ 已实现 |
+| SPEC-015 | Creator (Blender) 建模微服务 | ✅ 已实现 |
+| SPEC-016 | Draw.io 图表微服务 | ✅ 已实现 |
 
 ```bash
 # 推荐：使用 Makefile 运行 UI 测试（构建 + 启动）
