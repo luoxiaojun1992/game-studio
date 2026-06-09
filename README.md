@@ -213,6 +213,40 @@ Main endpoints (prefix `/api`):
 
 See [DEVELOPMENT.md](./docs/DEVELOPMENT.md).
 
+## Roadmap
+
+> 基于技术规范索引 [.agent/specs/INDEX.md](./.agent/specs/INDEX.md)，以下是正在设计和规划中的功能。
+
+### 游戏工程全流程管线 (Game Engineering Pipeline)
+
+四个微服务串联形成完整的 **构建 → 运行 → 测试** 闭环，辅以视频服务支持宣传内容制作。
+
+```
+游戏源码 ──→ [Build Service] ──→ [Run Service] ──→ [Test Service]
+                                       ↑
+                                 [Video Service] (宣传素材)
+```
+
+| Spec | 服务 | 说明 | 端口 |
+|------|------|------|------|
+| [SPEC-009](./.agent/specs/video-service.md) | Video Service | FFmpeg 视频处理：宣传片剪辑、GIF 转换、帧提取、缩略图等 17 个操作 | 8084 |
+| [SPEC-011](./.agent/specs/build-service.md) | Build Service | 游戏源码自动化构建，支持 H5 / Phaser Mobile 两种打包策略 | 8085 |
+| [SPEC-012](./.agent/specs/run-service.md) | Run Service | Nginx 统一静态文件伺服 + FastAPI 管理 API，按 project_id 隔离 | 8086 / 8087 |
+| [SPEC-013](./.agent/specs/test-service.md) | Test Service | Playwright 自动化游戏测试，自动注入运行环境，生成文本+截图报告 | 8088 |
+
+### 已实现 (Completed)
+
+共 12 项 spec 已实现，包括：
+
+- **安全** — 提案内容 XSS 过滤 (SPEC-001)
+- **游戏工程框架** — H5 (SPEC-002~005) + Phaser Mobile (SPEC-010) 规范体系，含 checker、MCP 工具
+- **Lint 管道** — 游戏提交 Lint 检查重构 (SPEC-006)
+- **策划案** — 基于问卷的结构化游戏策划案提交 (SPEC-007)
+- **微服务** — ImageMagick 图片处理 (SPEC-008)、Blender 3D 建模 (SPEC-015)、Draw.io 图表 (SPEC-016)
+- **CI/CD** — GitHub Actions CI Agent (SPEC-014)
+
+详见 [.agent/specs/INDEX.md](./.agent/specs/INDEX.md)。
+
 ## Architecture Documentation
 
 See [ARCHITECTURE.md](./docs/ARCHITECTURE.md).
