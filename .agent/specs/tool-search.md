@@ -129,7 +129,7 @@ export const TOOL_META_DEFINITIONS: ToolMeta[] = [
 
 ```typescript
 export function createStudioToolsServer(...): SdkMcpServerResult {
-  // ... 现有初始化代码（validateAgentPermission、AGENT_ID_ENUM 等）不变 ...
+  // AGENT_ID_ENUM 已提至模块级别，此处不再定义
 
   // 将元数据列表转为 lookup map，方便按 name 定位
   const toolMetaMap = new Map(TOOL_META_DEFINITIONS.map(m => [m.name, m]));
@@ -253,18 +253,18 @@ export interface ToolMeta<Schema extends AnyZodRawShape = AnyZodRawShape> {
 | 元数据中是否含 handler 依赖 | **不含**。name/description/inputSchema 均为静态值，不依赖 `createStudioToolsServer()` 的作用域 |
 | `TOOL_META_DEFINITIONS` 导出后权限系统可用 | ✅ `agent-manager.ts` 已 import `createStudioToolsServer`，可同时 import `TOOL_META_DEFINITIONS` |
 
-### 已知风险
+### 已知风险与对策
 
-| 风险 | 缓解 |
-|------|------|
-| R1: `inputSchema` 中使用了局部变量（如 `AGENT_ID_ENUM`） | `AGENT_ID_ENUM`（第 163 行）依赖 `AGENT_IDS`（import from agents.js），非 `createStudioToolsServer()` 局部变量。如需在函数外部定义元数据，需把 `AGENT_ID_ENUM` 也提到函数外部或用 `z.enum(AGENT_IDS)` 直接替代 |
-| R2: `get_game_framework_spec` 的 schema 使用 IIFE 动态生成 | 该 tool（第 2346 行）的 inputSchema 通过 `(() => { ... })()` 动态从 DB 拉取 game types 生成 enum。解决方案：元数据中仅存 `{ game_type: z.string().describe('游戏类型') }`（不限定 enum），或者在 `ToolMeta` 中标记此 schema 为"运行时生成"，search_tools 返回描述即可 |
-| R3: 某些 inputSchema 使用了自定义 transformer（如 `singleLineTitleSchema`） | 这些 transformer 是纯函数，在函数外部可以用；不需要依赖作用域内的变量 |
-| R4: 重构后 handler 的闭包依赖 | handler 继续在 `createStudioToolsServer()` 内部定义，对 `scopedProjectId` / `agentId` 等变量的访问不变——重构不影响 handler 的逻辑 |
+| 风险 | 结论 | 对策 |
+|------|------|------|
+| R1: `inputSchema` 中使用了局部变量 `AGENT_ID_ENUM` | ✅ 已解决 | `AGENT_ID_ENUM = z.enum(AGENT_IDS)`，依赖链全为模块级常量（`AGENT_IDS` 从 `./agents.js` import）。直接移至 import 区下方定义即可。 |
+| R2: `get_game_framework_spec` 的 schema 使用 IIFE 动态生成 enum | ✅ 已解决 | 已有 `get_game_types` 工具供 agent 获取 game type 列表，schema 改用 `z.string()` 即可。Agent 先调 `get_game_types`，再拿着结果调 `get_game_framework_spec`。Handler 中"未找到"的返回已覆盖无效类型，无需 SDK 层 enum 校验。`TOOL_META_DEFINITIONS` 保持纯静态数组。 |
+| R3: 某些 inputSchema 使用了自定义 transformer（如 `singleLineTitleSchema`） | — | 这些 transformer 是纯函数，在函数外部可以用；不需要依赖作用域内的变量 |
+| R4: 重构后 handler 的闭包依赖 | — | handler 继续在 `createStudioToolsServer()` 内部定义，对 `scopedProjectId` / `agentId` 等变量的访问不变——重构不影响 handler 的逻辑 |
 
 ### 结论
 
-**方案可行**。核心原因是 `tool()` 的前三个参数（name、description、inputSchema）都是静态值，不依赖 `createStudioToolsServer()` 的作用域，可以安全提取到函数外部。
+**方案可行，所有已知风险已解决**。核心原因是 `tool()` 的前三个参数（name、description、inputSchema）都是静态值或可转为静态值，不依赖 `createStudioToolsServer()` 的作用域，可以安全提取到函数外部。
 
 ## 相关文件
 
