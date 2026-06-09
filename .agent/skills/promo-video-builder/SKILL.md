@@ -19,7 +19,10 @@ Full pipeline: CI artifacts → video composition → voiceover → BGM → expo
 Phase 1: Asset Collection
   ├── GH API → download allure-report artifact → extract video.webm
   ├── Project screenshots (docs/images/*.png)
-  └── Demo HTML/Canvas animations → record via Playwright
+  └── Generate demo HTMLs from project config → record via Playwright
+      ├── gen_arch_html.py -c arch-config.json → demo-architecture.html
+      ├── gen_pipeline_html.py -c pipeline-config.json → demo-pipeline.html
+      └── gen_logo_html.py -c logo-config.json → brand-logo.html
 
 Phase 2: Audio Generation
   ├── edge-tts → per-chapter Chinese voiceover (zh-CN-YunyangNeural, rate=-12%)
@@ -85,11 +88,86 @@ This script decodes both voiceover and BGM to 48000Hz mono WAV, mixes sample-by-
 
 **Usage**: `python3 mix_audio.py vo_aligned.mp3 bgm.mp3 output.aac`
 
+### `scripts/gen_arch_html.py` — Architecture Diagram Generator
+
+Generates a star-topology architecture diagram as HTML. The center hub + surrounding
+service nodes with animated connection lines that light up sequentially.
+
+```bash
+# Use default Game Dev Studio config
+python3 gen_arch_html.py -o demo-architecture.html
+
+# Use custom project config
+python3 gen_arch_html.py -c my-arch-config.json -o demo-architecture.html
+```
+
+Configurable via JSON:
+- `title`, `subtitle` — diagram headings
+- `center` — hub node (name, icon, details, color)
+- `services[]` — list of service nodes (name, icon, label, color)
+- `animation_speed_ms` — line lighting interval
+
+See `examples/arch-config.json` for the full schema.
+
+Supports 1–8 service nodes (pre-computed 8-point circle layout).
+
+### `scripts/gen_pipeline_html.py` — Pipeline/Flow Diagram Generator
+
+Generates a horizontal pipeline flow diagram with animated stage highlighting.
+
+```bash
+python3 gen_pipeline_html.py -c my-pipeline-config.json -o demo-pipeline.html
+```
+
+Configurable:
+- `stages[]` — process steps (name, icon)
+- `metrics[]` — optional KPI cards
+- `show_preview` — include before/after canvas previews
+- `animation_interval_ms` — stage advance speed
+
+### `scripts/gen_logo_html.py` — Brand Logo Generator
+
+Generates a brand logo animation page with shield, glow ring, sparkles, and gradient title.
+
+```bash
+python3 gen_logo_html.py --title "My Project" --subtitle "Powered by AI" -o brand-logo.html
+```
+
+Configurable:
+- `title`, `subtitle`, `subtitle_cn` — text content
+- `theme_color`, `accent_color`, `secondary_color` — brand colors
+
 ### `scripts/record_demos.cjs` — Demo Recording
 
 Records HTML/Canvas pages at 1920×1080 using Playwright + system Chrome. Outputs H.264 MP4.
 
 **Usage**: `node record_demos.cjs`
+
+Edit the `DEMOS` array to add auto-generated HTML pages:
+
+## Demo HTML Generation Workflow
+
+Generate parameterized HTML animations for your project, then record them with Playwright:
+
+```bash
+# Step 1: Create config files for your project's services/pipeline
+
+# Architecture diagram (star topology with your microservices)
+python3 scripts/gen_arch_html.py -c examples/arch-config.json -o demo-architecture.html
+
+# Pipeline flow (your build/deploy/processing pipeline)  
+python3 scripts/gen_pipeline_html.py -c examples/pipeline-config.json -o demo-pipeline.html
+
+# Brand logo (your project name and colors)
+python3 scripts/gen_logo_html.py -c examples/logo-config.json -o brand-logo.html
+
+# Step 2: Edit record_demos.cjs DEMOS array to include generated files
+
+# Step 3: Record all HTML pages as MP4
+node scripts/record_demos.cjs
+```
+
+The HTML generators accept JSON config so different projects can reuse them without code changes. Edit `examples/*-config.json` with your project's service names, pipeline nodes, and brand colors.
 
 ## Critical Pitfalls
 

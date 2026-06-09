@@ -1,0 +1,22 @@
+{
+  "title": "ImageMagick 图片处理管线",
+  "subtitle": "AI Agent 驱动的自动化图片处理微服务",
+  "theme_color": "#3b82f6",
+  "stages": [
+    {"name": "上传原图", "icon": "📤"},
+    {"name": "缩放裁切", "icon": "📐"},
+    {"name": "压缩优化", "icon": "🗜️"},
+    {"name": "添加水印", "icon": "💧"},
+    {"name": "图层合成", "icon": "🎨"},
+    {"name": "格式转换", "icon": "🔄"},
+    {"name": "下载到游戏", "icon": "📥"}
+  ],
+  "metrics": [
+    {"value": "-87%", "label": "体积缩减"},
+    {"value": "6.5x", "label": "加载提速"},
+    {"value": "17", "label": "工具数量"},
+    {"value": "100%", "label": "自动化"}
+  ],
+  "show_preview": false,
+  "animation_interval_ms": 800
+}
