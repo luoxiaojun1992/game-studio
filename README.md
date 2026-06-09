@@ -215,37 +215,23 @@ See [DEVELOPMENT.md](./docs/DEVELOPMENT.md).
 
 ## Roadmap
 
-> 基于技术规范索引 [.agent/specs/INDEX.md](./.agent/specs/INDEX.md)，以下是正在设计和规划中的功能。
+Based on [technical specs](./.agent/specs/INDEX.md):
 
-### 游戏工程全流程管线 (Game Engineering Pipeline)
-
-四个微服务串联形成完整的 **构建 → 运行 → 测试** 闭环，辅以视频服务支持 engineer agent 制作游戏中视频素材。
-
-```
-游戏源码 ──→ [Build Service] ──→ [Run Service] ──→ [Test Service]
-                                       ↑
-                                 [Video Service] (游戏中视频)
-```
-
-| Spec | 服务 | 说明 | 端口 |
-|------|------|------|------|
-| [SPEC-009](./.agent/specs/video-service.md) | Video Service | FFmpeg 视频处理，供 engineer agent 制作游戏中视频素材（剪辑、转场、特效、字幕等 17 个操作） | 8084 |
-| [SPEC-011](./.agent/specs/build-service.md) | Build Service | 游戏源码自动化构建，支持 H5 / Phaser Mobile 两种打包策略 | 8085 |
-| [SPEC-012](./.agent/specs/run-service.md) | Run Service | Nginx 统一静态文件伺服 + FastAPI 管理 API，按 project_id 隔离 | 8086 / 8087 |
-| [SPEC-013](./.agent/specs/test-service.md) | Test Service | Playwright 自动化游戏测试，自动注入运行环境，生成文本+截图报告 | 8088 |
-
-### 已实现 (Completed)
-
-共 12 项 spec 已实现，包括：
-
-- **安全** — 提案内容 XSS 过滤 (SPEC-001)
-- **游戏工程框架** — H5 (SPEC-002~005) + Phaser Mobile (SPEC-010) 规范体系，含 checker、MCP 工具
-- **Lint 管道** — 游戏提交 Lint 检查重构 (SPEC-006)
-- **策划案** — 基于问卷的结构化游戏策划案提交 (SPEC-007)
-- **微服务** — ImageMagick 图片处理 (SPEC-008)、Blender 3D 建模 (SPEC-015)、Draw.io 图表 (SPEC-016)
-- **CI/CD** — GitHub Actions CI Agent (SPEC-014)
-
-详见 [.agent/specs/INDEX.md](./.agent/specs/INDEX.md)。
+| Spec | Feature | Status |
+|------|---------|--------|
+| SPEC-001 | XSS sanitization for proposal content | ✅ Implemented |
+| SPEC-002~005 | Game Engineering Framework — H5 (common spec, tools, checker) | ✅ Implemented |
+| SPEC-006 | Game submission lint pipeline redesign | ✅ Implemented |
+| SPEC-007 | Questionnaire-based game design proposal | ✅ Implemented |
+| SPEC-008 | ImageMagick image processing microservice | ✅ Implemented |
+| SPEC-009 | FFmpeg video processing microservice (in-game video for engineer agent) | 🚧 In Design |
+| SPEC-010 | Phaser Mobile game engineering spec | ✅ Implemented |
+| SPEC-011 | Game build microservice | 🚧 In Design |
+| SPEC-012 | Game run/serving microservice | 🚧 In Design |
+| SPEC-013 | Playwright game testing microservice | 🚧 In Design |
+| SPEC-014 | GitHub Actions CI Agent | ✅ Implemented |
+| SPEC-015 | Creator (Blender) modeling microservice | ✅ Implemented |
+| SPEC-016 | Draw.io diagram microservice | ✅ Implemented |
 
 ## Architecture Documentation
 
