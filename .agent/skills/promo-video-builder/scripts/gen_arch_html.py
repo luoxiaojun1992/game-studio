@@ -81,8 +81,8 @@ def generate_html(config):
     # ===== SVG DEFS =====
     defs = """<defs>
   <filter id="gl"><feGaussianBlur stdDeviation="3"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-  <radialGradient id="gc" cx="50%" cy="50%"><stop offset="0%" stop-color="%s" stop-opacity="0.15"/><stop offset="100%" stop-color="#0a0e17"/></radialGradient>
-</defs>""" % cfg["center"]["color"]
+  <radialGradient id="gc" cx="50%" cy="50%"><stop offset="0%" stop-color="COLOR_PLACEHOLDER" stop-opacity="0.15"/><stop offset="100%" stop-color="#0a0e17"/></radialGradient>
+</defs>""".replace("COLOR_PLACEHOLDER", cfg["center"]["color"])
 
     # ===== TITLE =====
     title = f"""<text x="960" y="54" text-anchor="middle" fill="#e2e8f0" font-size="30" font-weight="700">{cfg['title']}</text>
