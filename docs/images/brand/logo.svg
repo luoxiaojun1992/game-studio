@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 480">
+  <defs>
+    <linearGradient id="pg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1e4470"/>
+      <stop offset="100%" stop-color="#0a1628"/>
+    </linearGradient>
+  </defs>
+  <!-- Controller body -->
+  <rect x="155" y="130" width="170" height="220" rx="40" ry="40" fill="url(#pg)" stroke="#2d5888" stroke-width="2"/>
+  <!-- D-pad (left) -->
+  <rect x="185" y="160" width="44" height="12" rx="3" fill="#4fc3f7" opacity="0.9"/>
+  <rect x="201" y="144" width="12" height="44" rx="3" fill="#4fc3f7" opacity="0.9"/>
+  <!-- Action buttons (right) -->
+  <circle cx="268" cy="164" r="8" fill="none" stroke="#7c4dff" stroke-width="2.5"/>
+  <circle cx="286" cy="182" r="8" fill="none" stroke="#4fc3f7" stroke-width="2.5"/>
+  <circle cx="268" cy="200" r="8" fill="none" stroke="#4fc3f7" stroke-width="2.5" opacity="0.65"/>
+  <!-- 8 perimeter dots -->
+  <circle cx="240" cy="52" r="8" fill="#4fc3f7" opacity="0.9"/>
+  <circle cx="364" cy="104" r="8" fill="#7c4dff" opacity="0.9"/>
+  <circle cx="428" cy="240" r="8" fill="#4fc3f7" opacity="0.9"/>
+  <circle cx="364" cy="376" r="8" fill="#7c4dff" opacity="0.9"/>
+  <circle cx="240" cy="428" r="8" fill="#4fc3f7" opacity="0.9"/>
+  <circle cx="116" cy="376" r="8" fill="#7c4dff" opacity="0.9"/>
+  <circle cx="52" cy="240" r="8" fill="#4fc3f7" opacity="0.9"/>
+  <circle cx="116" cy="104" r="8" fill="#7c4dff" opacity="0.9"/>
+</svg>
