@@ -219,17 +219,17 @@ See [DEVELOPMENT.md](./docs/DEVELOPMENT.md).
 
 ### 游戏工程全流程管线 (Game Engineering Pipeline)
 
-四个微服务串联形成完整的 **构建 → 运行 → 测试** 闭环，辅以视频服务支持宣传内容制作。
+四个微服务串联形成完整的 **构建 → 运行 → 测试** 闭环，辅以视频服务支持 engineer agent 制作游戏中视频素材。
 
 ```
 游戏源码 ──→ [Build Service] ──→ [Run Service] ──→ [Test Service]
                                        ↑
-                                 [Video Service] (宣传素材)
+                                 [Video Service] (游戏中视频)
 ```
 
 | Spec | 服务 | 说明 | 端口 |
 |------|------|------|------|
-| [SPEC-009](./.agent/specs/video-service.md) | Video Service | FFmpeg 视频处理：宣传片剪辑、GIF 转换、帧提取、缩略图等 17 个操作 | 8084 |
+| [SPEC-009](./.agent/specs/video-service.md) | Video Service | FFmpeg 视频处理，供 engineer agent 制作游戏中视频素材（剪辑、转场、特效、字幕等 17 个操作） | 8084 |
 | [SPEC-011](./.agent/specs/build-service.md) | Build Service | 游戏源码自动化构建，支持 H5 / Phaser Mobile 两种打包策略 | 8085 |
 | [SPEC-012](./.agent/specs/run-service.md) | Run Service | Nginx 统一静态文件伺服 + FastAPI 管理 API，按 project_id 隔离 | 8086 / 8087 |
 | [SPEC-013](./.agent/specs/test-service.md) | Test Service | Playwright 自动化游戏测试，自动注入运行环境，生成文本+截图报告 | 8088 |
