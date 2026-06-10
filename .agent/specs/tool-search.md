@@ -241,6 +241,48 @@ export interface ToolMeta<Schema extends AnyZodRawShape = AnyZodRawShape> {
 
 本 spec **不要求**在本次实现 `permission` 字段。本次仅做元数据分离 + `search_tools` 工具，`agent-manager.ts` 的权限数组暂时保持不变（但 `STUDIO_TOOL_NAMES` 可改为自动派生）。
 
+### 7. `get_game_types` 分页参数对齐（附带修复）
+
+`get_game_types`（tools.ts line 2332）是项目中唯一有列表返回但缺少 `limit` 参数的工具，与其他 10 个 tool 的分页模式不一致。
+
+**现状对比**：
+
+| 特征 | 其他 10 个 listing tool | `get_game_types` |
+|------|------------------------|-------------------|
+| `limit` 参数 | `z.number().min(1).max(X).optional().default(Y).describe('返回条数上限')` | **无** |
+| DB 函数签名 | 接受 `limit` 参数 | `getGameTypes()` 无参数 |
+
+**改动**：
+
+`db.ts` line 1739：
+```typescript
+// 改前
+export function getGameTypes(): Array<{ type: string; description: string }> {
+  const stmt = db.prepare('SELECT game_type, description FROM game_engineering_specs WHERE spec_type = ?');
+  const rows = stmt.all('framework') ...;
+}
+
+// 改后
+export function getGameTypes(limit?: number): Array<{ type: string; description: string }> {
+  const sql = limit
+    ? 'SELECT game_type, description FROM game_engineering_specs WHERE spec_type = ? LIMIT ?'
+    : 'SELECT game_type, description FROM game_engineering_specs WHERE spec_type = ?';
+  const stmt = db.prepare(sql);
+  const rows = limit ? stmt.all('framework', limit) : stmt.all('framework') ...;
+}
+```
+
+`tools.ts` line 2332：
+```typescript
+// schema 从 {} 改为
+{
+  limit: z.number().min(1).max(50).optional().default(20).describe('返回条数上限')
+}
+// handler 改为 async ({ limit }) => { db.getGameTypes(limit); }
+```
+
+> `search_tools` 不添加分页——`TOOL_META_DEFINITIONS` 为静态数组，规模固定（~56 项），无需 `limit`。
+
 ## 可行性分析
 
 ### 现状确认
@@ -270,7 +312,8 @@ export interface ToolMeta<Schema extends AnyZodRawShape = AnyZodRawShape> {
 
 | 文件 | 角色 | 变更幅度 |
 |------|------|---------|
-| `server/tools.ts` | 核心重构：新增 `ToolMeta` 类型 + `TOOL_META_DEFINITIONS` + `search_tools` handler + 重构 `createStudioToolsServer()` | **高**（结构变更） |
+| `server/tools.ts` | 核心重构：新增 `ToolMeta` 类型 + `TOOL_META_DEFINITIONS` + `search_tools` handler + 提取 `AGENT_ID_ENUM` 到模块级 + 重构 `createStudioToolsServer()` + `get_game_types` 补 `limit` 参数 | **高**（结构变更） |
+| `server/db.ts` | `getGameTypes()` 加上可选的 `limit` 参数 | 低（5行改动） |
 | `server/agent-manager.ts` | `STUDIO_TOOL_NAMES` 改为从 `TOOL_META_DEFINITIONS` 派生 | 低（3行改动） |
 
 ## 验证标准
@@ -279,6 +322,8 @@ export interface ToolMeta<Schema extends AnyZodRawShape = AnyZodRawShape> {
 2. `search_tools name: "image"` → 返回所有 name 中包含 "image" 的工具（`image_resize`, `image_crop` 等，含 `search_t` 不匹配此例）
 3. `search_tools name: "search"` → 返回 `search_tools` 自身
 4. `search_tools name: "nonexistent"` → 返回 "未找到" 提示
-5. 所有现有 55 个 tool 的 handler 行为不变（功能回归）
-6. `TOOL_META_DEFINITIONS` 中元数据与原 inline 定义一致（description / inputSchema 逐字段核对）
-7. `agent-manager.ts` `STUDIO_TOOL_NAMES` set 与 `TOOL_META_DEFINITIONS` name 集合一致
+5. `get_game_types` 不传 `limit` → 返回最多 20 个（默认值）
+6. `get_game_types limit: 5` → 返回最多 5 个
+7. 所有现有 55 个 tool 的 handler 行为不变（功能回归）
+8. `TOOL_META_DEFINITIONS` 中元数据与原 inline 定义一致（description / inputSchema 逐字段核对）
+9. `agent-manager.ts` `STUDIO_TOOL_NAMES` set 与 `TOOL_META_DEFINITIONS` name 集合一致
