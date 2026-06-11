@@ -12,6 +12,7 @@
 - [REUSABLE_PATTERNS.md](./REUSABLE_PATTERNS.md) — 可复用代码片段、代码模板、设计模式汇总
 
 ## 关键工程决策记录
+- **2026-06-11**: 集成 Graphify 知识图谱（v0.8.37）。Skill 安装于 `.agent/skills/graphify/`，预构建图谱保存于 `graphify-out/`（1697 节点、2952 边、149 社区）。`.agent/AI_AGENT_COMMON_INSTRUCTIONS.md` 新增 Skills 章节和 GRAPHIFY.md 引用。`.agent/` 目录确立为 agent 上下文首选来源——所有 agent 启动时应先读取 `.agent/` 下文档了解项目全貌。
 - **2026-06-07**: 实现 SPEC-014 GitHub Actions CI Agent 调试规范。确立 PAT 凭证方案：`GITHUB_PAT` 环境变量（推荐） + `.github-pat` 本地文件（备选）。调试循环参数：10 次上限、60s 轮询间隔、45min 单次 run 超时。agent 通过 `gh` CLI（优先）或 `curl` + PAT 调用 GitHub REST API 查询 CI 状态、下载 job 日志和 artifact。不涉及 `server/` 目录代码变更，仅规范 coding agent 自身行为。
 - **2026-06-08**: 实现 SPEC-008 ImageMagick 图片处理微服务。完整复制 creator (Blender) 全链路模式：FastAPI 微服务 (`image-service/`) → TS 客户端 (`server/image-service.ts`) → 19 个 MCP 工具 (`ENGINEER_ALLOW`)。
 
