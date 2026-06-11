@@ -42,10 +42,10 @@ graphify explain "HTTPException"
 ### 增量更新
 ```bash
 # 只重新提取变更文件
-/Users/luoxiaojun/.local/bin/graphify . --update
+graphify . --update
 
 # 重新聚类（图谱不变）
-/Users/luoxiaojun/.local/bin/graphify . --cluster-only
+graphify . --cluster-only
 ```
 
 ## 已构建图谱概览（2026-06-11）
@@ -99,7 +99,7 @@ graphify explain "HTTPException"
 
 ```bash
 cd game-dev-studio
-/Users/luoxiaojun/.local/bin/graphify . --mode deep  # 深度模式（更多 INFERRED edges）
+graphify . --mode deep  # 深度模式（更多 INFERRED edges）
 ```
 
 ## 注意事项
