@@ -239,6 +239,8 @@ game-studio/
 | SPEC-014 | GitHub Actions CI Agent | ✅ 已实现 |
 | SPEC-015 | Creator (Blender) 建模微服务 | ✅ 已实现 |
 | SPEC-016 | Draw.io 图表微服务 | ✅ 已实现 |
+| SPEC-017 | Tool Search — 元数据驱动的工具搜索 | 🚧 设计中 |
+| SPEC-018 | 分层架构重构 — Data/Service/API+tools 三层解耦 | 🚧 设计中 |
 
 ```bash
 # 推荐：使用 Makefile 运行 UI 测试（构建 + 启动）
