@@ -261,3 +261,70 @@ Phase 0 → Phase 1 → Phase 2 → Phase 3 → Phase 4 → Phase 5
 | Agent manager 破坏 | 运行时状态（Maps）留在 agent-manager，仅 DB 访问委托给 service |
 | Tool handler 回归 | Zod schema 不变；逐个 tool 验证响应格式 |
 | 构建失败 | 已在用 `.js` 扩展名 + NodeNext 解析，无需变更 |
+
+## 测试策略
+
+1. **单元测试**（新增）：Service 层通过 mock data 模块进行纯逻辑测试，无需真实 SQLite
+2. **E2E 测试**：每个 Phase 完成后运行 Playwright 冒烟测试，确保功能无回归
+3. **构建验证**：`npm run build:server` + `npm run build` 通过
+
+## UI Test 验收规则
+
+提交代码前必须跑通 ui test。
+如遇网络或依赖问题，可临时修改代码解决网络问题，但禁止提交为了解决网络依赖问题所做的变更。
+
+## 主动补全 UI Test 规范
+
+新增前端交互功能（按钮、表单、弹窗、面板等）时，必须同步编写对应的 E2E 测试用例，并更新以下文档：
+1. `tests/ui/e2e/studio.spec.ts` — 添加测试用例（分配下一个 UI-XXX 编号）
+2. `.agent/memory/E2E_TESTING.md` — 更新测试矩阵、testid 对照表、测试经验
+3. `.agent/specs/` 下对应的 spec 文档 — 更新测试策略章节
+4. `.agent/specs/INDEX.md` — 如有新 spec 则更新索引
+
+## 主动更新所有相关文档规范
+
+实现新功能或做重大修改后，必须主动检查并更新所有受影响的文档，而非仅更新直接相关文件。完整检查清单：
+1. `README.md` + `README.zh-CN.md` — 目录结构更新
+2. `docs/ARCHITECTURE.md` + `docs/ARCHITECTURE.zh-CN.md` — 架构分层描述
+3. `.agent/memory/ARCHITECTURE.md` — 三层架构关键点
+4. `.agent/memory/INDEX.md` — 快速参考
+5. `.agent/memory/E2E_TESTING.md` — 测试矩阵（如有新测试）
+6. `.agent/memory/CONVENTIONS.md` — 工作约定（如有新规范）
+7. `.agent/memory/MEMORY.md` — 长期记忆（工程决策记录）
+8. `.agent/specs/` 下相关 spec 文档 — 状态更新
+9. `.agent/specs/INDEX.md` — spec 索引状态
+10. `.agent/AI_AGENT_COMMON_INSTRUCTIONS.md` — 关键文件位置、API 概览
+- **文档更新禁止添加日期和敏感信息**
+- **不相关的文档不需要修改**
+
+## 详细 Debug 日志规范
+
+新增前端交互功能、后端 API 路由、E2E 测试用例时，必须同步添加 `console.log` / `process.stderr.write` debug 日志，方便测试失败时快速定位问题：
+
+1. **后端 API 路由**：在路由入口、校验步骤（PASS/FAIL）、关键操作（DB 写入、SSE 广播）处添加 `console.log('[DEBUG:路由名] stepN: ...')` 格式日志
+2. **前端组件**：在关键生命周期（mount）、用户操作（表单填写、校验、提交）、API 请求/响应处添加 `console.log('[DEBUG:ComponentName] ...')` 格式日志
+3. **SSE 事件处理**：在 `handleSSEEvent` 的 case 分支中添加日志，记录事件类型和关键数据
+4. **E2E 测试用例**：参照 UI-007/008 的 `log()` helper 模式，每个操作步骤添加 `process.stderr.write('[UI-XXX] step: ...')` 日志，包含结构化 extra 数据
+   - **日志格式统一**：`[DEBUG:模块名] stepN: 描述` 或 `[UI-XXX] stepN: 描述`，关键数据以 JSON extra 输出
+   - **日志粒度**：关键路径全覆盖，但避免在循环/高频回调中输出日志
+
+## 相关文件
+
+| 文件 | 角色 |
+|------|------|
+| `server/db.ts` | 重构目标：薄 barrel re-export |
+| `server/index.ts` | 重构目标：薄 app assembler |
+| `server/tools.ts` | 重构目标：service 调用替代 db 调用 |
+| `server/agent-manager.ts` | 重构目标：DI 注入 service |
+| `server/data/*.ts` | 新增：15 个数据模块 + types/constants/validation |
+| `server/services/*.ts` | 新增：15 个业务逻辑服务 |
+| `server/api/*.ts` | 新增：11 个域路由模块 |
+| `server/file-storage.ts` | 重构目标：拆分为 data + api |
+| `server/creator-service.ts` | 重构目标：合并入 services/blender-service.ts |
+| `server/drawio-service.ts` | 重构目标：合并入 services/drawio-service.ts |
+| `server/image-service.ts` | 重构目标：合并入 services/image-service.ts |
+| `server/proposal-attachments-api.ts` | 重构目标：合并入 api/proposal-api.ts |
+| `tsconfig.server.json` | 路径别名（可选） |
+| `tests/ui/e2e/studio.spec.ts` | E2E 测试不变 |
+| `.agent/specs/layered-architecture.md` | 本 spec |
+| `.agent/specs/INDEX.md` | 索引 |
