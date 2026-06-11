@@ -25,3 +25,4 @@ vite.config.d.ts
 
 # GitHub PAT 本地凭证文件（SPEC-014，禁止纳入版本控制）
 /.github-pat
+graphify-out/cache/
