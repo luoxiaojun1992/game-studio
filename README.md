@@ -236,6 +236,8 @@ Based on [technical specs](./.agent/specs/INDEX.md):
 | SPEC-014 | GitHub Actions CI Agent | ✅ Implemented |
 | SPEC-015 | Creator (Blender) modeling microservice | ✅ Implemented |
 | SPEC-016 | Draw.io diagram microservice | ✅ Implemented |
+| SPEC-017 | Tool Search — metadata-driven tool discovery | 🚧 In Design |
+| SPEC-018 | Layered architecture refactoring — Data/Service/API+tools 3-tier | 🚧 In Design |
 
 ## Architecture Documentation
 
