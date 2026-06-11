@@ -1,4 +1,4 @@
-.PHONY: help loc loc-verbose compose-build compose-up compose-down compose-ui-test-build compose-ui-test-up compose-ui-test-down compose-ui-test
+.PHONY: help loc loc-verbose compose-build compose-up compose-down compose-ui-test-build compose-ui-test-up compose-ui-test-down compose-ui-test graphify-hook graphify-hook-uninstall
 help:
 	@grep -E '^[a-zA-Z_-]+:' Makefile | grep -v '.PHONY' | sort | while read line; do \
 		printf "\033[1;32m%s\033[0m\n" "$$line"; done
@@ -49,3 +49,16 @@ compose-ui-test-up:
 
 compose-ui-test-down:
 	docker compose -f docker-compose.ui-test.yml down
+
+# ============================================================
+# Graphify — Knowledge Graph Hooks (auto-rebuild on commit/checkout)
+# ============================================================
+#
+#   make graphify-hook          # install post-commit + post-checkout hooks
+#   make graphify-hook-uninstall # remove hooks
+
+graphify-hook:
+	graphify hook install
+
+graphify-hook-uninstall:
+	graphify hook uninstall

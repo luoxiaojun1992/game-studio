@@ -13,11 +13,13 @@
 | [CONVENTIONS.md](./CONVENTIONS.md) | 工作红线、Bug 修复记录、Agent 状态持久化、SonarQube 踩坑 |
 | [LINT.md](./LINT.md) | Lint Framework 架构、LintRunner、双检查器（SonarQube + GameEngineering）、20 条规则总览、扩展指南 |
 | [REUSABLE_PATTERNS.md](./REUSABLE_PATTERNS.md) | 可复用代码片段、代码模板、设计模式汇总 |
+| [GRAPHIFY.md](./GRAPHIFY.md) | Graphify 知识图谱技能使用指南 |
 | [../../specs/github-ci-agent.md](../../specs/github-ci-agent.md) | SPEC-014: GitHub Actions CI Agent 调试规范 |
 
 ## 快速参考
 
 ### 核心架构
+- **graphify 知识图谱**：`graphify-out/graph.json` 预构建，1697 节点、2952 边、149 社区。通过 `/graphify query "<问题>"` 快速理解架构关系，`/graphify path "A" "B"` 查找最短路径
 - 工具 schema 已移除 `project_id` 入参，项目作用域由后端注入 `scopedProjectId` 并在工具内部统一生效
 - MCP 工具执行是进程内通信，Mock Server 只返回 tool_calls
 - 6 个 Agent 中 team_builder 需特别检测（易与 CEO 混淆）

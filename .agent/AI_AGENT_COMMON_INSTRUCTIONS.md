@@ -323,3 +323,16 @@ test: add xxx test case
 | `.agent/memory/ARCHITECTURE.md` | 项目架构、关键文件 |
 | `.agent/memory/LINT.md` | 可扩展 Lint Framework 架构、检查器、扩展指南 |
 | `.agent/memory/REUSABLE_PATTERNS.md` | 可复用代码片段、代码模板、设计模式汇总 |
+| `.agent/memory/GRAPHIFY.md` | Graphify 知识图谱技能使用指南（代码库理解工具） |
+
+## 项目内建 Skills
+
+> 以下 skills 已安装到 `.agent/skills/` 目录，agent 在执行相关任务时应优先使用。
+
+| Skill | 用途 |
+|-------|------|
+| `graphify` | 构建/查询代码库知识图谱（`.agent/skills/graphify/SKILL.md`）。`graphify-out/graph.json` 已预构建，包含 1697 节点、2952 边、149 社区 |
+| `ci-verification` | GitHub Actions CI 调试（SPEC-014 workflow） |
+| `promo-video-builder` | 宣传视频制作 pipeline |
+
+> **重要**：每次启动后应优先读取 `.agent/` 目录下的 memory 文件了解项目上下文，而非依赖模型内置知识。
