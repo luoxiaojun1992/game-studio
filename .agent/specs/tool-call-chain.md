@@ -371,8 +371,6 @@ const description = toolMeta?.description || '';
 | `server/index.ts` | API 接受 `log_type` + `limit` query 参数 | 低（~3 行） |
 | `src/components/ToolCallChain.tsx` | **新建**：工具链展示核心组件 + TOOL_ICON_MAP 图标映射 | 新增 |
 | `src/components/CommandPanel.tsx` | 集成 ToolCallChain 组件 + 配置状态管理 | 低（~30 行新增） |
-| `src/types.ts` | 无改动 | 无 |
-| `package.json` | 无改动（复用已有 `lucide-react ^0.563.0`） | 无 |
 
 ## 测试策略
 
