@@ -89,18 +89,45 @@
 
 ### 1. 数据流
 
+**初始化加载**：
 ```
-SSE 'stream_event' (type='tool')
-  → StudioPage handleSSEEvent()
-    → setLogs([...prev, newLog])          // 现有逻辑不变
-      → CommandPanel 接收 logs prop
-        → ToolCallChain 组件
-          → logs.filter(l => l.log_type === 'tool')
-            → .slice(-maxChainLength)
-              → 渲染工具链
+ToolCallChain mount
+  → GET /api/projects/:projectId/logs?log_type=tool&agentId=xxx&limit=15
+    → db.getLogs(projectId, agentId, 15, 'tool')
+      → 返回最多 15 条 log_type='tool' 的日志
+        → 渲染工具链
 ```
 
-**核心逻辑**：`ToolCallChain` 从现有的 `logs` 数组中实时过滤 `log_type === 'tool'` 的条目，取最后 `maxChainLength` 个，按 `created_at` 排序展示。**不需要后端改动**，纯前端组件。
+**实时更新**：
+```
+SSE 'stream_event' (type='tool')
+  → ToolCallChain 内 useSSEListener hook 监听
+    → 如果 tool_name 匹配当前 agentId
+      → setToolCalls(prev => [toolEvent, ...prev].slice(0, maxLength))
+        → 末尾追加，超出 maxLength 则截断头部
+```
+
+**核心逻辑**：`ToolCallChain` 初始化时通过 API 拉取 `log_type=tool` 的日志（后端过滤 + LIMIT），之后通过监听 SSE `stream_event`（`type='tool'`）实现实时追加。**API 查询和 SSE 更新互不依赖**，初始数据从 API 获取，增量数据从 SSE 获取。
+
+### 1.1 后端 API 改动
+
+`GET /api/projects/:projectId/logs` 新增两个 query 参数：
+
+| 参数 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `agentId` | string | — | 已有参数，不变 |
+| `log_type` | string | — | **新增**，过滤日志类型 |
+| `limit` | string→number | 1000 | **新增**，返回条数上限 |
+
+`db.getLogs()` 签名变更为：
+```typescript
+export function getLogs(
+  projectId: string,
+  agentId?: string,
+  limit?: number,
+  logType?: LogType
+): DbLog[]
+```
 
 ### 2. 新组件：ToolCallChain
 
@@ -108,7 +135,8 @@ SSE 'stream_event' (type='tool')
 
 ```typescript
 interface ToolCallChainProps {
-  logs: LogEntry[];                    // 全量日志
+  projectId: string;                   // API 查询必需
+  agentId: string;                     // 按 Agent 过滤 + SSE 匹配
   maxLength: number;                   // 最大显示数量（10-20）
   displayMode?: 'compact' | 'expanded'; // 显示模式
   groupByTurn?: boolean;               // 是否按回合分组（初版可不实现）
@@ -118,20 +146,27 @@ interface ToolCallChainProps {
 **组件逻辑**：
 
 ```typescript
-// 1. 过滤工具调用
-const toolCalls = useMemo(() => {
-  return logs
-    .filter(l => l.log_type === 'tool' && l.tool_name)
-    .slice(-maxLength);           // 取最后 N 个
-}, [logs, maxLength]);
+// 0. 初始化加载
+useEffect(() => {
+  api.getLogs(projectId, { agentId, log_type: 'tool', limit: maxLength })
+    .then(setToolCalls);
+}, [projectId, agentId, maxLength]);
+
+// 1. SSE 实时追加
+const handleSSE = useCallback((event: StreamEvent) => {
+  if (event.type === 'tool' && event.agentId === agentId) {
+    const newEntry = { id: event.id, tool_name: event.name, created_at: new Date().toISOString(), ... };
+    setToolCalls(prev => [newEntry, ...prev].slice(0, maxLength));
+  }
+}, [agentId, maxLength]);
 
 // 2. 渲染紧凑模式
 const renderCompact = () => (
-  <div className="tool-chain-compact">
+  <div className="tool-chain-compact" data-testid="tool-call-chain">
     {toolCalls.map((tc, i) => (
       <React.Fragment key={tc.id}>
         {i > 0 && <span className="chain-arrow">→</span>}
-        <span className="chain-badge" title={tc.tool_name!}>
+        <span className="chain-badge" title={tc.tool_name}>
           {tc.tool_name}
         </span>
       </React.Fragment>
@@ -233,22 +268,24 @@ const description = toolMeta?.description || '';
 
 | 检查项 | 结论 |
 |--------|------|
-| 是否需要后端改动 | **否**，纯前端组件 |
-| 数据是否已存在 | **是**，`logs` 数组中 `log_type === 'tool'` 条目已包含 `tool_name` |
+| 是否需要后端改动 | **是**，db.getLogs() 加 `logType` 参数，API 加 `log_type`/`limit` query 参数 |
+| 数据是否已存在 | **是**，`logs` 表中 `log_type` 列已有索引 `idx_logs_type` |
 | 是否需要新 DB 表 | **否** |
-| 是否影响现有功能 | **否**，新增组件不影响现有日志渲染 |
-| 性能影响 | **极低**，`useMemo` + `slice(-N)` 操作 O(1) |
-| 是否需要新增 SSE 事件 | **否** |
+| 是否影响现有功能 | **否**，新增 query 参数向后兼容 |
+| 性能影响 | **极低**，SQL 走 `idx_logs_type` 索引 + LIMIT N |
+| 是否需要新增 SSE 事件 | **否**，复用现有 `type='tool'` 的 stream_event |
 | 是否需要 E2E 测试 | **是**，新增前端 UI 交互 |
 
 ### 结论
 
-**方案极简可行，零后端改动，纯前端组件**。所有需要的数据已存在于当前的 SSE 数据流中。
+**后端改动极小**（db.ts + index.ts 各约 5 行），前端组件独立 API 查询 + SSE 实时追加。DB 已有 `idx_logs_type` 索引，查询性能有保障。
 
 ## 相关文件
 
 | 文件 | 角色 | 变更幅度 |
 |------|------|---------|
+| `server/db.ts` | `getLogs()` 加入 `logType` 参数 | 低（~5 行） |
+| `server/index.ts` | API 接受 `log_type` + `limit` query 参数 | 低（~3 行） |
 | `src/components/ToolCallChain.tsx` | **新建**：工具链展示核心组件 | 新增 |
 | `src/components/CommandPanel.tsx` | 集成 ToolCallChain 组件 + 配置状态管理 | 低（~30 行新增） |
 | `src/types.ts` | 无改动（如实现回合分组需加 `streamId`） | 初版无改动 |
@@ -263,8 +300,9 @@ const description = toolMeta?.description || '';
    - 点击工具名触发滚动回调
 
 2. **集成测试**：
-   - SSE 推送 tool 事件后 ToolCallChain 实时更新
-   - 切换到不同 Agent 后工具链刷新
+   - API 初始化查询 `?log_type=tool&limit=N` 返回正确结果
+   - SSE 推送 tool 事件后 ToolCallChain 实时追加到链尾
+   - 切换到不同 Agent 后重新请求 API 并刷新工具链
    - localStorage 配置持久化
 
 3. **E2E 测试**：
@@ -291,8 +329,10 @@ const description = toolMeta?.description || '';
 
 ToolCallChain 组件：
 ```
-[DEBUG:ToolCallChain] init: maxLength=15 displayMode=compact
-[DEBUG:ToolCallChain] render: toolCount=12 visibleCount=12
+[DEBUG:ToolCallChain] init: projectId=xxx agentId=engineer maxLength=15 displayMode=compact
+[DEBUG:ToolCallChain] apiFetch: GET /logs?log_type=tool&limit=15 → 12 results
+[DEBUG:ToolCallChain] sseAppend: tool=search_file agentId=engineer
+[DEBUG:ToolCallChain] render: toolCount=13 visibleCount=13
 [DEBUG:ToolCallChain] modeChange: compact→expanded
 [DEBUG:ToolCallChain] configChange: maxLength=15→20
 ```
@@ -300,6 +340,11 @@ ToolCallChain 组件：
 CommandPanel 集成：
 ```
 [DEBUG:CommandPanel] ToolCallChainConfig: {maxLength: 15, displayMode: 'compact'}
+```
+
+后端 API：
+```
+[DEBUG:logs-api] query: projectId=xxx agentId=engineer log_type=tool limit=15 → 15 rows
 ```
 
 ### E2E 测试日志
@@ -332,5 +377,5 @@ UI-011 测试用例：
 - **与日志输出独立**：不修改现有 `renderLog()` 逻辑
 - **配置默认值**：maxLength 默认 15，不在 localStorage 中时使用默认值
 - **空状态处理**：无工具调用时不报错，优雅降级
-- **性能**：`useMemo` 避免每次 render 重新计算
+- **性能**：初始加载仅查询 `log_type=tool` 的日志，SSE 增量更新 O(1)，无全量过滤开销
 - **国际化**：工具链中"共 N 个工具"等文案使用现有 `l()` 函数
