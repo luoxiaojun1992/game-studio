@@ -1,13 +1,17 @@
-# Graph Report - .  (2026-06-11)
+# Graph Report - .  (2026-06-12)
 
 ## Corpus Check
-- 232 files · ~459,960 words
-- Verdict: corpus is large enough that graph structure adds value.
+- cluster-only mode — file stats not available
 
 ## Summary
 - 1697 nodes · 2952 edges · 149 communities (105 shown, 44 thin omitted)
 - Extraction: 84% EXTRACTED · 16% INFERRED · 0% AMBIGUOUS · INFERRED: 485 edges (avg confidence: 0.58)
 - Token cost: 0 input · 0 output
+
+## Graph Freshness
+- Built from commit: `b51a7506`
+- Run `git rev-parse HEAD` and compare to check if the graph is stale.
+- Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
 - [[_COMMUNITY_Image Microservice|Image Microservice]]
@@ -299,12 +303,12 @@ Cohesion: 0.11
 Nodes (19): dependencies, better-sqlite3, express, lucide-react, minio, multer, react, react-dom (+11 more)
 
 ### Community 28 - "Database Layer"
-Cohesion: 0.22
-Nodes (18): createBlenderProject(), createDrawioProject(), createFileStorage(), createGame(), createHandoff(), createImageProject(), createProposal(), createProposalAttachment() (+10 more)
+Cohesion: 0.24
+Nodes (17): createBlenderProject(), createDrawioProject(), createGame(), createHandoff(), createImageProject(), createProposal(), createProposalAttachment(), createTaskBoardTask() (+9 more)
 
 ### Community 29 - "Database Layer"
-Cohesion: 0.16
-Nodes (11): deleteFileStorage(), getFileStorage(), getFileStorages(), updateFileStorage(), validateObjectKey(), createFileStorageRecord(), router, validateProjectIdInput() (+3 more)
+Cohesion: 0.15
+Nodes (12): createFileStorage(), deleteFileStorage(), getFileStorage(), getFileStorages(), updateFileStorage(), validateObjectKey(), createFileStorageRecord(), router (+4 more)
 
 ### Community 30 - "Image Service Client"
 Cohesion: 0.11
