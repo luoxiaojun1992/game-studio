@@ -82,7 +82,6 @@
 |--------|--------|------|------|
 | `maxChainLength` | 15 | 10-20 | 最多显示的工具数量 |
 | `chainDisplayMode` | `'compact'` | `'compact'` \| `'expanded'` | 显示模式 |
-| `groupByTurn` | `false` | `boolean` | 是否按回合分组显示分隔线 |
 
 配置存储：`localStorage` key `toolChainConfig`，UI 上在 CommandPanel 的 header 区域增加一个齿轮图标入口。
 
@@ -224,7 +223,6 @@ interface ToolCallChainProps {
   agentId: string;                     // 按 Agent 过滤 + SSE 匹配
   maxLength: number;                   // 最大显示数量（10-20）
   displayMode?: 'compact' | 'expanded'; // 显示模式
-  groupByTurn?: boolean;               // 是否按回合分组（初版可不实现）
 }
 ```
 
@@ -337,18 +335,7 @@ const renderCompact = () => (
 - **不替代**：现有的日志输出区保持不变，用户仍可查看完整日志（含参数）
 - **互补**：工具链提供"大局观"，日志提供"详细内容"
 
-### 7. 回合分组（可选增强）
-
-当 `groupByTurn = true` 时，使用 `streamId`（已有但前端未使用）将工具调用按回合分组：
-
-```
-🔧 [Turn 1] search_file → read_file
-🔧 [Turn 2] bash → write_file → search_content
-```
-
-> **初版可不实现**：`groupByTurn` 需要将 `streamId` 从 SSE stream_event 传递到 LogEntry 并暴露到前端。当前 LogEntry 类型无 `streamId` 字段。如果需要实现，改动范围涉及类型定义、SSE 处理、DB schema。建议作为后续迭代。
-
-### 8. 与 ToolMeta 的联动（未来增强）
+### 7. 与 ToolMeta 的联动（未来增强）
 
 当 SPEC-017（Tool Search 元数据分离）完成后，展开模式可以自动关联 `TOOL_META_DEFINITIONS` 获取工具描述：
 
@@ -384,7 +371,7 @@ const description = toolMeta?.description || '';
 | `server/index.ts` | API 接受 `log_type` + `limit` query 参数 | 低（~3 行） |
 | `src/components/ToolCallChain.tsx` | **新建**：工具链展示核心组件 + TOOL_ICON_MAP 图标映射 | 新增 |
 | `src/components/CommandPanel.tsx` | 集成 ToolCallChain 组件 + 配置状态管理 | 低（~30 行新增） |
-| `src/types.ts` | 无改动（如实现回合分组需加 `streamId`） | 初版无改动 |
+| `src/types.ts` | 无改动 | 无 |
 | `package.json` | 无改动（复用已有 `lucide-react ^0.563.0`） | 无 |
 
 ## 测试策略
