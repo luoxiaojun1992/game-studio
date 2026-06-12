@@ -331,13 +331,11 @@ const renderCompact = () => (
 | **Tooltip** | hover 工具名显示完整 tool_name + 调用时间 |
 | **模式切换** | Header 区齿轮 → 下拉菜单选择 compact/expanded |
 | **数量调整** | Header 区齿轮 → 滑块或输入框调整 maxChainLength |
-| **点击工具名** | 滚动到该工具调用在日志输出区的位置（方便溯源） |
 
 ### 6. 与现有日志输出的关系
 
 - **不替代**：现有的日志输出区保持不变，用户仍可查看完整日志（含参数）
 - **互补**：工具链提供"大局观"，日志提供"详细内容"
-- **联动**：点击工具链中的工具名，日志区自动定位到对应行
 
 ### 7. 回合分组（可选增强）
 
@@ -396,7 +394,7 @@ const description = toolMeta?.description || '';
    - `toolCalls` 少于 `maxLength` 时显示全部
    - `toolCalls` 多于 `maxLength` 时截断到 `maxLength`
    - compact 模式和 expanded 模式切换
-   - 点击工具名触发滚动回调
+   - 已知工具名返回对应 lucide 图标
    - 已知工具名返回对应 lucide 图标
    - 未知工具名返回 Wrench 兜底图标
 
@@ -468,11 +466,10 @@ UI-011 测试用例：
 2. 每次收到 `type: 'tool'` 的 SSE 事件后，工具链末尾追加新工具名
 3. 工具链超过 `maxChainLength` 时，只显示最后 N 个
 4. 切换 Agent 后，工具链刷新为该 Agent 的工具调用记录
-5. 点击工具名能定位到日志输出区对应行
-6. 配置项变更（maxLength/displayMode）持久化到 localStorage
-7. 页面刷新后恢复之前的配置
-8. 不展示任何工具参数（content 字段不使用）
-9. 每个工具名左侧显示对应 lucide-react 图标，未匹配的工具显示 Wrench 兜底图标
+5. 配置项变更（maxLength/displayMode）持久化到 localStorage
+6. 页面刷新后恢复之前的配置
+7. 不展示任何工具参数（content 字段不使用）
+8. 每个工具名左侧显示对应 lucide-react 图标，未匹配的工具显示 Wrench 兜底图标
 
 ## 注意事项
 
