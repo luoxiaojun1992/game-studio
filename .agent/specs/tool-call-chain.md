@@ -118,15 +118,15 @@ SSE 'stream_event' (type='tool')
 |------|------|--------|------|
 | `agentId` | string | — | 已有参数，不变 |
 | `log_type` | string | — | **新增**，过滤日志类型 |
-| `limit` | string→number | 1000 | **新增**，返回条数上限 |
+| `limit` | string→number | 1000 | **新增**，暴露为 API query 参数（内部 `db.getLogs()` 已有 `limit` 参数，但 API 层此前硬编码 1000） |
 
-`db.getLogs()` 签名变更为：
+`db.getLogs()` 签名变更为（`limit` 参数已有，无需改动；仅新增 `logType`）：
 ```typescript
 export function getLogs(
   projectId: string,
   agentId?: string,
-  limit?: number,
-  logType?: LogType
+  limit?: number,         // 已有参数，默认 1000
+  logType?: LogType        // 新增参数
 ): DbLog[]
 ```
 
