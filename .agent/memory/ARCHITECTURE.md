@@ -48,6 +48,15 @@
 - 工具 schema 已移除 `project_id` 入参，项目作用域由工具服务初始化时注入 scopedProjectId 并在工具内部执行
 - **微服务 project 创建模式**：`POST /api/projects`（无 path param），微服务内部生成 UUID。TEST_MODE 环境变量在微服务侧判断（`*_SERVICE_TEST_MODE=true`→返回固定 ID），studio backend 不感知
 
+## 可观测性（SPEC-020 OpenTelemetry Tracing）
+- **Jaeger**：`jaegertracing/all-in-one:latest`，UI 端口 16686，OTLP gRPC 4317，内存存储 10000 traces
+- **Node.js backend**：`server/telemetry.ts` 初始化 OTel SDK（在所有模块之前），使用 `@opentelemetry/sdk-node` + `auto-instrumentations-node`
+- **Python 微服务**：`opentelemetry-instrumentation-fastapi` + `opentelemetry-instrumentation-httpx`，各服务 `app/main.py` 中初始化
+- **手动 Span**：`agent.run`（父 Span 包裹 sendMessage）、`agent.think`（LLM 推理阶段）、`agent.tool_call`（工具调用，跨越 tool_use + tool_result 两个 SDK 消息）
+- **Span Event**：`sse.broadcast` 轻量标记，附着在当前活跃 Span 上
+- **Trace 传播**：W3C TraceContext（`traceparent` header），由 HTTP/axios 自动注入
+- **仅覆盖** `docker-compose.yml` 和 `docker-compose.ui-test.yml`（sonar-check 不需要）
+
 ## 游戏文件路径设计
 
 游戏文件统一通过 MCP 工具 `write_game_file` 写入，由 `submit_game` 打包提交：
@@ -214,30 +223,36 @@ game-dev-studio/
 - **核心模式**: `runFullWorkflowTest()` — 目标状态驱动的事件循环，UI-007/008 共用
 - **数据流**: 测试 → Mock Admin API (port 3001) → 预设响应队列 → Agent 调用 /chat/completions → 匹配 (projectId, agentRole) → 返回预设响应
 
-###### Docker 服务依赖图（UI 测试）
+###### Docker 服务依赖关系
+
+服务按层级启动（`depends_on` + `condition: service_healthy`）：
+
 ```
-codebuddy-sdk-mock (:3001)     ← Mock Server
-       ↓ (health check)
-star-office-ui (:19000)        ← Star Office 前端
-       ↓ (health check)
-minio (:9000)                  ← 对象存储
-       ↓ (health check)
-sonarqube (:9000)              ← SonarQube 代码质量平台
-       ↓ (health check)
-scanner (:8081)                ← SonarQube Scanner 微服务
-       ↓ (service_started)
-creator (:8080)                ← Blender Creator 微服务
-       ↓ (service_started)
-drawio-service (:8082)         ← Draw.io 图表微服务
-       ↓ (service_healthy)
-image-service (:8089)          ← ImageMagick 图片处理微服务
-       ↓ (service_healthy)
-studio-backend (:3000)         ← Express API + SSE
-       ↓ (health check)
-ui-app (:4173)                 ← 前端静态文件 (nginx)
-       ↓ (health check)
-ui-e2e                         ← Playwright CI 执行
+第 0 层（无启动依赖）：
+  minio  sonarqube  star-office-ui  creator  image-service  drawio-export  scanner  jaeger  codebuddy-sdk-mock*
+
+第 1 层：
+  drawio-service ──░ drawio-export
+
+第 2 层：
+  studio-backend ──░ minio  sonarqube  creator  drawio-service
+                    image-service  scanner  [codebuddy-sdk-mock*]
+
+第 3 层：
+  studio-frontend ──░ studio-backend  star-office-ui
+  ui-app*         ──░ studio-backend  star-office-ui
+
+第 4 层：
+  ui-e2e* ──░ ui-app  studio-backend  codebuddy-sdk-mock  star-office-ui  creator
 ```
+> \* UI test 环境专用服务
+
+| 服务 | depends_on（condition: service_healthy） | 运行时 URL 依赖 |
+|------|----------------------------------------|---------------|
+| `studio-backend` | minio, sonarqube, creator, drawio-service, image-service, scanner | star-office-ui, minio, creator, drawio, image, scanner, sonarqube, jaeger |
+| `studio-frontend` | studio-backend, star-office-ui | studio-backend（VITE_API_BASE 构建时注入） |
+| `drawio-service` | drawio-export | drawio-export（DRAWIO_EXPORT_URL） |
+| `scanner` | sonarqube | sonarqube（SONAR_HOST_URL） |
 
 ###### 前端组件 data-testid 架构
 - 所有可交互元素统一使用 `data-testid` 属性

@@ -239,6 +239,7 @@ Based on [technical specs](./.agent/specs/INDEX.md):
 | SPEC-017 | Tool Search — metadata-driven tool discovery | 🚧 In Design |
 | SPEC-018 | Layered architecture refactoring — Data/Service/API+tools 3-tier | 🚧 In Design |
 | SPEC-019 | Tool Call Chain — real-time agent tool call visualization with icons | 🚧 In Design |
+| SPEC-020 | OpenTelemetry distributed tracing with Jaeger — in-service and cross-service spans | 🚧 In Design |
 
 ## Architecture Documentation
 

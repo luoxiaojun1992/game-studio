@@ -12,6 +12,18 @@
 - [REUSABLE_PATTERNS.md](./REUSABLE_PATTERNS.md) — 可复用代码片段、代码模板、设计模式汇总
 
 ## 关键工程决策记录
+- **2026-06-13**: 设计 SPEC-020 OpenTelemetry 分布式链路追踪。使用 Jaeger all-in-one 作为追踪后端（端口 16686），集成到 `docker-compose.yml` 和 `docker-compose.ui-test.yml`（`docker-compose-sonar-check.yml` 不添加 — SonarQube 自有扫描报告）。
+
+  **关键架构决策**：
+  - Node.js Express backend：`@opentelemetry/sdk-node` + `auto-instrumentations-node`，`server/telemetry.ts` 初始化（在所有其他模块之前）
+  - Python FastAPI 微服务（creator/image/drawio/scanner/video）：OTel Python SDK + `FastAPIInstrumentor`
+  - 跨服务 Trace 传播：W3C TraceContext（`traceparent` header），HTTP 自动携带
+  - 手动 Span（`agent.run` / `agent.think` / `agent.tool_call`）+ Span Event（`sse.broadcast`）
+  - `agent.tool_call` 跨越 SDK 的两个独立消息（`tool_use` + `tool_result`），需用 `Map<toolUseId, Span>` 暂存
+  - Fail-open 策略：OTel SDK 或 Jaeger 不可达时业务逻辑不受影响
+  - 创建 `svg-to-png` skill（`rsvg-convert` 转 PNG），置于 `.workbuddy/skills/` 和 `.agent/skills/`
+
+  **文件组织**：spec 和图片归入 `.agent/specs/opentelemetry-tracing/` 目录。
 - **2026-06-11**: 集成 Graphify 知识图谱（v0.8.37）。Skill 安装于 `.agent/skills/graphify/`，预构建图谱保存于 `graphify-out/`（1697 节点、2952 边、149 社区）。`.agent/AI_AGENT_COMMON_INSTRUCTIONS.md` 新增 Skills 章节和 GRAPHIFY.md 引用。`.agent/` 目录确立为 agent 上下文首选来源——所有 agent 启动时应先读取 `.agent/` 下文档了解项目全貌。
 - **2026-06-07**: 实现 SPEC-014 GitHub Actions CI Agent 调试规范。确立 PAT 凭证方案：`GITHUB_PAT` 环境变量（推荐） + `.github-pat` 本地文件（备选）。调试循环参数：10 次上限、60s 轮询间隔、45min 单次 run 超时。agent 通过 `gh` CLI（优先）或 `curl` + PAT 调用 GitHub REST API 查询 CI 状态、下载 job 日志和 artifact。不涉及 `server/` 目录代码变更，仅规范 coding agent 自身行为。
 - **2026-06-08**: 实现 SPEC-008 ImageMagick 图片处理微服务。完整复制 creator (Blender) 全链路模式：FastAPI 微服务 (`image-service/`) → TS 客户端 (`server/image-service.ts`) → 19 个 MCP 工具 (`ENGINEER_ALLOW`)。

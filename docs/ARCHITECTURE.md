@@ -36,11 +36,13 @@ graph TB
         Sonar["SonarQube<br/>Code Quality"]
         StarOffice["Star-Office-UI"]
         DrawioExport["Draw.io Export<br/>jgraph/drawio"]
+        Jaeger["Jaeger<br/>Distributed Tracing"]
     end
 
     subgraph "Microservices"
         Creator["Creator Service<br/>FastAPI"]
         Blender["Blender<br/>3D Engine"]
+        Image["Image Service<br/>FastAPI + ImageMagick"]
         Drawio["Draw.io Service<br/>FastAPI"]
         Scanner["Scanner Service<br/>FastAPI + sonar-scanner CLI"]
     end
@@ -54,6 +56,7 @@ graph TB
     Browser -->|SSE /api/observe| BE
 
     BE -->|HTTP| Creator
+    BE -->|HTTP| Image
     BE -->|HTTP| Drawio
     BE -->|Upload / Download| MinIO
     BE -->|SQL| SQLite
@@ -61,8 +64,10 @@ graph TB
     BE -->|submit_game lint| LintRunner
     BE -->|HTTP API| Scanner
     BE -.->|Sync| StarOffice
+    BE -->|OTLP gRPC| Jaeger
     Creator -->|subprocess| Blender
     Drawio -->|Export| DrawioExport
+    Image -->|subprocess| Image["ImageMagick"]
 
     LintRunner --> SonarChecker
     LintRunner --> GameEngChecker
@@ -97,6 +102,7 @@ graph TB
 - `agents.ts`: role declarations, prompts, and handoff constraints
 - `db.ts`: SQLite schema (DDL-first initialization) and read/write operations
 - `sse-broadcaster.ts`: SSE client management and event broadcast
+- `telemetry.ts`: OpenTelemetry SDK initialization (auto-instrumentation + manual spans)
 - `star-office-sync.ts`: Star-Office registration/state sync/health checks
 - `proposal-attachments-api.ts`: proposal attachment CRUD and file-storage binding
 - `utils/questionnaire-renderer.ts`: questionnaire field-to-Markdown renderer for structured proposal submission
@@ -115,7 +121,7 @@ graph TB
 - **Diagrams/Attachments**: draw.io diagrams, exports, proposal attachment lifecycle, **and diagram element listing**
 - **Lint/Quality**: extensible static analysis framework with pluggable checkers (sonarqube via scanner microservice + game-engineering checker with 20 rules), Sonar report stored as game attachment via `games.sonar_storage_id`, GameEngineeringChecker uses `submitDir` context for directory-mode file validation
 - **Memories**: long-term memory records scoped by role/project
-- **Logs/Observability**: runtime logs and stream events
+- **Logs/Observability**: runtime logs, stream events, and distributed tracing (OpenTelemetry + Jaeger, SPEC-020)
 - **Permissions**: tool execution approval lifecycle and response callbacks
 - **Settings**: project-level settings including autopilot toggle and **team builder model selection**
 
@@ -185,7 +191,42 @@ graph TB
 ## 9. Deployment Topology
 
 - Local development: single-node backend + frontend dev server
-- Docker deployment: frontend/backend + creator service + draw.io service + draw.io export + SonarQube + scanner microservice containerized (see `README-Docker.md`)
+- Docker deployment: frontend/backend + creator service + draw.io service + draw.io export + SonarQube + scanner microservice + Jaeger (OpenTelemetry tracing) containerized (see `README-Docker.md`)
+
+### 9.1 Service Dependency Graph
+
+Services start in layers. Each service waits for all services in lower layers to be healthy before starting.
+
+```
+Layer 0 (no startup dependencies):
+  minio  sonarqube  star-office-ui  creator  image-service  drawio-export  scanner
+
+Layer 1:
+  drawio-service ── waits for ──> drawio-export
+
+Layer 2:
+  studio-backend ── waits for ──> minio  sonarqube  creator  drawio-service
+                                   image-service  scanner  [jaeger]
+
+Layer 3:
+  studio-frontend ── waits for ──> studio-backend  star-office-ui
+```
+
+| Service | Startup Dependencies (depends_on) | Runtime Dependencies (URL-based) |
+|---------|-----------------------------------|---------------------------------|
+| `minio` | none | — |
+| `sonarqube` | none | — |
+| `star-office-ui` | none | — |
+| `creator` | none | `studio-backend` → `http://creator:8080` |
+| `image-service` | none | `studio-backend` → `http://image-service:8089` |
+| `drawio-export` | none | `drawio-service` → `http://drawio-export:8080/export` |
+| `scanner` | sonarqube | `studio-backend` → `http://scanner:8081` |
+| | | `sonarqube` → (SONAR_HOST_URL) |
+| `jaeger` | none | `studio-backend` → `http://jaeger:4317` (OTLP gRPC) |
+| | | Python microservices → `http://jaeger:4317` |
+| `drawio-service` | `drawio-export` | — |
+| `studio-backend` | minio, sonarqube, creator, drawio-service, image-service, scanner | star-office-ui, minio, creator, drawio-service, image-service, scanner, sonarqube, jaeger |
+| `studio-frontend` | studio-backend, star-office-ui | `studio-backend` (build-time via `VITE_API_BASE`) |
 - Runtime directories:
   - `data/` for SQLite DB
   - `output/` for generated artifacts
