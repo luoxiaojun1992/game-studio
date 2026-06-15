@@ -12,7 +12,11 @@
   <text x="600" y="35" text-anchor="middle" font-size="22" font-weight="800" fill="#111827">Game Dev Studio 系统架构</text>
   <text x="600" y="58" text-anchor="middle" font-size="11" fill="#6B7280">多智能体游戏研发工作台 · 功能模块 · 业务逻辑 · 技术架构</text>
 
-  <!-- ===== L1: 前端展示层 (y=85, h=70, bottom=155) ===== -->
+  <!-- L1→L2: 2 arrows -->
+  <line x1="410" y1="155" x2="410" y2="200" stroke="#4F46E5" stroke-width="4" marker-end="url(#aB)"/>
+  <line x1="790" y1="155" x2="790" y2="200" stroke="#4F46E5" stroke-width="4" marker-end="url(#aB)"/>
+
+  <!-- ===== L1: 前端展示层 ===== -->
   <g transform="translate(30, 85)">
     <rect x="0" y="0" width="1140" height="70" rx="10" fill="#EEF2FF" stroke="#C7D2FE" stroke-width="2"/>
     <rect x="20" y="-10" width="80" height="22" rx="6" fill="#4F46E5"/>
@@ -37,11 +41,11 @@
     <text x="1040" y="43" text-anchor="middle" font-size="10" font-weight="600" fill="#312E81">运行观测</text>
   </g>
 
-  <!-- L1→L2: 2 arrows, centered on L2 width (1140). x = 30+1140/3=410, 30+2*1140/3=790 -->
-  <line x1="410" y1="155" x2="410" y2="200" stroke="#4F46E5" stroke-width="4" marker-end="url(#aB)"/>
-  <line x1="790" y1="155" x2="790" y2="200" stroke="#4F46E5" stroke-width="4" marker-end="url(#aB)"/>
+  <!-- L2→L3: 2 arrows -->
+  <line x1="410" y1="530" x2="410" y2="575" stroke="#7C3AED" stroke-width="4" marker-end="url(#aP)"/>
+  <line x1="790" y1="530" x2="790" y2="575" stroke="#7C3AED" stroke-width="4" marker-end="url(#aP)"/>
 
-  <!-- ===== L2: 后端业务层 (y=210, h=320, bottom=530) ===== -->
+  <!-- ===== L2: 后端业务层 ===== -->
   <g transform="translate(30, 210)">
     <rect x="0" y="0" width="1140" height="320" rx="10" fill="#ECFDF5" stroke="#6EE7B7" stroke-width="2"/>
     <rect x="20" y="-10" width="90" height="22" rx="6" fill="#059669"/>
@@ -112,16 +116,18 @@
     <text x="1015" y="290" text-anchor="middle" font-size="8" fill="#065F46">所有业务数据按 project_id 隔离</text>
   </g>
 
-  <!-- L2→L3: 2 arrows, centered on L3 width (1140). x = 410, 790 -->
-  <line x1="410" y1="530" x2="410" y2="575" stroke="#7C3AED" stroke-width="4" marker-end="url(#aP)"/>
-  <line x1="790" y1="530" x2="790" y2="575" stroke="#7C3AED" stroke-width="4" marker-end="url(#aP)"/>
+  <!-- L3→Data: 1 arrow -->
+  <line x1="205" y1="705" x2="205" y2="750" stroke="#D97706" stroke-width="4" marker-end="url(#aO)"/>
+  <!-- L3→External: 2 arrows -->
+  <line x1="673" y1="705" x2="673" y2="750" stroke="#64748B" stroke-width="4" marker-end="url(#aG)"/>
+  <line x1="937" y1="705" x2="937" y2="750" stroke="#64748B" stroke-width="4" marker-end="url(#aG)"/>
 
-  <!-- ===== L3: 微服务层 (y=585, h=120, bottom=705) ===== -->
+  <!-- ===== L3: 微服务层 ===== -->
   <g transform="translate(30, 585)">
     <rect x="0" y="0" width="1140" height="120" rx="10" fill="#FAF5FF" stroke="#DDD6FE" stroke-width="2"/>
     <rect x="20" y="-10" width="80" height="22" rx="6" fill="#7C3AED"/>
     <text x="60" y="6" text-anchor="middle" font-size="11" font-weight="700" fill="#FFF">微服务层</text>
-    <text x="115" y="6" font-size="10" fill="#6D28D9">FastAPI · 独立容器部署</text>
+    <text x="115" y="6" font-size="10" fill="#6D28D9">独立容器部署</text>
 
     <rect x="25" y="25" width="260" height="80" rx="8" fill="#EDE9FE" stroke="#A78BFA" stroke-width="2" filter="url(#sh)"/>
     <rect x="25" y="25" width="260" height="26" rx="8" fill="#7C3AED"/>
@@ -149,21 +155,10 @@
     <text x="995" y="42" text-anchor="middle" font-size="11" font-weight="700" fill="#FFF">Scanner 服务</text>
     <text x="995" y="60" text-anchor="middle" font-size="9" fill="#6D28D9">SonarQube 扫描服务</text>
     <text x="995" y="78" text-anchor="middle" font-size="8" fill="#8B5CF6">ZIP 扫描 · 问题报告</text>
-    <text x="995" y="92" text-anchor="middle" font-size="8" fill="#8B5CF6">缓存去重 · 动态认证</text>
+    <text x="995" y="92" text-anchor="middle" font-size="8" fill="#8B5CF6">缓存去重</text>
   </g>
 
-  <!-- L3→L4:
-       Data layer width=350, centered at x=30+350/2=205 → 1 arrow
-       External services width=790, starts at x=30+380=410
-       Arrows at 410+790/3=673, 410+2*790/3=937 → 2 arrows
-  -->
-  <!-- L3→Data: 1 arrow -->
-  <line x1="205" y1="705" x2="205" y2="750" stroke="#D97706" stroke-width="4" marker-end="url(#aO)"/>
-  <!-- L3→External: 2 arrows -->
-  <line x1="673" y1="705" x2="673" y2="750" stroke="#64748B" stroke-width="4" marker-end="url(#aG)"/>
-  <line x1="937" y1="705" x2="937" y2="750" stroke="#64748B" stroke-width="4" marker-end="url(#aG)"/>
-
-  <!-- ===== L4: 数据层 + 外部服务 (y=760, h=270) ===== -->
+  <!-- ===== L4: 数据层 + 外部服务 ===== -->
   <g transform="translate(30, 760)">
     <!-- 数据层 -->
     <rect x="0" y="0" width="350" height="270" rx="10" fill="#FEFCE8" stroke="#FDE68A" stroke-width="2"/>
@@ -172,7 +167,7 @@
 
     <rect x="25" y="25" width="300" height="80" rx="8" fill="#FEF9C3" stroke="#FDE68A" stroke-width="2" filter="url(#sh)"/>
     <text x="175" y="50" text-anchor="middle" font-size="14" font-weight="700" fill="#92400E">SQLite</text>
-    <text x="175" y="70" text-anchor="middle" font-size="10" fill="#A16207">better-sqlite3 驱动</text>
+    <text x="175" y="70" text-anchor="middle" font-size="10" fill="#A16207">嵌入式关系数据库</text>
     <text x="175" y="90" text-anchor="middle" font-size="9" fill="#D97706">项目级数据隔离</text>
 
     <rect x="25" y="115" width="300" height="60" rx="8" fill="#FEF9C3" stroke="#FDE68A" stroke-width="2" filter="url(#sh)"/>
@@ -200,31 +195,20 @@
     <text x="637" y="55" text-anchor="middle" font-size="13" font-weight="700" fill="#1E293B">SonarQube</text>
     <text x="637" y="75" text-anchor="middle" font-size="10" fill="#475569">代码质量平台</text>
     <text x="637" y="95" text-anchor="middle" font-size="9" fill="#64748B">社区版</text>
-    <text x="637" y="112" text-anchor="middle" font-size="8" fill="#94A3B8">Token 动态认证</text>
 
     <rect x="730" y="25" width="145" height="100" rx="8" fill="#F1F5F9" stroke="#D1D5DB" stroke-width="2" filter="url(#sh)"/>
     <text x="802" y="55" text-anchor="middle" font-size="13" font-weight="700" fill="#1E293B">Star-Office</text>
     <text x="802" y="75" text-anchor="middle" font-size="10" fill="#475569">Agent 工作空间</text>
-    <text x="802" y="95" text-anchor="middle" font-size="9" fill="#64748B">Flask 后端</text>
-    <text x="802" y="112" text-anchor="middle" font-size="8" fill="#94A3B8">join-keys 管理</text>
+    <text x="802" y="95" text-anchor="middle" font-size="9" fill="#64748B">join-keys 管理</text>
 
     <rect x="895" y="25" width="130" height="100" rx="8" fill="#F1F5F9" stroke="#D1D5DB" stroke-width="2" filter="url(#sh)"/>
     <text x="960" y="55" text-anchor="middle" font-size="13" font-weight="700" fill="#1E293B">Jaeger</text>
     <text x="960" y="75" text-anchor="middle" font-size="10" fill="#475569">分布式追踪</text>
-    <text x="960" y="95" text-anchor="middle" font-size="9" fill="#64748B">UI + OTLP gRPC</text>
+    <text x="960" y="95" text-anchor="middle" font-size="9" fill="#64748B">UI + 收集器</text>
     <text x="960" y="112" text-anchor="middle" font-size="8" fill="#94A3B8">跨服务 Span</text>
 
     <rect x="1045" y="25" width="110" height="100" rx="8" fill="#F1F5F9" stroke="#D1D5DB" stroke-width="2" filter="url(#sh)"/>
     <text x="1100" y="60" text-anchor="middle" font-size="12" font-weight="700" fill="#1E293B">Draw.io</text>
     <text x="1100" y="80" text-anchor="middle" font-size="10" fill="#475569">导出服务</text>
-    <text x="1100" y="100" text-anchor="middle" font-size="9" fill="#64748B">jgraph/drawio</text>
-
-    <!-- 架构关系 -->
-    <rect x="400" y="140" width="755" height="115" rx="8" fill="#F1F5F9" stroke="#E2E8F0" stroke-width="1"/>
-    <text x="420" y="165" font-size="11" font-weight="700" fill="#475569">架构关系</text>
-    <text x="420" y="185" font-size="9" fill="#64748B">后端 → MinIO：文件上传下载 · 后端 → SonarQube：代码扫描 · 后端 → Star-Office：状态同步</text>
-    <text x="420" y="202" font-size="9" fill="#64748B">Scanner → SonarQube：扫描分析 · 后端 → Jaeger：链路追踪 · Draw.io 服务 → 导出服务：图表渲染</text>
-    <text x="420" y="222" font-size="10" font-weight="600" fill="#047857">亮点：项目级数据隔离 · 多智能体协作 · 代码质量门禁 · 可观测性全链路</text>
-    <text x="420" y="242" font-size="9" fill="#64748B">前端 HTTP/SSE ↔ 后端 ↔ 微服务 HTTP ↔ 外部服务 / 数据层</text>
   </g>
 </svg>
