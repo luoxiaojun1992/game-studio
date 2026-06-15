@@ -15,6 +15,15 @@ Game Dev Studio 是一个多 Agent 游戏研发工作台，包含：
 
 ## 2. 高层架构
 
+### 2.1 架构图 (PNG)
+
+![系统架构图](./images/architecture.png)
+
+### 2.2 Mermaid 源码 (文本)
+
+<details>
+<summary>点击展开 Mermaid 图</summary>
+
 ```mermaid
 graph TB
     subgraph "前端"
@@ -76,6 +85,8 @@ graph TB
     Sonar -->|Issues / 质量门禁| Scanner
     Scanner -->|扫描结果| BE
 ```
+
+</details>
 
 ## 3. 运行时组件
 
