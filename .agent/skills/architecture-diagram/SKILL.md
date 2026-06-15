@@ -152,8 +152,6 @@ git push
 | 架构图右侧溢出 | 框体 x+w 超过 viewBox | 缩小 w 或增大 viewBox |
 | 文字看起来偏上 | 用 baseline 中点代替视觉中点 | 用 `center_text.py` 算视觉边界 |
 | 外部服务框内容挤到顶部 | title+分隔线占用空间未被排除 | 脚本自动检测 title cutoff |
-| git branch 创建失败 | 已有同名 ref（如 `docs/xxx`） | 改用更长路径名 |
-| Docker README 过时 | 新增服务未列入 | 对照 `docker-compose.yml` 检查 |
 | 子框底部视觉上被截断 | 容器高度 = 子框底部，边框+滤镜阴影重叠在同一线上 | 容器高度 > 最后一个子框底部，留 ≥10px padding |
 | viewBox 反复调大无效 | 根因不是 viewBox 而是容器与子框边界重叠 | 先检查容器 h 是否刚好等于最后一个子框 y+h，再考虑 viewBox |
 
@@ -170,4 +168,3 @@ git push
 - `.agent/memory/ARCHITECTURE.md` — 详细架构
 - `.agent/memory/CONVENTIONS.md` — 工作约定
 - `docs/ARCHITECTURE.md` — 架构文档（中英文）
-- `docs/README-Docker.md` — Docker 部署文档（中英文）
