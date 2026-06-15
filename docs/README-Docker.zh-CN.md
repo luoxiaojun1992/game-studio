@@ -50,10 +50,14 @@ docker compose logs -f creator
 - **Game Dev Studio 前端**: http://localhost:5173
 - **Game Dev Studio 后端 API**: http://localhost:3000
 - **Star Office UI**: http://localhost:19000
+- **MinIO 控制台**: http://localhost:9001（管理界面）
+- **MinIO API**: http://localhost:9000
 - **SonarQube**: http://localhost:9002
 - **Creator 服务健康检查**: http://localhost:8080/health
+- **Image 服务健康检查**: http://localhost:8089/health
 - **Draw.io 服务健康检查**: http://localhost:8082/health
 - **Draw.io 导出服务**: http://localhost:8083
+- **Scanner 服务健康检查**: http://localhost:8081/health
 
 ### 5. 停止服务
 
@@ -68,22 +72,34 @@ docker compose down -v
 ## 服务架构
 
 ```
-┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
+                         ┌──────────────────┐
+                         │   MinIO (S3)     │
+                         │   :9000 API      │
+                         │   :9001 控制台    │
+                         └────────┬─────────┘
+                                  │
+┌─────────────────┐     ┌─────────┴────────┐     ┌─────────────────┐
 │  studio-frontend │────▶│  studio-backend  │────▶│  star-office-ui │
 │    (Nginx)       │     │   (Node.js)      │     │   (Flask)       │
 │    :5173         │     │    :3000         │     │    :19000       │
 └─────────────────┘     └─────────┬────────┘     └─────────────────┘
-                                    │
-                                    ├──────────────▶ creator (FastAPI + Blender)
-                                    ├──────────────▶ drawio-service (FastAPI)
-                                    │                    │
-                                    │                    └────────────▶ drawio-export (jgraph/drawio)
-                                    │
-                                    ▼
-                             ┌──────────────┐
-                             │   SQLite DB  │
-                            │   (Volume)   │
-                            └──────────────┘
+                                  │
+                    ┌─────────────┼─────────────────────────────┐
+                    │             │             │               │
+                    ▼             ▼             ▼               ▼
+              ┌──────────┐ ┌───────────┐ ┌──────────┐ ┌─────────────┐
+              │ creator  │ │  image-   │ │ drawio-  │ │  scanner    │
+              │(FastAPI+ │ │  service  │ │ service  │ │(FastAPI+    │
+              │ Blender) │ │(ImageMagi│ │(FastAPI) │ │ SonarScannr)│
+              │  :8080   │ │  :8089    │ │  :8082    │ │  :8081      │
+              └──────────┘ └───────────┘ └─────┬─────┘ └──────┬──────┘
+                                               │              │
+                                               ▼              ▼
+                                        ┌────────────┐ ┌──────────┐
+                                        │drawio-export│ │SonarQube │
+                                        │(jgraph/draw)│ │ :9000     │
+                                        │  :8083       │ │ (:9002)   │
+                                        └────────────┘ └──────────┘
 ```
 
 ## 数据持久化
@@ -93,7 +109,10 @@ docker compose down -v
 - `studio-data`: Game Dev Studio 数据（SQLite 数据库）
 - `studio-output`: 游戏输出文件
 - `star-office-data`: Star Office UI 数据
+- `minio-data`: MinIO 对象存储数据（游戏文件、提案、附件）
 - `creator-data`: Creator 服务 Blender 工作目录数据
+- `image-data`: Image 服务工作目录数据
+- `scanner-data`: SonarQube scanner 工作目录数据
 - `drawio-data`: Draw.io 服务工作目录数据
 - `sonarqube-data`: SonarQube 数据
 - `sonarqube-logs`: SonarQube 日志
@@ -120,11 +139,17 @@ docker volume inspect game-dev-studio_studio-data
 | `STAR_OFFICE_MAX_CONCURRENT` | 100 | 每个密钥最大并发 Agent 数 |
 | `STAR_OFFICE_SECRET` | `your-secret-key-here-min-24-chars` | Star Office 后端密钥 |
 | `ASSET_DRAWER_PASS` | `secure-pass-1234` | Star Office 资源面板密码 |
+| `MINIO_API_PORT` | 9000 | MinIO API 端口 |
+| `MINIO_CONSOLE_PORT` | 9001 | MinIO 控制台端口 |
+| `MINIO_ROOT_USER` | minioadmin | MinIO 管理员用户名 |
+| `MINIO_ROOT_PASSWORD` | minioadmin | MinIO 管理员密码 |
 | `CREATOR_PORT` | 8080 | Creator 服务对外端口 |
 | `CREATOR_SERVICE_URL` | `http://creator:8080` | 后端访问 Creator 的内部服务地址 |
+| `IMAGE_SERVICE_PORT` | 8089 | Image 服务对外端口 |
 | `DRAWIO_SERVICE_PORT` | 8082 | Draw.io 服务对外端口 |
 | `DRAWIO_EXPORT_PORT` | 8083 | Draw.io 导出服务对外端口 |
 | `SONARQUBE_PORT` | 9002 | SonarQube 服务端口（映射到容器 9000） |
+| `SONARQUBE_PASSWORD` | admin | SonarQube 管理员密码（scanner 使用） |
 | `SONARQUBE_TOKEN` | `sonarpass` | 后端 `sonarqube` 检查器访问 SonarQube 使用的 Token |
 
 ## Star Office 并发配置
