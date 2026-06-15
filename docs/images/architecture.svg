@@ -136,17 +136,17 @@
     <rect x="20" y="-10" width="70" height="22" rx="6" fill="#D97706"/>
     <text x="55" y="6" text-anchor="middle" font-size="11" font-weight="700" fill="#FFF">数据层</text>
     <rect x="25" y="30" width="300" height="80" rx="8" fill="#FEF9C3" stroke="#FDE68A" stroke-width="2" filter="url(#sh)"/>
-    <text x="175" y="60" text-anchor="middle" font-size="14" font-weight="700" fill="#92400E">SQLite</text>
-    <text x="175" y="80" text-anchor="middle" font-size="10" fill="#A16207">嵌入式关系数据库</text>
-    <text x="175" y="100" text-anchor="middle" font-size="9" fill="#D97706">项目级数据隔离</text>
+    <text x="175" y="63" text-anchor="middle" font-size="14" font-weight="700" fill="#92400E">SQLite</text>
+    <text x="175" y="83" text-anchor="middle" font-size="10" fill="#A16207">嵌入式关系数据库</text>
+    <text x="175" y="103" text-anchor="middle" font-size="9" fill="#D97706">项目级数据隔离</text>
     <rect x="25" y="125" width="300" height="60" rx="8" fill="#FEF9C3" stroke="#FDE68A" stroke-width="2" filter="url(#sh)"/>
-    <text x="175" y="153" text-anchor="middle" font-size="12" font-weight="700" fill="#92400E">文件存储</text>
-    <text x="175" y="171" text-anchor="middle" font-size="9" fill="#A16207">output/ 目录</text>
-    <text x="175" y="181" text-anchor="middle" font-size="9" fill="#A16207">MinIO 对象存储</text>
+    <text x="175" y="156" text-anchor="middle" font-size="12" font-weight="700" fill="#92400E">文件存储</text>
+    <text x="175" y="174" text-anchor="middle" font-size="9" fill="#A16207">output/ 目录</text>
+    <text x="175" y="184" text-anchor="middle" font-size="9" fill="#A16207">MinIO 对象存储</text>
     <rect x="25" y="200" width="300" height="70" rx="8" fill="#FEF9C3" stroke="#FDE68A" stroke-width="2" filter="url(#sh)"/>
-    <text x="175" y="225" text-anchor="middle" font-size="12" font-weight="700" fill="#92400E">持久化特性</text>
-    <text x="175" y="243" text-anchor="middle" font-size="9" fill="#A16207">17 张核心业务表</text>
-    <text x="175" y="259" text-anchor="middle" font-size="9" fill="#A16207">DDL 优先初始化 · 向后兼容</text>
+    <text x="175" y="228" text-anchor="middle" font-size="12" font-weight="700" fill="#92400E">持久化特性</text>
+    <text x="175" y="246" text-anchor="middle" font-size="9" fill="#A16207">17 张核心业务表</text>
+    <text x="175" y="262" text-anchor="middle" font-size="9" fill="#A16207">DB Migration</text>
 
     <!-- 外部服务 -->
     <rect x="380" y="0" width="740" height="270" rx="10" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="2"/>
