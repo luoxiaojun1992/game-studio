@@ -17,7 +17,7 @@ Game Dev Studio is a multi-agent game development workspace:
 
 ### 2.1 Diagram (PNG)
 
-![System Architecture](./images/architecture.png)
+![System Architecture](./images/architecture-en.png)
 
 ### 2.2 Mermaid Source (Text)
 
