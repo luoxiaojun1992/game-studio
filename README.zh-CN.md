@@ -133,28 +133,48 @@ game-studio/
 │   ├── index.ts            # API 与 SSE 入口
 │   ├── agent-manager.ts    # Agent 生命周期与消息分发
 │   ├── tools.ts            # MCP 自定义工具
-│   ├── lint/               # 可扩展 Lint 框架（LintRunner + 检查器）
 │   ├── agents.ts           # 团队角色定义与系统提示词
 │   ├── star-office-sync.ts # Star-Office-UI 同步服务
-│   └── db.ts               # SQLite 表结构与数据访问
+│   ├── sse-broadcaster.ts  # SSE 广播工具
+│   ├── db.ts               # SQLite 表结构与数据访问
+│   ├── minio-client.ts     # MinIO 客户端封装
+│   ├── file-storage.ts     # 文件存储（MinIO）操作
+│   ├── image-service.ts    # ImageMagick 图片处理服务客户端
+│   ├── creator-service.ts  # Blender creator 服务客户端
+│   ├── drawio-service.ts   # Draw.io 图表服务客户端
+│   ├── sonar-scanner-service.ts # SonarQube scanner 服务客户端
+│   ├── modeling-tool.ts    # 3D 建模工具
+│   ├── proposal-attachments-api.ts # 提案附件 API 路由
+│   └── lint/               # 可扩展 Lint 框架（LintRunner + 检查器）
 ├── src/                    # 前端应用
 │   ├── pages/StudioPage.tsx
 │   ├── components/         # 各业务面板
 │   │   ├── QuestionnaireForm.tsx  # 结构化游戏策划问卷表单
-│   │   ├── AgentCard.tsx        # Agent 状态卡片
-│   │   ├── CommandPanel.tsx     # 指令发送面板
-│   │   ├── HandoffPanel.tsx     # 任务交接面板
-│   │   ├── ProposalList.tsx     # 提案列表（支持来源标签）
-│   │   ├── GameList.tsx         # 游戏列表
-│   │   ├── TaskBoardPanel.tsx  # 任务看板
-│   │   ├── LogPanel.tsx         # 日志面板
-│   │   └── StarOfficeStudio.tsx # Star‑Office‑UI 集成组件
+│   │   ├── AgentCard.tsx          # Agent 状态卡片
+│   │   ├── PixelAgentAvatar.tsx   # 像素风 Agent 头像
+│   │   ├── CommandPanel.tsx       # 指令发送面板
+│   │   ├── HandoffPanel.tsx       # 任务交接面板
+│   │   ├── ProposalList.tsx       # 提案列表（支持来源标签）
+│   │   ├── ProposalDetail.tsx     # 提案详情页
+│   │   ├── GameList.tsx           # 游戏列表
+│   │   ├── GamePreview.tsx        # 游戏预览面板
+│   │   ├── TaskBoardPanel.tsx     # 任务看板
+│   │   ├── LogPanel.tsx           # 日志面板
+│   │   └── StarOfficeStudio.tsx   # Star‑Office‑UI 集成组件
 │   ├── config.ts           # API 封装
 │   └── types.ts            # 前后端共享业务类型
 ├── star-office-ui/         # Star-Office-UI Docker 构建资源
 ├── creator/                # Blender creator 微服务（FastAPI + Blender 运行时）
-├── drawio-service/          # Draw.io 图表微服务（FastAPI + draw.io export）
+├── drawio-service/         # Draw.io 图表微服务（FastAPI + draw.io export）
 ├── sonar-scanner-service/  # SonarQube scanner 微服务（FastAPI + sonar-scanner CLI）
+├── image-service/          # ImageMagick 图片处理微服务
+├── tests/                  # E2E 测试套件（Playwright + Allure）
+├── scripts/                # 工具脚本
+├── .agent/                 # Agent 配置、规范、技能、记忆
+│   ├── specs/              # 技术规范文档
+│   ├── skills/             # Agent 技能定义
+│   └── memory/             # 长期记忆
+├── graphify-out/           # Graphify 知识图谱输出
 ├── docs/images/            # README 预览图片
 ├── data/                   # SQLite 数据文件目录（运行时生成）
 ├── output/                 # 提案/游戏产出目录（运行时生成）
@@ -243,6 +263,7 @@ game-studio/
 | SPEC-018 | 分层架构重构 — Data/Service/API+tools 三层解耦 | 🚧 设计中 |
 | SPEC-019 | Tool Call Chain — Agent 工具调用链可视化（实时追踪，带图标） | 🚧 设计中 |
 | SPEC-020 | OpenTelemetry 分布式链路追踪（Jaeger）— 服务内函数调用 + 跨服务追踪 | 🚧 设计中 |
+| SPEC-021 | Team Building Agent 指示灯 | 🚧 设计中 |
 
 ```bash
 # 推荐：使用 Makefile 运行 UI 测试（构建 + 启动）

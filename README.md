@@ -134,28 +134,48 @@ game-studio/
 │   ├── index.ts            # API and SSE entry
 │   ├── agent-manager.ts    # Agent lifecycle and message dispatch
 │   ├── tools.ts            # MCP custom tools
-│   ├── lint/               # Extensible lint framework (LintRunner + checkers)
 │   ├── agents.ts           # Team role definitions and system prompts
 │   ├── star-office-sync.ts # Star-Office-UI sync service
-│   └── db.ts               # SQLite schema and data access
+│   ├── sse-broadcaster.ts  # SSE broadcast utilities
+│   ├── db.ts               # SQLite schema and data access
+│   ├── minio-client.ts     # MinIO client wrapper
+│   ├── file-storage.ts     # File storage (MinIO) operations
+│   ├── image-service.ts    # ImageMagick processing service client
+│   ├── creator-service.ts  # Blender creator service client
+│   ├── drawio-service.ts   # Draw.io diagram service client
+│   ├── sonar-scanner-service.ts # SonarQube scanner service client
+│   ├── modeling-tool.ts    # 3D modeling tools
+│   ├── proposal-attachments-api.ts # Proposal attachment API routes
+│   └── lint/               # Extensible lint framework (LintRunner + checkers)
 ├── src/                    # Frontend app
 │   ├── pages/StudioPage.tsx
 │   ├── components/         # Business panels
 │   │   ├── QuestionnaireForm.tsx  # Structured game design questionnaire form
-│   │   ├── AgentCard.tsx        # Agent status cards
-│   │   ├── CommandPanel.tsx     # Command dispatch panel
-│   │   ├── HandoffPanel.tsx     # Task handoff panel
-│   │   ├── ProposalList.tsx     # Proposal list (supports source tag)
-│   │   ├── GameList.tsx         # Game list
-│   │   ├── TaskBoardPanel.tsx  # Task board
-│   │   ├── LogPanel.tsx         # Log panel
-│   │   └── StarOfficeStudio.tsx # Star‑Office‑UI integration widget
+│   │   ├── AgentCard.tsx          # Agent status cards
+│   │   ├── PixelAgentAvatar.tsx   # Pixel art agent avatars
+│   │   ├── CommandPanel.tsx       # Command dispatch panel
+│   │   ├── HandoffPanel.tsx       # Task handoff panel
+│   │   ├── ProposalList.tsx       # Proposal list (supports source tag)
+│   │   ├── ProposalDetail.tsx     # Proposal detail view
+│   │   ├── GameList.tsx           # Game list
+│   │   ├── GamePreview.tsx        # Game preview panel
+│   │   ├── TaskBoardPanel.tsx     # Task board
+│   │   ├── LogPanel.tsx           # Log panel
+│   │   └── StarOfficeStudio.tsx   # Star‑Office‑UI integration widget
 │   ├── config.ts           # API wrappers
 │   └── types.ts            # Shared business types
 ├── star-office-ui/         # Star-Office-UI Docker build resources
 ├── creator/                # Blender creator service (FastAPI + Blender runtime)
-├── drawio-service/          # Draw.io diagram service (FastAPI + draw.io export)
+├── drawio-service/         # Draw.io diagram service (FastAPI + draw.io export)
 ├── sonar-scanner-service/  # SonarQube scanner microservice (FastAPI + sonar-scanner CLI)
+├── image-service/          # ImageMagick image processing microservice
+├── tests/                  # E2E test suite (Playwright + Allure)
+├── scripts/                # Utility scripts
+├── .agent/                 # Agent configurations, specs, skills, memory
+│   ├── specs/              # Technical specification documents
+│   ├── skills/             # Agent skill definitions
+│   └── memory/             # Long-term agent memory
+├── graphify-out/           # Graphify knowledge graph output
 ├── docs/images/            # README preview images
 ├── data/                   # SQLite database files (runtime-generated)
 ├── output/                 # Proposal/game outputs (runtime-generated)
@@ -240,6 +260,7 @@ Based on [technical specs](./.agent/specs/INDEX.md):
 | SPEC-018 | Layered architecture refactoring — Data/Service/API+tools 3-tier | 🚧 In Design |
 | SPEC-019 | Tool Call Chain — real-time agent tool call visualization with icons | 🚧 In Design |
 | SPEC-020 | OpenTelemetry distributed tracing with Jaeger — in-service and cross-service spans | 🚧 In Design |
+| SPEC-021 | Team Building Agent indicator light | 🚧 In Design |
 
 ## Architecture Documentation
 
