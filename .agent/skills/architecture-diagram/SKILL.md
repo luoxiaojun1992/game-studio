@@ -12,21 +12,19 @@ agent_created: true
 ## Overview
 
 维护 game-dev-studio 项目的 SVG 系统架构图（`docs/images/architecture.svg`），
-包括四层架构布局、配色、箭头、文字居中、中英文文档同步嵌入。
+包括四层架构布局、配色、箭头、文字居中。
 
 核心能力：
 1. **代码浏览研究** — 读取关键代码文件（`server/db.ts`, `server/tools.ts`, `docker-compose.yml` 等）理解当前系统状态
 2. **架构图绘制** — SVG 四层架构图（前端 → 后端 → 微服务 → 数据/外部服务），含箭头、配色、布局
 3. **文字居中算法** — 考虑字体视觉边界的通用垂直居中脚本
-4. **中英文同步翻译** — 不破坏 Markdown 排版结构的前提下翻译文档
 
 ## When to Use
 
-- 用户要求更新 README/Docker README/架构文档
-- 新建服务/模块后需要同步文档
-- 架构图出现排版问题（文字不居中、溢出、箭头混乱）
-- 中英文版本文档不一致
-- 补充 roadmap、project structure 等内容
+- 架构图出现排版问题（文字不居中、溢出、箭头混乱、容器截断）
+- 新建服务/模块后需要更新架构图
+- 架构图 SVG→PNG 转换
+- 架构文档（`docs/ARCHITECTURE.md`）中嵌入的架构图需要更新
 
 ## Workflow
 
@@ -42,29 +40,16 @@ agent_created: true
    - server/tools.ts    → MCP 工具列表
    - docker-compose.yml → 服务架构、端口、依赖
    - docs/ARCHITECTURE.md → 当前架构文档
-4. 读取当前 README/Docker README/架构文档的中英文版本
 ```
 
-### Phase 2: 文档更新
+### Phase 2: 架构文档同步
 
-**README 更新要点**：
-- roadmap：按 SPEC-XXX 编号顺序排列
-- project structure：用 ASCII 树形结构，列出所有关键目录和文件
-- 中英文版本内容一一对应，只翻译自然语言部分，不翻译代码/路径/文件名
-- 表格列对齐保持一致
+当架构图变更后，需同步更新架构文档中嵌入的图片引用和服务描述：
 
-**Docker README 更新要点**：
-- 架构图：ASCII 服务依赖图
-- 访问 URL 表：列出所有服务端口和用途
-- Volumes 表：列出所有挂载卷
-- 环境变量表：列出所有可配置变量
-- 启动/停止步骤
-
-**架构文档更新要点**：
-- 保持 Mermaid 图（折叠在 `<details>` 中）
+- 保持 Mermaid 图（折叠在 `<details>` 中）作为备用
 - 以 PNG 为主要展示图（`docs/images/architecture.png`）
 - 服务划分表：列出各服务和职责
-- 数据流描述
+- 中文版和英文版同步更新图片路径
 
 ### Phase 3: 架构图维护
 
@@ -131,18 +116,6 @@ git add docs/ docs/images/
 git commit -m "docs: <描述更新内容>"
 git push
 ```
-
-## 中英文同步规则
-
-1. **先改中文版，后同步英文版**：中文是主版本
-2. **不破坏格式**：表格列数、缩进、空行、代码块边界完全一致
-3. **翻译边界**：
-   - 自然语言段落 → 翻译
-   - 代码块内容 → 不翻译
-   - 文件路径 → 不翻译
-   - 命令示例 → 不翻译
-   - 表格中的技术术语 → 不翻译
-4. **结构对应**：每个章节在中英文版中位置相同，用对应语言的标题
 
 ## 常见踩坑
 
