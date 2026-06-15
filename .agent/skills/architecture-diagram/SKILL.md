@@ -134,6 +134,19 @@ git push
 
 通用 SVG 文字垂直居中脚本。支持 `--dry-run`、`--output` 参数。详见 Phase 4。
 
+### scripts/translate_svg.py
+
+中文架构图翻译为英文版脚本。基于翻译字典替换所有 `<text>` 内容，保留布局和配色不变。
+
+```bash
+python3 .agent/skills/architecture-diagram/scripts/translate_svg.py docs/images/architecture.svg docs/images/architecture-en.svg
+```
+
+**注意事项**：
+- 翻译后需检查标签 rect 宽度是否适配英文文本（英文通常更长）
+- 中英文相同的专有名词（SQLite、MinIO、Jaeger 等）保留不翻译
+- 缩进文本需在翻译字典中同时包含带空格和不带空格版本
+
 ## References
 
 - `.agent/AI_AGENT_COMMON_INSTRUCTIONS.md` — 项目全貌
