@@ -21,7 +21,7 @@
     <rect x="0" y="0" width="1140" height="70" rx="10" fill="#EEF2FF" stroke="#C7D2FE" stroke-width="2"/>
     <rect x="20" y="-10" width="80" height="22" rx="6" fill="#4F46E5"/>
     <text x="60" y="6" text-anchor="middle" font-size="11" font-weight="700" fill="#FFF">前端展示层</text>
-    <text x="115" y="6" font-size="10" fill="#3730A3">React + Vite</text>
+    <text x="115" y="6" font-size="10" fill="#3730A3"></text>
     <rect x="25" y="22" width="120" height="36" rx="6" fill="#E0E7FF" stroke="#A5B4FC" stroke-width="1" filter="url(#sh)"/><text x="85" y="43" text-anchor="middle" font-size="10" font-weight="600" fill="#312E81">团队总览</text>
     <rect x="160" y="22" width="120" height="36" rx="6" fill="#E0E7FF" stroke="#A5B4FC" stroke-width="1" filter="url(#sh)"/><text x="220" y="43" text-anchor="middle" font-size="10" font-weight="600" fill="#312E81">指令中心</text>
     <rect x="295" y="22" width="120" height="36" rx="6" fill="#E0E7FF" stroke="#A5B4FC" stroke-width="1" filter="url(#sh)"/><text x="355" y="43" text-anchor="middle" font-size="10" font-weight="600" fill="#312E81">Studio 工作台</text>
@@ -41,7 +41,7 @@
     <rect x="0" y="0" width="1140" height="320" rx="10" fill="#ECFDF5" stroke="#6EE7B7" stroke-width="2"/>
     <rect x="20" y="-10" width="90" height="22" rx="6" fill="#059669"/>
     <text x="65" y="6" text-anchor="middle" font-size="11" font-weight="700" fill="#FFF">后端业务层</text>
-    <text x="125" y="6" font-size="10" fill="#047857">Express + TypeScript</text>
+    <text x="125" y="6" font-size="10" fill="#047857"></text>
 
     <!-- 智能体编排 -->
     <rect x="25" y="25" width="265" height="280" rx="8" fill="#D1FAE5" stroke="#34D399" stroke-width="2"/>
@@ -180,25 +180,45 @@
     <text x="473" y="55" text-anchor="middle" font-size="14" font-weight="700" fill="#1E293B">MinIO</text>
     <line x1="414" y1="65" x2="532" y2="65" stroke="#E2E8F0" stroke-width="0.5"/>
     <text x="473" y="85" text-anchor="middle" font-size="10" fill="#64748B">对象存储</text>
+    <text x="473" y="110" text-anchor="middle" font-size="8" fill="#94A3B8">• 游戏文件存储</text>
+    <text x="473" y="128" text-anchor="middle" font-size="8" fill="#94A3B8">• 附件管理</text>
+    <text x="473" y="146" text-anchor="middle" font-size="8" fill="#94A3B8">• 扫描报告归档</text>
+    <text x="473" y="164" text-anchor="middle" font-size="8" fill="#94A3B8">• 预签名下载链接</text>
 
     <rect x="556" y="25" width="146" height="220" rx="8" fill="#F1F5F9" stroke="#D1D5DB" stroke-width="2" filter="url(#sh)"/>
     <text x="629" y="55" text-anchor="middle" font-size="14" font-weight="700" fill="#1E293B">SonarQube</text>
     <line x1="570" y1="65" x2="688" y2="65" stroke="#E2E8F0" stroke-width="0.5"/>
     <text x="629" y="85" text-anchor="middle" font-size="10" fill="#64748B">代码质量平台</text>
+    <text x="629" y="110" text-anchor="middle" font-size="8" fill="#94A3B8">• 静态代码扫描</text>
+    <text x="629" y="128" text-anchor="middle" font-size="8" fill="#94A3B8">• Bug 与安全漏洞检测</text>
+    <text x="629" y="146" text-anchor="middle" font-size="8" fill="#94A3B8">• 代码异味分析</text>
+    <text x="629" y="164" text-anchor="middle" font-size="8" fill="#94A3B8">• 质量门禁控制</text>
 
     <rect x="712" y="25" width="146" height="220" rx="8" fill="#F1F5F9" stroke="#D1D5DB" stroke-width="2" filter="url(#sh)"/>
     <text x="785" y="55" text-anchor="middle" font-size="14" font-weight="700" fill="#1E293B">Star-Office</text>
     <line x1="726" y1="65" x2="844" y2="65" stroke="#E2E8F0" stroke-width="0.5"/>
     <text x="785" y="85" text-anchor="middle" font-size="10" fill="#64748B">Agent 工作空间</text>
+    <text x="785" y="110" text-anchor="middle" font-size="8" fill="#94A3B8">• 多 Agent 状态同步</text>
+    <text x="785" y="128" text-anchor="middle" font-size="8" fill="#94A3B8">• 实时协作画布</text>
+    <text x="785" y="146" text-anchor="middle" font-size="8" fill="#94A3B8">• 任务可视化管理</text>
+    <text x="785" y="164" text-anchor="middle" font-size="8" fill="#94A3B8">• 跨项目隔离</text>
 
     <rect x="868" y="25" width="146" height="220" rx="8" fill="#F1F5F9" stroke="#D1D5DB" stroke-width="2" filter="url(#sh)"/>
     <text x="941" y="55" text-anchor="middle" font-size="14" font-weight="700" fill="#1E293B">Jaeger</text>
     <line x1="882" y1="65" x2="1000" y2="65" stroke="#E2E8F0" stroke-width="0.5"/>
     <text x="941" y="85" text-anchor="middle" font-size="10" fill="#64748B">分布式追踪</text>
+    <text x="941" y="110" text-anchor="middle" font-size="8" fill="#94A3B8">• 跨服务调用链路</text>
+    <text x="941" y="128" text-anchor="middle" font-size="8" fill="#94A3B8">• 性能瓶颈分析</text>
+    <text x="941" y="146" text-anchor="middle" font-size="8" fill="#94A3B8">• 错误根因定位</text>
+    <text x="941" y="164" text-anchor="middle" font-size="8" fill="#94A3B8">• 可视化追踪界面</text>
 
     <rect x="1024" y="25" width="126" height="220" rx="8" fill="#F1F5F9" stroke="#D1D5DB" stroke-width="2" filter="url(#sh)"/>
     <text x="1087" y="55" text-anchor="middle" font-size="14" font-weight="700" fill="#1E293B">Draw.io</text>
     <line x1="1038" y1="65" x2="1136" y2="65" stroke="#E2E8F0" stroke-width="0.5"/>
     <text x="1087" y="85" text-anchor="middle" font-size="10" fill="#64748B">图表导出</text>
+    <text x="1087" y="110" text-anchor="middle" font-size="8" fill="#94A3B8">• 架构图设计</text>
+    <text x="1087" y="128" text-anchor="middle" font-size="8" fill="#94A3B8">• 游戏流程图绘制</text>
+    <text x="1087" y="146" text-anchor="middle" font-size="8" fill="#94A3B8">• PNG/SVG 导出</text>
+    <text x="1087" y="164" text-anchor="middle" font-size="8" fill="#94A3B8">• 提案附件绑定</text>
   </g>
 </svg>
