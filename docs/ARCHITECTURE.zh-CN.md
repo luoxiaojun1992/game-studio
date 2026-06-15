@@ -36,11 +36,13 @@ graph TB
         Sonar["SonarQube<br/>代码质量"]
         StarOffice["Star-Office-UI"]
         DrawioExport["Draw.io 导出<br/>jgraph/drawio"]
+        Jaeger["Jaeger<br/>分布式追踪"]
     end
 
     subgraph "微服务"
         Creator["Creator Service<br/>FastAPI"]
         Blender["Blender<br/>3D 引擎"]
+        Image["Image Service<br/>FastAPI + ImageMagick"]
         Drawio["Draw.io Service<br/>FastAPI"]
         Scanner["Scanner Service<br/>FastAPI + sonar-scanner CLI"]
     end
@@ -54,6 +56,7 @@ graph TB
     Browser -->|SSE /api/observe| BE
 
     BE -->|HTTP| Creator
+    BE -->|HTTP| Image
     BE -->|HTTP| Drawio
     BE -->|上传 / 下载| MinIO
     BE -->|SQL| SQLite
@@ -61,8 +64,10 @@ graph TB
     BE -->|submit_game lint| LintRunner
     BE -->|HTTP API| Scanner
     BE -.->|同步| StarOffice
+    BE -->|OTLP gRPC| Jaeger
     Creator -->|subprocess| Blender
     Drawio -->|导出| DrawioExport
+    Image -->|subprocess| Image["ImageMagick"]
 
     LintRunner --> SonarChecker
     LintRunner --> GameEngChecker
@@ -97,6 +102,7 @@ graph TB
 - `agents.ts`：角色定义、提示词、交接约束
 - `db.ts`：SQLite 表结构（DDL 优先初始化）与读写逻辑
 - `sse-broadcaster.ts`：SSE 客户端管理与事件广播
+- `telemetry.ts`：OpenTelemetry SDK 初始化（自动插桩 + 手动 Span）
 - `star-office-sync.ts`：Star-Office 注册/同步/健康巡检
 - `proposal-attachments-api.ts`：策划案附件 CRUD 与文件存储绑定
 - `utils/questionnaire-renderer.ts`：问卷字段到 Markdown 的渲染引擎，用于结构化提案提交
@@ -115,7 +121,7 @@ graph TB
 - **图表/附件（Diagrams/Attachments）**：draw.io 图表管理、导出、策划案附件与**图表元素列表**
 - **静态分析（Lint/Quality）**：可扩展静态检查框架（通过 scanner 微服务的 sonarqube + 带 20 条规则的 game-engineering checker）；Sonar 报告通过 `games.sonar_storage_id` 关联到游戏成品；GameEngineeringChecker 使用 `submitDir` 上下文直接读取目录文件进行工程规范校验
 - **记忆（Memories）**：按角色/项目组织的长期记忆
-- **观测（Logs/Events）**：运行日志与事件流
+- **观测（Logs/Events/Tracing）**：运行日志、事件流与分布式追踪（OpenTelemetry + Jaeger，SPEC-020）
 - **权限（Permissions）**：工具执行审批流与回调响应
 - **设置（Settings）**：项目级别配置，包括自动驾驶开关与 **Team Building Agent 模型选择**
 
@@ -184,7 +190,42 @@ graph TB
 ## 9. 部署形态
 
 - 本地开发：单节点后端 + 前端开发服务器
-- Docker 部署：前后端 + creator 服务 + draw.io 服务 + draw.io 导出 + SonarQube 容器化（见 `README-Docker.zh-CN.md`）
+- Docker 部署：前后端 + creator 服务 + draw.io 服务 + draw.io 导出 + SonarQube + scanner 微服务 + Jaeger（OpenTelemetry 链路追踪）容器化（见 `README-Docker.zh-CN.md`）
+
+### 9.1 服务依赖关系
+
+服务按层级启动，每层服务等待下层所有服务健康后才开始启动。
+
+```
+第 0 层（无启动依赖）：
+  minio  sonarqube  star-office-ui  creator  image-service  drawio-export  scanner  jaeger
+
+第 1 层：
+  drawio-service ── 等待 ──> drawio-export
+
+第 2 层：
+  studio-backend ── 等待 ──> minio  sonarqube  creator  drawio-service
+                                image-service  scanner  [jaeger]
+
+第 3 层：
+  studio-frontend ── 等待 ──> studio-backend  star-office-ui
+```
+
+| 服务 | 启动依赖（depends_on） | 运行时依赖（URL 方式） |
+|------|-----------------------|----------------------|
+| `minio` | 无 | — |
+| `sonarqube` | 无 | — |
+| `star-office-ui` | 无 | — |
+| `creator` | 无 | `studio-backend` → `http://creator:8080` |
+| `image-service` | 无 | `studio-backend` → `http://image-service:8089` |
+| `drawio-export` | 无 | `drawio-service` → `http://drawio-export:8080/export` |
+| `scanner` | sonarqube | `studio-backend` → `http://scanner:8081` |
+| | | `sonarqube` →（SONAR_HOST_URL） |
+| `jaeger` | 无 | `studio-backend` → `http://jaeger:4317`（OTLP gRPC） |
+| | | Python 微服务 → `http://jaeger:4317` |
+| `drawio-service` | `drawio-export` | — |
+| `studio-backend` | minio, sonarqube, creator, drawio-service, image-service, scanner | star-office-ui, minio, creator, drawio-service, image-service, scanner, sonarqube, jaeger |
+| `studio-frontend` | studio-backend, star-office-ui | `studio-backend`（构建时注入，通过 `VITE_API_BASE`） |
 - 运行目录：
   - `data/`：SQLite 数据库
   - `output/`：提案/游戏产物

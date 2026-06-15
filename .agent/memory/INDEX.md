@@ -15,6 +15,7 @@
 | [REUSABLE_PATTERNS.md](./REUSABLE_PATTERNS.md) | 可复用代码片段、代码模板、设计模式汇总 |
 | [GRAPHIFY.md](./GRAPHIFY.md) | Graphify 知识图谱技能使用指南 |
 | [../../specs/github-ci-agent.md](../../specs/github-ci-agent.md) | SPEC-014: GitHub Actions CI Agent 调试规范 |
+| [../../specs/opentelemetry-tracing/opentelemetry-tracing.md](../../specs/opentelemetry-tracing/opentelemetry-tracing.md) | SPEC-020: OpenTelemetry 分布式链路追踪（Jaeger、手动 Span、跨服务 trace 传播） |
 
 ## 快速参考
 
@@ -36,6 +37,7 @@
 - SonarQube 报告上传后写入 `games.sonar_storage_id`，前端可下载扫描报告
 - `proposals` 表含 `source` 字段（`manual`/`questionnaire`），问卷式提案通过 `questionnaire-renderer.ts` 渲染结构化输入为 Markdown
 - `QuestionnaireForm` 组件提供分步问卷表单，`GET /api/game-types` 动态获取游戏工程类型
+- Jaeger 分布式追踪（SPEC-020）：`jaegertracing/all-in-one` 容器，103686 UI；手动 Span 覆盖 `agent.run`/`agent.think`/`agent.tool_call`；W3C TraceContext 跨服务传播
 - `POST /api/proposals/questionnaire` 为问卷提案 REST 入口，提交后与普通提案完全等价
 
 ### E2E 测试关键
