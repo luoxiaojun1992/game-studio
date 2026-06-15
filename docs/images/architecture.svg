@@ -1,278 +1,245 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1160 880" font-family="'Inter', 'PingFang SC', 'Microsoft YaHei', Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1000" font-family="'Inter', 'PingFang SC', 'Microsoft YaHei', Arial, sans-serif">
   <defs>
-    <filter id="sh" x="-1%" y="-1%" width="102%" height="106%"><feDropShadow dx="0" dy="1" stdDeviation="1.5" flood-opacity="0.06"/></filter>
+    <marker id="arrowB" markerWidth="12" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0,0 L12,5 L0,10 Z" fill="#4F46E5"/></marker>
+    <marker id="arrowP" markerWidth="12" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0,0 L12,5 L0,10 Z" fill="#7C3AED"/></marker>
+    <marker id="arrowO" markerWidth="12" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0,0 L12,5 L0,10 Z" fill="#D97706"/></marker>
+    <filter id="sh" x="-1%" y="-1%" width="102%" height="106%"><feDropShadow dx="0" dy="2" stdDeviation="2" flood-opacity="0.08"/></filter>
   </defs>
 
-  <rect width="1160" height="880" fill="#FCFCFD" rx="4"/>
+  <rect width="1200" height="1000" fill="#FAFBFC" rx="4"/>
 
-  <text x="580" y="30" text-anchor="middle" font-size="19" font-weight="800" fill="#111827">Game Dev Studio — 系统架构</text>
-  <text x="580" y="48" text-anchor="middle" font-size="9" fill="#6B7280">多智能体游戏研发工作台 · 功能模块 · 业务域 · 微服务 · 基础设施</text>
+  <text x="600" y="35" text-anchor="middle" font-size="22" font-weight="800" fill="#111827">Game Dev Studio 系统架构</text>
+  <text x="600" y="58" text-anchor="middle" font-size="11" fill="#6B7280">多智能体游戏研发工作台 · 功能模块 · 业务逻辑 · 技术架构</text>
 
-  <!-- ===== L1: 前端 ===== -->
-  <g transform="translate(20, 62)">
-    <rect x="0" y="0" width="1120" height="56" rx="8" fill="#EEF2FF" stroke="#C7D2FE" stroke-width="1.5"/>
-    <rect x="14" y="-7" width="56" height="16" rx="4" fill="#4F46E5"/>
-    <text x="42" y="4" text-anchor="middle" font-size="8" font-weight="700" fill="#FFF">前端</text>
-    <text x="80" y="5" font-size="8.5" font-weight="600" fill="#3730A3">React + Vite   :5173</text>
+  <!-- ===== L1: 前端展示层 ===== -->
+  <g transform="translate(30, 80)">
+    <rect x="0" y="0" width="1140" height="70" rx="10" fill="#EEF2FF" stroke="#C7D2FE" stroke-width="2"/>
+    <rect x="20" y="-10" width="80" height="22" rx="6" fill="#4F46E5"/>
+    <text x="60" y="6" text-anchor="middle" font-size="11" font-weight="700" fill="#FFF">前端展示层</text>
+    <text x="115" y="6" font-size="10" fill="#3730A3">React + Vite · 端口 5173</text>
 
-    <rect x="14" y="14" width="112" height="30" rx="4" fill="#E0E7FF" stroke="#A5B4FC" stroke-width="0.6" filter="url(#sh)"/>
-    <text x="70" y="33" text-anchor="middle" font-size="7" font-weight="600" fill="#312E81">团队总览</text>
+    <rect x="25" y="22" width="120" height="36" rx="6" fill="#E0E7FF" stroke="#A5B4FC" stroke-width="1" filter="url(#sh)"/>
+    <text x="85" y="43" text-anchor="middle" font-size="10" font-weight="600" fill="#312E81">团队总览</text>
 
-    <rect x="134" y="14" width="112" height="30" rx="4" fill="#E0E7FF" stroke="#A5B4FC" stroke-width="0.6" filter="url(#sh)"/>
-    <text x="190" y="33" text-anchor="middle" font-size="7" font-weight="600" fill="#312E81">指令中心</text>
+    <rect x="160" y="22" width="120" height="36" rx="6" fill="#E0E7FF" stroke="#A5B4FC" stroke-width="1" filter="url(#sh)"/>
+    <text x="220" y="43" text-anchor="middle" font-size="10" font-weight="600" fill="#312E81">指令中心</text>
 
-    <rect x="254" y="14" width="112" height="30" rx="4" fill="#E0E7FF" stroke="#A5B4FC" stroke-width="0.6" filter="url(#sh)"/>
-    <text x="310" y="33" text-anchor="middle" font-size="7" font-weight="600" fill="#312E81">Studio 工作台</text>
+    <rect x="295" y="22" width="120" height="36" rx="6" fill="#E0E7FF" stroke="#A5B4FC" stroke-width="1" filter="url(#sh)"/>
+    <text x="355" y="43" text-anchor="middle" font-size="10" font-weight="600" fill="#312E81">Studio 工作台</text>
 
-    <rect x="374" y="14" width="112" height="30" rx="4" fill="#E0E7FF" stroke="#A5B4FC" stroke-width="0.6" filter="url(#sh)"/>
-    <text x="430" y="33" text-anchor="middle" font-size="7" font-weight="600" fill="#312E81">任务看板</text>
+    <rect x="430" y="22" width="120" height="36" rx="6" fill="#E0E7FF" stroke="#A5B4FC" stroke-width="1" filter="url(#sh)"/>
+    <text x="490" y="43" text-anchor="middle" font-size="10" font-weight="600" fill="#312E81">任务看板</text>
 
-    <rect x="494" y="14" width="112" height="30" rx="4" fill="#E0E7FF" stroke="#A5B4FC" stroke-width="0.6" filter="url(#sh)"/>
-    <text x="550" y="33" text-anchor="middle" font-size="7" font-weight="600" fill="#312E81">任务交接</text>
+    <rect x="565" y="22" width="120" height="36" rx="6" fill="#E0E7FF" stroke="#A5B4FC" stroke-width="1" filter="url(#sh)"/>
+    <text x="625" y="43" text-anchor="middle" font-size="10" font-weight="600" fill="#312E81">任务交接</text>
 
-    <rect x="614" y="14" width="112" height="30" rx="4" fill="#E0E7FF" stroke="#A5B4FC" stroke-width="0.6" filter="url(#sh)"/>
-    <text x="670" y="33" text-anchor="middle" font-size="7" font-weight="600" fill="#312E81">提案管理</text>
+    <rect x="700" y="22" width="120" height="36" rx="6" fill="#E0E7FF" stroke="#A5B4FC" stroke-width="1" filter="url(#sh)"/>
+    <text x="760" y="43" text-anchor="middle" font-size="10" font-weight="600" fill="#312E81">提案管理</text>
 
-    <rect x="734" y="14" width="112" height="30" rx="4" fill="#E0E7FF" stroke="#A5B4FC" stroke-width="0.6" filter="url(#sh)"/>
-    <text x="790" y="33" text-anchor="middle" font-size="7" font-weight="600" fill="#312E81">游戏成品</text>
+    <rect x="835" y="22" width="120" height="36" rx="6" fill="#E0E7FF" stroke="#A5B4FC" stroke-width="1" filter="url(#sh)"/>
+    <text x="895" y="43" text-anchor="middle" font-size="10" font-weight="600" fill="#312E81">游戏成品</text>
 
-    <rect x="854" y="14" width="112" height="30" rx="4" fill="#E0E7FF" stroke="#A5B4FC" stroke-width="0.6" filter="url(#sh)"/>
-    <text x="910" y="33" text-anchor="middle" font-size="7" font-weight="600" fill="#312E81">运行日志</text>
-
-    <rect x="974" y="14" width="132" height="30" rx="4" fill="#E0E7FF" stroke="#A5B4FC" stroke-width="0.6" filter="url(#sh)"/>
-    <text x="1040" y="33" text-anchor="middle" font-size="7" font-weight="600" fill="#312E81">配置中心</text>
+    <rect x="970" y="22" width="140" height="36" rx="6" fill="#E0E7FF" stroke="#A5B4FC" stroke-width="1" filter="url(#sh)"/>
+    <text x="1040" y="43" text-anchor="middle" font-size="10" font-weight="600" fill="#312E81">运行观测</text>
   </g>
 
-  <!-- ===== L2: 后端 ===== -->
-  <g transform="translate(20, 145)">
-    <rect x="0" y="0" width="1120" height="300" rx="8" fill="#ECFDF5" stroke="#6EE7B7" stroke-width="1.5"/>
-    <rect x="14" y="-7" width="56" height="16" rx="4" fill="#059669"/>
-    <text x="42" y="4" text-anchor="middle" font-size="8" font-weight="700" fill="#FFF">后端</text>
-    <text x="80" y="5" font-size="8.5" font-weight="600" fill="#047857">Express + TypeScript   :3000</text>
+  <!-- Arrow: Frontend → Backend -->
+  <line x1="600" y1="150" x2="600" y2="175" stroke="#4F46E5" stroke-width="4" marker-end="url(#arrowB)"/>
+
+  <!-- ===== L2: 后端业务层 ===== -->
+  <g transform="translate(30, 185)">
+    <rect x="0" y="0" width="1140" height="320" rx="10" fill="#ECFDF5" stroke="#6EE7B7" stroke-width="2"/>
+    <rect x="20" y="-10" width="90" height="22" rx="6" fill="#059669"/>
+    <text x="65" y="6" text-anchor="middle" font-size="11" font-weight="700" fill="#FFF">后端业务层</text>
+    <text x="125" y="6" font-size="10" fill="#047857">Express + TypeScript · 端口 3000</text>
 
     <!-- 智能体编排 -->
-    <rect x="14" y="18" width="265" height="260" rx="6" fill="#D1FAE5" stroke="#34D399" stroke-width="1"/>
-    <rect x="14" y="18" width="265" height="20" rx="6" fill="#059669"/>
-    <text x="146" y="31" text-anchor="middle" font-size="8" font-weight="700" fill="#FFF">智能体编排</text>
-    <text x="24" y="48" font-size="7" font-weight="600" fill="#047857">6 角色团队</text>
-    <text x="24" y="60" font-size="6.5" fill="#065F46">研发工程师 · 架构师 · 游戏策划</text>
-    <text x="24" y="72" font-size="6.5" fill="#065F46">商业策划 · CEO · 团队建设</text>
-    <line x1="24" y1="77" x2="265" y2="77" stroke="#34D399" stroke-width="0.3"/>
-    <text x="24" y="90" font-size="6.5" fill="#065F46">• 智能体生命周期与消息分发</text>
-    <text x="24" y="103" font-size="6.5" fill="#065F46">• SSE 流式输出</text>
-    <text x="24" y="116" font-size="6.5" fill="#065F46">• 工具调用权限审批</text>
-    <text x="24" y="129" font-size="6.5" fill="#065F46">• 长期记忆（按角色/项目）</text>
-    <text x="24" y="142" font-size="6.5" fill="#065F46">• 角色约束与工具限制</text>
-    <line x1="24" y1="147" x2="265" y2="147" stroke="#34D399" stroke-width="0.3"/>
-    <text x="24" y="160" font-size="6.5" font-weight="600" fill="#047857">任务交接链</text>
-    <text x="24" y="173" font-size="6" fill="#065F46">游戏策划 → CEO → 架构师</text>
-    <text x="24" y="186" font-size="6" fill="#065F46">→ 研发工程师 → 商业策划</text>
-    <line x1="24" y1="193" x2="265" y2="193" stroke="#34D399" stroke-width="0.3"/>
-    <text x="24" y="210" font-size="6" fill="#047857">核心代码：</text>
-    <text x="24" y="223" font-size="6" fill="#065F46">agent-manager · agents · tools</text>
-    <text x="24" y="236" font-size="6" fill="#065F46">sse-broadcaster</text>
-    <text x="24" y="251" font-size="6" fill="#065F46">agent_memories · permission_requests</text>
+    <rect x="25" y="25" width="265" height="280" rx="8" fill="#D1FAE5" stroke="#34D399" stroke-width="2"/>
+    <rect x="25" y="25" width="265" height="28" rx="8" fill="#059669"/>
+    <text x="157" y="44" text-anchor="middle" font-size="12" font-weight="700" fill="#FFF">智能体编排</text>
+
+    <text x="40" y="70" font-size="10" font-weight="700" fill="#047857">6 角色协作团队</text>
+    <text x="40" y="88" font-size="9" fill="#065F46">研发工程师 · 架构师 · 游戏策划</text>
+    <text x="40" y="104" font-size="9" fill="#065F46">商业策划 · CEO · 团队建设</text>
+
+    <text x="40" y="130" font-size="10" font-weight="700" fill="#047857">核心能力</text>
+    <text x="40" y="148" font-size="9" fill="#065F46">• 智能体生命周期管理</text>
+    <text x="40" y="164" font-size="9" fill="#065F46">• SSE 实时流式输出</text>
+    <text x="40" y="180" font-size="9" fill="#065F46">• 工具调用权限审批</text>
+    <text x="40" y="196" font-size="9" fill="#065F46">• 长期记忆（按角色/项目）</text>
+
+    <text x="40" y="222" font-size="10" font-weight="700" fill="#047857">任务交接链</text>
+    <text x="40" y="240" font-size="9" fill="#065F46">策划 → CEO → 架构师 → 研发</text>
 
     <!-- 团队协作 -->
-    <rect x="292" y="18" width="265" height="260" rx="6" fill="#D1FAE5" stroke="#34D399" stroke-width="1"/>
-    <rect x="292" y="18" width="265" height="20" rx="6" fill="#059669"/>
-    <text x="424" y="31" text-anchor="middle" font-size="8" font-weight="700" fill="#FFF">团队协作</text>
-    <text x="302" y="48" font-size="7" font-weight="600" fill="#047857">提案管理</text>
-    <text x="302" y="60" font-size="6.5" fill="#065F46">• 创建 → 评审 → 决策 生命周期</text>
-    <text x="302" y="72" font-size="6.5" fill="#065F46">• 问卷式结构化策划案提交</text>
-    <text x="302" y="84" font-size="6.5" fill="#065F46">• 附件管理（MinIO 存储）</text>
-    <text x="302" y="96" font-size="6" fill="#047857">  source: manual | questionnaire</text>
-    <line x1="302" y1="101" x2="547" y2="101" stroke="#34D399" stroke-width="0.3"/>
-    <text x="302" y="114" font-size="7" font-weight="600" fill="#047857">任务看板</text>
-    <text x="302" y="126" font-size="6.5" fill="#065F46">• CRUD 与状态流转</text>
-    <text x="302" y="138" font-size="6.5" fill="#065F46">• 开发 / 测试 任务拆分</text>
-    <line x1="302" y1="143" x2="547" y2="143" stroke="#34D399" stroke-width="0.3"/>
-    <text x="302" y="156" font-size="7" font-weight="600" fill="#047857">任务交接</text>
-    <text x="302" y="168" font-size="6.5" fill="#065F46">• accept · confirm · complete · reject</text>
-    <text x="302" y="180" font-size="6.5" fill="#065F46">• cancel · 自动交接开关</text>
-    <line x1="302" y1="187" x2="547" y2="187" stroke="#34D399" stroke-width="0.3"/>
-    <text x="302" y="202" font-size="7" font-weight="600" fill="#047857">项目设置</text>
-    <text x="302" y="214" font-size="6.5" fill="#065F46">• 自动交接开关 · Team Builder 模型选择</text>
-    <line x1="302" y1="224" x2="547" y2="224" stroke="#34D399" stroke-width="0.3"/>
-    <text x="302" y="240" font-size="6" fill="#047857">核心代码：proposal-attachments-api</text>
-    <text x="302" y="253" font-size="6" fill="#065F46">数据表：proposals · tasks · handoffs</text>
+    <rect x="310" y="25" width="265" height="280" rx="8" fill="#D1FAE5" stroke="#34D399" stroke-width="2"/>
+    <rect x="310" y="25" width="265" height="28" rx="8" fill="#059669"/>
+    <text x="442" y="44" text-anchor="middle" font-size="12" font-weight="700" fill="#FFF">团队协作</text>
+
+    <text x="325" y="70" font-size="10" font-weight="700" fill="#047857">提案管理</text>
+    <text x="325" y="88" font-size="9" fill="#065F46">• 创建/评审/决策 工作流</text>
+    <text x="325" y="104" font-size="9" fill="#065F46">• 问卷式结构化策划案</text>
+    <text x="325" y="120" font-size="9" fill="#065F46">• 附件管理与图表绑定</text>
+
+    <text x="325" y="146" font-size="10" font-weight="700" fill="#047857">任务看板</text>
+    <text x="325" y="164" font-size="9" fill="#065F46">• 开发与测试任务流转</text>
+    <text x="325" y="180" font-size="9" fill="#065F46">• 状态追踪与可视化</text>
+
+    <text x="325" y="206" font-size="10" font-weight="700" fill="#047857">任务交接</text>
+    <text x="325" y="224" font-size="9" fill="#065F46">• 跨角色任务移交</text>
+    <text x="325" y="240" font-size="9" fill="#065F46">• 自动交接开关</text>
 
     <!-- 游戏生产 -->
-    <rect x="570" y="18" width="265" height="260" rx="6" fill="#D1FAE5" stroke="#34D399" stroke-width="1"/>
-    <rect x="570" y="18" width="265" height="20" rx="6" fill="#059669"/>
-    <text x="702" y="31" text-anchor="middle" font-size="8" font-weight="700" fill="#FFF">游戏生产</text>
-    <text x="580" y="48" font-size="7" font-weight="600" fill="#047857">游戏提交（双模式）</text>
-    <text x="580" y="60" font-size="6.5" fill="#065F46">• HTML 内容模式</text>
-    <text x="580" y="72" font-size="6.5" fill="#065F46">• ZIP 打包模式（→ MinIO）</text>
-    <line x1="580" y1="77" x2="825" y2="77" stroke="#34D399" stroke-width="0.3"/>
-    <text x="580" y="90" font-size="7" font-weight="600" fill="#047857">代码检查流水线</text>
-    <text x="580" y="102" font-size="6.5" fill="#065F46">• lintGameArtifact(submitDir)</text>
-    <text x="580" y="114" font-size="6.5" fill="#065F46">• SonarQube 检查器 → scanner → 报告</text>
-    <text x="580" y="126" font-size="6.5" fill="#065F46">• 游戏工程规范检查器（20 条规则）</text>
-    <text x="580" y="138" font-size="6" fill="#047857">  8 公共 + 6 H5 + 6 phaser-mobile</text>
-    <line x1="580" y1="143" x2="825" y2="143" stroke="#34D399" stroke-width="0.3"/>
-    <text x="580" y="156" font-size="7" font-weight="600" fill="#047857">游戏工程框架（3 个 MCP 工具）</text>
-    <text x="580" y="168" font-size="6.5" fill="#065F46">• get_game_types</text>
-    <text x="580" y="180" font-size="6.5" fill="#065F46">• get_game_framework_spec</text>
-    <text x="580" y="192" font-size="6.5" fill="#065F46">• get_common_spec</text>
-    <line x1="580" y1="200" x2="825" y2="200" stroke="#34D399" stroke-width="0.3"/>
-    <text x="580" y="216" font-size="6" fill="#047857">核心代码：lint/checkers/game-engineering/</text>
-    <text x="580" y="231" font-size="6" fill="#065F46">数据表：games · game_engineering_specs</text>
-    <text x="580" y="248" font-size="6.5" fill="#047857">file-storage · minio-client · 路径安全</text>
+    <rect x="595" y="25" width="265" height="280" rx="8" fill="#D1FAE5" stroke="#34D399" stroke-width="2"/>
+    <rect x="595" y="25" width="265" height="28" rx="8" fill="#059669"/>
+    <text x="727" y="44" text-anchor="middle" font-size="12" font-weight="700" fill="#FFF">游戏生产</text>
 
-    <!-- 集成 + 存储 + 可观测 -->
-    <rect x="848" y="18" width="258" height="260" rx="6" fill="#D1FAE5" stroke="#34D399" stroke-width="1"/>
-    <rect x="848" y="18" width="258" height="20" rx="6" fill="#059669"/>
-    <text x="977" y="31" text-anchor="middle" font-size="8" font-weight="700" fill="#FFF">集成 · 存储 · 可观测</text>
+    <text x="610" y="70" font-size="10" font-weight="700" fill="#047857">游戏提交（双模式）</text>
+    <text x="610" y="88" font-size="9" fill="#065F46">• HTML 内容模式</text>
+    <text x="610" y="104" font-size="9" fill="#065F46">• ZIP 打包上传 MinIO</text>
 
-    <rect x="858" y="44" width="238" height="60" rx="4" fill="#A7F3D0" stroke="#34D399" stroke-width="0.5"/>
-    <text x="868" y="56" font-size="7" font-weight="700" fill="#047857">Studio 集成</text>
-    <text x="868" y="68" font-size="6" fill="#065F46">• Star-Office 状态同步（防抖 300ms）</text>
-    <text x="868" y="80" font-size="6" fill="#065F46">• Agent 注册 · 健康检查 · 全量同步</text>
-    <text x="868" y="94" font-size="6" fill="#047857">star-office-sync.ts</text>
+    <text x="610" y="130" font-size="10" font-weight="700" fill="#047857">代码质量流水线</text>
+    <text x="610" y="148" font-size="9" fill="#065F46">• SonarQube 静态扫描</text>
+    <text x="610" y="164" font-size="9" fill="#065F46">• 游戏工程规范检查</text>
+    <text x="610" y="180" font-size="9" fill="#065F46">  （20 条规则：8 公共 + 6 H5 + 6 移动）</text>
 
-    <rect x="858" y="110" width="238" height="60" rx="4" fill="#A7F3D0" stroke="#34D399" stroke-width="0.5"/>
-    <text x="868" y="122" font-size="7" font-weight="700" fill="#047857">文件存储与管理</text>
-    <text x="868" y="134" font-size="6" fill="#065F46">• MinIO 上传/下载/预签名链接</text>
-    <text x="868" y="146" font-size="6" fill="#065F46">• file-storage CRUD · 安全路径解析</text>
-    <text x="868" y="160" font-size="6" fill="#047857">minio-client · file-storage</text>
+    <text x="610" y="206" font-size="10" font-weight="700" fill="#047857">游戏工程框架</text>
+    <text x="610" y="224" font-size="9" fill="#065F46">• 类型注册与规范定义</text>
+    <text x="610" y="240" font-size="9" fill="#065F46">• MCP 工具查询接口</text>
 
-    <rect x="858" y="176" width="238" height="60" rx="4" fill="#A7F3D0" stroke="#34D399" stroke-width="0.5"/>
-    <text x="868" y="188" font-size="7" font-weight="700" fill="#047857">可观测性</text>
-    <text x="868" y="200" font-size="6" fill="#065F46">• 日志采集与流式输出（按项目隔离）</text>
-    <text x="868" y="212" font-size="6" fill="#065F46">• SSE 事件广播</text>
-    <text x="868" y="224" font-size="6" fill="#065F46">• OpenTelemetry → Jaeger（OTLP gRPC）</text>
-    <text x="868" y="238" font-size="6" fill="#047857">telemetry · logs 表</text>
+    <!-- 基础设施 -->
+    <rect x="880" y="25" width="270" height="280" rx="8" fill="#D1FAE5" stroke="#34D399" stroke-width="2"/>
+    <rect x="880" y="25" width="270" height="28" rx="8" fill="#059669"/>
+    <text x="1015" y="44" text-anchor="middle" font-size="12" font-weight="700" fill="#FFF">基础设施</text>
 
-    <rect x="858" y="242" width="238" height="28" rx="4" fill="#A7F3D0" stroke="#34D399" stroke-width="0.3"/>
-    <text x="977" y="258" text-anchor="middle" font-size="6.5" font-weight="700" fill="#047857">项目隔离：所有数据按 project_id 隔离</text>
+    <text x="895" y="70" font-size="10" font-weight="700" fill="#047857">Studio 集成</text>
+    <text x="895" y="88" font-size="9" fill="#065F46">• Star-Office 状态同步</text>
+    <text x="895" y="104" font-size="9" fill="#065F46">• Agent 注册与健康检查</text>
+
+    <text x="895" y="130" font-size="10" font-weight="700" fill="#047857">文件存储</text>
+    <text x="895" y="148" font-size="9" fill="#065F46">• MinIO 对象存储</text>
+    <text x="895" y="164" font-size="9" fill="#065F46">• 安全路径解析</text>
+
+    <text x="895" y="190" font-size="10" font-weight="700" fill="#047857">可观测性</text>
+    <text x="895" y="208" font-size="9" fill="#065F46">• 日志流式采集</text>
+    <text x="895" y="224" font-size="9" fill="#065F46">• SSE 事件广播</text>
+    <text x="895" y="240" font-size="9" fill="#065F46">• OpenTelemetry 追踪</text>
+
+    <rect x="895" y="255" width="240" height="38" rx="6" fill="#A7F3D0" stroke="#34D399" stroke-width="1"/>
+    <text x="1015" y="275" text-anchor="middle" font-size="9" font-weight="700" fill="#047857">架构亮点：项目级数据隔离</text>
+    <text x="1015" y="290" text-anchor="middle" font-size="8" fill="#065F46">所有业务数据按 project_id 隔离</text>
   </g>
 
-  <!-- ===== 两层之间：简洁的连接示意 ===== -->
-  <path d="M300,118 L300,145" stroke="#4F46E5" stroke-width="3" fill="none"/>
-  <path d="M860,118 L860,145" stroke="#4F46E5" stroke-width="3" fill="none"/>
+  <!-- Arrow: Backend → Microservices -->
+  <line x1="400" y1="505" x2="400" y2="530" stroke="#7C3AED" stroke-width="4" marker-end="url(#arrowP)"/>
+  <line x1="800" y1="505" x2="800" y2="530" stroke="#7C3AED" stroke-width="4" marker-end="url(#arrowP)"/>
 
-  <!-- ===== L3: 微服务 ===== -->
-  <g transform="translate(20, 478)">
-    <rect x="0" y="0" width="1120" height="105" rx="8" fill="#FAF5FF" stroke="#DDD6FE" stroke-width="1.5"/>
-    <rect x="14" y="-7" width="70" height="16" rx="4" fill="#7C3AED"/>
-    <text x="49" y="4" text-anchor="middle" font-size="8" font-weight="700" fill="#FFF">微服务</text>
-    <text x="95" y="5" font-size="8.5" font-weight="600" fill="#6D28D9">FastAPI · 独立容器</text>
+  <!-- ===== L3: 微服务层 ===== -->
+  <g transform="translate(30, 540)">
+    <rect x="0" y="0" width="1140" height="120" rx="10" fill="#FAF5FF" stroke="#DDD6FE" stroke-width="2"/>
+    <rect x="20" y="-10" width="80" height="22" rx="6" fill="#7C3AED"/>
+    <text x="60" y="6" text-anchor="middle" font-size="11" font-weight="700" fill="#FFF">微服务层</text>
+    <text x="115" y="6" font-size="10" fill="#6D28D9">FastAPI · 独立容器部署</text>
 
-    <rect x="14" y="16" width="265" height="80" rx="6" fill="#EDE9FE" stroke="#A78BFA" stroke-width="0.8" filter="url(#sh)"/>
-    <rect x="14" y="16" width="265" height="18" rx="6" fill="#7C3AED"/>
-    <text x="146" y="28" text-anchor="middle" font-size="8" font-weight="700" fill="#FFF">Creator :8080</text>
-    <text x="146" y="40" text-anchor="middle" font-size="7" fill="#C4B5FD" font-weight="600">Blender 三维引擎</text>
-    <line x1="24" y1="44" x2="269" y2="44" stroke="#DDD6FE" stroke-width="0.3"/>
-    <text x="24" y="56" font-size="6.5" fill="#6D28D9">• 项目 CRUD · 建模生命周期</text>
-    <text x="24" y="68" font-size="6.5" fill="#6D28D9">• 几何体：球/立方/圆柱/圆锥/环</text>
-    <text x="24" y="80" font-size="6.5" fill="#6D28D9">• 材质 · 光源 · 场景对象列表</text>
-    <text x="24" y="92" font-size="6.5" fill="#6D28D9">• 导出 glb · 文件下载/删除</text>
+    <rect x="25" y="25" width="260" height="80" rx="8" fill="#EDE9FE" stroke="#A78BFA" stroke-width="2" filter="url(#sh)"/>
+    <rect x="25" y="25" width="260" height="26" rx="8" fill="#7C3AED"/>
+    <text x="155" y="42" text-anchor="middle" font-size="11" font-weight="700" fill="#FFF">Creator :8080</text>
+    <text x="155" y="60" text-anchor="middle" font-size="9" fill="#6D28D9">Blender 三维引擎</text>
+    <text x="155" y="78" text-anchor="middle" font-size="8" fill="#8B5CF6">建模 · 材质 · 场景 · 导出</text>
+    <text x="155" y="92" text-anchor="middle" font-size="8" fill="#8B5CF6">安全路径防护</text>
 
-    <rect x="296" y="16" width="265" height="80" rx="6" fill="#EDE9FE" stroke="#A78BFA" stroke-width="0.8" filter="url(#sh)"/>
-    <rect x="296" y="16" width="265" height="18" rx="6" fill="#7C3AED"/>
-    <text x="428" y="28" text-anchor="middle" font-size="8" font-weight="700" fill="#FFF">Image :8089</text>
-    <text x="428" y="40" text-anchor="middle" font-size="7" fill="#C4B5FD" font-weight="600">ImageMagick (Alpine)</text>
-    <line x1="306" y1="44" x2="551" y2="44" stroke="#DDD6FE" stroke-width="0.3"/>
-    <text x="306" y="56" font-size="6.5" fill="#6D28D9">• resize / crop / rotate / flip</text>
-    <text x="306" y="68" font-size="6.5" fill="#6D28D9">• convert / compress / color-adjust</text>
-    <text x="306" y="80" font-size="6.5" fill="#6D28D9">• watermark / composite / batch</text>
-    <text x="306" y="92" font-size="6.5" fill="#6D28D9">• sprite-sheet / info 元数据</text>
+    <rect x="305" y="25" width="260" height="80" rx="8" fill="#EDE9FE" stroke="#A78BFA" stroke-width="2" filter="url(#sh)"/>
+    <rect x="305" y="25" width="260" height="26" rx="8" fill="#7C3AED"/>
+    <text x="435" y="42" text-anchor="middle" font-size="11" font-weight="700" fill="#FFF">Image :8089</text>
+    <text x="435" y="60" text-anchor="middle" font-size="9" fill="#6D28D9">ImageMagick 图片处理</text>
+    <text x="435" y="78" text-anchor="middle" font-size="8" fill="#8B5CF6">裁剪 · 缩放 · 水印 · 批量处理</text>
+    <text x="435" y="92" text-anchor="middle" font-size="8" fill="#8B5CF6">雪碧图生成</text>
 
-    <rect x="578" y="16" width="265" height="80" rx="6" fill="#EDE9FE" stroke="#A78BFA" stroke-width="0.8" filter="url(#sh)"/>
-    <rect x="578" y="16" width="265" height="18" rx="6" fill="#7C3AED"/>
-    <text x="710" y="28" text-anchor="middle" font-size="8" font-weight="700" fill="#FFF">Draw.io :8082</text>
-    <text x="710" y="40" text-anchor="middle" font-size="7" fill="#C4B5FD" font-weight="600">→ Draw.io 导出 :8083</text>
-    <line x1="588" y1="44" x2="833" y2="44" stroke="#DDD6FE" stroke-width="0.3"/>
-    <text x="588" y="56" font-size="6.5" fill="#6D28D9">• 图表 CRUD</text>
-    <text x="588" y="68" font-size="6.5" fill="#6D28D9">• 导出 PNG / SVG · 元素列表</text>
-    <text x="588" y="80" font-size="6.5" fill="#6D28D9">• 提案附件绑定 · MinIO 存储</text>
-    <text x="588" y="92" font-size="6.5" fill="#6D28D9">• safe_path 路径穿越防护</text>
+    <rect x="585" y="25" width="260" height="80" rx="8" fill="#EDE9FE" stroke="#A78BFA" stroke-width="2" filter="url(#sh)"/>
+    <rect x="585" y="25" width="260" height="26" rx="8" fill="#7C3AED"/>
+    <text x="715" y="42" text-anchor="middle" font-size="11" font-weight="700" fill="#FFF">Draw.io :8082</text>
+    <text x="715" y="60" text-anchor="middle" font-size="9" fill="#6D28D9">图表服务</text>
+    <text x="715" y="78" text-anchor="middle" font-size="8" fill="#8B5CF6">图表 CRUD · 导出 PNG/SVG</text>
+    <text x="715" y="92" text-anchor="middle" font-size="8" fill="#8B5CF6">→ 导出服务 :8083</text>
 
-    <rect x="860" y="16" width="246" height="80" rx="6" fill="#EDE9FE" stroke="#A78BFA" stroke-width="0.8" filter="url(#sh)"/>
-    <rect x="860" y="16" width="246" height="18" rx="6" fill="#7C3AED"/>
-    <text x="983" y="28" text-anchor="middle" font-size="8" font-weight="700" fill="#FFF">Scanner :8081</text>
-    <text x="983" y="40" text-anchor="middle" font-size="7" fill="#C4B5FD" font-weight="600">→ SonarQube :9000</text>
-    <line x1="870" y1="44" x2="1096" y2="44" stroke="#DDD6FE" stroke-width="0.3"/>
-    <text x="870" y="56" font-size="6.5" fill="#6D28D9">• sonar-scanner CLI 包装</text>
-    <text x="870" y="68" font-size="6.5" fill="#6D28D9">• ZIP 打包 → 扫描 → 问题报告</text>
-    <text x="870" y="80" font-size="6.5" fill="#6D28D9">• 缓存去重（sonarIssuesCache）</text>
-    <text x="870" y="92" font-size="6.5" fill="#6D28D9">• TokenManager 动态认证</text>
+    <rect x="865" y="25" width="260" height="80" rx="8" fill="#EDE9FE" stroke="#A78BFA" stroke-width="2" filter="url(#sh)"/>
+    <rect x="865" y="25" width="260" height="26" rx="8" fill="#7C3AED"/>
+    <text x="995" y="42" text-anchor="middle" font-size="11" font-weight="700" fill="#FFF">Scanner :8081</text>
+    <text x="995" y="60" text-anchor="middle" font-size="9" fill="#6D28D9">SonarQube 扫描服务</text>
+    <text x="995" y="78" text-anchor="middle" font-size="8" fill="#8B5CF6">ZIP 扫描 · 问题报告</text>
+    <text x="995" y="92" text-anchor="middle" font-size="8" fill="#8B5CF6">Token 动态认证</text>
   </g>
 
-  <!-- ===== 两层之间：简洁连接 ===== -->
-  <path d="M300,445 L300,478" stroke="#7C3AED" stroke-width="3" fill="none"/>
-  <path d="M860,445 L860,478" stroke="#7C3AED" stroke-width="3" fill="none"/>
+  <!-- Arrow: Microservices → External -->
+  <line x1="400" y1="660" x2="400" y2="685" stroke="#64748B" stroke-width="4" marker-end="url(#arrowO)"/>
+  <line x1="995" y1="660" x2="600" y2="705" stroke="#64748B" stroke-width="4" marker-end="url(#arrowO)"/>
 
-  <!-- ===== L4: 持久化 + 外部服务 ===== -->
-  <g transform="translate(20, 616)">
-    <rect x="0" y="0" width="300" height="155" rx="8" fill="#FEFCE8" stroke="#FDE68A" stroke-width="1.5"/>
-    <rect x="14" y="-7" width="56" height="16" rx="4" fill="#D97706"/>
-    <text x="42" y="4" text-anchor="middle" font-size="8" font-weight="700" fill="#FFF">持久化</text>
+  <!-- ===== L4: 数据层 + 外部服务 ===== -->
+  <g transform="translate(30, 695)">
+    <!-- 数据层 -->
+    <rect x="0" y="0" width="350" height="280" rx="10" fill="#FEFCE8" stroke="#FDE68A" stroke-width="2"/>
+    <rect x="20" y="-10" width="70" height="22" rx="6" fill="#D97706"/>
+    <text x="55" y="6" text-anchor="middle" font-size="11" font-weight="700" fill="#FFF">数据层</text>
 
-    <rect x="14" y="14" width="272" height="42" rx="5" fill="#FEF9C3" stroke="#FDE68A" stroke-width="0.8" filter="url(#sh)"/>
-    <text x="150" y="30" text-anchor="middle" font-size="9" font-weight="700" fill="#92400E">SQLite（better-sqlite3）</text>
-    <text x="150" y="44" text-anchor="middle" font-size="6.5" fill="#A16207">17 张表 · project_id 隔离</text>
-    <text x="150" y="54" text-anchor="middle" font-size="6" fill="#D97706">projects · proposals · games · tasks · handoffs · agents · file_storages · memories · logs · blender/drawio/image_projects · game_engineering_specs</text>
+    <rect x="25" y="25" width="300" height="110" rx="8" fill="#FEF9C3" stroke="#FDE68A" stroke-width="2" filter="url(#sh)"/>
+    <text x="175" y="50" text-anchor="middle" font-size="14" font-weight="700" fill="#92400E">SQLite</text>
+    <text x="175" y="70" text-anchor="middle" font-size="10" fill="#A16207">better-sqlite3 驱动</text>
+    <text x="175" y="90" text-anchor="middle" font-size="9" fill="#D97706">17 张表 · 项目级隔离</text>
+    <text x="175" y="110" text-anchor="middle" font-size="9" fill="#D97706">data/studio.db</text>
 
-    <rect x="14" y="62" width="272" height="24" rx="5" fill="#FEF9C3" stroke="#FDE68A" stroke-width="0.8" filter="url(#sh)"/>
-    <text x="150" y="78" text-anchor="middle" font-size="8" font-weight="700" fill="#92400E">文件输出</text>
-    <text x="150" y="85" text-anchor="middle" font-size="6.5" fill="#A16207">output/{project_id}/games/latest/dist/</text>
+    <rect x="25" y="145" width="300" height="55" rx="8" fill="#FEF9C3" stroke="#FDE68A" stroke-width="2" filter="url(#sh)"/>
+    <text x="175" y="170" text-anchor="middle" font-size="12" font-weight="700" fill="#92400E">文件存储</text>
+    <text x="175" y="190" text-anchor="middle" font-size="9" fill="#A16207">output/ 目录 + MinIO 对象存储</text>
 
-    <rect x="14" y="92" width="272" height="24" rx="5" fill="#FEF9C3" stroke="#FDE68A" stroke-width="0.8" filter="url(#sh)"/>
-    <text x="150" y="108" text-anchor="middle" font-size="8" font-weight="700" fill="#92400E">MinIO 对象存储</text>
-    <text x="150" y="115" text-anchor="middle" font-size="6.5" fill="#A16207">游戏 · 附件 · Sonar 报告（预签名链接）</text>
+    <rect x="25" y="210" width="300" height="55" rx="8" fill="#FEF9C3" stroke="#FDE68A" stroke-width="2"/>
+    <text x="175" y="235" text-anchor="middle" font-size="11" font-weight="600" fill="#92400E">Docker Volumes（8 个）</text>
+    <text x="175" y="255" text-anchor="middle" font-size="8" fill="#D97706">studio · output · minio · creator · drawio · scanner · image · sonarqube</text>
 
-    <rect x="14" y="122" width="272" height="24" rx="5" fill="#FEF9C3" stroke="#FDE68A" stroke-width="0.8"/>
-    <text x="150" y="138" text-anchor="middle" font-size="7" font-weight="600" fill="#92400E">Docker Volumes（8 个）</text>
-    <text x="150" y="146" text-anchor="middle" font-size="6" fill="#D97706">studio-data · output · minio · creator · drawio · scanner · image · sonarqube</text>
+    <!-- 外部服务 -->
+    <rect x="380" y="0" width="790" height="280" rx="10" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="2"/>
+    <rect x="400" y="-10" width="90" height="22" rx="6" fill="#475569"/>
+    <text x="445" y="6" text-anchor="middle" font-size="11" font-weight="700" fill="#FFF">外部服务</text>
 
-    <rect x="320" y="0" width="800" height="155" rx="8" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1.5"/>
-    <rect x="334" y="-7" width="70" height="16" rx="4" fill="#475569"/>
-    <text x="369" y="4" text-anchor="middle" font-size="8" font-weight="700" fill="#FFF">外部服务</text>
+    <rect x="400" y="25" width="145" height="110" rx="8" fill="#F1F5F9" stroke="#D1D5DB" stroke-width="2" filter="url(#sh)"/>
+    <text x="472" y="55" text-anchor="middle" font-size="13" font-weight="700" fill="#1E293B">MinIO</text>
+    <text x="472" y="75" text-anchor="middle" font-size="10" fill="#475569">对象存储</text>
+    <text x="472" y="95" text-anchor="middle" font-size="9" fill="#64748B">API :9000</text>
+    <text x="472" y="112" text-anchor="middle" font-size="9" fill="#64748B">控制台 :9001</text>
+    <text x="472" y="128" text-anchor="middle" font-size="8" fill="#94A3B8">game-files bucket</text>
 
-    <rect x="334" y="14" width="148" height="72" rx="5" fill="#F1F5F9" stroke="#D1D5DB" stroke-width="1" filter="url(#sh)"/>
-    <text x="408" y="32" text-anchor="middle" font-size="9" font-weight="700" fill="#1E293B">MinIO</text>
-    <line x1="348" y1="38" x2="468" y2="38" stroke="#E2E8F0" stroke-width="0.3"/>
-    <text x="408" y="52" text-anchor="middle" font-size="6.5" fill="#475569">对象存储</text>
-    <text x="408" y="64" text-anchor="middle" font-size="6" fill="#64748B">API :9000</text>
-    <text x="408" y="76" text-anchor="middle" font-size="6" fill="#64748B">控制台 :9001</text>
-    <text x="408" y="85" text-anchor="middle" font-size="6" fill="#94A3B8">game-files bucket</text>
+    <rect x="565" y="25" width="145" height="110" rx="8" fill="#F1F5F9" stroke="#D1D5DB" stroke-width="2" filter="url(#sh)"/>
+    <text x="637" y="55" text-anchor="middle" font-size="13" font-weight="700" fill="#1E293B">SonarQube</text>
+    <text x="637" y="75" text-anchor="middle" font-size="10" fill="#475569">代码质量平台</text>
+    <text x="637" y="95" text-anchor="middle" font-size="9" fill="#64748B">外部 :9002</text>
+    <text x="637" y="112" text-anchor="middle" font-size="9" fill="#64748B">内部 :9000</text>
+    <text x="637" y="128" text-anchor="middle" font-size="8" fill="#94A3B8">Token 24h TTL</text>
 
-    <rect x="496" y="14" width="148" height="72" rx="5" fill="#F1F5F9" stroke="#D1D5DB" stroke-width="1" filter="url(#sh)"/>
-    <text x="570" y="32" text-anchor="middle" font-size="9" font-weight="700" fill="#1E293B">SonarQube</text>
-    <line x1="510" y1="38" x2="630" y2="38" stroke="#E2E8F0" stroke-width="0.3"/>
-    <text x="570" y="52" text-anchor="middle" font-size="6.5" fill="#475569">代码质量</text>
-    <text x="570" y="64" text-anchor="middle" font-size="6" fill="#64748B">外部 :9002</text>
-    <text x="570" y="76" text-anchor="middle" font-size="6" fill="#64748B">内部 :9000</text>
-    <text x="570" y="85" text-anchor="middle" font-size="6" fill="#94A3B8">Token 24h TTL</text>
+    <rect x="730" y="25" width="145" height="110" rx="8" fill="#F1F5F9" stroke="#D1D5DB" stroke-width="2" filter="url(#sh)"/>
+    <text x="802" y="55" text-anchor="middle" font-size="13" font-weight="700" fill="#1E293B">Star-Office</text>
+    <text x="802" y="75" text-anchor="middle" font-size="10" fill="#475569">Agent 工作空间</text>
+    <text x="802" y="95" text-anchor="middle" font-size="9" fill="#64748B">:19000 Flask</text>
+    <text x="802" y="112" text-anchor="middle" font-size="9" fill="#64748B">join-keys.json</text>
+    <text x="802" y="128" text-anchor="middle" font-size="8" fill="#94A3B8">每密钥 6 Agent</text>
 
-    <rect x="658" y="14" width="148" height="72" rx="5" fill="#F1F5F9" stroke="#D1D5DB" stroke-width="1" filter="url(#sh)"/>
-    <text x="732" y="32" text-anchor="middle" font-size="9" font-weight="700" fill="#1E293B">Star-Office-UI</text>
-    <line x1="672" y1="38" x2="792" y2="38" stroke="#E2E8F0" stroke-width="0.3"/>
-    <text x="732" y="52" text-anchor="middle" font-size="6.5" fill="#475569">Agent 工作空间</text>
-    <text x="732" y="64" text-anchor="middle" font-size="6" fill="#64748B">:19000（Flask）</text>
-    <text x="732" y="76" text-anchor="middle" font-size="6" fill="#64748B">join-keys.json</text>
-    <text x="732" y="85" text-anchor="middle" font-size="6" fill="#94A3B8">每密钥 6 Agent</text>
+    <rect x="895" y="25" width="130" height="110" rx="8" fill="#F1F5F9" stroke="#D1D5DB" stroke-width="2" filter="url(#sh)"/>
+    <text x="960" y="55" text-anchor="middle" font-size="13" font-weight="700" fill="#1E293B">Jaeger</text>
+    <text x="960" y="75" text-anchor="middle" font-size="10" fill="#475569">分布式追踪</text>
+    <text x="960" y="95" text-anchor="middle" font-size="9" fill="#64748B">UI :16686</text>
+    <text x="960" y="112" text-anchor="middle" font-size="9" fill="#64748B">OTLP :4317</text>
+    <text x="960" y="128" text-anchor="middle" font-size="8" fill="#94A3B8">跨服务链路</text>
 
-    <rect x="820" y="14" width="148" height="72" rx="5" fill="#F1F5F9" stroke="#D1D5DB" stroke-width="1" filter="url(#sh)"/>
-    <text x="894" y="32" text-anchor="middle" font-size="9" font-weight="700" fill="#1E293B">Jaeger</text>
-    <line x1="834" y1="38" x2="954" y2="38" stroke="#E2E8F0" stroke-width="0.3"/>
-    <text x="894" y="52" text-anchor="middle" font-size="6.5" fill="#475569">分布式追踪</text>
-    <text x="894" y="64" text-anchor="middle" font-size="6" fill="#64748B">:16686 界面</text>
-    <text x="894" y="76" text-anchor="middle" font-size="6" fill="#64748B">:4317 OTLP</text>
-    <text x="894" y="85" text-anchor="middle" font-size="6" fill="#94A3B8">跨服务 Span</text>
+    <rect x="1045" y="25" width="110" height="110" rx="8" fill="#F1F5F9" stroke="#D1D5DB" stroke-width="2" filter="url(#sh)"/>
+    <text x="1100" y="60" text-anchor="middle" font-size="12" font-weight="700" fill="#1E293B">Draw.io</text>
+    <text x="1100" y="80" text-anchor="middle" font-size="10" fill="#475569">导出服务</text>
+    <text x="1100" y="100" text-anchor="middle" font-size="9" fill="#64748B">:8083</text>
+    <text x="1100" y="120" text-anchor="middle" font-size="8" fill="#94A3B8">jgraph/drawio</text>
 
-    <rect x="982" y="14" width="124" height="72" rx="5" fill="#F1F5F9" stroke="#D1D5DB" stroke-width="1" filter="url(#sh)"/>
-    <text x="1044" y="32" text-anchor="middle" font-size="9" font-weight="700" fill="#1E293B">Draw.io 导出</text>
-    <line x1="994" y1="38" x2="1094" y2="38" stroke="#E2E8F0" stroke-width="0.3"/>
-    <text x="1044" y="52" text-anchor="middle" font-size="6.5" fill="#475569">:8083</text>
-    <text x="1044" y="64" text-anchor="middle" font-size="6" fill="#64748B">jgraph/drawio</text>
-    <text x="1044" y="76" text-anchor="middle" font-size="6" fill="#64748B">Docker 镜像</text>
-    <text x="1044" y="85" text-anchor="middle" font-size="6" fill="#94A3B8">PNG / SVG 导出</text>
+    <!-- 架构关系说明 -->
+    <rect x="400" y="150" width="755" height="115" rx="8" fill="#F1F5F9" stroke="#E2E8F0" stroke-width="1"/>
+    <text x="420" y="175" font-size="11" font-weight="700" fill="#475569">架构关系</text>
+    <text x="420" y="195" font-size="9" fill="#64748B">后端 → MinIO：文件上传下载 · 后端 → SonarQube：代码扫描 · 后端 → Star-Office：状态同步</text>
+    <text x="420" y="212" font-size="9" fill="#64748B">Scanner → SonarQube：扫描分析 · 后端 → Jaeger：链路追踪 · Draw.io 服务 → 导出服务：图表渲染</text>
+    <text x="420" y="232" font-size="10" font-weight="600" fill="#047857">亮点：项目级数据隔离 · 多智能体协作 · 代码质量门禁 · 可观测性全链路</text>
+    <text x="420" y="252" font-size="9" fill="#64748B">前端 HTTP/SSE ↔ 后端 ↔ 微服务 HTTP ↔ 外部服务 / 数据层</text>
   </g>
-
-  <!-- ===== 两层之间：简洁连接 ===== -->
-  <path d="M300,583 L300,616" stroke="#64748B" stroke-width="3" fill="none"/>
-  <path d="M860,583 L860,616" stroke="#64748B" stroke-width="3" fill="none"/>
 </svg>
