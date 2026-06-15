@@ -1,17 +1,18 @@
 ---
-name: docs-maintainer
+name: architecture-diagram
 description: |
-  game-dev-studio 项目的文档与架构图维护技能。当需要更新 README/Docker README/架构文档、
-  同步中英文版本、绘制或修复 SVG 架构图、修复文字排版/居中对齐时使用。
-  触发词：更新文档、同步中英文、架构图、README、Docker文档、文字居中、text centering、排版修复。
+  game-dev-studio 项目的 SVG 架构图维护技能。当需要绘制、更新或修复系统架构图、
+  修复文字排版/居中对齐、转换 PNG 嵌入文档时使用。
+  触发词：架构图、architecture diagram、文字居中、text centering、排版修复、SVG居中。
 agent_created: true
 ---
 
-# Docs Maintainer
+# Architecture Diagram
 
 ## Overview
 
-维护 game-dev-studio 项目的文档与架构图，确保中英文版本同步、架构图排版正确。
+维护 game-dev-studio 项目的 SVG 系统架构图（`docs/images/architecture.svg`），
+包括四层架构布局、配色、箭头、文字居中、中英文文档同步嵌入。
 
 核心能力：
 1. **代码浏览研究** — 读取关键代码文件（`server/db.ts`, `server/tools.ts`, `docker-compose.yml` 等）理解当前系统状态
@@ -94,10 +95,10 @@ SVG 架构图位于 `docs/images/architecture.svg`，遵循以下规则：
 
 ```bash
 # 预览模式（不修改文件）
-python3 .agent/skills/docs-maintainer/scripts/center_text.py docs/images/architecture.svg --dry-run
+python3 .agent/skills/architecture-diagram/scripts/center_text.py docs/images/architecture.svg --dry-run
 
 # 应用居中
-python3 .agent/skills/docs-maintainer/scripts/center_text.py docs/images/architecture.svg
+python3 .agent/skills/architecture-diagram/scripts/center_text.py docs/images/architecture.svg
 ```
 
 **算法核心**：
