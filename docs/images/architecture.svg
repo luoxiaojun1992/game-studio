@@ -103,9 +103,9 @@
   </g>
 
   
-  <line x1="205" y1="770" x2="205" y2="850" stroke="#D97706" stroke-width="4" marker-end="url(#aO)" />
-  <line x1="657" y1="770" x2="657" y2="850" stroke="#64748B" stroke-width="4" marker-end="url(#aG)" />
-  <line x1="903" y1="770" x2="903" y2="850" stroke="#64748B" stroke-width="4" marker-end="url(#aG)" />
+  <line x1="205" y1="770" x2="205" y2="840" stroke="#D97706" stroke-width="4" marker-end="url(#aO)" />
+  <line x1="657" y1="770" x2="657" y2="840" stroke="#64748B" stroke-width="4" marker-end="url(#aG)" />
+  <line x1="903" y1="770" x2="903" y2="840" stroke="#64748B" stroke-width="4" marker-end="url(#aG)" />
 
   
   <g transform="translate(30, 650)">
@@ -131,7 +131,7 @@
   </g>
 
   
-  <g transform="translate(30, 860)">
+  <g transform="translate(30, 850)">
     
     <rect x="0" y="0" width="350" height="270" rx="10" fill="#FEFCE8" stroke="#FDE68A" stroke-width="2" />
     <rect x="20" y="-10" width="70" height="22" rx="6" fill="#D97706" />
