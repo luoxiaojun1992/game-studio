@@ -103,13 +103,37 @@ delta = content_area_center - visual_center         # shift all texts by this am
 
 ### Phase 5: SVG→PNG 转换
 
-依赖项目级 `svg-to-png` skill：
+依赖项目级 `svg-to-png` skill，中英文版本都需转换：
 
 ```bash
 python3 .agent/skills/svg-to-png/scripts/convert.py docs/images/architecture.svg docs/images/architecture.png --width 2400
 ```
 
-### Phase 6: 提交
+### Phase 6: 英文翻译
+
+使用 `scripts/translate_svg.py` 将中文 SVG 翻译为英文版：
+
+```bash
+python3 .agent/skills/architecture-diagram/scripts/translate_svg.py docs/images/architecture.svg docs/images/architecture-en.svg
+```
+
+翻译后必须手动处理：
+
+1. **标签 rect 宽度**：英文文本通常比中文长，需加宽标签背景框
+   - Frontend Layer (80→105), Backend Services (90→115), Microservices Layer (80→120)
+
+2. **相同中文文本的歧义**：如 L1 按钮和 L2 标题都叫"任务看板"、"提案管理"，翻译字典会统一替换。如果两者需要不同翻译（如按钮需缩写），需在翻译后手动修正
+
+3. **专有名词**：SQLite、MinIO、SonarQube、Jaeger、Draw.io、Star-Office 中英文一致，脚本自动跳过
+
+4. **排版验证**：翻译后需用 `center_text.py --dry-run` 检查居中是否仍正确（英文行高不同可能导致偏移）
+
+5. **转换 PNG**：
+   ```bash
+   python3 .agent/skills/svg-to-png/scripts/convert.py docs/images/architecture-en.svg docs/images/architecture-en.png --width 2400
+   ```
+
+### Phase 7: 提交
 
 ```bash
 git add docs/ docs/images/
@@ -136,16 +160,16 @@ git push
 
 ### scripts/translate_svg.py
 
-中文架构图翻译为英文版脚本。基于翻译字典替换所有 `<text>` 内容，保留布局和配色不变。
+中文架构图翻译为英文版脚本。基于翻译字典替换所有 `<text>` 内容，保留布局和配色不变。详见 Phase 6。
 
-```bash
-python3 .agent/skills/architecture-diagram/scripts/translate_svg.py docs/images/architecture.svg docs/images/architecture-en.svg
-```
+**翻译字典维护**：
+- 在 `TRANSLATIONS` dict 中添加新词条即可
+- 缩进文本需同时添加带空格和不带空格两个 key（脚本会 strip 后匹配）
+- 专有名词（SQLite、MinIO 等）无需添加，脚本跳过未匹配项
 
-**注意事项**：
-- 翻译后需检查标签 rect 宽度是否适配英文文本（英文通常更长）
-- 中英文相同的专有名词（SQLite、MinIO、Jaeger 等）保留不翻译
-- 缩进文本需在翻译字典中同时包含带空格和不带空格版本
+**常见翻译注意**：
+- "任务看板"/"任务交接"/"提案管理" 等词在 CN 版 L1（按钮）和 L2（标题）重复出现，翻译需一致
+- 如需区分（如按钮用缩写），翻译后手动修改 SVG 文件
 
 ## References
 
