@@ -156,6 +156,8 @@ interface WorkflowOptions {
   gameType?: 'h5' | 'phaser-mobile';
   /** Enable image processing workflow (SPEC-008): creates image resources, processes them, saves to game artifacts */
   withImageProcessing?: boolean;
+  /** Enable video processing workflow (SPEC-009): creates video resources, processes them, saves to game artifacts */
+  withVideoProcessing?: boolean;
 }
 
 const runFullWorkflowTest = async (
@@ -722,6 +724,133 @@ const runFullWorkflowTest = async (
     log('mocks:image-delete-project-queued');
   }
 
+  // ── Video Processing (SPEC-009): create and process video resources ──
+  if (opts.withVideoProcessing) {
+    log('mocks:video-create-project', { projectId });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在创建视频处理 project...',
+      toolCalls: [{ name: 'video_create_project', arguments: { name: 'game-video-assets' } }]
+    });
+    log('mocks:video-create-project-queued');
+
+    // Use tiny PNG as test video input (1x1 red pixel, same as image service)
+    const tinyPngB64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==';
+
+    // Write local video file (using PNG as pseudo-video for testing)
+    log('mocks:video-write-file', { projectId });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在写入测试视频到本地...',
+      toolCalls: [{
+        name: 'video_write_file',
+        arguments: { filename: 'test_input.png', content: tinyPngB64 }
+      }]
+    });
+    log('mocks:video-write-file-queued');
+
+    // Upload to video service
+    log('mocks:video-upload-file', { projectId });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在上传测试视频到 video service...',
+      toolCalls: [{ name: 'video_upload_file', arguments: { video_project_id: 'vid-proj-001', filename: 'test_input.png' } }]
+    });
+    log('mocks:video-upload-file-queued');
+
+    // Get video info
+    log('mocks:video-info', { projectId });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在查询视频信息...',
+      toolCalls: [{ name: 'video_info', arguments: { video_project_id: 'vid-proj-001', filename: 'test_input.png' } }]
+    });
+    log('mocks:video-info-queued');
+
+    // Create thumbnail from test input
+    log('mocks:video-create-thumbnail', { projectId });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在生成视频缩略图...',
+      toolCalls: [{
+        name: 'video_create_thumbnail',
+        arguments: {
+          video_project_id: 'vid-proj-001',
+          filename: 'test_input.png',
+          time: 0,
+          width: 160,
+          output_filename: 'thumbnail.png'
+        }
+      }]
+    });
+    log('mocks:video-create-thumbnail-queued');
+
+    // Convert format
+    log('mocks:video-convert', { projectId });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在转换视频格式...',
+      toolCalls: [{
+        name: 'video_convert',
+        arguments: {
+          video_project_id: 'vid-proj-001',
+          input_filename: 'test_input.png',
+          target_format: 'webm',
+          output_filename: 'converted.webm'
+        }
+      }]
+    });
+    log('mocks:video-convert-queued');
+
+    // Generate GIF
+    log('mocks:video-generate-gif', { projectId });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在生成 GIF...',
+      toolCalls: [{
+        name: 'video_generate_gif',
+        arguments: {
+          video_project_id: 'vid-proj-001',
+          input_filename: 'test_input.png',
+          fps: 5,
+          width: 80,
+          output_filename: 'output.gif'
+        }
+      }]
+    });
+    log('mocks:video-generate-gif-queued');
+
+    // Add text overlay
+    log('mocks:video-add-text', { projectId });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在添加文字叠加...',
+      toolCalls: [{
+        name: 'video_add_text',
+        arguments: {
+          video_project_id: 'vid-proj-001',
+          input_filename: 'test_input.png',
+          text: 'TestOverlay',
+          font_size: 16,
+          color: 'red',
+          output_filename: 'text_overlay.png'
+        }
+      }]
+    });
+    log('mocks:video-add-text-queued');
+
+    // Download processed file
+    log('mocks:video-download-file', { projectId });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在下载处理后的文件到游戏目录...',
+      toolCalls: [{
+        name: 'video_download_file',
+        arguments: { video_project_id: 'vid-proj-001', filename: 'thumbnail.png' }
+      }]
+    });
+    log('mocks:video-download-file-queued');
+
+    // Clean up video project
+    log('mocks:video-delete-project', { projectId });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '清理视频 project...',
+      toolCalls: [{ name: 'video_delete_project', arguments: { video_project_id: 'vid-proj-001' } }]
+    });
+    log('mocks:video-delete-project-queued');
+  }
+
   log('mocks:queue-submit-game', { projectId });
   await setMockExpectation(projectId, 'engineer', {
     content: '游戏已提交。',
@@ -1067,5 +1196,22 @@ test('[UI-012] should process images and save to game artifacts (SPEC-008)', asy
     autopilot: false,
     gameType: 'h5',
     withImageProcessing: true,
+  });
+});
+
+// ═══════════════════════════════════════════
+// UI-013: Video Service — create and process video resources, save to game artifacts (SPEC-009)
+// Standard H5 workflow + video processing via video service MCP tools.
+// Uses tiny PNG as test input to exercise video service operations (thumbnail, convert, gif, text overlay).
+// NOTE: This test uses a small image as pseudo-video input for lightweight CI-friendly testing.
+// ═══════════════════════════════════════════
+
+test('[UI-013] should process videos and save to game artifacts (SPEC-009)', async ({ page }) => {
+  process.stderr.write(`[UI-013] ${new Date().toISOString()} test:starting (H5 workflow + video service)\n`);
+  await runFullWorkflowTest(page, {
+    testId: 'UI-013',
+    autopilot: false,
+    gameType: 'h5',
+    withVideoProcessing: true,
   });
 });
