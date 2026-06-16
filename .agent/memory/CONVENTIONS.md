@@ -7,21 +7,19 @@
 - 验收标准中明确，提交代码前必须跑通ui test。如遇网络或依赖问题，可临时修改代码解决网络问题，但禁止提交为了解决网络依赖问题所做的变更。
 - **分支命名规范**：所有变更修改前必须先新建适当的开发分支，禁止直接在 `main` 上修改。分支类型与命名规则：
   - `docs/xxx` — 文档更新（架构图、spec、memory、README 等）。关联 SPEC 编号时用 `docs/SPEC-XXX-xxx`
-  - `chore/xxx` — 杂项维护（依赖升级、脚本优化、skill 更新等）
-  - `fix/xxx` — Bug 修复
+  - `chore/xxx` — 杂项维护（依赖升级、脚本优化、skill 更新等）。关联 SPEC 编号时用 `chore/SPEC-XXX-xxx`
+  - `fix/xxx` — Bug 修复。关联 SPEC 编号时用 `fix/SPEC-XXX-xxx`
   - `feat/xxx` — 新功能开发。关联 SPEC 编号时用 `feat/SPEC-XXX-xxx`
   - 分支从 `main` 拉出，完成后通过 PR 合并回 `main`
-- **Commit 规范**：使用 Conventional Commits 格式，commit 消息格式为 `<type>: <简短描述>`：
+- **Commit 规范**：使用 Conventional Commits 格式，commit 消息格式为 `<type>: <简短描述>`。关联 SPEC 时必须在 scope 中标明 SPEC 编号，如 `feat(SPEC-009): add video trim tool`，不关联 SPEC 时省略 scope：
   | type | 说明 | 关联 SPEC 时格式 |
   |------|------|-----------------|
   | `feat` | 新功能 | `feat(SPEC-XXX): xxx` |
-  | `fix` | Bug 修复 | `fix(SPEC-XXX): xxx`（如有关联 SPEC） |
-  | `docs` | 文档更新 | `docs(SPEC-XXX): xxx`（如有关联 SPEC） |
-  | `chore` | 杂项维护 | `chore: xxx` |
-  | `refactor` | 代码重构 | `refactor(SPEC-XXX): xxx`（如有关联 SPEC） |
-  | `test` | 测试相关 | `test(SPEC-XXX): xxx`（如有关联 SPEC） |
-  - 关联 SPEC 时必须在 scope 中标明 SPEC 编号，如 `feat(SPEC-009): add video trim tool`
-  - 不关联 SPEC 时省略 scope，如 `docs: update architecture diagram`、`fix: resolve SSE reconnect bug`
+  | `fix` | Bug 修复 | `fix(SPEC-XXX): xxx` |
+  | `docs` | 文档更新 | `docs(SPEC-XXX): xxx` |
+  | `chore` | 杂项维护 | `chore(SPEC-XXX): xxx` |
+  | `refactor` | 代码重构 | `refactor(SPEC-XXX): xxx` |
+  | `test` | 测试相关 | `test(SPEC-XXX): xxx` |
 - **编写 Spec 规范**：设计新功能时遵循 `.agent/skills/spec-writer/SKILL.md` 中定义的标准化 spec 编写流程和章节模板
 - **项目级 Skill 安装位置**：所有自定义开发的 skill 源代码存放在 `.agent/skills/` 下（如 `ci-verification`、`graphify`、`spec-writer`、`code-lint` 等）。实际安装目录不固定，SKILL.md 中的脚本路径始终使用相对路径（`scripts/xxx`），不写死安装路径。
 - **主动添加 UI Test**：新增前端交互功能（按钮、表单、弹窗、面板等）时，必须同步编写对应的 E2E 测试用例，并更新以下文档：
