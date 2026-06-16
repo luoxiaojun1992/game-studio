@@ -733,16 +733,17 @@ const runFullWorkflowTest = async (
     });
     log('mocks:video-create-project-queued');
 
-    // Use tiny PNG as test video input (1x1 red pixel, same as image service)
-    const tinyPngB64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==';
+    // Use a tiny 2-frame animated GIF as test input (1x1 pixel, 847 bytes)
+    // Animated GIF has multiple frames → FFmpeg's palettegen/paletteuse can generate output GIF.
+    const tinyGifB64 = 'R0lGODlhAQABAPcAAAAAAAEBAQICAgMDAwQEBAUFBQYGBgcHBwgICAkJCQoKCgsLCwwMDA0NDQ4ODg8PDxAQEBERERISEhMTExQUFBUVFRYWFhcXFxgYGBkZGRoaGhsbGxwcHB0dHR4eHh8fHyAgICEhISIiIiMjIyQkJCUlJSYmJicnJygoKCkpKSoqKisrKywsLC0tLS4uLi8vLzAwMDExMTIyMjMzMzQ0NDU1NTY2Njc3Nzg4ODk5OTo6Ojs7Ozw8PD09PT4+Pj8/P0BAQEFBQUJCQkNDQ0REREVFRUZGRkdHR0hISElJSUpKSktLS0xMTE1NTU5OTk9PT1BQUFFRUVJSUlNTU1RUVFVVVVZWVldXV1hYWFlZWVpaWltbW1xcXF1dXV5eXl9fX2BgYGFhYWJiYmNjY2RkZGVlZWZmZmdnZ2hoaGlpaWpqamtra2xsbG1tbW5ubm9vb3BwcHFxcXJycnNzc3R0dHV1dXZ2dnd3d3h4eHl5eXp6ent7e3x8fH19fX5+fn9/f4CAgIGBgYKCgoODg4SEhIWFhYaGhoeHh4iIiImJiYqKiouLi4yMjI2NjY6Ojo+Pj5CQkJGRkZKSkpOTk5SUlJWVlZaWlpeXl5iYmJmZmZqampubm5ycnJ2dnZ6enp+fn6CgoKGhoaKioqOjo6SkpKWlpaampqenp6ioqKmpqaqqqqurq6ysrK2tra6urq+vr7CwsLGxsbKysrOzs7S0tLW1tba2tre3t7i4uLm5ubq6uru7u7y8vL29vb6+vr+/v8DAwMHBwcLCwsPDw8TExMXFxcbGxsfHx8jIyMnJycrKysvLy8zMzM3Nzc7Ozs/Pz9DQ0NHR0dLS0tPT09TU1NXV1dbW1tfX19jY2NnZ2dra2tvb29zc3N3d3d7e3t/f3+Dg4OHh4eLi4uPj4+Tk5OXl5ebm5ufn5+jo6Onp6erq6uvr6+zs7O3t7e7u7u/v7/Dw8PHx8fLy8vPz8/T09PX19fb29vf39/j4+Pn5+fr6+vv7+/z8/P39/f7+/v///yH/C05FVFNDQVBFMi4wAwEAAAAh+QQECgAAACwAAAAAAQABAAACAkwAACH5BAQyAAAALAAAAAABAAEAAAICXAAAOw==';
 
-    // Write local video file (using PNG as pseudo-video for testing)
+    // Write local video file (animated GIF as test video input)
     log('mocks:video-write-file', { projectId });
     await setMockExpectation(projectId, 'engineer', {
       content: '正在写入测试视频到本地...',
       toolCalls: [{
         name: 'video_write_file',
-        arguments: { filename: 'test_input.png', content: tinyPngB64 }
+        arguments: { filename: 'test_input.gif', content: tinyGifB64 }
       }]
     });
     log('mocks:video-write-file-queued');
@@ -751,7 +752,7 @@ const runFullWorkflowTest = async (
     log('mocks:video-upload-file', { projectId });
     await setMockExpectation(projectId, 'engineer', {
       content: '正在上传测试视频到 video service...',
-      toolCalls: [{ name: 'video_upload_file', arguments: { video_project_id: 'vid-proj-001', filename: 'test_input.png' } }]
+      toolCalls: [{ name: 'video_upload_file', arguments: { video_project_id: 'vid-proj-001', filename: 'test_input.gif' } }]
     });
     log('mocks:video-upload-file-queued');
 
@@ -759,7 +760,7 @@ const runFullWorkflowTest = async (
     log('mocks:video-info', { projectId });
     await setMockExpectation(projectId, 'engineer', {
       content: '正在查询视频信息...',
-      toolCalls: [{ name: 'video_info', arguments: { video_project_id: 'vid-proj-001', filename: 'test_input.png' } }]
+      toolCalls: [{ name: 'video_info', arguments: { video_project_id: 'vid-proj-001', filename: 'test_input.gif' } }]
     });
     log('mocks:video-info-queued');
 
@@ -771,7 +772,7 @@ const runFullWorkflowTest = async (
         name: 'video_create_thumbnail',
         arguments: {
           video_project_id: 'vid-proj-001',
-          filename: 'test_input.png',
+          filename: 'test_input.gif',
           time: 0,
           width: 160,
           output_filename: 'thumbnail.png'
@@ -788,7 +789,7 @@ const runFullWorkflowTest = async (
         name: 'video_convert',
         arguments: {
           video_project_id: 'vid-proj-001',
-          input_filename: 'test_input.png',
+          input_filename: 'test_input.gif',
           target_format: 'webm',
           output_filename: 'converted.webm'
         }
@@ -804,7 +805,7 @@ const runFullWorkflowTest = async (
         name: 'video_generate_gif',
         arguments: {
           video_project_id: 'vid-proj-001',
-          input_filename: 'test_input.png',
+          input_filename: 'test_input.gif',
           fps: 5,
           width: 80,
           output_filename: 'output.gif'
@@ -821,7 +822,7 @@ const runFullWorkflowTest = async (
         name: 'video_add_text',
         arguments: {
           video_project_id: 'vid-proj-001',
-          input_filename: 'test_input.png',
+          input_filename: 'test_input.gif',
           text: 'TestOverlay',
           font_size: 16,
           color: 'red',
