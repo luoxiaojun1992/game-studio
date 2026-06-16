@@ -42,7 +42,7 @@ Code change → git push → CI triggers automatically
 
 ## Tool Scripts
 
-All scripts live under `scripts/` and assume the working directory is the repo root.
+All scripts live under `scripts/` in the skill directory. The paths below are relative to wherever this skill is installed.
 
 ### check-ci.sh — Quick Status Check
 
@@ -50,10 +50,10 @@ Check the latest CI run for a branch.
 
 ```bash
 # Check current branch
-bash .agent/skills/ci-verification/scripts/check-ci.sh
+bash scripts/check-ci.sh
 
 # Check specific branch
-bash .agent/skills/ci-verification/scripts/check-ci.sh chore/my-fix
+bash scripts/check-ci.sh chore/my-fix
 
 # Exit codes: 0=pass, 1=fail, 2=still running
 ```
@@ -68,10 +68,10 @@ Poll CI until `sonar-check` + `ui-tests` both complete (or timeout).
 
 ```bash
 # Default: 60s interval, 45min timeout
-bash .agent/skills/ci-verification/scripts/wait-for-ci.sh chore/my-fix
+bash scripts/wait-for-ci.sh chore/my-fix
 
 # Custom interval and timeout
-bash .agent/skills/ci-verification/scripts/wait-for-ci.sh chore/my-fix --interval 30 --timeout 1800
+bash scripts/wait-for-ci.sh chore/my-fix --interval 30 --timeout 1800
 ```
 
 - Prints polling progress with elapsed time
@@ -84,13 +84,13 @@ Download job logs for a specific CI run.
 
 ```bash
 # Download all job logs
-bash .agent/skills/ci-verification/scripts/get-logs.sh 12345678
+bash scripts/get-logs.sh 12345678
 
 # Download only failed job logs
-bash .agent/skills/ci-verification/scripts/get-logs.sh 12345678 --failed-only
+bash scripts/get-logs.sh 12345678 --failed-only
 
 # Custom output directory
-bash .agent/skills/ci-verification/scripts/get-logs.sh 12345678 --dir ./my-ci-logs
+bash scripts/get-logs.sh 12345678 --dir ./my-ci-logs
 ```
 
 - Extracts error/failure lines for quick scanning
@@ -103,13 +103,13 @@ When CI fails, follow this cycle (max 10 retries):
 ### Step 1: Get the failing run ID
 
 ```bash
-bash .agent/skills/ci-verification/scripts/check-ci.sh
+bash scripts/check-ci.sh
 ```
 
 ### Step 2: Download failure logs
 
 ```bash
-bash .agent/skills/ci-verification/scripts/get-logs.sh <run-id> --failed-only
+bash scripts/get-logs.sh <run-id> --failed-only
 ```
 
 ### Step 3: Analyze the failure
@@ -137,7 +137,7 @@ Apply the fix based on root cause analysis. Common failure patterns:
 
 ```bash
 git add -A && git commit -m "fix: <describe fix>" && git push
-bash .agent/skills/ci-verification/scripts/wait-for-ci.sh
+bash scripts/wait-for-ci.sh
 ```
 
 Repeat steps 2–5 until CI passes or retry limit (10) is reached.
@@ -157,7 +157,7 @@ For a complete push-and-verify cycle:
 git push
 
 # 2. Wait for CI and report result
-bash .agent/skills/ci-verification/scripts/wait-for-ci.sh
+bash scripts/wait-for-ci.sh
 ```
 
 If the above fails, proceed to the debug-fix-retry cycle.

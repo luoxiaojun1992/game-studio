@@ -62,16 +62,16 @@ const prompt = `
 
 ### Run the checker
 
+Execute `scripts/check_backticks.py` from the skill's directory:
+
 ```bash
-# Check specific file(s)
-python3 .agent/skills/code-lint/scripts/check_backticks.py server/agents.ts
-
-# Check a directory
-python3 .agent/skills/code-lint/scripts/check_backticks.py server/
-
-# Check all agent-related files
-python3 .agent/skills/code-lint/scripts/check_backticks.py server/agents.ts server/agent-manager.ts
+python3 scripts/check_backticks.py server/agents.ts
+python3 scripts/check_backticks.py server/
+python3 scripts/check_backticks.py server/agents.ts server/agent-manager.ts
 ```
+
+> Note: the script path is relative to wherever this skill is installed.
+> If installed at `<skill_dir>/`, the command is `python3 <skill_dir>/scripts/check_backticks.py <target>`.
 
 ### Exit codes
 
@@ -89,7 +89,7 @@ To add a new lint rule:
 2. Write a test case that triggers the bug and verify detection
 3. Add a section to this SKILL.md under "Current Rules"
 4. Update the `find_issues()` or `check_file()` function to call the new rule
-5. Run `python3 .agent/skills/code-lint/scripts/check_backticks.py server/` to verify
+5. Run `python3 scripts/check_backticks.py server/` to verify
    no false positives
 
 Rule design principles:

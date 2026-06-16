@@ -14,6 +14,10 @@ agent_created: true
 维护 game-dev-studio 项目的 SVG 系统架构图（`docs/images/architecture.svg`），
 包括四层架构布局、配色、箭头、文字居中。
 
+> **路径约定**：本文档中的脚本路径（如 `scripts/`, `svg-to-png/scripts/`）均为
+> 相对于 skill 安装目录的相对路径。`svg-to-png/` 是同级 skill 的目录引用，
+> 假设两个 skill 安装在同一父目录下。
+
 核心能力：
 1. **代码浏览研究** — 读取关键代码文件（`server/db.ts`, `server/tools.ts`, `docker-compose.yml` 等）理解当前系统状态
 2. **架构图绘制** — SVG 四层架构图（前端 → 后端 → 微服务 → 数据/外部服务），含箭头、配色、布局
@@ -81,10 +85,10 @@ SVG 架构图位于 `docs/images/architecture.svg`，遵循以下规则：
 
 ```bash
 # 预览模式（不修改文件）
-python3 .agent/skills/architecture-diagram/scripts/center_text.py docs/images/architecture.svg --dry-run
+python3 scripts/center_text.py docs/images/architecture.svg --dry-run
 
 # 应用居中
-python3 .agent/skills/architecture-diagram/scripts/center_text.py docs/images/architecture.svg
+python3 scripts/center_text.py docs/images/architecture.svg
 ```
 
 **算法核心**：
@@ -106,7 +110,7 @@ delta = content_area_center - visual_center         # shift all texts by this am
 依赖项目级 `svg-to-png` skill，中英文版本都需转换：
 
 ```bash
-python3 .agent/skills/svg-to-png/scripts/convert.py docs/images/architecture.svg docs/images/architecture.png --width 2400
+python3 svg-to-png/scripts/convert.py docs/images/architecture.svg docs/images/architecture.png --width 2400
 ```
 
 ### Phase 6: 英文翻译
@@ -114,7 +118,7 @@ python3 .agent/skills/svg-to-png/scripts/convert.py docs/images/architecture.svg
 使用 `scripts/translate_svg.py` 将中文 SVG 翻译为英文版：
 
 ```bash
-python3 .agent/skills/architecture-diagram/scripts/translate_svg.py docs/images/architecture.svg docs/images/architecture-en.svg
+python3 scripts/translate_svg.py docs/images/architecture.svg docs/images/architecture-en.svg
 ```
 
 翻译后必须手动处理：
@@ -130,7 +134,7 @@ python3 .agent/skills/architecture-diagram/scripts/translate_svg.py docs/images/
 
 5. **转换 PNG**：
    ```bash
-   python3 .agent/skills/svg-to-png/scripts/convert.py docs/images/architecture-en.svg docs/images/architecture-en.png --width 2400
+   python3 svg-to-png/scripts/convert.py docs/images/architecture-en.svg docs/images/architecture-en.png --width 2400
    ```
 
 ### Phase 7: 提交
