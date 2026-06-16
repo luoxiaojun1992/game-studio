@@ -12,8 +12,9 @@
      - 测试矩阵标题数字（如 `12 个用例` → `13 个用例`）
      - 测试矩阵表格（新增 UI-XXX 行）
      - ui-coverage 覆盖率引用（如有）
-  3. `.agent/specs/` 下对应的 spec 文档 — 更新测试策略章节
-  4. `.agent/specs/INDEX.md` — 如有新 spec 则更新索引
+  3. `tests/ui/artifacts/ui-coverage-summary.json` — 更新 `totalCases`/`coveredCases` 数字
+  4. `.agent/specs/` 下对应的 spec 文档 — 更新测试策略章节
+  5. `.agent/specs/INDEX.md` — 如有新 spec 则更新索引
 
 - **主动更新所有相关文档**：实现新功能或做重大修改后，必须主动检查并更新所有受影响的文档，而非仅更新直接相关文件。架构图维护可使用 `.agent/skills/architecture-diagram/SKILL.md` 技能。完整检查清单：
   1. `README.md` + `README.zh-CN.md` — 功能概览、API 概览、目录结构

@@ -498,7 +498,7 @@ export function resolveSafePath(baseDir: string, fileName: string): string {
 ## 测试策略
 
 1. **集成测试**：docker-compose 中拉起 video-service 容器，curl 调用各端点
-2. **UI Test**：通过 engineer agent 调用 video_* 工具，验证全链路
+2. **E2E 测试 (UI-013)**：标准 H5 工作流 + video service MCP 工具全链路验证（10 步 mock 链：create_project → write_file → upload_file → info → thumbnail → convert → gif → add_text → download_file → delete_project）。使用 1x1 PNG 作为轻量测试素材，固定 project_id `vid-proj-001`（`VIDEO_SERVICE_TEST_MODE=true`）。验证点：全流程 3 handoffs + 1 game 完成，视频处理不影响游戏 count 断言。
 
 ## UI Test 验收规则
 
@@ -509,9 +509,13 @@ export function resolveSafePath(baseDir: string, fileName: string): string {
 
 新增前端交互功能（按钮、表单、弹窗、面板等）时，必须同步编写对应的 E2E 测试用例，并更新以下文档：
 1. `tests/ui/e2e/studio.spec.ts` — 添加测试用例（分配下一个 UI-XXX 编号）
-2. `.agent/memory/E2E_TESTING.md` — 更新测试矩阵、testid 对照表、测试经验
+2. `.agent/memory/E2E_TESTING.md` — **必须同步更新以下 3 处**：
+   - 测试矩阵标题数字（如 `12 个用例` → `13 个用例`）
+   - 测试矩阵表格（新增 UI-XXX 行）
+   - ui-coverage 覆盖率引用（如有）
 3. `.agent/specs/` 下对应的 spec 文档 — 更新测试策略章节
 4. `.agent/specs/INDEX.md` — 如有新 spec 则更新索引
+5. `tests/ui/artifacts/ui-coverage-summary.json` — 更新 `totalCases`/`coveredCases` 数字
 
 ## 主动更新所有相关文档规范
 
