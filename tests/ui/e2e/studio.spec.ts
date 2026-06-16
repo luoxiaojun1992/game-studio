@@ -824,7 +824,7 @@ const runFullWorkflowTest = async (
           video_project_id: 'vid-proj-001',
           input_filename: 'test_input.gif',
           text: 'X',
-          font_size: 1,
+          font_size: 8,
           color: 'red',
           x: 0,
           y: 0,
