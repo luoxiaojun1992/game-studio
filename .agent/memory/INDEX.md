@@ -33,7 +33,9 @@
 - 新增 `get_games`（列表）与 `get_game_info`（详情）用于按项目查询游戏；文件模式详情返回 MinIO 预签名下载链接
 - Blender 建模工具（`blender_*`）通过 `creator-service.ts` 调用 creator 微服务，模型文件下载/删除带安全路径校验
 - 图片处理工具（`image_*`）通过 `image-service.ts` 调用 image 微服务。`image_write_file`（本地 base64→Buffer）+ `image_upload_file`（本地→POST 微服务）职责分离。微服务侧 `IMAGE_SERVICE_TEST_MODE` 生成固定 project_id
-- draw.io 图表工具（`drawio_*`、`drawio_list_elements`）通过 `drawio-service.ts` 调用微服务，项目记录存放于 `drawio_projects`
+- 图片处理工具（`image_*`）通过 `image-service.ts` 调用 image 微服务。`image_write_file`（本地 base64→Buffer）+ `image_upload_file`（本地→POST 微服务）职责分离。微服务侧 `IMAGE_SERVICE_TEST_MODE` 生成固定 project_id
+- 视频处理工具（`video_*`）通过 `video-service.ts` 调用 video 微服务。`video_write_file`（本地 base64→Buffer）+ `video_upload_file`（本地→POST 微服务）职责分离。微服务侧 `VIDEO_SERVICE_TEST_MODE` 生成固定 project_id `vid-proj-001`
+- draw.io 图表工具（`drawio_*`、`drawio_list_elements`）通过 `drawio-service.ts` 调用微服务，项目记录存放于 `drawio_projects`（`drawio_*`、`drawio_list_elements`）通过 `drawio-service.ts` 调用微服务，项目记录存放于 `drawio_projects`
 - 策划案附件记录在 `proposal_attachments`，附件文件存储在 MinIO
 - SonarQube 报告上传后写入 `games.sonar_storage_id`，前端可下载扫描报告
 - `proposals` 表含 `source` 字段（`manual`/`questionnaire`），问卷式提案通过 `questionnaire-renderer.ts` 渲染结构化输入为 Markdown

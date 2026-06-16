@@ -156,6 +156,8 @@ interface WorkflowOptions {
   gameType?: 'h5' | 'phaser-mobile';
   /** Enable image processing workflow (SPEC-008): creates image resources, processes them, saves to game artifacts */
   withImageProcessing?: boolean;
+  /** Enable video processing workflow (SPEC-009): creates video resources, processes them, saves to game artifacts */
+  withVideoProcessing?: boolean;
 }
 
 const runFullWorkflowTest = async (
@@ -722,6 +724,136 @@ const runFullWorkflowTest = async (
     log('mocks:image-delete-project-queued');
   }
 
+  // ── Video Processing (SPEC-009): create and process video resources ──
+  if (opts.withVideoProcessing) {
+    log('mocks:video-create-project', { projectId });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在创建视频处理 project...',
+      toolCalls: [{ name: 'video_create_project', arguments: { name: 'game-video-assets' } }]
+    });
+    log('mocks:video-create-project-queued');
+
+    // Use a tiny 2-frame animated GIF as test input (1x1 pixel, 847 bytes)
+    // Animated GIF has multiple frames → FFmpeg's palettegen/paletteuse can generate output GIF.
+    const tinyGifB64 = 'R0lGODlhAQABAPcAAAAAAAEBAQICAgMDAwQEBAUFBQYGBgcHBwgICAkJCQoKCgsLCwwMDA0NDQ4ODg8PDxAQEBERERISEhMTExQUFBUVFRYWFhcXFxgYGBkZGRoaGhsbGxwcHB0dHR4eHh8fHyAgICEhISIiIiMjIyQkJCUlJSYmJicnJygoKCkpKSoqKisrKywsLC0tLS4uLi8vLzAwMDExMTIyMjMzMzQ0NDU1NTY2Njc3Nzg4ODk5OTo6Ojs7Ozw8PD09PT4+Pj8/P0BAQEFBQUJCQkNDQ0REREVFRUZGRkdHR0hISElJSUpKSktLS0xMTE1NTU5OTk9PT1BQUFFRUVJSUlNTU1RUVFVVVVZWVldXV1hYWFlZWVpaWltbW1xcXF1dXV5eXl9fX2BgYGFhYWJiYmNjY2RkZGVlZWZmZmdnZ2hoaGlpaWpqamtra2xsbG1tbW5ubm9vb3BwcHFxcXJycnNzc3R0dHV1dXZ2dnd3d3h4eHl5eXp6ent7e3x8fH19fX5+fn9/f4CAgIGBgYKCgoODg4SEhIWFhYaGhoeHh4iIiImJiYqKiouLi4yMjI2NjY6Ojo+Pj5CQkJGRkZKSkpOTk5SUlJWVlZaWlpeXl5iYmJmZmZqampubm5ycnJ2dnZ6enp+fn6CgoKGhoaKioqOjo6SkpKWlpaampqenp6ioqKmpqaqqqqurq6ysrK2tra6urq+vr7CwsLGxsbKysrOzs7S0tLW1tba2tre3t7i4uLm5ubq6uru7u7y8vL29vb6+vr+/v8DAwMHBwcLCwsPDw8TExMXFxcbGxsfHx8jIyMnJycrKysvLy8zMzM3Nzc7Ozs/Pz9DQ0NHR0dLS0tPT09TU1NXV1dbW1tfX19jY2NnZ2dra2tvb29zc3N3d3d7e3t/f3+Dg4OHh4eLi4uPj4+Tk5OXl5ebm5ufn5+jo6Onp6erq6uvr6+zs7O3t7e7u7u/v7/Dw8PHx8fLy8vPz8/T09PX19fb29vf39/j4+Pn5+fr6+vv7+/z8/P39/f7+/v///yH/C05FVFNDQVBFMi4wAwEAAAAh+QQECgAAACwAAAAAAQABAAACAkwAACH5BAQyAAAALAAAAAABAAEAAAICXAAAOw==';
+
+    // Write local video file (animated GIF as test video input)
+    log('mocks:video-write-file', { projectId });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在写入测试视频到本地...',
+      toolCalls: [{
+        name: 'video_write_file',
+        arguments: { filename: 'test_input.gif', content: tinyGifB64 }
+      }]
+    });
+    log('mocks:video-write-file-queued');
+
+    // Upload to video service
+    log('mocks:video-upload-file', { projectId });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在上传测试视频到 video service...',
+      toolCalls: [{ name: 'video_upload_file', arguments: { video_project_id: 'vid-proj-001', filename: 'test_input.gif' } }]
+    });
+    log('mocks:video-upload-file-queued');
+
+    // Get video info
+    log('mocks:video-info', { projectId });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在查询视频信息...',
+      toolCalls: [{ name: 'video_info', arguments: { video_project_id: 'vid-proj-001', filename: 'test_input.gif' } }]
+    });
+    log('mocks:video-info-queued');
+
+    // Create thumbnail from test input
+    log('mocks:video-create-thumbnail', { projectId });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在生成视频缩略图...',
+      toolCalls: [{
+        name: 'video_create_thumbnail',
+        arguments: {
+          video_project_id: 'vid-proj-001',
+          filename: 'test_input.gif',
+          time: 0,
+          width: 160,
+          output_filename: 'thumbnail.png'
+        }
+      }]
+    });
+    log('mocks:video-create-thumbnail-queued');
+
+    // Convert format
+    log('mocks:video-convert', { projectId });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在转换视频格式...',
+      toolCalls: [{
+        name: 'video_convert',
+        arguments: {
+          video_project_id: 'vid-proj-001',
+          input_filename: 'test_input.gif',
+          target_format: 'webm',
+          output_filename: 'converted.webm'
+        }
+      }]
+    });
+    log('mocks:video-convert-queued');
+
+    // Generate GIF
+    log('mocks:video-generate-gif', { projectId });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在生成 GIF...',
+      toolCalls: [{
+        name: 'video_generate_gif',
+        arguments: {
+          video_project_id: 'vid-proj-001',
+          input_filename: 'test_input.gif',
+          fps: 5,
+          width: 80,
+          output_filename: 'output.gif'
+        }
+      }]
+    });
+    log('mocks:video-generate-gif-queued');
+
+    // Add text overlay
+    log('mocks:video-add-text', { projectId });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在添加文字叠加...',
+      toolCalls: [{
+        name: 'video_add_text',
+        arguments: {
+          video_project_id: 'vid-proj-001',
+          input_filename: 'test_input.gif',
+          text: 'X',
+          font_size: 8,
+          color: 'red',
+          x: 0,
+          y: 0,
+          output_filename: 'text_overlay.gif'
+        }
+      }]
+    });
+    log('mocks:video-add-text-queued');
+
+    // Download processed file
+    log('mocks:video-download-file', { projectId });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '正在下载处理后的文件到游戏目录...',
+      toolCalls: [{
+        name: 'video_download_file',
+        arguments: { video_project_id: 'vid-proj-001', filename: 'thumbnail.png' }
+      }]
+    });
+    log('mocks:video-download-file-queued');
+
+    // Clean up video project
+    log('mocks:video-delete-project', { projectId });
+    await setMockExpectation(projectId, 'engineer', {
+      content: '清理视频 project...',
+      toolCalls: [{ name: 'video_delete_project', arguments: { video_project_id: 'vid-proj-001' } }]
+    });
+    log('mocks:video-delete-project-queued');
+  }
+
   log('mocks:queue-submit-game', { projectId });
   await setMockExpectation(projectId, 'engineer', {
     content: '游戏已提交。',
@@ -1067,5 +1199,22 @@ test('[UI-012] should process images and save to game artifacts (SPEC-008)', asy
     autopilot: false,
     gameType: 'h5',
     withImageProcessing: true,
+  });
+});
+
+// ═══════════════════════════════════════════
+// UI-013: Video Service — create and process video resources, save to game artifacts (SPEC-009)
+// Standard H5 workflow + video processing via video service MCP tools.
+// Uses tiny PNG as test input to exercise video service operations (thumbnail, convert, gif, text overlay).
+// NOTE: This test uses a small image as pseudo-video input for lightweight CI-friendly testing.
+// ═══════════════════════════════════════════
+
+test('[UI-013] should process videos and save to game artifacts (SPEC-009)', async ({ page }) => {
+  process.stderr.write(`[UI-013] ${new Date().toISOString()} test:starting (H5 workflow + video service)\n`);
+  await runFullWorkflowTest(page, {
+    testId: 'UI-013',
+    autopilot: false,
+    gameType: 'h5',
+    withVideoProcessing: true,
   });
 });

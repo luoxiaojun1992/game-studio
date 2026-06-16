@@ -333,6 +333,18 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_image_projects_project ON image_projects(project_id);
 
+  -- Video 视频处理项目表（关联 studio project 与 video service project）
+  CREATE TABLE IF NOT EXISTS video_projects (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL,
+    video_project_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_video_projects_project ON video_projects(project_id);
+
   -- 策划案附件表（关联策划案与 MinIO 存储文件）
   CREATE TABLE IF NOT EXISTS proposal_attachments (
     id TEXT PRIMARY KEY,
@@ -497,6 +509,15 @@ export interface DbImageProject {
   id: string;
   project_id: string;
   image_project_id: string;
+  name: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DbVideoProject {
+  id: string;
+  project_id: string;
+  video_project_id: string;
   name: string;
   created_at: string;
   updated_at: string;
@@ -1663,6 +1684,54 @@ export function updateImageProject(id: string, updates: { image_project_id?: str
 
 export function deleteImageProject(id: string): boolean {
   const stmt = db.prepare('DELETE FROM image_projects WHERE id = ?');
+  const result = stmt.run(id);
+  return result.changes > 0;
+}
+
+// ============================================================================
+// VideoProject CRUD（视频 project，关联 studio project 与 video service）
+// ============================================================================
+
+export function getVideoProjects(projectId: string): DbVideoProject[] {
+  const stmt = db.prepare('SELECT * FROM video_projects WHERE project_id = ? ORDER BY created_at DESC');
+  return stmt.all(projectId) as DbVideoProject[];
+}
+
+export function getVideoProject(id: string): DbVideoProject | null {
+  const stmt = db.prepare('SELECT * FROM video_projects WHERE id = ?');
+  const result = stmt.get(id) as DbVideoProject | undefined;
+  return result ?? null;
+}
+
+export function createVideoProject(data: {
+  id: string;
+  project_id: string;
+  video_project_id: string;
+  name: string;
+  created_at: string;
+  updated_at: string;
+}): DbVideoProject {
+  const normalizedProjectId = normalizeAndValidateRequiredText(data.project_id, 'project_id');
+  const normalizedName = normalizeAndValidateRequiredText(data.name, 'name');
+  if (normalizedName.length > MAX_FILENAME_LENGTH) {
+    throw new Error(`name 长度不能超过 ${MAX_FILENAME_LENGTH}`);
+  }
+  const stmt = db.prepare(`
+    INSERT INTO video_projects (id, project_id, video_project_id, name, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `);
+  stmt.run(data.id, normalizedProjectId, data.video_project_id, normalizedName, data.created_at, data.updated_at);
+  return { ...data, project_id: normalizedProjectId, name: normalizedName };
+}
+
+export function updateVideoProject(id: string, updates: { video_project_id?: string }): boolean {
+  const stmt = db.prepare('UPDATE video_projects SET video_project_id = ?, updated_at = ? WHERE id = ?');
+  const result = stmt.run(updates.video_project_id, new Date().toISOString(), id);
+  return result.changes > 0;
+}
+
+export function deleteVideoProject(id: string): boolean {
+  const stmt = db.prepare('DELETE FROM video_projects WHERE id = ?');
   const result = stmt.run(id);
   return result.changes > 0;
 }

@@ -228,9 +228,26 @@ agent_created: true
 
 新增前端交互功能时，必须同步编写对应的 E2E 测试用例，并更新以下文档：
 1. `tests/ui/e2e/studio.spec.ts` — 添加 UI-XXX 测试用例
-2. `.agent/memory/E2E_TESTING.md` — 更新测试矩阵、testid 对照表、测试经验
+2. `.agent/memory/E2E_TESTING.md` — **必须同步更新以下 3 处**：
+   - 测试矩阵标题数字（如"12 个用例" → "13 个用例"）
+   - 测试矩阵表格（新增 UI-XXX 行）
+   - ui-coverage 覆盖率引用（如有）
 3. `.agent/specs/<spec-file>.md` — 更新本文档测试策略章节
 4. `.agent/specs/INDEX.md` — 新增 SPEC-XXX 索引条目
+
+**⚠️ 测例数更新规则**：
+每次新增 E2E 测试用例后，必须检查 `.agent/memory/E2E_TESTING.md` 中「测试矩阵总览」的标题数字
+（如 `N 个用例`）是否与实际表格行数一致。忘记更新此数字是高频失误，会导致 ui-coverage
+摘要数据与实际测试不相符。
+
+**文件列表变更时的同步规则**：
+新增 spec 相关文件后，必须更新所有受影响文档中的文件路径、行数统计、端口号、列名等硬编码数字。
+检查范围包括：
+- `.agent/memory/INDEX.md` — 快速参考中的工具/服务列表
+- `.agent/memory/ARCHITECTURE.md` — 架构详解中的模块清单
+- `.agent/memory/MEMORY.md` — 长期记忆中的工程决策记录
+- `README.md` + `README.zh-CN.md` — 功能概览
+- `docs/ARCHITECTURE.md` + `docs/ARCHITECTURE.zh-CN.md` — 架构文档
 ```
 
 ### 12. 详细 Debug 日志规范（必需）

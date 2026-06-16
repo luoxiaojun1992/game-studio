@@ -93,6 +93,23 @@
   19. `image_delete_project`：清理 image service 容器
 - **断言策略**：成功完成标准工作流（3 handoffs + 1 game），图片处理不影响游戏 count 断言
 
+## UI-013 视频处理工作流测试（SPEC-009）
+- **全流程**：标准 H5 工作流 + video service MCP 工具调用
+- **Test mode**：固定 ID `vid-proj-001`（`VIDEO_SERVICE_TEST_MODE=true`）
+- **Mock 链路**（engineer 阶段新增 10 步）：
+  1. `video_create_project`：创建视频 project（test mode → 固定 id=vid-proj-001）
+  2. `video_write_file`：写入 test_input.png 到本地 videos/ 目录（1x1 PNG）
+  3. `video_upload_file`：上传到 video service
+  4. `video_info`：查询视频元信息
+  5. `video_create_thumbnail`：生成缩略图 thumbnail.png（160px）
+  6. `video_convert`：转换为 webm 格式
+  7. `video_generate_gif`：生成 GIF（5fps, 80px 宽）
+  8. `video_add_text`：添加文字叠加 "TestOverlay"
+  9. `video_download_file`：下载 thumbnail.png 到本地
+  10. `video_delete_project`：清理 video service 容器
+- **测试输入**：使用 1x1 红色 PNG base64 作为轻量测试素材，验证 video service 全链路操作（缩略图、格式转换、GIF 生成、文字叠加）
+- **断言策略**：成功完成标准工作流（3 handoffs + 1 game），视频处理不影响游戏 count 断言
+
 
 ## data-testid 完整对照表（32 个，覆盖率 100%）
 
@@ -134,7 +151,7 @@
 | `proposal-item-*` | ProposalList | 提案列表项（ID 后缀） |
 | `game-card-*` | GameList | 游戏卡片（ID 后缀） |
 
-## 测试矩阵总览（12 个用例）
+## 测试矩阵总览（13 个用例）
 
 | 用例 ID | 类别 | 是否需要 Mock | 核心验证 |
 |:---|:---|:---:|:---|
@@ -150,6 +167,7 @@
 | UI-010 | 问卷提案创建 | ✅ | 分步表单 + SSE 更新 + 来源标签 |
 | UI-011 | Phaser Mobile 工作流 | ✅ | SPEC-010: phaser-mobile game type + manual mode |
 | UI-012 | 图片处理工作流 (SPEC-008) | ✅ | image_create → write_file→upload_file×4 → resize→info→compress→convert→watermark→composite→sprite-sheet → download_file×2 → delete_project |
+| UI-013 | 视频处理工作流 (SPEC-009) | ✅ | video_create → write_file→upload_file → info→thumbnail→convert→gif→add_text → download_file → delete_project |
 
 ## Lint Framework 集成验证
 

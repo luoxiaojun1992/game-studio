@@ -89,6 +89,24 @@ import {
   type DownloadImageFileOptions,
   type DeleteImageFileOptions,
 } from './image-service.js';
+import {
+  createVideoProject, listVideoProjects, deleteVideoProject,
+  videoGetInfo, videoConvert, videoTrim, videoConcat, videoResize, videoCompress,
+  videoCrop, videoRotate, videoChangeSpeed, videoExtractFrames, videoExtractAudio,
+  videoAddAudio, videoAddText, videoAddWatermark, videoGenerateGif, videoGifToVideo,
+  videoCreateThumbnail,
+  uploadVideoFile, downloadVideoFile, deleteVideoFile,
+} from './video-service.js';
+import type {
+  CreateVideoProjectOptions, DeleteVideoProjectOptions,
+  VideoConvertOptions, VideoTrimOptions, VideoConcatOptions,
+  VideoResizeOptions, VideoCompressOptions, VideoCropOptions,
+  VideoRotateOptions, VideoChangeSpeedOptions, VideoExtractFramesOptions,
+  VideoExtractAudioOptions, VideoAddAudioOptions, VideoAddTextOptions,
+  VideoAddWatermarkOptions, VideoGenerateGifOptions, VideoGifToVideoOptions,
+  VideoCreateThumbnailOptions,
+  UploadVideoFileOptions, DownloadVideoFileOptions, DeleteVideoFileOptions,
+} from './video-service.js';
 
 /**
  */
@@ -1997,6 +2015,775 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
           await deleteImageFile(opts);
           return {
             content: [{ type: 'text' as const, text: `已删除图片文件：${filename}（远程 + 本地）` }]
+          };
+        }
+      ),
+
+      // ---- Video / 视频处理工具（仅 engineer 可用）----
+
+      tool(
+        'video_create_project',
+        '创建视频处理 project（仅 engineer 可用）。在 backend 数据库创建记录，然后调用 video service 创建容器内项目目录，返回 video_project_id。建议在完成视频处理后调用 video_delete_project 清理资源。',
+        {
+          name: z.string().min(1).max(50).describe('视频 project 名称'),
+        },
+        async ({ name }) => {
+          const opts: CreateVideoProjectOptions = {
+            projectId: scopedProjectId,
+            name,
+            agentId,
+            logFn: log,
+          };
+          try {
+            const { dbId, videoProjectId } = await createVideoProject(opts);
+            return {
+              content: [{
+                type: 'text' as const,
+                text: `视频 project 已创建 (DB ID: ${dbId.slice(0, 8)}, video_project_id: ${videoProjectId})，名称: ${name}`,
+              }]
+            };
+          } catch (error: any) {
+            return {
+              content: [{ type: 'text' as const, text: `创建视频 project 失败：${error?.message || String(error)}` }]
+            };
+          }
+        }
+      ),
+
+      tool(
+        'video_list_projects',
+        '列出当前 studio project 下所有视频处理 project（仅 engineer 可用）。',
+        {
+          limit: z.number().min(1).max(50).optional().default(20).describe('返回条数上限'),
+        },
+        async ({ limit }) => {
+          const records = listVideoProjects(scopedProjectId, limit || 20);
+          if (records.length === 0) {
+            return { content: [{ type: 'text' as const, text: '暂无视频 project。' }] };
+          }
+          const lines = records.map(r =>
+            `[${r.id.slice(0, 8)}] ${r.name} | video_project_id=${r.video_project_id} | ${r.created_at.slice(0, 10)}`
+          ).join('\n');
+          return { content: [{ type: 'text' as const, text: lines }] };
+        }
+      ),
+
+      tool(
+        'video_delete_project',
+        '删除视频处理 project（仅 engineer 可用）。先调用 video service 删除远程目录（幂等），再删除 backend DB 记录。建议完成视频文件下载后主动调用以释放容器存储空间。',
+        {
+          video_project_id: z.string().describe('video_project_id（来自 video_create_project 的返回值）'),
+        },
+        async ({ video_project_id }) => {
+          if (!video_project_id || typeof video_project_id !== 'string') {
+            throw new Error('video_project_id 不能为空');
+          }
+          const opts: DeleteVideoProjectOptions = {
+            projectId: scopedProjectId,
+            videoProjectId: video_project_id.trim(),
+            agentId,
+            logFn: log,
+          };
+          await deleteVideoProject(opts);
+          return {
+            content: [{ type: 'text' as const, text: `视频 project 已删除 (video_project_id: ${video_project_id})` }]
+          };
+        }
+      ),
+
+      tool(
+        'video_info',
+        '获取视频元信息（仅 engineer 可用）。返回时长、分辨率、编码、码率、帧率、音频流信息。',
+        {
+          video_project_id: z.string().describe('video_project_id'),
+          filename: z.string().min(1).max(128).describe('要查询的文件名'),
+        },
+        async ({ video_project_id, filename }) => {
+          if (!video_project_id || typeof video_project_id !== 'string') {
+            throw new Error('video_project_id 不能为空');
+          }
+          const info = await videoGetInfo({ videoProjectId: video_project_id.trim(), filename });
+          return {
+            content: [{ type: 'text' as const, text: JSON.stringify(info, null, 2) }]
+          };
+        }
+      ),
+
+      tool(
+        'video_convert',
+        '转换视频格式（仅 engineer 可用）。支持 MP4/WebM/MOV/GIF/AVI/MKV 互转。',
+        {
+          video_project_id: z.string().describe('video_project_id'),
+          input_filename: z.string().min(1).max(128).describe('输入文件名'),
+          target_format: z.enum(['mp4', 'webm', 'mov', 'gif', 'avi', 'mkv']).describe('目标格式'),
+          output_filename: z.string().min(1).max(128).describe('输出文件名'),
+          video_codec: z.string().max(32).optional().describe('视频编码器（h264/h265/vp8/vp9/av1，留空自动选择）'),
+          audio_codec: z.string().max(32).optional().describe('音频编码器（aac/mp3/opus/vorbis/copy，留空自动选择）'),
+        },
+        async ({ video_project_id, input_filename, target_format, output_filename, video_codec, audio_codec }) => {
+          if (!video_project_id || typeof video_project_id !== 'string') {
+            throw new Error('video_project_id 不能为空');
+          }
+          const opts: VideoConvertOptions = {
+            videoProjectId: video_project_id.trim(),
+            inputFilename: input_filename,
+            targetFormat: target_format,
+            outputFilename: output_filename,
+            videoCodec: video_codec,
+            audioCodec: audio_codec,
+            agentId,
+            logFn: log,
+          };
+          const output = await videoConvert(opts);
+          return {
+            content: [{ type: 'text' as const, text: `已转换格式：${output_filename} -> ${target_format}。${output}` }]
+          };
+        }
+      ),
+
+      tool(
+        'video_trim',
+        '截取视频片段（仅 engineer 可用）。从指定时间点截取指定时长的片段。',
+        {
+          video_project_id: z.string().describe('video_project_id'),
+          input_filename: z.string().min(1).max(128).describe('输入文件名'),
+          start_time: z.number().min(0).describe('起始时间（秒）'),
+          duration: z.number().positive().optional().describe('持续时长（秒）'),
+          end_time: z.number().positive().optional().describe('结束时间（秒）'),
+          output_filename: z.string().min(1).max(128).describe('输出文件名'),
+        },
+        async ({ video_project_id, input_filename, start_time, duration, end_time, output_filename }) => {
+          if (!video_project_id || typeof video_project_id !== 'string') {
+            throw new Error('video_project_id 不能为空');
+          }
+          const opts: VideoTrimOptions = {
+            videoProjectId: video_project_id.trim(),
+            inputFilename: input_filename,
+            startTime: start_time,
+            duration,
+            endTime: end_time,
+            outputFilename: output_filename,
+            agentId,
+            logFn: log,
+          };
+          const output = await videoTrim(opts);
+          return {
+            content: [{ type: 'text' as const, text: `已截取视频：${output_filename}（从 ${start_time}s 开始）。${output}` }]
+          };
+        }
+      ),
+
+      tool(
+        'video_concat',
+        '拼接多个视频（仅 engineer 可用）。将多个视频按顺序拼接为一个。',
+        {
+          video_project_id: z.string().describe('video_project_id'),
+          input_filenames: z.array(z.string().min(1).max(128)).min(2).max(64).describe('要拼接的视频文件名列表'),
+          output_filename: z.string().min(1).max(128).describe('输出文件名'),
+        },
+        async ({ video_project_id, input_filenames, output_filename }) => {
+          if (!video_project_id || typeof video_project_id !== 'string') {
+            throw new Error('video_project_id 不能为空');
+          }
+          const opts: VideoConcatOptions = {
+            videoProjectId: video_project_id.trim(),
+            inputFilenames: input_filenames,
+            outputFilename: output_filename,
+            agentId,
+            logFn: log,
+          };
+          const output = await videoConcat(opts);
+          return {
+            content: [{ type: 'text' as const, text: `已拼接 ${input_filenames.length} 个视频：${output_filename}。${output}` }]
+          };
+        }
+      ),
+
+      tool(
+        'video_resize',
+        '缩放视频（仅 engineer 可用）。改变视频分辨率，支持保持纵横比填充。',
+        {
+          video_project_id: z.string().describe('video_project_id'),
+          input_filename: z.string().min(1).max(128).describe('输入文件名'),
+          width: z.number().int().min(1).max(7680).describe('目标宽度（像素）'),
+          height: z.number().int().min(1).max(7680).describe('目标高度（像素）'),
+          keep_aspect: z.boolean().optional().default(true).describe('是否保持纵横比'),
+          output_filename: z.string().min(1).max(128).describe('输出文件名'),
+        },
+        async ({ video_project_id, input_filename, width, height, keep_aspect, output_filename }) => {
+          if (!video_project_id || typeof video_project_id !== 'string') {
+            throw new Error('video_project_id 不能为空');
+          }
+          const opts: VideoResizeOptions = {
+            videoProjectId: video_project_id.trim(),
+            inputFilename: input_filename,
+            width,
+            height,
+            keepAspect: keep_aspect,
+            outputFilename: output_filename,
+            agentId,
+            logFn: log,
+          };
+          const output = await videoResize(opts);
+          return {
+            content: [{ type: 'text' as const, text: `已缩放视频：${output_filename} (${width}x${height})。${output}` }]
+          };
+        }
+      ),
+
+      tool(
+        'video_compress',
+        '压缩视频（仅 engineer 可用）。通过 CRF 或码率控制压缩视频文件大小。',
+        {
+          video_project_id: z.string().describe('video_project_id'),
+          input_filename: z.string().min(1).max(128).describe('输入文件名'),
+          crf: z.number().int().min(0).max(51).optional().default(23).describe('CRF 值（0-51，默认23，越小质量越高）'),
+          bitrate: z.string().max(16).optional().describe('目标码率（如 "1M"、"2500k"）'),
+          preset: z.string().max(32).optional().default('medium').describe('编码预设（ultrafast~veryslow）'),
+          output_filename: z.string().min(1).max(128).describe('输出文件名'),
+        },
+        async ({ video_project_id, input_filename, crf = 23, bitrate, preset = 'medium', output_filename }) => {
+          if (!video_project_id || typeof video_project_id !== 'string') {
+            throw new Error('video_project_id 不能为空');
+          }
+          const opts: VideoCompressOptions = {
+            videoProjectId: video_project_id.trim(),
+            inputFilename: input_filename,
+            crf,
+            bitrate,
+            preset,
+            outputFilename: output_filename,
+            agentId,
+            logFn: log,
+          };
+          const output = await videoCompress(opts);
+          return {
+            content: [{ type: 'text' as const, text: `已压缩视频：${output_filename} (crf=${crf})。${output}` }]
+          };
+        }
+      ),
+
+      tool(
+        'video_crop',
+        '裁剪视频画面（仅 engineer 可用）。从指定坐标裁剪指定尺寸的区域。',
+        {
+          video_project_id: z.string().describe('video_project_id'),
+          input_filename: z.string().min(1).max(128).describe('输入文件名'),
+          width: z.number().int().min(1).max(7680).describe('裁剪宽度（像素）'),
+          height: z.number().int().min(1).max(7680).describe('裁剪高度（像素）'),
+          x: z.number().int().min(0).max(7680).optional().default(0).describe('起始 X 坐标'),
+          y: z.number().int().min(0).max(7680).optional().default(0).describe('起始 Y 坐标'),
+          output_filename: z.string().min(1).max(128).describe('输出文件名'),
+        },
+        async ({ video_project_id, input_filename, width, height, x = 0, y = 0, output_filename }) => {
+          if (!video_project_id || typeof video_project_id !== 'string') {
+            throw new Error('video_project_id 不能为空');
+          }
+          const opts: VideoCropOptions = {
+            videoProjectId: video_project_id.trim(),
+            inputFilename: input_filename,
+            width,
+            height,
+            x,
+            y,
+            outputFilename: output_filename,
+            agentId,
+            logFn: log,
+          };
+          const output = await videoCrop(opts);
+          return {
+            content: [{ type: 'text' as const, text: `已裁剪视频：${output_filename} (${width}x${height}+${x}+${y})。${output}` }]
+          };
+        }
+      ),
+
+      tool(
+        'video_rotate',
+        '旋转视频（仅 engineer 可用）。支持 90°/180°/270° 旋转。',
+        {
+          video_project_id: z.string().describe('video_project_id'),
+          input_filename: z.string().min(1).max(128).describe('输入文件名'),
+          angle: z.number().int().min(0).max(360).describe('旋转角度'),
+          output_filename: z.string().min(1).max(128).describe('输出文件名'),
+        },
+        async ({ video_project_id, input_filename, angle, output_filename }) => {
+          if (!video_project_id || typeof video_project_id !== 'string') {
+            throw new Error('video_project_id 不能为空');
+          }
+          const opts: VideoRotateOptions = {
+            videoProjectId: video_project_id.trim(),
+            inputFilename: input_filename,
+            angle,
+            outputFilename: output_filename,
+            agentId,
+            logFn: log,
+          };
+          const output = await videoRotate(opts);
+          return {
+            content: [{ type: 'text' as const, text: `已旋转视频 ${angle}°：${output_filename}。${output}` }]
+          };
+        }
+      ),
+
+      tool(
+        'video_change_speed',
+        '视频变速（仅 engineer 可用）。改变视频播放速度（0.25x ~ 4x）。',
+        {
+          video_project_id: z.string().describe('video_project_id'),
+          input_filename: z.string().min(1).max(128).describe('输入文件名'),
+          speed: z.number().min(0.25).max(4.0).describe('速度倍数（0.25-4.0）'),
+          output_filename: z.string().min(1).max(128).describe('输出文件名'),
+        },
+        async ({ video_project_id, input_filename, speed, output_filename }) => {
+          if (!video_project_id || typeof video_project_id !== 'string') {
+            throw new Error('video_project_id 不能为空');
+          }
+          const opts: VideoChangeSpeedOptions = {
+            videoProjectId: video_project_id.trim(),
+            inputFilename: input_filename,
+            speed,
+            outputFilename: output_filename,
+            agentId,
+            logFn: log,
+          };
+          const output = await videoChangeSpeed(opts);
+          return {
+            content: [{ type: 'text' as const, text: `已变速 ${speed}x：${output_filename}。${output}` }]
+          };
+        }
+      ),
+
+      tool(
+        'video_extract_frames',
+        '提取视频帧为图片序列（仅 engineer 可用）。按指定帧率提取帧保存为图片。',
+        {
+          video_project_id: z.string().describe('video_project_id'),
+          input_filename: z.string().min(1).max(128).describe('输入文件名'),
+          fps: z.number().int().min(1).max(120).optional().default(1).describe('帧率（每秒提取帧数）'),
+          frame_count: z.number().int().min(1).max(10000).optional().describe('最大提取帧数'),
+          output_pattern: z.string().min(1).max(128).optional().default('frame_%04d.png').describe('输出文件名模式'),
+          format: z.string().max(16).optional().default('png').describe('输出图片格式'),
+        },
+        async ({ video_project_id, input_filename, fps = 1, frame_count, output_pattern = 'frame_%04d.png', format = 'png' }) => {
+          if (!video_project_id || typeof video_project_id !== 'string') {
+            throw new Error('video_project_id 不能为空');
+          }
+          const opts: VideoExtractFramesOptions = {
+            videoProjectId: video_project_id.trim(),
+            inputFilename: input_filename,
+            fps,
+            frameCount: frame_count,
+            outputPattern: output_pattern,
+            format,
+            agentId,
+            logFn: log,
+          };
+          const output = await videoExtractFrames(opts);
+          return {
+            content: [{ type: 'text' as const, text: `已提取帧（${fps}fps）：${output_pattern}。${output}` }]
+          };
+        }
+      ),
+
+      tool(
+        'video_extract_audio',
+        '提取视频音频轨（仅 engineer 可用）。从视频中提取音频保存为独立文件。',
+        {
+          video_project_id: z.string().describe('video_project_id'),
+          input_filename: z.string().min(1).max(128).describe('输入文件名'),
+          output_filename: z.string().min(1).max(128).describe('输出文件名'),
+          format: z.string().max(16).optional().default('mp3').describe('音频格式（mp3/aac/ogg/opus/wav）'),
+        },
+        async ({ video_project_id, input_filename, output_filename, format = 'mp3' }) => {
+          if (!video_project_id || typeof video_project_id !== 'string') {
+            throw new Error('video_project_id 不能为空');
+          }
+          const opts: VideoExtractAudioOptions = {
+            videoProjectId: video_project_id.trim(),
+            inputFilename: input_filename,
+            outputFilename: output_filename,
+            format,
+            agentId,
+            logFn: log,
+          };
+          const output = await videoExtractAudio(opts);
+          return {
+            content: [{ type: 'text' as const, text: `已提取音频：${output_filename}。${output}` }]
+          };
+        }
+      ),
+
+      tool(
+        'video_add_audio',
+        '添加/替换视频音轨（仅 engineer 可用）。支持混合原音频或完全替换。',
+        {
+          video_project_id: z.string().describe('video_project_id'),
+          video_filename: z.string().min(1).max(128).describe('视频文件名'),
+          audio_filename: z.string().min(1).max(128).describe('音频文件名'),
+          output_filename: z.string().min(1).max(128).describe('输出文件名'),
+          mix: z.boolean().optional().default(false).describe('是否混合原音频（true=叠加 / false=替换）'),
+        },
+        async ({ video_project_id, video_filename, audio_filename, output_filename, mix = false }) => {
+          if (!video_project_id || typeof video_project_id !== 'string') {
+            throw new Error('video_project_id 不能为空');
+          }
+          const opts: VideoAddAudioOptions = {
+            videoProjectId: video_project_id.trim(),
+            videoFilename: video_filename,
+            audioFilename: audio_filename,
+            outputFilename: output_filename,
+            mix,
+            agentId,
+            logFn: log,
+          };
+          const output = await videoAddAudio(opts);
+          return {
+            content: [{ type: 'text' as const, text: `已${mix ? '混合' : '替换'}音频：${output_filename}。${output}` }]
+          };
+        }
+      ),
+
+      tool(
+        'video_add_text',
+        '添加文字叠加层（仅 engineer 可用）。在视频上叠加文字。',
+        {
+          video_project_id: z.string().describe('video_project_id'),
+          input_filename: z.string().min(1).max(128).describe('输入文件名'),
+          text: z.string().min(1).max(512).describe('要叠加的文字'),
+          x: z.number().int().min(0).max(7680).optional().default(10).describe('X 坐标'),
+          y: z.number().int().min(0).max(7680).optional().default(10).describe('Y 坐标'),
+          font_size: z.number().int().min(8).max(256).optional().default(24).describe('字体大小'),
+          color: z.string().max(32).optional().default('white').describe('文字颜色（名称或#hex）'),
+          output_filename: z.string().min(1).max(128).describe('输出文件名'),
+        },
+        async ({ video_project_id, input_filename, text, x = 10, y = 10, font_size = 24, color = 'white', output_filename }) => {
+          if (!video_project_id || typeof video_project_id !== 'string') {
+            throw new Error('video_project_id 不能为空');
+          }
+          const opts: VideoAddTextOptions = {
+            videoProjectId: video_project_id.trim(),
+            inputFilename: input_filename,
+            text,
+            x,
+            y,
+            fontSize: font_size,
+            color,
+            outputFilename: output_filename,
+            agentId,
+            logFn: log,
+          };
+          const output = await videoAddText(opts);
+          return {
+            content: [{ type: 'text' as const, text: `已添加文字：${output_filename}。${output}` }]
+          };
+        }
+      ),
+
+      tool(
+        'video_add_watermark',
+        '添加图片水印（仅 engineer 可用）。在视频上叠加图片水印。',
+        {
+          video_project_id: z.string().describe('video_project_id'),
+          input_filename: z.string().min(1).max(128).describe('输入文件名'),
+          watermark_filename: z.string().min(1).max(128).describe('水印图片文件名'),
+          position: z.enum(['top-left', 'top-right', 'bottom-left', 'bottom-right', 'center']).optional().default('bottom-right').describe('水印位置'),
+          opacity: z.number().min(0).max(1).optional().default(0.5).describe('水印透明度（0-1）'),
+          output_filename: z.string().min(1).max(128).describe('输出文件名'),
+        },
+        async ({ video_project_id, input_filename, watermark_filename, position = 'bottom-right', opacity = 0.5, output_filename }) => {
+          if (!video_project_id || typeof video_project_id !== 'string') {
+            throw new Error('video_project_id 不能为空');
+          }
+          const opts: VideoAddWatermarkOptions = {
+            videoProjectId: video_project_id.trim(),
+            inputFilename: input_filename,
+            watermarkFilename: watermark_filename,
+            position,
+            opacity,
+            outputFilename: output_filename,
+            agentId,
+            logFn: log,
+          };
+          const output = await videoAddWatermark(opts);
+          return {
+            content: [{ type: 'text' as const, text: `已添加水印：${output_filename}（位置: ${position}）。${output}` }]
+          };
+        }
+      ),
+
+      tool(
+        'video_generate_gif',
+        '视频转 GIF（仅 engineer 可用）。将视频片段转换为动态 GIF。',
+        {
+          video_project_id: z.string().describe('video_project_id'),
+          input_filename: z.string().min(1).max(128).describe('输入文件名'),
+          fps: z.number().int().min(1).max(60).optional().default(10).describe('帧率'),
+          width: z.number().int().min(1).max(3840).optional().default(480).describe('输出宽度（像素）'),
+          output_filename: z.string().min(1).max(128).describe('输出文件名'),
+        },
+        async ({ video_project_id, input_filename, fps = 10, width = 480, output_filename }) => {
+          if (!video_project_id || typeof video_project_id !== 'string') {
+            throw new Error('video_project_id 不能为空');
+          }
+          const opts: VideoGenerateGifOptions = {
+            videoProjectId: video_project_id.trim(),
+            inputFilename: input_filename,
+            fps,
+            width,
+            outputFilename: output_filename,
+            agentId,
+            logFn: log,
+          };
+          const output = await videoGenerateGif(opts);
+          return {
+            content: [{ type: 'text' as const, text: `已生成 GIF：${output_filename} (${fps}fps)。${output}` }]
+          };
+        }
+      ),
+
+      tool(
+        'video_gif_to_video',
+        'GIF 转视频（仅 engineer 可用）。将 GIF 动画转换为视频格式。',
+        {
+          video_project_id: z.string().describe('video_project_id'),
+          input_filename: z.string().min(1).max(128).describe('输入文件名'),
+          target_format: z.string().max(16).optional().default('mp4').describe('目标视频格式'),
+          output_filename: z.string().min(1).max(128).describe('输出文件名'),
+        },
+        async ({ video_project_id, input_filename, target_format = 'mp4', output_filename }) => {
+          if (!video_project_id || typeof video_project_id !== 'string') {
+            throw new Error('video_project_id 不能为空');
+          }
+          const opts: VideoGifToVideoOptions = {
+            videoProjectId: video_project_id.trim(),
+            inputFilename: input_filename,
+            targetFormat: target_format,
+            outputFilename: output_filename,
+            agentId,
+            logFn: log,
+          };
+          const output = await videoGifToVideo(opts);
+          return {
+            content: [{ type: 'text' as const, text: `GIF 已转为视频：${output_filename}。${output}` }]
+          };
+        }
+      ),
+
+      tool(
+        'video_create_thumbnail',
+        '生成视频缩略图（仅 engineer 可用）。从指定时间点截取一帧作为缩略图。',
+        {
+          video_project_id: z.string().describe('video_project_id'),
+          filename: z.string().min(1).max(128).describe('视频文件名'),
+          time: z.number().min(0).optional().default(5).describe('截取时间点（秒）'),
+          width: z.number().int().min(1).max(3840).optional().default(320).describe('缩略图宽度（像素）'),
+          output_filename: z.string().min(1).max(128).describe('输出文件名'),
+        },
+        async ({ video_project_id, filename, time = 5, width = 320, output_filename }) => {
+          if (!video_project_id || typeof video_project_id !== 'string') {
+            throw new Error('video_project_id 不能为空');
+          }
+          const opts: VideoCreateThumbnailOptions = {
+            videoProjectId: video_project_id.trim(),
+            filename,
+            time,
+            width,
+            outputFilename: output_filename,
+            agentId,
+            logFn: log,
+          };
+          const output = await videoCreateThumbnail(opts);
+          return {
+            content: [{ type: 'text' as const, text: `已生成缩略图：${output_filename}。${output}` }]
+          };
+        }
+      ),
+
+      tool(
+        'video_write_file',
+        '将视频文件写入到本地视频产出目录（仅 engineer 可用）。接受 base64 编码的视频内容，工具内部将 base64 还原为二进制后写入本地文件系统。文件写入路径: output/{当前项目ID}/videos/{filename}。写入后需调用 video_upload_file 上传到 video service 容器。',
+        {
+          filename: z.string().min(1).max(128).describe('文件名（如 intro.mp4、gameplay.webm）。禁止路径分隔符'),
+          content: z.string().min(1).describe('base64 编码的视频内容'),
+        },
+        async ({ filename, content }) => {
+          validateAgentPermission(['engineer'], '写入视频文件');
+          if (!filename || typeof filename !== 'string' || !filename.trim()) {
+            throw new Error('filename 不能为空');
+          }
+          if (!content || typeof content !== 'string') {
+            throw new Error('content 不能为空');
+          }
+          // 文件名安全校验（禁止路径分隔符）
+          if (filename.includes('/') || filename.includes('\\')) {
+            throw new Error('filename 不能包含路径分隔符');
+          }
+
+          console.error("[DEBUG video_write_file] START agentId=" + agentId + " projectId=" + scopedProjectId + " filename=" + filename + " contentLength=" + content.length);
+
+          const outputDir = path.resolve(_toolsDirname, '..', 'output', scopedProjectId);
+          const videosDir = path.join(outputDir, 'videos');
+          const fullPath = path.join(videosDir, filename.trim());
+
+          // 安全检查：确保路径在 videos 目录下（防止路径越权）
+          const resolvedPath = path.resolve(fullPath);
+          if (!resolvedPath.startsWith(videosDir + path.sep) && resolvedPath !== videosDir) {
+            console.error("[DEBUG video_write_file] 路径越权 videosDir=" + videosDir + " resolvedPath=" + resolvedPath);
+            return {
+              content: [{ type: 'text' as const, text: '写入视频文件失败：路径越权，只能写入 videos 目录下。' }]
+            };
+          }
+
+          try {
+            // 解码 base64 → Buffer
+            const buffer = Buffer.from(content, 'base64');
+
+            // 创建目录
+            const dirPath = path.dirname(resolvedPath);
+            fs.mkdirSync(dirPath, { recursive: true });
+
+            // 写入文件（二进制）
+            fs.writeFileSync(resolvedPath, buffer);
+            const sizeKB = (buffer.length / 1024).toFixed(1);
+            console.error("[DEBUG video_write_file] SUCCESS wrote " + resolvedPath + " size=" + sizeKB + "KB");
+
+            log(agentId, '写入视频文件', '文件: ' + filename.trim() + ' | 大小: ' + sizeKB + ' KB', 'success');
+            return {
+              content: [{ type: 'text' as const, text: `视频文件已写入：output/${scopedProjectId}/videos/${filename.trim()} (${sizeKB} KB)` }]
+            };
+          } catch (error: any) {
+            console.error("[DEBUG video_write_file] ERROR " + error.message);
+            return {
+              content: [{ type: 'text' as const, text: '写入视频文件失败：' + (error?.message || String(error)) }]
+            };
+          }
+        }
+      ),
+
+      tool(
+        'video_upload_file',
+        '将本地视频文件上传到 video service 容器目录（仅 engineer 可用）。从 output/{当前项目ID}/videos/{filename} 读取文件，base64 编码后上传到 video service 对应 project。必须先调用 video_write_file 写入本地文件，再调用本工具上传。',
+        {
+          video_project_id: z.string().describe('video_project_id（来自 video_create_project 的返回值）'),
+          filename: z.string().min(1).max(128).describe('文件名（需与 video_write_file 写入的一致）'),
+        },
+        async ({ video_project_id, filename }) => {
+          validateAgentPermission(['engineer'], '上传视频文件');
+          if (!video_project_id || typeof video_project_id !== 'string') {
+            throw new Error('video_project_id 不能为空');
+          }
+          if (!filename || typeof filename !== 'string' || !filename.trim()) {
+            throw new Error('filename 不能为空');
+          }
+          if (filename.includes('/') || filename.includes('\\')) {
+            throw new Error('filename 不能包含路径分隔符');
+          }
+
+          console.error("[DEBUG video_upload_file] START projectId=" + scopedProjectId + " vp=" + video_project_id + " filename=" + filename);
+
+          const outputDir = path.resolve(_toolsDirname, '..', 'output', scopedProjectId);
+          const videosDir = path.join(outputDir, 'videos');
+          const localPath = path.resolve(videosDir, filename.trim());
+
+          // 安全检查
+          if (!localPath.startsWith(videosDir + path.sep) && localPath !== videosDir) {
+            return {
+              content: [{ type: 'text' as const, text: '上传视频文件失败：路径越权。' }]
+            };
+          }
+
+          if (!fs.existsSync(localPath)) {
+            return {
+              content: [{ type: 'text' as const, text: `上传视频文件失败：本地文件不存在（${localPath}）。请先调用 video_write_file。` }]
+            };
+          }
+
+          try {
+            // 读取文件 → base64 编码
+            const buffer = fs.readFileSync(localPath);
+            const content = buffer.toString('base64');
+
+            const opts: UploadVideoFileOptions = {
+              videoProjectId: video_project_id.trim(),
+              filename: filename.trim(),
+              content,
+              agentId,
+              logFn: log,
+            };
+            const { sizeBytes } = await uploadVideoFile(opts);
+            const sizeKB = (sizeBytes / 1024).toFixed(1);
+            console.error("[DEBUG video_upload_file] SUCCESS uploaded " + filename + " size=" + sizeKB + "KB");
+            return {
+              content: [{ type: 'text' as const, text: `视频已上传到 video service：${filename} (${sizeKB} KB) -> project ${video_project_id}` }]
+            };
+          } catch (error: any) {
+            console.error("[DEBUG video_upload_file] ERROR " + error.message);
+            return {
+              content: [{ type: 'text' as const, text: '上传视频文件失败：' + (error?.message || String(error)) }]
+            };
+          }
+        }
+      ),
+
+      tool(
+        'video_download_file',
+        '从 video service 下载视频文件到 backend 本地 output 目录（仅 engineer 可用）。下载完成后应主动调用 video_delete_file 清理远程资源。',
+        {
+          video_project_id: z.string().describe('video_project_id'),
+          filename: z.string().min(1).max(128).describe('要下载的文件名'),
+        },
+        async ({ video_project_id, filename }) => {
+          if (!video_project_id || typeof video_project_id !== 'string') {
+            throw new Error('video_project_id 不能为空');
+          }
+          if (!filename || typeof filename !== 'string' || !filename.trim()) {
+            throw new Error('filename 不能为空');
+          }
+          const pathModule = await import('path');
+          const localOutputDir = pathModule.resolve(_toolsDirname, '..', 'output', scopedProjectId, 'videos');
+          const opts: DownloadVideoFileOptions = {
+            videoProjectId: video_project_id.trim(),
+            filename: filename.trim(),
+            localOutputDir,
+            agentId,
+            logFn: log,
+          };
+          const { localPath, sizeBytes } = await downloadVideoFile(opts);
+          return {
+            content: [{
+              type: 'text' as const,
+              text: `文件已下载到：${localPath} (${sizeBytes} bytes)`,
+            }]
+          };
+        }
+      ),
+
+      tool(
+        'video_delete_file',
+        '删除 video service 远程视频文件（幂等）（仅 engineer 可用）。下载到本地后应先调用此工具删除远程文件以释放容器存储空间。',
+        {
+          video_project_id: z.string().describe('video_project_id'),
+          filename: z.string().min(1).max(128).describe('要删除的文件名'),
+        },
+        async ({ video_project_id, filename }) => {
+          if (!video_project_id || typeof video_project_id !== 'string') {
+            throw new Error('video_project_id 不能为空');
+          }
+          if (!filename || typeof filename !== 'string' || !filename.trim()) {
+            throw new Error('filename 不能为空');
+          }
+          const pathModule = await import('path');
+          const localOutputDir = pathModule.resolve(_toolsDirname, '..', 'output', scopedProjectId, 'videos');
+          const opts: DeleteVideoFileOptions = {
+            videoProjectId: video_project_id.trim(),
+            filename: filename.trim(),
+            localOutputDir,
+            agentId,
+            logFn: log,
+          };
+          await deleteVideoFile(opts);
+          return {
+            content: [{ type: 'text' as const, text: `已删除视频文件：${filename}（远程 + 本地）` }]
           };
         }
       ),

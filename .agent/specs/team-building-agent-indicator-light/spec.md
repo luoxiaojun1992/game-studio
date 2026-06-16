@@ -210,10 +210,14 @@ const STATUS_STYLE: Record<AgentStatus, { dot: string; bg: string; text: string;
 ## 主动补全 UI Test 规范
 
 新增前端交互功能时，必须同步编写对应的 E2E 测试用例，并更新以下文档：
-1. `tests/ui/e2e/studio.spec.ts` — 添加 UI-011 测试用例
-2. `.agent/memory/E2E_TESTING.md` — 更新测试矩阵、testid 对照表、测试经验
-3. `.agent/specs/team-building-agent-indicator-light.md` — 更新本文档测试策略章节
-4. `.agent/specs/INDEX.md` — 新增 SPEC-021 索引条目
+1. `tests/ui/e2e/studio.spec.ts` — 添加 UI-XXX 测试用例
+2. `.agent/memory/E2E_TESTING.md` — **必须同步更新以下 3 处**：
+   - 测试矩阵标题数字（如 `12 个用例` → `13 个用例`）
+   - 测试矩阵表格（新增 UI-XXX 行）
+   - ui-coverage 覆盖率引用（如有）
+3. `tests/ui/coverage/cases.json` — 追加 UI-XXX 到 `requiredCaseIds` 数组
+4. `.agent/specs/team-building-agent-indicator-light.md` — 更新本文档测试策略章节
+5. `.agent/specs/INDEX.md` — 新增 SPEC-021 索引条目
 
 ## 详细 Debug 日志规范
 

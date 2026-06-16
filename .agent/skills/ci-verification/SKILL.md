@@ -42,7 +42,7 @@ Code change → git push → CI triggers automatically
 
 ## Tool Scripts
 
-All scripts live under `scripts/` and assume the working directory is the repo root.
+All scripts live under `scripts/` in the skill directory. The paths below are relative to wherever this skill is installed.
 
 ### check-ci.sh — Quick Status Check
 
@@ -50,10 +50,10 @@ Check the latest CI run for a branch.
 
 ```bash
 # Check current branch
-bash .agent/skills/ci-verification/scripts/check-ci.sh
+bash scripts/check-ci.sh
 
 # Check specific branch
-bash .agent/skills/ci-verification/scripts/check-ci.sh chore/my-fix
+bash scripts/check-ci.sh chore/my-fix
 
 # Exit codes: 0=pass, 1=fail, 2=still running
 ```
@@ -68,10 +68,10 @@ Poll CI until `sonar-check` + `ui-tests` both complete (or timeout).
 
 ```bash
 # Default: 60s interval, 45min timeout
-bash .agent/skills/ci-verification/scripts/wait-for-ci.sh chore/my-fix
+bash scripts/wait-for-ci.sh chore/my-fix
 
 # Custom interval and timeout
-bash .agent/skills/ci-verification/scripts/wait-for-ci.sh chore/my-fix --interval 30 --timeout 1800
+bash scripts/wait-for-ci.sh chore/my-fix --interval 30 --timeout 1800
 ```
 
 - Prints polling progress with elapsed time
@@ -84,13 +84,13 @@ Download job logs for a specific CI run.
 
 ```bash
 # Download all job logs
-bash .agent/skills/ci-verification/scripts/get-logs.sh 12345678
+bash scripts/get-logs.sh 12345678
 
 # Download only failed job logs
-bash .agent/skills/ci-verification/scripts/get-logs.sh 12345678 --failed-only
+bash scripts/get-logs.sh 12345678 --failed-only
 
 # Custom output directory
-bash .agent/skills/ci-verification/scripts/get-logs.sh 12345678 --dir ./my-ci-logs
+bash scripts/get-logs.sh 12345678 --dir ./my-ci-logs
 ```
 
 - Extracts error/failure lines for quick scanning
@@ -103,13 +103,13 @@ When CI fails, follow this cycle (max 10 retries):
 ### Step 1: Get the failing run ID
 
 ```bash
-bash .agent/skills/ci-verification/scripts/check-ci.sh
+bash scripts/check-ci.sh
 ```
 
 ### Step 2: Download failure logs
 
 ```bash
-bash .agent/skills/ci-verification/scripts/get-logs.sh <run-id> --failed-only
+bash scripts/get-logs.sh <run-id> --failed-only
 ```
 
 ### Step 3: Analyze the failure
@@ -137,12 +137,41 @@ Apply the fix based on root cause analysis. Common failure patterns:
 
 ```bash
 git add -A && git commit -m "fix: <describe fix>" && git push
-bash .agent/skills/ci-verification/scripts/wait-for-ci.sh
+bash scripts/wait-for-ci.sh
 ```
 
 Repeat steps 2–5 until CI passes or retry limit (10) is reached.
 
+### Step 6: Verify service logs
+
+**CRITICAL** — even after CI reports "passed", mock chains can mask real API errors.
+Check that microservice containers returned no >=400 status codes:
+
+```bash
+# Download ui-tests job logs and filter for service errors
+GITHUB_TOKEN=$(cat .github-pat) gh api \
+  repos/{owner}/{repo}/actions/jobs/{ui_tests_job_id}/logs \
+  | grep "{service_name}-1" \
+  | grep -v "/health" \
+  | grep -E "HTTP/1.1\" [45][0-9]{2}"
+```
+
+For each microservice involved in the change:
+- `image-service-1` — check ImageMagick API calls
+- `video-service-1` — check FFmpeg API calls
+- `creator-1` — check Blender API calls
+- `drawio-service-1` — check Draw.io API calls
+
+If any >=400 codes are found, investigate and fix the root cause even though CI passed.
+Common causes: FFmpeg failing on single-frame input (422), missing files (404),
+validation errors (422).
+
 ### After CI Passes
+
+- **Check microservice HTTP status codes in logs** — mandatory post-pass verification:
+  mock chains can mask real API errors. Even when CI reports "passed", check that
+  microservice containers returned no >=400 status codes (excluding /health checks).
+  See [Step 6: Verify service logs](#step-6-verify-service-logs) below for the command.
 
 - Mark the task as complete
 - Update daily memory log with the fix summary
@@ -157,7 +186,7 @@ For a complete push-and-verify cycle:
 git push
 
 # 2. Wait for CI and report result
-bash .agent/skills/ci-verification/scripts/wait-for-ci.sh
+bash scripts/wait-for-ci.sh
 ```
 
 If the above fails, proceed to the debug-fix-retry cycle.

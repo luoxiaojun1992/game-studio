@@ -120,6 +120,30 @@ const TOOLS_OVERVIEW = `
 | \`image_upload_file\` | 上传本地图片文件到 image service 容器目录 | **engineer** |
 | \`image_download_file\` | 从 image service 下载图片文件到本地 output 目录 | **engineer** |
 | \`image_delete_file\` | 删除 image service 远程图片文件（幂等） | **engineer** |
+| \`video_create_project\` | 创建视频处理 project（调用 video service） | **engineer** |
+| \`video_list_projects\` | 列出当前项目下所有视频处理 project | **engineer** |
+| \`video_delete_project\` | 删除视频处理 project（清理 video service 端容器存储） | **engineer** |
+| \`video_info\` | 获取视频元信息（时长/分辨率/编码/码率/帧率等） | **engineer** |
+| \`video_convert\` | 转换视频格式（MP4/WebM/MOV/GIF/AVI/MKV） | **engineer** |
+| \`video_trim\` | 截取视频片段 | **engineer** |
+| \`video_concat\` | 拼接多个视频 | **engineer** |
+| \`video_resize\` | 缩放/改变视频分辨率 | **engineer** |
+| \`video_compress\` | 压缩视频（CRF 或码率控制） | **engineer** |
+| \`video_crop\` | 裁剪视频画面 | **engineer** |
+| \`video_rotate\` | 旋转视频（90°/180°/270°） | **engineer** |
+| \`video_change_speed\` | 视频变速（0.25x~4x） | **engineer** |
+| \`video_extract_frames\` | 提取视频帧为图片序列 | **engineer** |
+| \`video_extract_audio\` | 提取视频音频轨 | **engineer** |
+| \`video_add_audio\` | 添加/替换视频音轨 | **engineer** |
+| \`video_add_text\` | 添加文字叠加层 | **engineer** |
+| \`video_add_watermark\` | 添加图片水印 | **engineer** |
+| \`video_generate_gif\` | 视频片段转 GIF | **engineer** |
+| \`video_gif_to_video\` | GIF 转视频 | **engineer** |
+| \`video_create_thumbnail\` | 生成视频缩略图 | **engineer** |
+| \`video_write_file\` | 写入视频文件到本地 videos 目录（base64 -> 二进制） | **engineer** |
+| \`video_upload_file\` | 上传本地视频文件到 video service 容器目录 | **engineer** |
+| \`video_download_file\` | 从 video service 下载视频文件到本地 output 目录 | **engineer** |
+| \`video_delete_file\` | 删除 video service 远程视频文件（幂等） | **engineer** |
 | \`get_game_types\` | 获取所有已注册的游戏类型列表（开发前确认支持的游戏类型） | **engineer** |
 | \`get_game_framework_spec\` | 根据游戏类型获取对应的工程框架规范（Engineer Agent 开发前 MUST 调用） | **engineer** |
 | \`get_common_spec\` | 获取所有游戏类型共享的公共工程规范 | **engineer** |
@@ -257,6 +281,18 @@ export const AGENT_DEFINITIONS: Record<AgentRole, AgentDefinition> = {
 - \`filename\`：需与 image_write_file 写入的文件名一致
 
 重要：实现前仍需遵守方案审批流程；但成品完成后必须主动调用工具提交产物。
+
+### 视频处理工作流 (video service)
+视频素材处理通过 \`video_*\` 系列工具完成，全流程：
+1. \`video_create_project\` — 创建视频处理 project
+2. \`video_write_file\`（base64 视频内容 → 本地 \`output/{projectId}/videos/{filename}\`）
+3. \`video_upload_file\`（本地文件 → video service 容器）
+4. \`video_trim\` / \`video_convert\` / \`video_resize\` / \`video_compress\` 等 — 在容器内处理视频
+5. \`video_info\` — 查看处理结果元信息
+6. \`video_download_file\` — 下载处理后视频到 \`games/latest/assets/\`
+7. \`video_delete_project\` — 清理容器资源
+
+视频文件体积较大，处理耗时较长（默认超时 300s）。推荐流程：先 \`video_info\` 了解原始视频信息，再选择合适的操作参数。
 
 ## 游戏工程规范（必须遵守）
 1. 开始开发前，MUST 先调用 \`get_game_types\` 确认支持的游戏类型。

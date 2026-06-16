@@ -6,11 +6,16 @@
 - 遇到问题必须先定位根因，再修复，不能猜测或碰运气
 - 验收标准中明确，提交代码前必须跑通ui test。如遇网络或依赖问题，可临时修改代码解决网络问题，但禁止提交为了解决网络依赖问题所做的变更。
 - **编写 Spec 规范**：设计新功能时遵循 `.agent/skills/spec-writer/SKILL.md` 中定义的标准化 spec 编写流程和章节模板
+- **项目级 Skill 安装位置**：所有自定义开发的 skill 源代码存放在 `.agent/skills/` 下（如 `ci-verification`、`graphify`、`spec-writer`、`code-lint` 等）。实际安装目录不固定，SKILL.md 中的脚本路径始终使用相对路径（`scripts/xxx`），不写死安装路径。
 - **主动添加 UI Test**：新增前端交互功能（按钮、表单、弹窗、面板等）时，必须同步编写对应的 E2E 测试用例，并更新以下文档：
   1. `tests/ui/e2e/studio.spec.ts` — 添加测试用例（分配下一个 UI-XXX 编号）
-  2. `.agent/memory/E2E_TESTING.md` — 更新测试矩阵、testid 对照表、测试经验
-  3. `.agent/specs/` 下对应的 spec 文档 — 更新测试策略章节
-  4. `.agent/specs/INDEX.md` — 如有新 spec 则更新索引
+  2. `.agent/memory/E2E_TESTING.md` — **必须同步更新以下 3 处**：
+     - 测试矩阵标题数字（如 `12 个用例` → `13 个用例`）
+     - 测试矩阵表格（新增 UI-XXX 行）
+     - ui-coverage 覆盖率引用（如有）
+  3. `tests/ui/coverage/cases.json` — 追加 UI-XXX 到 `requiredCaseIds` 数组
+  4. `.agent/specs/` 下对应的 spec 文档 — 更新测试策略章节
+  5. `.agent/specs/INDEX.md` — 如有新 spec 则更新索引
 
 - **主动更新所有相关文档**：实现新功能或做重大修改后，必须主动检查并更新所有受影响的文档，而非仅更新直接相关文件。架构图维护可使用 `.agent/skills/architecture-diagram/SKILL.md` 技能。完整检查清单：
   1. `README.md` + `README.zh-CN.md` — 功能概览、API 概览、目录结构
@@ -73,6 +78,28 @@
 - 受影响工具: `split_dev_test_tasks`、`get_tasks`、`submit_proposal`、`submit_game`
 - 与 `create_handoff`、`get_logs`、`get_proposals`、`get_pending_handoffs` 保持一致
 - `enforceProject` 已成死代码，已删除
+
+## CI 通过后检查微服务 HTTP 状态码
+
+CI 中 mock chain 会掩盖微服务的真实错误——即使 API 返回 >=400 状态码，
+mock 服务器仍返回预置响应使测试标记为 passed。**CI 通过后必须检查微服务容器的
+所有 HTTP 请求日志，确认没有 >=400 的状态码**。
+
+### 检查方法
+
+```bash
+# 下载 CI 日志，过滤微服务的非健康检查请求
+gh api repos/{owner}/{repo}/actions/jobs/{job_id}/logs \
+  | grep "{service}-1" | grep -v "/health" | grep -E "HTTP/1.1\" [45][0-9]{2}"
+```
+
+### 真实案例
+
+- **UI-013 video service 测试**：测试标记为 passed，但 `generate-gif` 端点返回 422
+  （1x1 静态 PNG 无法通过 FFmpeg palettegen）。根因：测试用的静态图片只有单帧。
+  解决：改用 2 帧动画 GIF 作为测试输入。
+- **mock chain 的隐患**：mock 服务器 queue 的 toolCalls 返回值不依赖实际 API 响应，
+  因此 HTTP 错误不影响测试结果，极易遗漏。
 
 ## Mock 数据契约对齐（测试 ↔ 工具层）
 - 测试中 `setMockExpectation` 的 `toolCalls.arguments` 必须与 `tools.ts` 中 zod schema 完全匹配

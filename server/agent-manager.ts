@@ -482,6 +482,11 @@ class AgentManager extends EventEmitter {
         'image_watermark', 'image_composite', 'image_flip_rotate',
         'image_add_margin', 'image_color_adjust', 'image_info',
         'image_batch', 'image_sprite_sheet', 'image_write_file', 'image_upload_file', 'image_download_file', 'image_delete_file',
+        'video_create_project', 'video_list_projects', 'video_delete_project',
+        'video_info', 'video_convert', 'video_trim', 'video_concat', 'video_resize', 'video_compress',
+        'video_crop', 'video_rotate', 'video_change_speed', 'video_extract_frames', 'video_extract_audio',
+        'video_add_audio', 'video_add_text', 'video_add_watermark', 'video_generate_gif', 'video_gif_to_video',
+        'video_create_thumbnail', 'video_write_file', 'video_upload_file', 'video_download_file', 'video_delete_file',
         'get_game_types', 'get_game_framework_spec', 'get_common_spec',
       ];
 
@@ -529,6 +534,31 @@ class AgentManager extends EventEmitter {
         'image_upload_file',
         'image_download_file',
         'image_delete_file',
+        // Video tools
+        'video_create_project',
+        'video_list_projects',
+        'video_delete_project',
+        'video_info',
+        'video_convert',
+        'video_trim',
+        'video_concat',
+        'video_resize',
+        'video_compress',
+        'video_crop',
+        'video_rotate',
+        'video_change_speed',
+        'video_extract_frames',
+        'video_extract_audio',
+        'video_add_audio',
+        'video_add_text',
+        'video_add_watermark',
+        'video_generate_gif',
+        'video_gif_to_video',
+        'video_create_thumbnail',
+        'video_write_file',
+        'video_upload_file',
+        'video_download_file',
+        'video_delete_file',
       ]);
       const READ_ONLY_SDK_TOOLS = ['Read', 'Grep', 'WebSearch', 'WebFetch', 'Glob'];
 

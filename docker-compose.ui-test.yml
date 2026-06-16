@@ -57,6 +57,7 @@ services:
       - CREATOR_SERVICE_URL=http://creator:8080
       - DRAWIO_SERVICE_URL=http://drawio-service:8082
       - IMAGE_SERVICE_URL=http://image-service:8089
+      - VIDEO_SERVICE_URL=http://video-service:8084
       - SCANNER_SERVICE_URL=http://scanner:8081
       - STAR_OFFICE_JOIN_KEY=ocj_example_team_01
       - SONARQUBE_HOST=http://sonarqube:9000
@@ -76,6 +77,8 @@ services:
       drawio-service:
         condition: service_healthy
       image-service:
+        condition: service_healthy
+      video-service:
         condition: service_healthy
       scanner:
         condition: service_healthy
@@ -147,6 +150,26 @@ services:
       timeout: 10s
       retries: 5
       start_period: 10s
+
+  video-service:
+    build:
+      context: ./video-service
+      dockerfile: Dockerfile
+    environment:
+      - VIDEO_SERVICE_PORT=8084
+      - VIDEO_SERVICE_TEST_MODE=true
+    ports:
+      - "8084:8084"
+    volumes:
+      - video-data:/app/data
+    networks:
+      - game-studio-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8084/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 15s
 
   drawio-service:
     build:
@@ -294,6 +317,8 @@ volumes:
   sonarqube-extensions:
   drawio-data:
   image-data:
+  video-data:
+    driver: local
 
 networks:
   game-studio-network:
