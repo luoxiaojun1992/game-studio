@@ -151,7 +151,7 @@
 | `proposal-item-*` | ProposalList | 提案列表项（ID 后缀） |
 | `game-card-*` | GameList | 游戏卡片（ID 后缀） |
 
-## 测试矩阵总览（12 个用例）
+## 测试矩阵总览（13 个用例）
 
 | 用例 ID | 类别 | 是否需要 Mock | 核心验证 |
 |:---|:---|:---:|:---|
@@ -167,6 +167,7 @@
 | UI-010 | 问卷提案创建 | ✅ | 分步表单 + SSE 更新 + 来源标签 |
 | UI-011 | Phaser Mobile 工作流 | ✅ | SPEC-010: phaser-mobile game type + manual mode |
 | UI-012 | 图片处理工作流 (SPEC-008) | ✅ | image_create → write_file→upload_file×4 → resize→info→compress→convert→watermark→composite→sprite-sheet → download_file×2 → delete_project |
+| UI-013 | 视频处理工作流 (SPEC-009) | ✅ | video_create → write_file→upload_file → info→thumbnail→convert→gif→add_text → download_file → delete_project |
 
 ## Lint Framework 集成验证
 
