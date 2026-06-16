@@ -51,3 +51,4 @@
 - **2026-05-28**: 实现 SPEC-007 问卷式提案提交：`proposals.source` 字段、`questionnaire-renderer.ts` 渲染引擎、`GET /api/game-types` + `POST /api/proposals/questionnaire` API、`QuestionnaireForm` 分步表单组件、UI-010 E2E 测试。确立主动更新所有文档规范。
 
 > **提示**: 查阅具体经验前先看 INDEX.md 快速定位。
+- **2026-06-15**: 架构图全面改造。重绘 `docs/images/architecture.svg` 为四层中文 SVG（前端→后端→微服务→数据/外部），开发 `center_text.py` 文字居中算法（视觉边界：ascender 85%/descender 15%），修复容器 padding 截断问题（容器 h 必须 > 子框 y+h，留 ≥10px）。清理冗余的 `.workbuddy/skills/svg-to-png` 修改（仅保留原有 convert.py）。创建英文版 `architecture-en.svg` + `translate_svg.py` 翻译脚本。技能归档至 `.agent/skills/architecture-diagram/`（含 SKILL.md + center_text.py + translate_svg.py）。分支 `docs/readme-roadmap-update-20260615`。

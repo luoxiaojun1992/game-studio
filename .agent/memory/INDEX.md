@@ -14,6 +14,7 @@
 | [LINT.md](./LINT.md) | Lint Framework 架构、LintRunner、双检查器（SonarQube + GameEngineering）、20 条规则总览、扩展指南 |
 | [REUSABLE_PATTERNS.md](./REUSABLE_PATTERNS.md) | 可复用代码片段、代码模板、设计模式汇总 |
 | [GRAPHIFY.md](./GRAPHIFY.md) | Graphify 知识图谱技能使用指南 |
+| [../skills/architecture-diagram/SKILL.md](../skills/architecture-diagram/SKILL.md) | architecture-diagram 技能：SVG 架构图维护、文字居中算法 |
 | [../../specs/github-ci-agent.md](../../specs/github-ci-agent.md) | SPEC-014: GitHub Actions CI Agent 调试规范 |
 | [../../specs/opentelemetry-tracing/opentelemetry-tracing.md](../../specs/opentelemetry-tracing/opentelemetry-tracing.md) | SPEC-020: OpenTelemetry 分布式链路追踪（Jaeger、手动 Span、跨服务 trace 传播） |
 

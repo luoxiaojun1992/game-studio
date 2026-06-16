@@ -15,6 +15,15 @@ Game Dev Studio is a multi-agent game development workspace:
 
 ## 2. High-Level Architecture
 
+### 2.1 Diagram (PNG)
+
+![System Architecture](./images/architecture-en.png)
+
+### 2.2 Mermaid Source (Text)
+
+<details>
+<summary>Click to expand Mermaid diagram</summary>
+
 ```mermaid
 graph TB
     subgraph "Frontend"
@@ -76,6 +85,8 @@ graph TB
     Sonar -->|Issues / Quality Gate| Scanner
     Scanner -->|Scan Result| BE
 ```
+
+</details>
 
 ## 3. Runtime Components
 
