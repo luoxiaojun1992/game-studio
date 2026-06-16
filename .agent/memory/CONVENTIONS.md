@@ -79,6 +79,28 @@
 - 与 `create_handoff`、`get_logs`、`get_proposals`、`get_pending_handoffs` 保持一致
 - `enforceProject` 已成死代码，已删除
 
+## CI 通过后检查微服务 HTTP 状态码
+
+CI 中 mock chain 会掩盖微服务的真实错误——即使 API 返回 >=400 状态码，
+mock 服务器仍返回预置响应使测试标记为 passed。**CI 通过后必须检查微服务容器的
+所有 HTTP 请求日志，确认没有 >=400 的状态码**。
+
+### 检查方法
+
+```bash
+# 下载 CI 日志，过滤微服务的非健康检查请求
+gh api repos/{owner}/{repo}/actions/jobs/{job_id}/logs \
+  | grep "{service}-1" | grep -v "/health" | grep -E "HTTP/1.1\" [45][0-9]{2}"
+```
+
+### 真实案例
+
+- **UI-013 video service 测试**：测试标记为 passed，但 `generate-gif` 端点返回 422
+  （1x1 静态 PNG 无法通过 FFmpeg palettegen）。根因：测试用的静态图片只有单帧。
+  解决：改用 2 帧动画 GIF 作为测试输入。
+- **mock chain 的隐患**：mock 服务器 queue 的 toolCalls 返回值不依赖实际 API 响应，
+  因此 HTTP 错误不影响测试结果，极易遗漏。
+
 ## Mock 数据契约对齐（测试 ↔ 工具层）
 - 测试中 `setMockExpectation` 的 `toolCalls.arguments` 必须与 `tools.ts` 中 zod schema 完全匹配
 - `submit_proposal` 的 `type` 必须是 `db.PROPOSAL_TYPES` 枚举值之一

@@ -142,7 +142,36 @@ bash scripts/wait-for-ci.sh
 
 Repeat steps 2–5 until CI passes or retry limit (10) is reached.
 
+### Step 6: Verify service logs
+
+**CRITICAL** — even after CI reports "passed", mock chains can mask real API errors.
+Check that microservice containers returned no >=400 status codes:
+
+```bash
+# Download ui-tests job logs and filter for service errors
+GITHUB_TOKEN=$(cat .github-pat) gh api \
+  repos/{owner}/{repo}/actions/jobs/{ui_tests_job_id}/logs \
+  | grep "{service_name}-1" \
+  | grep -v "/health" \
+  | grep -E "HTTP/1.1\" [45][0-9]{2}"
+```
+
+For each microservice involved in the change:
+- `image-service-1` — check ImageMagick API calls
+- `video-service-1` — check FFmpeg API calls
+- `creator-1` — check Blender API calls
+- `drawio-service-1` — check Draw.io API calls
+
+If any >=400 codes are found, investigate and fix the root cause even though CI passed.
+Common causes: FFmpeg failing on single-frame input (422), missing files (404),
+validation errors (422).
+
 ### After CI Passes
+
+- **Check microservice HTTP status codes in logs** — mandatory post-pass verification:
+  mock chains can mask real API errors. Even when CI reports "passed", check that
+  microservice containers returned no >=400 status codes (excluding /health checks).
+  See [Step 6: Verify service logs](#step-6-verify-service-logs) below for the command.
 
 - Mark the task as complete
 - Update daily memory log with the fix summary

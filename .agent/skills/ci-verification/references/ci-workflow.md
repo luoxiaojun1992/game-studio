@@ -46,7 +46,7 @@ When `ui-tests` fails, the most useful info is in:
 2. `test-results/` — Playwright trace files and screenshots
 3. `allure-results/` — structured test results for Allure report generation
 
-### 9-Test Matrix
+### 13-Test Matrix
 
 | ID | Category | Mock Needed | What It Verifies |
 |:---|:---|:---:|:---|
