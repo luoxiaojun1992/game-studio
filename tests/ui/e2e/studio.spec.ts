@@ -823,10 +823,12 @@ const runFullWorkflowTest = async (
         arguments: {
           video_project_id: 'vid-proj-001',
           input_filename: 'test_input.gif',
-          text: 'TestOverlay',
-          font_size: 16,
+          text: 'X',
+          font_size: 1,
           color: 'red',
-          output_filename: 'text_overlay.png'
+          x: 0,
+          y: 0,
+          output_filename: 'text_overlay.gif'
         }
       }]
     });
