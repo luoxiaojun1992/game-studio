@@ -147,7 +147,7 @@
     <rect x="25" y="200" width="300" height="70" rx="8" fill="#FEF9C3" stroke="#FDE68A" stroke-width="2" filter="url(#sh)" />
     <text x="175" y="218" text-anchor="middle" font-size="12" font-weight="700" fill="#92400E">持久化特性</text>
     <text x="175" y="236" text-anchor="middle" font-size="9" fill="#A16207">17 张核心业务表</text>
-    <text x="175" y="252" text-anchor="middle" font-size="9" fill="#A16207">DB Migration</text>
+    <text x="175" y="252" text-anchor="middle" font-size="9" fill="#A16207">数据库迁移脚本</text>
 
     
     <rect x="380" y="0" width="740" height="280" rx="10" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="2" />

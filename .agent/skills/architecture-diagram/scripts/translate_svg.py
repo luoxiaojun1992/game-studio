@@ -105,6 +105,7 @@ TRANSLATIONS = {
     'MinIO 对象存储': 'MinIO Object Storage',
     '持久化特性': 'Persistence',
     '17 张核心业务表': '17 Core Business Tables',
+    '数据库迁移脚本': 'DB Migration',
 
     # L4 External Services
     '外部服务': 'External Services',
