@@ -23,7 +23,7 @@
   4. `.agent/specs/` 下对应的 spec 文档 — 更新测试策略章节
   5. `.agent/specs/INDEX.md` — 如有新 spec 则更新索引
 
-- **主动更新所有相关文档**：实现新功能或做重大修改后，必须主动检查并更新所有受影响的文档，而非仅更新直接相关文件。架构图维护可使用 `.agent/skills/architecture-diagram/SKILL.md` 技能。完整检查清单：
+- **主动更新所有相关文档**：实现新功能或做重大修改后，必须主动检查并更新所有受影响的文档，而非仅更新直接相关文件。**推荐使用 `.agent/skills/doc-sync/SKILL.md` 技能强制执行 A→G 区域全量遍历检查**，避免遗漏 README 等常被遗忘的文档。架构图维护可使用 `.agent/skills/architecture-diagram/SKILL.md` 技能。完整检查清单：
   1. `README.md` + `README.zh-CN.md` — 功能概览、API 概览、目录结构
   2. `docs/ARCHITECTURE.md` + `docs/ARCHITECTURE.zh-CN.md` — 业务域、数据模型、运行时组件
   3. `.agent/memory/ARCHITECTURE.md` — 架构关键点、关键模块详解
