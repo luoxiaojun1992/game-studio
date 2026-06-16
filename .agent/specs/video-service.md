@@ -515,7 +515,7 @@ export function resolveSafePath(baseDir: string, fileName: string): string {
    - ui-coverage 覆盖率引用（如有）
 3. `.agent/specs/` 下对应的 spec 文档 — 更新测试策略章节
 4. `.agent/specs/INDEX.md` — 如有新 spec 则更新索引
-5. `tests/ui/artifacts/ui-coverage-summary.json` — 更新 `totalCases`/`coveredCases` 数字
+5. `tests/ui/coverage/cases.json` — 追加 UI-XXX 到 `requiredCaseIds` 数组
 
 ## 主动更新所有相关文档规范
 

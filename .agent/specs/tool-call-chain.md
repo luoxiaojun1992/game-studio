@@ -407,7 +407,7 @@ const description = toolMeta?.description || '';
    - 测试矩阵标题数字（如 `12 个用例` → `13 个用例`）
    - 测试矩阵表格（新增 UI-XXX 行）
    - ui-coverage 覆盖率引用（如有）
-3. `tests/ui/artifacts/ui-coverage-summary.json` — 更新 `totalCases`/`coveredCases` 数字
+3. `tests/ui/coverage/cases.json` — 追加 UI-XXX 到 `requiredCaseIds` 数组
 4. `.agent/specs/tool-call-chain.md` — 更新本文档测试策略章节
 5. `.agent/specs/INDEX.md` — 新增 SPEC-019 索引条目
 

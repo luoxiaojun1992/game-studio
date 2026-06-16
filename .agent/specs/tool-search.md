@@ -336,7 +336,7 @@ export function getGameTypes(limit?: number): Array<{ type: string; description:
    - 测试矩阵标题数字（如 `12 个用例` → `13 个用例`）
    - 测试矩阵表格（新增 UI-XXX 行）
    - ui-coverage 覆盖率引用（如有）
-3. `tests/ui/artifacts/ui-coverage-summary.json` — 更新 `totalCases`/`coveredCases` 数字
+3. `tests/ui/coverage/cases.json` — 追加 UI-XXX 到 `requiredCaseIds` 数组
 4. `.agent/specs/` 下对应的 spec 文档 — 更新测试策略章节
 5. `.agent/specs/INDEX.md` — 如有新 spec 则更新索引
 
