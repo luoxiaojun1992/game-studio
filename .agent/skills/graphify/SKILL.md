@@ -16,6 +16,7 @@ Turn any folder of files into a navigable knowledge graph with community detecti
 /graphify https://github.com/<owner>/<repo> --branch <branch>  # clone a specific branch
 /graphify <url1> <url2> ...                           # clone multiple repos, build each, merge into one cross-repo graph
 /graphify <path> --mode deep                          # thorough extraction, richer INFERRED edges
+/graphify <path> --code-only                             # structural-only: skip doc/image semantic extraction (no API key needed)
 /graphify <path> --update                             # incremental - re-extract only new/changed files
 /graphify <path> --directed                            # build directed graph (preserves edge direction: source→target)
 /graphify <path> --whisper-model medium                # use a larger Whisper model for better transcription accuracy
@@ -43,6 +44,66 @@ Turn any folder of files into a navigable knowledge graph with community detecti
 ## What graphify is for
 
 Drop any folder of code, docs, papers, images, or video into graphify and get a queryable knowledge graph. Persistent across sessions, honest audit trail (EXTRACTED/INFERRED/AMBIGUOUS), community detection surfaces cross-document connections you wouldn't think to ask about.
+
+---
+
+## --code-only: Structural-Only Rebuild (No API Key)
+
+When `--code-only` is specified, **skip ALL semantic extraction for docs, papers, and images**. Only code AST extraction runs — this needs no LLM API key. All non-code files are ignored during extraction. If a graph already exists, preserve its semantic data (nodes/edges/hyperedges whose `_origin != "ast"`) from the existing `graph.json` and merge them with fresh AST results.
+
+### When to use --code-only
+
+- No LLM API key available (no `GEMINI_API_KEY`, `ANTHROPIC_API_KEY`, etc.)
+- Code structure changed but docs haven't, or docs are unimportant
+- Fast incremental rebuild after code refactoring
+- The existing graph already has good semantic coverage from a prior full build
+
+### Code-Only Workflow (replaces Steps 3, 3B, 3C)
+
+When `--code-only` is given:
+
+1. **Skip Step 3 Part B entirely** — no semantic subagent dispatch, no cache check. Print: `--code-only: skipping semantic extraction for N doc/image files.`
+2. **Run Step 3 Part A (AST extraction)** as normal on all code files.
+3. **If a graph already exists** (`graphify-out/graph.json`):
+   - Load the existing graph and extract semantic nodes (where `_origin != "ast"`) and links
+   - Save them as `.graphify_semantic.json` using the merge script below
+   - Print: `Preserved N semantic nodes and M edges from existing graph.`
+4. **If no graph exists**: create an empty `.graphify_semantic.json` with `{'nodes':[], 'edges':[], 'hyperedges':[]}`.
+5. **Continue with Part C** (merge AST + semantic) and Step 4+ normally.
+
+### Preserve old semantic data (when graph.json exists)
+
+```bash
+cd PROJECT_ROOT && $(cat graphify-out/.graphify_python) -c "
+import json
+from pathlib import Path
+
+old = json.loads(Path('graphify-out/graph.json').read_text(encoding='utf-8'))
+old_sem_nodes = [n for n in old.get('nodes', []) if n.get('_origin') != 'ast']
+old_links = old.get('links', [])
+old_sem_edges = []
+for link in old_links:
+    old_sem_edges.append({
+        'source': link.get('source', ''),
+        'target': link.get('target', ''),
+        'label': link.get('label', ''),
+        'confidence': link.get('confidence', 'EXTRACTED'),
+    })
+
+semantic = {
+    'nodes': old_sem_nodes,
+    'edges': old_sem_edges,
+    'hyperedges': old.get('hyperedges', []),
+    'input_tokens': 0,
+    'output_tokens': 0,
+}
+Path('graphify-out/.graphify_semantic.json').write_text(
+    json.dumps(semantic, indent=2, ensure_ascii=False), encoding='utf-8')
+print(f'Preserved: {len(old_sem_nodes)} semantic nodes, {len(old_sem_edges)} edges')
+"
+```
+
+---
 
 ## What You Must Do When Invoked
 
@@ -146,6 +207,8 @@ Skip this step entirely if `detect` returned zero `video` files. When the corpus
 ### Step 3 - Extract entities and relationships
 
 **Before starting:** note whether `--mode deep` was given. You must pass `DEEP_MODE=true` to every subagent in Step B2 if it was. Track this from the original invocation - do not lose it.
+
+**If `--code-only` was given:** skip directly to the `## --code-only: Structural-Only Rebuild` section workflow above. Do NOT run Step 3 Part B at all. Only run Step 3 Part A (AST extraction), then follow the --code-only workflow to preserve/reuse old semantic data before proceeding to Part C.
 
 This step has two parts: **structural extraction** (deterministic, free) and **semantic extraction** (LLM, costs tokens).
 
