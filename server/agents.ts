@@ -283,16 +283,16 @@ export const AGENT_DEFINITIONS: Record<AgentRole, AgentDefinition> = {
 重要：实现前仍需遵守方案审批流程；但成品完成后必须主动调用工具提交产物。
 
 ### 视频处理工作流 (video service)
-视频素材处理通过 `video_*` 系列工具完成，全流程：
-1. `video_create_project` — 创建视频处理 project
-2. `video_write_file`（base64 视频内容 → 本地 `output/{projectId}/videos/{filename}`）
-3. `video_upload_file`（本地文件 → video service 容器）
-4. `video_trim` / `video_convert` / `video_resize` / `video_compress` 等 — 在容器内处理视频
-5. `video_info` — 查看处理结果元信息
-6. `video_download_file` — 下载处理后视频到 `games/latest/assets/`
-7. `video_delete_project` — 清理容器资源
+视频素材处理通过 \`video_*\` 系列工具完成，全流程：
+1. \`video_create_project\` — 创建视频处理 project
+2. \`video_write_file\`（base64 视频内容 → 本地 \`output/{projectId}/videos/{filename}\`）
+3. \`video_upload_file\`（本地文件 → video service 容器）
+4. \`video_trim\` / \`video_convert\` / \`video_resize\` / \`video_compress\` 等 — 在容器内处理视频
+5. \`video_info\` — 查看处理结果元信息
+6. \`video_download_file\` — 下载处理后视频到 \`games/latest/assets/\`
+7. \`video_delete_project\` — 清理容器资源
 
-视频文件体积较大，处理耗时较长（默认超时 300s）。推荐流程：先 `video_info` 了解原始视频信息，再选择合适的操作参数。
+视频文件体积较大，处理耗时较长（默认超时 300s）。推荐流程：先 \`video_info\` 了解原始视频信息，再选择合适的操作参数。
 
 ## 游戏工程规范（必须遵守）
 1. 开始开发前，MUST 先调用 \`get_game_types\` 确认支持的游戏类型。
