@@ -52,6 +52,7 @@ graph TB
         Creator["Creator Service<br/>FastAPI"]
         Blender["Blender<br/>3D Engine"]
         Image["Image Service<br/>FastAPI + ImageMagick"]
+        Video["Video Service<br/>FastAPI + FFmpeg"]
         Drawio["Draw.io Service<br/>FastAPI"]
         Scanner["Scanner Service<br/>FastAPI + sonar-scanner CLI"]
     end
@@ -66,6 +67,7 @@ graph TB
 
     BE -->|HTTP| Creator
     BE -->|HTTP| Image
+    BE -->|HTTP| Video
     BE -->|HTTP| Drawio
     BE -->|Upload / Download| MinIO
     BE -->|SQL| SQLite
@@ -76,7 +78,8 @@ graph TB
     BE -->|OTLP gRPC| Jaeger
     Creator -->|subprocess| Blender
     Drawio -->|Export| DrawioExport
-    Image -->|subprocess| Image["ImageMagick"]
+    Image -->|subprocess| ImageMagick["ImageMagick"]
+    Video -->|subprocess| FFmpeg["FFmpeg"]
 
     LintRunner --> SonarChecker
     LintRunner --> GameEngChecker
@@ -108,6 +111,8 @@ graph TB
 - `minio-client.ts`: MinIO object operations and presigned URL helpers
 - `creator-service.ts`: creator HTTP client, Blender project lifecycle/model file operations, and safe-path validation
 - `drawio-service.ts`: draw.io HTTP client, diagram CRUD/export, safe-path validation
+- `image-service.ts`: ImageMagick HTTP client, 12 image operations, safe-path validation
+- `video-service.ts`: FFmpeg HTTP client, 17 video operations, project lifecycle
 - `lint/`: extensible lint framework (LintRunner, pluggable checkers: SonarQube + GameEngineeringChecker)
 - `lint/checkers/game-engineering/`: game engineering specification checker with 20 rules (8 common + 6 H5-specific + 6 phaser-mobile-specific), reads `submitDir/dist/*` files directly for validation
 - `agents.ts`: role declarations, prompts, and handoff constraints
@@ -129,6 +134,7 @@ graph TB
 - **Games**: directory-based artifact submission (using `games/latest/dist/` structure with `index.html` + `metadata.json` + `assets/manifest.json`), auto-generated `version_number` for unique identification, listing, file download via MinIO, and **Sonar report download**
 - **Game Engineering Framework**: game type registration via `game_engineering_specs` DB table, 3 MCP query tools (`get_game_types`, `get_game_framework_spec`, `get_common_spec`), GameEngineeringChecker with 14 static analysis rules validating HTML structure, metadata schema, and H5 lifecycle contracts
 - **Modeling**: Blender project management, mesh/material/export, model file pullback, **and scene object listing**
+- **Media Processing**: Image operations via ImageMagick (resize/crop/watermark/conversion/composite/sprite-sheet, 12 operations) and video operations via FFmpeg (transcode/trim/concat/GIF/text overlay/thumbnail, 17 operations)
 - **Diagrams/Attachments**: draw.io diagrams, exports, proposal attachment lifecycle, **and diagram element listing**
 - **Lint/Quality**: extensible static analysis framework with pluggable checkers (sonarqube via scanner microservice + game-engineering checker with 20 rules), Sonar report stored as game attachment via `games.sonar_storage_id`, GameEngineeringChecker uses `submitDir` context for directory-mode file validation
 - **Memories**: long-term memory records scoped by role/project
@@ -149,6 +155,8 @@ graph TB
 - `games`
 - `blender_projects`
 - `drawio_projects`
+- `image_projects`
+- `video_projects`
 - `file_storages`
   - `proposal_attachments`
   - `agent_memories`
@@ -194,7 +202,7 @@ graph TB
 - Tool schemas do not require `project_id`; runtime scope is injected by backend and enforced internally
 - SSE broadcaster skips emission when `projectId` is missing to avoid cross-project event leakage
 - Model file download/delete enforces safe-path constraints inside `output/{project_id}/models`
-- Creator and draw.io services resolve project paths with `safe_path.resolve_safe_path()` utility to prevent traversal
+- Creator, draw.io, image, and video services resolve project paths with `safe_path.resolve_safe_path()` utility to prevent traversal
 - Controlled route namespaces under `/api/*`
 - Output files are constrained to managed output directories
 - Tool usage is constrained by role and workflow rules
@@ -202,7 +210,7 @@ graph TB
 ## 9. Deployment Topology
 
 - Local development: single-node backend + frontend dev server
-- Docker deployment: frontend/backend + creator service + draw.io service + draw.io export + SonarQube + scanner microservice + Jaeger (OpenTelemetry tracing) containerized (see `README-Docker.md`)
+- Docker deployment: frontend/backend + creator service + draw.io service + draw.io export + image service + video service + SonarQube + scanner microservice + Jaeger (OpenTelemetry tracing) containerized (see `README-Docker.md`)
 
 ### 9.1 Service Dependency Graph
 
@@ -210,14 +218,14 @@ Services start in layers. Each service waits for all services in lower layers to
 
 ```
 Layer 0 (no startup dependencies):
-  minio  sonarqube  star-office-ui  creator  image-service  drawio-export  scanner
+  minio  sonarqube  star-office-ui  creator  image-service  video-service  drawio-export  scanner
 
 Layer 1:
   drawio-service ── waits for ──> drawio-export
 
 Layer 2:
   studio-backend ── waits for ──> minio  sonarqube  creator  drawio-service
-                                   image-service  scanner  [jaeger]
+                                   image-service  video-service  scanner  [jaeger]
 
 Layer 3:
   studio-frontend ── waits for ──> studio-backend  star-office-ui
@@ -230,13 +238,14 @@ Layer 3:
 | `star-office-ui` | none | — |
 | `creator` | none | `studio-backend` → `http://creator:8080` |
 | `image-service` | none | `studio-backend` → `http://image-service:8089` |
+| `video-service` | none | `studio-backend` → `http://video-service:8084` |
 | `drawio-export` | none | `drawio-service` → `http://drawio-export:8080/export` |
 | `scanner` | sonarqube | `studio-backend` → `http://scanner:8081` |
 | | | `sonarqube` → (SONAR_HOST_URL) |
 | `jaeger` | none | `studio-backend` → `http://jaeger:4317` (OTLP gRPC) |
 | | | Python microservices → `http://jaeger:4317` |
 | `drawio-service` | `drawio-export` | — |
-| `studio-backend` | minio, sonarqube, creator, drawio-service, image-service, scanner | star-office-ui, minio, creator, drawio-service, image-service, scanner, sonarqube, jaeger |
+| `studio-backend` | minio, sonarqube, creator, drawio-service, image-service, video-service, scanner | star-office-ui, minio, creator, drawio-service, image-service, video-service, scanner, sonarqube, jaeger |
 | `studio-frontend` | studio-backend, star-office-ui | `studio-backend` (build-time via `VITE_API_BASE`) |
 - Runtime directories:
   - `data/` for SQLite DB
