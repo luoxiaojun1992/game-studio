@@ -6,7 +6,7 @@
 - 遇到问题必须先定位根因，再修复，不能猜测或碰运气
 - 验收标准中明确，提交代码前必须跑通ui test。如遇网络或依赖问题，可临时修改代码解决网络问题，但禁止提交为了解决网络依赖问题所做的变更。
 - **编写 Spec 规范**：设计新功能时遵循 `.agent/skills/spec-writer/SKILL.md` 中定义的标准化 spec 编写流程和章节模板
-- **项目级 Skill 安装位置**：所有自定义开发的 skill 安装在 workspace 根目录的 `.workbuddy/skills/` 下（如 `ci-verification`、`graphify`、`svg-to-png` 等），而非 `~/.workbuddy/skills/` 用户级目录。引用 skill 时优先检查此路径。
+- **项目级 Skill 安装位置**：所有自定义开发的 skill 安装在 `.agent/skills/` 下（如 `ci-verification`、`graphify`、`spec-writer`、`code-lint` 等），而非 `~/.workbuddy/skills/` 用户级目录或 `.workbuddy/skills/` workspace 根目录。引用 skill 时使用 `.agent/skills/<name>/SKILL.md` 路径。
 - **主动添加 UI Test**：新增前端交互功能（按钮、表单、弹窗、面板等）时，必须同步编写对应的 E2E 测试用例，并更新以下文档：
   1. `tests/ui/e2e/studio.spec.ts` — 添加测试用例（分配下一个 UI-XXX 编号）
   2. `.agent/memory/E2E_TESTING.md` — **必须同步更新以下 3 处**：
