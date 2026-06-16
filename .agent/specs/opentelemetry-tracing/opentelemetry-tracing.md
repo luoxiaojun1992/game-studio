@@ -519,6 +519,7 @@ studio-backend:
 1. `tests/ui/e2e/studio.spec.ts` — 添加 UI-XXX 测试用例
 2. `.agent/memory/E2E_TESTING.md` — 更新测试矩阵、testid 对照表
 3. `.agent/specs/opentelemetry-tracing.md` — 更新本文档测试策略章节
+- **实现后强制使用 doc-sync skill 执行全量文档检查**：加载 `.agent/skills/doc-sync/SKILL.md` 按 A→G 区域遍历检查所有文档一致性
 
 ## 详细 Debug 日志规范
 

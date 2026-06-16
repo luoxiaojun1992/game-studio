@@ -53,3 +53,4 @@
 ```
 
 3. 更新本索引表，填写标题、路径、状态
+4. **spec 实现后强制执行**：加载 `.agent/skills/doc-sync/SKILL.md` 遍历 A→G 区域同步所有相关文档（README、架构文档、memory、架构图等）。详见 `.agent/skills/spec-writer/SKILL.md` 中 Step 6。

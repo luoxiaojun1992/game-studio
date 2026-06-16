@@ -488,6 +488,7 @@ def _safe_join(base: str, filename: str) -> str:
 5. `.agent/memory/MEMORY.md` — 工程决策记录
 6. `.agent/specs/INDEX.md` — spec 索引
 7. 不相关的文档不需要修改
+- **实现后强制使用 doc-sync skill 执行全量文档检查**：加载 `.agent/skills/doc-sync/SKILL.md` 按 A→G 区域遍历检查所有文档一致性
 
 ## 详细 Debug 日志规范
 

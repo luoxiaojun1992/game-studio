@@ -357,6 +357,7 @@ export function getGameTypes(limit?: number): Array<{ type: string; description:
 10. `.agent/AI_AGENT_COMMON_INSTRUCTIONS.md` — 关键文件位置、API 概览
 - **文档更新禁止添加日期和敏感信息**
 - **不相关的文档不需要修改**（如 LINT.md 与本功能无关则不更新）
+- **实现后强制使用 doc-sync skill 执行全量文档检查**：加载 `.agent/skills/doc-sync/SKILL.md` 按 A→G 区域遍历检查所有文档一致性
 
 ## 详细 Debug 日志规范
 
