@@ -248,6 +248,11 @@ agent_created: true
 - `.agent/memory/MEMORY.md` — 长期记忆中的工程决策记录
 - `README.md` + `README.zh-CN.md` — 功能概览
 - `docs/ARCHITECTURE.md` + `docs/ARCHITECTURE.zh-CN.md` — 架构文档
+
+**⚠️ 实现后强制使用 doc-sync skill 执行全量文档检查**：
+spec 实现完成后，加载 `.agent/skills/doc-sync/SKILL.md` 强制执行 A→G 区域全量遍历检查，
+确保 README、架构文档、memory、spec INDEX、架构图等所有文档与最新代码保持一致。
+此为强制步骤，不可跳过。
 ```
 
 ### 12. 详细 Debug 日志规范（必需）
@@ -342,6 +347,19 @@ UI-XXX 测试用例：
 git add .agent/specs/<file>.md .agent/specs/INDEX.md
 git commit -m "docs: SPEC-XXX <简短描述>"
 ```
+
+### Step 6: 使用 doc-sync skill 同步所有相关文档（强制）
+
+**spec 实现后必须强制执行**。加载 `.agent/skills/doc-sync/SKILL.md` skill，按 A→G 区域逐项检查：
+- 项目根 README (A) — spec 状态、功能描述
+- docs/ 架构文档 (B) — 新服务、端口、数据流
+- .agent/memory/ (C) — 架构、索引、E2E、约定
+- .agent/specs/ (D) — INDEX 状态、相关 spec 一致性
+- .agent/ 根 (E) — AI_AGENT_COMMON_INSTRUCTIONS
+- 工作区记忆 (F) — 工程决策记录
+- 架构图 (G) — SVG 更新 + PNG 导出
+
+如 spec 仍在设计阶段，此步骤标记为 N/A 即可。
 
 ## 格式约定
 

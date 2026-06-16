@@ -11,6 +11,7 @@
 - `server/creator-service.ts` - Creator 服务调用封装（Blender 项目/文件生命周期）
 - `server/drawio-service.ts` - Draw.io 服务调用封装（图表 CRUD/导出）
 - `server/image-service.ts` - ImageMagick 图片处理服务调用封装（图片项目/文件生命周期 + 12 个操作）
+- `server/video-service.ts` - FFmpeg 视频处理服务调用封装（视频项目/文件生命周期 + 17 个操作）
 - `server/lint/` - 可扩展静态检查框架（LintRunner + 可插拔 checker）
 - `server/lint/types.ts` - 核心类型：LintChecker 接口、LintIssue、LintResult、LintContext（含 submitDir 字段）
 - `server/lint/index.ts` - lintGameArtifact() 入口（ZIP 模式），遍历所有内置 checker
@@ -44,6 +45,7 @@
 - 内置工具覆盖记忆、任务拆分、任务看板、交接、提案、游戏提交、日志查询等核心流程（以 `server/tools.ts` 为准）
 - Blender 建模工具（`blender_*`）已并入同一 studio-tools server，由 `creator-service.ts` 统一调用 creator API
 - 图片处理工具（`image_*`）由 `image-service.ts` 调用 image 微服务，含 `image_write_file`（本地 base64→Buffer）+ `image_upload_file`（本地→POST 微服务）职责分离
+- 视频处理工具（`video_*`）由 `video-service.ts` 调用 video 微服务，含 `video_write_file`（本地 base64→Buffer）+ `video_upload_file`（本地→POST 微服务）职责分离，共 24 个工具（17 操作 + 3 project 管理 + 4 文件）
 - draw.io 工具（`drawio_*`、`drawio_list_elements`）由 `drawio-service.ts` 调用 draw.io 微服务
 - 工具 schema 已移除 `project_id` 入参，项目作用域由工具服务初始化时注入 scopedProjectId 并在工具内部执行
 - **微服务 project 创建模式**：`POST /api/projects`（无 path param），微服务内部生成 UUID。TEST_MODE 环境变量在微服务侧判断（`*_SERVICE_TEST_MODE=true`→返回固定 ID），studio backend 不感知
@@ -77,7 +79,7 @@
 
 ## canUseTool 放行规则
 - studio-tools 前缀为 `mcp__studio_tools__`；内部按白名单自动放行
-- `blender_*` / `image_*` 工具仅 `engineer` 自动放行，其他角色默认不放行
+- `blender_*` / `image_*` / `video_*` 工具仅 `engineer` 自动放行，其他角色默认不放行
 
 ## DB 初始化注意事项
 - `MAX_PROJECT_ID_LENGTH` 等常量必须放在文件顶部，在任何函数调用之前完成初始化
@@ -125,6 +127,7 @@ game-dev-studio/
 ├── creator/              # Blender Creator 微服务（FastAPI + Blender 运行时）
 ├── drawio-service/        # Draw.io 图表微服务（FastAPI）
 ├── image-service/         # ImageMagick 图片处理微服务（FastAPI + ImageMagick，端口 8089）
+├── video-service/         # FFmpeg 视频处理微服务（FastAPI + FFmpeg，端口 8084）
 ├── sonar-scanner-service/ # SonarQube Scanner 微服务（FastAPI + sonar-scanner CLI）
 ├── tests/                # 测试文件
 │   ├── ui/               # UI E2E 测试（Playwright）
@@ -133,7 +136,7 @@ game-dev-studio/
 │   └── mock-server/      # Mock Server（模拟 SDK 行为）
 │       └── codebuddy-sdk-mock-server.mjs
 ├── docker-compose.yml              # 主服务编排
-├── docker-compose.ui-test.yml      # UI 测试编排（含 sonarqube + scanner + creator + image + drawio）
+├── docker-compose.ui-test.yml      # UI 测试编排（含 sonarqube + scanner + creator + image + video + drawio）
 ├── docker-compose-sonar-check.yml  # SonarQube CI 扫描编排
 ├── Dockerfile.backend    # 后端 Dockerfile
 ├── Dockerfile.frontend   # 前端 Dockerfile
@@ -156,7 +159,7 @@ game-dev-studio/
 - `games` 已移除 `author_agent_id`，提交链路不再要求该字段。
 - `logs`、`commands`、`permission_requests` 已统一包含 `updated_at`。
 - 提供原子化的增删改查函数，以及文件导出功能（`saveProposalToFile`）。
-- `drawio_projects` 记录 draw.io 图表项目，`proposal_attachments` 记录策划案附件并关联 MinIO 文件。`image_projects` 记录图片处理项目。
+- `drawio_projects` 记录 draw.io 图表项目，`proposal_attachments` 记录策划案附件并关联 MinIO 文件。`image_projects` 记录图片处理项目。`video_projects` 记录视频处理项目。
 
 #### 3. 工具定义 (`server/tools.ts`)
 - 通过 `createSdkMcpServer` 创建 MCP Server，暴露覆盖完整工作流的自定义工具：
@@ -170,7 +173,7 @@ game-dev-studio/
   - GameEngineeringChecker 直接从 `submitDir`（`games/latest/`）目录读取文件验证 HTML 结构、元信息、H5 生命周期契约等
 - `get_games`：按时间倒序获取当前项目游戏列表，返回基础元信息与文件模式标记。
 - `get_game_info`：按游戏 ID 或 `version_number` 获取详情，支持获取最新版本，返回 MinIO 预签名下载链接。
-- `drawio_*`：draw.io 项目与图表 CRUD、导出与元素列表；`blender_list_objects`：按类型分页查询 Blender 对象。`image_*`：图片处理 project 管理 + write/upload + 12 个操作（resize/crop/convert 等）。
+- `drawio_*`：draw.io 项目与图表 CRUD、导出与元素列表；`blender_list_objects`：按类型分页查询 Blender 对象。`image_*`：图片处理 project 管理 + write/upload + 12 个操作（resize/crop/convert 等）。`video_*`：视频处理 project 管理 + write/upload + 17 个操作（info/convert/trim/concat/resize/compress/crop/rotate/change_speed/extract_frames/extract_audio/add_audio/add_text/add_watermark/generate_gif/gif_to_video/create_thumbnail）。
   - `get_proposals`：获取当前项目的提案列表。
   - `get_pending_handoffs`：获取待处理的交接任务。
 - `get_game_types` / `get_game_framework_spec` / `get_common_spec`：游戏工程规范查询工具（仅 engineer 可用，无需授权），从 `game_engineering_specs` 表返回规范内容供工程师在开发前查阅。
@@ -202,7 +205,7 @@ game-dev-studio/
 - 集成 Star‑Office‑UI 组件，实现双端联动。
 
 #### 8. E2E 测试 (`tests/ui/e2e/studio.spec.ts`)
-- 使用 Playwright 编写，覆盖 10 个核心场景：
+- 使用 Playwright 编写，覆盖 13 个核心场景：
   - UI‑001: 页面加载与基础布局
   - UI‑002: 语言切换
   - UI‑003: 自动驾驶开关
@@ -213,13 +216,16 @@ game-dev-studio/
   - UI‑008: 完整工作流（自动模式）
   - UI‑009: 手动创建提案
   - UI‑010: 问卷提案创建（SPEC-007，分步表单 + 来源标签）
+  - UI‑011: 图片处理微服务
+  - UI‑012: Draw.io 图表微服务
+  - UI‑013: 视频处理微服务
 - 依赖 Mock Server 模拟 SDK 行为，确保测试可重复、不依赖外部服务。
 
 ##### E2E 测试架构
 - **测试框架**: Playwright + TypeScript
 - **Mock 服务**: `tests/mock-server/codebuddy-sdk-mock-server.mjs`（per-agent 路由队列）
-- **Docker 编排**: `docker-compose.ui-test.yml`（8 个服务：studio-backend + sdk-mock + image + creator + drawio + sonarqube + scanner + minio + star-office + ui-app + ui-e2e）
-- **测试入口**: `tests/ui/e2e/studio.spec.ts`（10 个用例）
+- **Docker 编排**: `docker-compose.ui-test.yml`（12 个服务：studio-backend + sdk-mock + image + video + creator + drawio + sonarqube + scanner + minio + star-office + ui-app + ui-e2e）
+- **测试入口**: `tests/ui/e2e/studio.spec.ts`（13 个用例）
 - **核心模式**: `runFullWorkflowTest()` — 目标状态驱动的事件循环，UI-007/008 共用
 - **数据流**: 测试 → Mock Admin API (port 3001) → 预设响应队列 → Agent 调用 /chat/completions → 匹配 (projectId, agentRole) → 返回预设响应
 
@@ -229,14 +235,14 @@ game-dev-studio/
 
 ```
 第 0 层（无启动依赖）：
-  minio  sonarqube  star-office-ui  creator  image-service  drawio-export  scanner  jaeger  codebuddy-sdk-mock*
+  minio  sonarqube  star-office-ui  creator  image-service  video-service  drawio-export  scanner  jaeger  codebuddy-sdk-mock*
 
 第 1 层：
   drawio-service ──░ drawio-export
 
 第 2 层：
   studio-backend ──░ minio  sonarqube  creator  drawio-service
-                    image-service  scanner  [codebuddy-sdk-mock*]
+                    image-service  video-service  scanner  [codebuddy-sdk-mock*]
 
 第 3 层：
   studio-frontend ──░ studio-backend  star-office-ui
@@ -249,7 +255,7 @@ game-dev-studio/
 
 | 服务 | depends_on（condition: service_healthy） | 运行时 URL 依赖 |
 |------|----------------------------------------|---------------|
-| `studio-backend` | minio, sonarqube, creator, drawio-service, image-service, scanner | star-office-ui, minio, creator, drawio, image, scanner, sonarqube, jaeger |
+| `studio-backend` | minio, sonarqube, creator, drawio-service, image-service, video-service, scanner | star-office-ui, minio, creator, drawio, image, video, scanner, sonarqube, jaeger |
 | `studio-frontend` | studio-backend, star-office-ui | studio-backend（VITE_API_BASE 构建时注入） |
 | `drawio-service` | drawio-export | drawio-export（DRAWIO_EXPORT_URL） |
 | `scanner` | sonarqube | sonarqube（SONAR_HOST_URL） |

@@ -5,6 +5,21 @@
 - 不允许为了"让测试通过"而放宽断言、加 fallback、或绕过正常流程
 - 遇到问题必须先定位根因，再修复，不能猜测或碰运气
 - 验收标准中明确，提交代码前必须跑通ui test。如遇网络或依赖问题，可临时修改代码解决网络问题，但禁止提交为了解决网络依赖问题所做的变更。
+- **分支命名规范**：所有变更修改前必须先新建适当的开发分支，禁止直接在 `main` 上修改。分支类型与命名规则：
+  - `docs/xxx` — 文档更新（架构图、spec、memory、README 等）。关联 SPEC 编号时用 `docs/SPEC-XXX-xxx`
+  - `chore/xxx` — 杂项维护（依赖升级、脚本优化、skill 更新等）。关联 SPEC 编号时用 `chore/SPEC-XXX-xxx`
+  - `fix/xxx` — Bug 修复。关联 SPEC 编号时用 `fix/SPEC-XXX-xxx`
+  - `feat/xxx` — 新功能开发。关联 SPEC 编号时用 `feat/SPEC-XXX-xxx`
+  - 分支从 `main` 拉出，完成后通过 PR 合并回 `main`
+- **Commit 规范**：使用 Conventional Commits 格式，commit 消息格式为 `<type>: <简短描述>`。关联 SPEC 时必须在 scope 中标明 SPEC 编号，如 `feat(SPEC-009): add video trim tool`，不关联 SPEC 时省略 scope：
+  | type | 说明 | 关联 SPEC 时格式 |
+  |------|------|-----------------|
+  | `feat` | 新功能 | `feat(SPEC-XXX): xxx` |
+  | `fix` | Bug 修复 | `fix(SPEC-XXX): xxx` |
+  | `docs` | 文档更新 | `docs(SPEC-XXX): xxx` |
+  | `chore` | 杂项维护 | `chore(SPEC-XXX): xxx` |
+  | `refactor` | 代码重构 | `refactor(SPEC-XXX): xxx` |
+  | `test` | 测试相关 | `test(SPEC-XXX): xxx` |
 - **编写 Spec 规范**：设计新功能时遵循 `.agent/skills/spec-writer/SKILL.md` 中定义的标准化 spec 编写流程和章节模板
 - **项目级 Skill 安装位置**：所有自定义开发的 skill 源代码存放在 `.agent/skills/` 下（如 `ci-verification`、`graphify`、`spec-writer`、`code-lint` 等）。实际安装目录不固定，SKILL.md 中的脚本路径始终使用相对路径（`scripts/xxx`），不写死安装路径。
 - **主动添加 UI Test**：新增前端交互功能（按钮、表单、弹窗、面板等）时，必须同步编写对应的 E2E 测试用例，并更新以下文档：
@@ -17,7 +32,7 @@
   4. `.agent/specs/` 下对应的 spec 文档 — 更新测试策略章节
   5. `.agent/specs/INDEX.md` — 如有新 spec 则更新索引
 
-- **主动更新所有相关文档**：实现新功能或做重大修改后，必须主动检查并更新所有受影响的文档，而非仅更新直接相关文件。架构图维护可使用 `.agent/skills/architecture-diagram/SKILL.md` 技能。完整检查清单：
+- **主动更新所有相关文档**：实现新功能或做重大修改后，必须主动检查并更新所有受影响的文档，而非仅更新直接相关文件。**推荐使用 `.agent/skills/doc-sync/SKILL.md` 技能强制执行 A→G 区域全量遍历检查**，避免遗漏 README 等常被遗忘的文档。架构图维护可使用 `.agent/skills/architecture-diagram/SKILL.md` 技能。完整检查清单：
   1. `README.md` + `README.zh-CN.md` — 功能概览、API 概览、目录结构
   2. `docs/ARCHITECTURE.md` + `docs/ARCHITECTURE.zh-CN.md` — 业务域、数据模型、运行时组件
   3. `.agent/memory/ARCHITECTURE.md` — 架构关键点、关键模块详解

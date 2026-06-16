@@ -13,6 +13,8 @@
 - AI 编排：`agent-manager.ts` + `tools.ts` + Agent SDK
 - Studio 联动：`star-office-sync.ts`（Agent 注册、状态同步、健康巡检）
 - 3D 建模集成：`creator-service.ts` + `creator/`（Blender FastAPI 服务）
+- 图片处理：`image-service.ts` + `image-service/`（ImageMagick FastAPI 服务）
+- 视频处理：`video-service.ts` + `video-service/`（FFmpeg FastAPI 服务）
 - 图表集成：`drawio-service.ts` + `drawio-service/`（draw.io FastAPI 服务与导出）
 - 数据层：SQLite（`server/db.ts`）
 - 静态分析：可扩展 Lint 框架（`server/lint/`）
@@ -33,6 +35,8 @@ server/
   agent-manager.ts       # Agent 状态、消息发送、权限请求
   tools.ts               # MCP 自定义工具定义与权限规则
   creator-service.ts     # Creator 服务集成（Blender 建模工具调用）
+  image-service.ts       # ImageMagick 图片处理服务集成
+  video-service.ts       # FFmpeg 视频处理服务集成
   drawio-service.ts      # Draw.io 服务集成（图表工具调用）
   lint/                  # 可扩展 Lint 框架（LintRunner、可插拔检查器）
   agents.ts              # 角色定义、系统提示词、工具使用约束
@@ -247,6 +251,8 @@ npm run build
 - 后端同步地址：`STAR_OFFICE_UI_URL`（默认 `http://127.0.0.1:19000`）
 - Agent 注册密钥：`STAR_OFFICE_JOIN_KEY`
 - Creator 服务地址：`CREATOR_SERVICE_URL`（默认 `http://localhost:8080`）
+- Image 服务地址：`IMAGE_SERVICE_URL`（默认 `http://localhost:8089`）
+- Video 服务地址：`VIDEO_SERVICE_URL`（默认 `http://localhost:8084`）
 - Draw.io 服务地址：`DRAWIO_SERVICE_URL`（默认 `http://localhost:8082`）
 
 ## 9. 调试建议

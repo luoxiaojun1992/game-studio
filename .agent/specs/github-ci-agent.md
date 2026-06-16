@@ -299,3 +299,5 @@ rm -rf /tmp/ci-job-*/ /tmp/ci-artifact-*/
 | `.agent/specs/github-ci-agent.md` | 更新头部状态为「已实现」 |
 
 > **不相关的文档不需要修改**：`E2E_TESTING.md`、`LINT.md`、`SDK_MOCK.md`、`STAROFFICE.md`、`REUSABLE_PATTERNS.md` 与本功能无关。
+
+> **实现后强制使用 doc-sync skill 执行全量文档检查**：加载 `.agent/skills/doc-sync/SKILL.md` 按 A→G 区域遍历检查所有文档一致性。详见 `.agent/skills/spec-writer/SKILL.md` Step 6。

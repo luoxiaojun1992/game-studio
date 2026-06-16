@@ -52,6 +52,7 @@ graph TB
         Creator["Creator Service<br/>FastAPI"]
         Blender["Blender<br/>3D 引擎"]
         Image["Image Service<br/>FastAPI + ImageMagick"]
+        Video["Video Service<br/>FastAPI + FFmpeg"]
         Drawio["Draw.io Service<br/>FastAPI"]
         Scanner["Scanner Service<br/>FastAPI + sonar-scanner CLI"]
     end
@@ -66,6 +67,7 @@ graph TB
 
     BE -->|HTTP| Creator
     BE -->|HTTP| Image
+    BE -->|HTTP| Video
     BE -->|HTTP| Drawio
     BE -->|上传 / 下载| MinIO
     BE -->|SQL| SQLite
@@ -76,7 +78,8 @@ graph TB
     BE -->|OTLP gRPC| Jaeger
     Creator -->|subprocess| Blender
     Drawio -->|导出| DrawioExport
-    Image -->|subprocess| Image["ImageMagick"]
+    Image -->|subprocess| ImageMagick["ImageMagick"]
+    Video -->|subprocess| FFmpeg["FFmpeg"]
 
     LintRunner --> SonarChecker
     LintRunner --> GameEngChecker
@@ -108,6 +111,8 @@ graph TB
 - `minio-client.ts`：MinIO 对象操作与预签名 URL 能力
 - `creator-service.ts`：creator HTTP 客户端、建模 project 生命周期/模型文件操作与安全路径校验
 - `drawio-service.ts`：draw.io HTTP 客户端、图表 CRUD/导出与安全路径校验
+- `image-service.ts`：ImageMagick HTTP 客户端、12 种图片操作与安全路径校验
+- `video-service.ts`：FFmpeg HTTP 客户端、17 种视频操作与项目生命周期
 - `lint/`：可扩展 Lint 框架（LintRunner、可插拔检查器：SonarQube + GameEngineeringChecker）
 - `lint/checkers/game-engineering/`：游戏工程规范检查器，20 条规则（8 公共 + 6 H5 特有 + 6 phaser-mobile 特有），直接读取 `submitDir/dist/*` 文件校验
 - `agents.ts`：角色定义、提示词、交接约束
@@ -129,6 +134,7 @@ graph TB
 - **产物（Games）**：支持目录模式提交（使用 `games/latest/dist/` 结构：`index.html` + `metadata.json` + `assets/manifest.json`，自动生成 `version_number` 作为唯一标识），支持列表、文件下载（MinIO）与 **Sonar 报告下载**
 - **游戏工程框架（Game Engineering Framework）**：通过 `game_engineering_specs` 表管理游戏类型注册，提供 3 个 MCP 查询工具（`get_game_types`、`get_game_framework_spec`、`get_common_spec`），GameEngineeringChecker 配备 20 条静态分析规则校验 HTML 结构、元信息 schema 和 H5/phaser-mobile 生命周期契约
 - **建模（Modeling）**：Blender project 管理、几何体/材质/导出、模型文件回传与**场景对象列表**
+- **媒体处理**：图片操作（ImageMagick，裁剪/缩放/水印/转换/合成/精灵图等 12 种操作）与视频操作（FFmpeg，转码/剪辑/拼接/GIF/文字叠加/缩略图等 17 种操作）
 - **图表/附件（Diagrams/Attachments）**：draw.io 图表管理、导出、策划案附件与**图表元素列表**
 - **静态分析（Lint/Quality）**：可扩展静态检查框架（通过 scanner 微服务的 sonarqube + 带 20 条规则的 game-engineering checker）；Sonar 报告通过 `games.sonar_storage_id` 关联到游戏成品；GameEngineeringChecker 使用 `submitDir` 上下文直接读取目录文件进行工程规范校验
 - **记忆（Memories）**：按角色/项目组织的长期记忆
@@ -149,6 +155,8 @@ graph TB
 - `games`
 - `blender_projects`
 - `drawio_projects`
+- `image_projects`
+- `video_projects`
 - `file_storages`
   - `proposal_attachments`
   - `agent_memories`
@@ -193,7 +201,7 @@ graph TB
 - 工具 schema 不再要求 `project_id` 入参；后端注入运行时项目作用域并在内部执行隔离校验
 - SSE 广播在缺失 `projectId` 时直接跳过，避免跨项目事件泄露
 - 模型文件下载/删除仅允许操作 `output/{project_id}/models` 安全路径，防止路径穿越
-- Creator 与 draw.io 服务统一使用 `safe_path.resolve_safe_path()` 工具函数避免路径穿越
+- Creator、draw.io、image、video 服务统一使用 `safe_path.resolve_safe_path()` 工具函数避免路径穿越
 - 路由统一在 `/api/*` 命名空间下管理
 - 产物文件受限于受管控的输出目录
 - 工具调用受角色权限与工作流规则约束
@@ -201,7 +209,7 @@ graph TB
 ## 9. 部署形态
 
 - 本地开发：单节点后端 + 前端开发服务器
-- Docker 部署：前后端 + creator 服务 + draw.io 服务 + draw.io 导出 + SonarQube + scanner 微服务 + Jaeger（OpenTelemetry 链路追踪）容器化（见 `README-Docker.zh-CN.md`）
+- Docker 部署：前后端 + creator 服务 + draw.io 服务 + draw.io 导出 + image 服务 + video 服务 + SonarQube + scanner 微服务 + Jaeger（OpenTelemetry 链路追踪）容器化（见 `README-Docker.zh-CN.md`）
 
 ### 9.1 服务依赖关系
 
@@ -209,14 +217,14 @@ graph TB
 
 ```
 第 0 层（无启动依赖）：
-  minio  sonarqube  star-office-ui  creator  image-service  drawio-export  scanner  jaeger
+  minio  sonarqube  star-office-ui  creator  image-service  video-service  drawio-export  scanner  jaeger
 
 第 1 层：
   drawio-service ── 等待 ──> drawio-export
 
 第 2 层：
   studio-backend ── 等待 ──> minio  sonarqube  creator  drawio-service
-                                image-service  scanner  [jaeger]
+                                image-service  video-service  scanner  [jaeger]
 
 第 3 层：
   studio-frontend ── 等待 ──> studio-backend  star-office-ui
@@ -229,13 +237,14 @@ graph TB
 | `star-office-ui` | 无 | — |
 | `creator` | 无 | `studio-backend` → `http://creator:8080` |
 | `image-service` | 无 | `studio-backend` → `http://image-service:8089` |
+| `video-service` | 无 | `studio-backend` → `http://video-service:8084` |
 | `drawio-export` | 无 | `drawio-service` → `http://drawio-export:8080/export` |
 | `scanner` | sonarqube | `studio-backend` → `http://scanner:8081` |
 | | | `sonarqube` →（SONAR_HOST_URL） |
 | `jaeger` | 无 | `studio-backend` → `http://jaeger:4317`（OTLP gRPC） |
 | | | Python 微服务 → `http://jaeger:4317` |
 | `drawio-service` | `drawio-export` | — |
-| `studio-backend` | minio, sonarqube, creator, drawio-service, image-service, scanner | star-office-ui, minio, creator, drawio-service, image-service, scanner, sonarqube, jaeger |
+| `studio-backend` | minio, sonarqube, creator, drawio-service, image-service, video-service, scanner | star-office-ui, minio, creator, drawio-service, image-service, video-service, scanner, sonarqube, jaeger |
 | `studio-frontend` | studio-backend, star-office-ui | `studio-backend`（构建时注入，通过 `VITE_API_BASE`） |
 - 运行目录：
   - `data/`：SQLite 数据库

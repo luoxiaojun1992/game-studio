@@ -23,6 +23,8 @@ A multi-agent game development workspace built on the CodeBuddy Agent SDK, provi
 - Game artifact management (submit HTML artifacts or packaged files, preview, download, and version status)
 - Blender modeling pipeline (creator service + `blender_*` tools for project/mesh/material/export/file operations)
 - Draw.io diagram workflow (drawio-service + drawio-export for diagram CRUD and export)
+- Image processing pipeline (image-service + ImageMagick + `image_*` tools for 12 image operations)
+- Video processing pipeline (video-service + FFmpeg + `video_*` tools for 17 video operations)
 - Static analysis (extensible lint framework with pluggable checkers for HTML structure/HTTP method safety/JS security/SonarQube quality scan, supports HTML mode and ZIP package mode)
 - Sonar report download in game preview when scan artifacts are available
 - Long-term agent memory (save/query/clear)
@@ -121,6 +123,8 @@ npm run server
 | `SONARQUBE_TOKEN` | `sonarpass` | SonarQube token used by `sonarqube` lint checker |
 | `SCANNER_SERVICE_URL` | `http://localhost:8081` | SonarQube scanner microservice URL |
 | `DRAWIO_SERVICE_URL` | `http://localhost:8082` | Draw.io service base URL used by diagram tools |
+| `IMAGE_SERVICE_URL` | `http://localhost:8089` | ImageMagick image processing service base URL |
+| `VIDEO_SERVICE_URL` | `http://localhost:8084` | FFmpeg video processing service base URL |
 
 ## Docker Deployment
 
@@ -141,6 +145,7 @@ game-studio/
 │   ├── minio-client.ts     # MinIO client wrapper
 │   ├── file-storage.ts     # File storage (MinIO) operations
 │   ├── image-service.ts    # ImageMagick processing service client
+│   ├── video-service.ts    # FFmpeg video processing service client
 │   ├── creator-service.ts  # Blender creator service client
 │   ├── drawio-service.ts   # Draw.io diagram service client
 │   ├── sonar-scanner-service.ts # SonarQube scanner service client
@@ -169,6 +174,7 @@ game-studio/
 ├── drawio-service/         # Draw.io diagram service (FastAPI + draw.io export)
 ├── sonar-scanner-service/  # SonarQube scanner microservice (FastAPI + sonar-scanner CLI)
 ├── image-service/          # ImageMagick image processing microservice
+├── video-service/          # FFmpeg video processing microservice
 ├── tests/                  # E2E test suite (Playwright + Allure)
 ├── scripts/                # Utility scripts
 ├── .agent/                 # Agent configurations, specs, skills, memory
@@ -248,7 +254,7 @@ Based on [technical specs](./.agent/specs/INDEX.md):
 | SPEC-006 | Game submission lint pipeline redesign | ✅ Implemented |
 | SPEC-007 | Questionnaire-based game design proposal | ✅ Implemented |
 | SPEC-008 | ImageMagick image processing microservice | ✅ Implemented |
-| SPEC-009 | FFmpeg video processing microservice (in-game video for engineer agent) | 🚧 In Design |
+| SPEC-009 | FFmpeg video processing microservice (video tools for engineer agent) | ✅ Implemented |
 | SPEC-010 | Phaser Mobile game engineering spec | ✅ Implemented |
 | SPEC-011 | Game build microservice | 🚧 In Design |
 | SPEC-012 | Game run/serving microservice | 🚧 In Design |

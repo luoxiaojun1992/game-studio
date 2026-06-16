@@ -14,6 +14,8 @@ This guide is based on the current repository implementation and focuses on real
 - AI orchestration: `agent-manager.ts` + `tools.ts` + Agent SDK
 - Studio integration: `star-office-sync.ts` (agent registration, state sync, health checks)
 - 3D modeling integration: `creator-service.ts` + `creator/` (Blender FastAPI service)
+- Image processing: `image-service.ts` + `image-service/` (ImageMagick FastAPI service)
+- Video processing: `video-service.ts` + `video-service/` (FFmpeg FastAPI service)
 - Diagram integration: `drawio-service.ts` + `drawio-service/` (draw.io FastAPI service + export)
 - Data layer: SQLite (`server/db.ts`)
 - Static analysis: extensible Lint framework (`server/lint/`)
@@ -34,6 +36,8 @@ server/
   agent-manager.ts       # Agent states, message sending, permission requests
   tools.ts               # MCP custom tool definitions and permission rules
   creator-service.ts     # Creator service integration for Blender modeling tools
+  image-service.ts       # ImageMagick image processing service integration
+  video-service.ts       # FFmpeg video processing service integration
   drawio-service.ts      # Draw.io service integration for diagram tools
   lint/                  # Extensible Lint framework (LintRunner, pluggable checkers)
   agents.ts              # Role definitions, system prompts, tool usage constraints
@@ -248,6 +252,8 @@ npm run build
 - Backend sync URL: `STAR_OFFICE_UI_URL` (default `http://127.0.0.1:19000`)
 - Agent join key: `STAR_OFFICE_JOIN_KEY`
 - Creator service URL: `CREATOR_SERVICE_URL` (default `http://localhost:8080`)
+- Image service URL: `IMAGE_SERVICE_URL` (default `http://localhost:8089`)
+- Video service URL: `VIDEO_SERVICE_URL` (default `http://localhost:8084`)
 - Draw.io service URL: `DRAWIO_SERVICE_URL` (default `http://localhost:8082`)
 
 ## 9. Debugging Tips

@@ -22,6 +22,8 @@
 - 游戏成品管理（支持 HTML 成品或打包文件提交、预览下载、版本状态）
 - Blender 建模链路（creator service + `blender_*` 工具，覆盖 project/几何体/材质/导出/文件操作）
 - Draw.io 图表链路（drawio-service + drawio-export，支持图表 CRUD 与导出）
+- 图片处理链路（image-service + ImageMagick + `image_*` 工具，支持 12 种图片操作）
+- 视频处理链路（video-service + FFmpeg + `video_*` 工具，支持 17 种视频操作）
 - 静态分析（可扩展 Lint 框架，支持 HTML 结构、HTTP 方法安全、JS 安全、SonarQube 质量扫描等可插拔检查器，覆盖 HTML 模式与 ZIP 模式）
 - 游戏预览支持下载 SonarQube 扫描报告
 - Agent 长期记忆（保存/查询/清理）
@@ -120,6 +122,8 @@ npm run server
 | `SONARQUBE_TOKEN` | `sonarpass` | `sonarqube` 检查器使用的 SonarQube Token |
 | `SCANNER_SERVICE_URL` | `http://localhost:8081` | SonarQube scanner 微服务地址 |
 | `DRAWIO_SERVICE_URL` | `http://localhost:8082` | Draw.io 服务基础地址（图表工具调用） |
+| `IMAGE_SERVICE_URL` | `http://localhost:8089` | ImageMagick 图片处理服务基础地址 |
+| `VIDEO_SERVICE_URL` | `http://localhost:8084` | FFmpeg 视频处理服务基础地址 |
 
 ## Docker 部署
 
@@ -140,6 +144,7 @@ game-studio/
 │   ├── minio-client.ts     # MinIO 客户端封装
 │   ├── file-storage.ts     # 文件存储（MinIO）操作
 │   ├── image-service.ts    # ImageMagick 图片处理服务客户端
+│   ├── video-service.ts    # FFmpeg 视频处理服务客户端
 │   ├── creator-service.ts  # Blender creator 服务客户端
 │   ├── drawio-service.ts   # Draw.io 图表服务客户端
 │   ├── sonar-scanner-service.ts # SonarQube scanner 服务客户端
@@ -168,6 +173,7 @@ game-studio/
 ├── drawio-service/         # Draw.io 图表微服务（FastAPI + draw.io export）
 ├── sonar-scanner-service/  # SonarQube scanner 微服务（FastAPI + sonar-scanner CLI）
 ├── image-service/          # ImageMagick 图片处理微服务
+├── video-service/          # FFmpeg 视频处理微服务
 ├── tests/                  # E2E 测试套件（Playwright + Allure）
 ├── scripts/                # 工具脚本
 ├── .agent/                 # Agent 配置、规范、技能、记忆
@@ -251,7 +257,7 @@ game-studio/
 | SPEC-006 | 游戏提交 Lint 管道重构 | ✅ 已实现 |
 | SPEC-007 | 基于问卷的游戏策划案提交 | ✅ 已实现 |
 | SPEC-008 | ImageMagick 图片处理微服务 | ✅ 已实现 |
-| SPEC-009 | FFmpeg 视频处理微服务（供 engineer agent 制作游戏中视频素材） | 🚧 设计中 |
+| SPEC-009 | FFmpeg 视频处理微服务（供 engineer agent 制作游戏中视频素材） | ✅ 已实现 |
 | SPEC-010 | Phaser Mobile 游戏工程规范 | ✅ 已实现 |
 | SPEC-011 | 游戏构建微服务 | 🚧 设计中 |
 | SPEC-012 | 游戏运行/伺服微服务 | 🚧 设计中 |

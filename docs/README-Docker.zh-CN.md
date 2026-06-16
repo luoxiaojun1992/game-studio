@@ -54,6 +54,7 @@ docker compose logs -f creator
 - **MinIO API**: http://localhost:9000
 - **SonarQube**: http://localhost:9002
 - **Creator 服务健康检查**: http://localhost:8080/health
+- **Video 服务健康检查**: http://localhost:8084/health
 - **Image 服务健康检查**: http://localhost:8089/health
 - **Draw.io 服务健康检查**: http://localhost:8082/health
 - **Draw.io 导出服务**: http://localhost:8083
@@ -88,10 +89,10 @@ docker compose down -v
                     │             │             │               │
                     ▼             ▼             ▼               ▼
               ┌──────────┐ ┌───────────┐ ┌──────────┐ ┌─────────────┐
-              │ creator  │ │  image-   │ │ drawio-  │ │  scanner    │
-              │(FastAPI+ │ │  service  │ │ service  │ │(FastAPI+    │
-              │ Blender) │ │(ImageMagi│ │(FastAPI) │ │ SonarScannr)│
-              │  :8080   │ │  :8089    │ │  :8082    │ │  :8081      │
+              │ creator  │ │  image-   │ │  video-   │ │ drawio-  │ │  scanner    │
+              │(FastAPI+ │ │  service  │ │  service  │ │ service  │ │(FastAPI+    │
+              │ Blender) │ │(ImageMagi│ │ (FFmpeg)  │ │(FastAPI) │ │ SonarScannr)│
+              │  :8080   │ │  :8089    │ │  :8084    │ │  :8082    │ │  :8081      │
               └──────────┘ └───────────┘ └─────┬─────┘ └──────┬──────┘
                                                │              │
                                                ▼              ▼
@@ -112,6 +113,7 @@ docker compose down -v
 - `minio-data`: MinIO 对象存储数据（游戏文件、提案、附件）
 - `creator-data`: Creator 服务 Blender 工作目录数据
 - `image-data`: Image 服务工作目录数据
+- `video-data`: Video 服务工作目录数据
 - `scanner-data`: SonarQube scanner 工作目录数据
 - `drawio-data`: Draw.io 服务工作目录数据
 - `sonarqube-data`: SonarQube 数据
@@ -146,6 +148,7 @@ docker volume inspect game-dev-studio_studio-data
 | `CREATOR_PORT` | 8080 | Creator 服务对外端口 |
 | `CREATOR_SERVICE_URL` | `http://creator:8080` | 后端访问 Creator 的内部服务地址 |
 | `IMAGE_SERVICE_PORT` | 8089 | Image 服务对外端口 |
+| `VIDEO_SERVICE_PORT` | 8084 | Video 服务对外端口 |
 | `DRAWIO_SERVICE_PORT` | 8082 | Draw.io 服务对外端口 |
 | `DRAWIO_EXPORT_PORT` | 8083 | Draw.io 导出服务对外端口 |
 | `SONARQUBE_PORT` | 9002 | SonarQube 服务端口（映射到容器 9000） |

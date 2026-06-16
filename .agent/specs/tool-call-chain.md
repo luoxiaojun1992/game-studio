@@ -410,6 +410,7 @@ const description = toolMeta?.description || '';
 3. `tests/ui/coverage/cases.json` — 追加 UI-XXX 到 `requiredCaseIds` 数组
 4. `.agent/specs/tool-call-chain.md` — 更新本文档测试策略章节
 5. `.agent/specs/INDEX.md` — 新增 SPEC-019 索引条目
+- **实现后强制使用 doc-sync skill 执行全量文档检查**：加载 `.agent/skills/doc-sync/SKILL.md` 按 A→G 区域遍历检查所有文档一致性
 
 ## 详细 Debug 日志规范
 

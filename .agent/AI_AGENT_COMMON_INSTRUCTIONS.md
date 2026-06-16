@@ -47,6 +47,8 @@ export const AGENT_IDS = ['engineer', 'architect', 'game_designer', 'biz_designe
 - 工具通过 `mcpServers` 参数传给 `query()`
 - 工具名前缀为 `mcp__studio_tools__`（下划线）
 - 建模工具已并入单一 studio-tools（`blender_*`），并仅对 `engineer` 角色开放
+- 图片处理工具（`image_*`）通过 `image-service.ts` 调用 image 微服务，12 个操作
+- 视频处理工具（`video_*`）通过 `video-service.ts` 调用 video 微服务，17 个操作
 - draw.io 工具（`drawio_*`）覆盖图表 CRUD/导出，`drawio_list_elements` 支持元素分页检索
 - 记忆通过 `getMemorySummaryForPrompt()` 注入 systemPrompt
 
@@ -58,13 +60,15 @@ export const AGENT_IDS = ['engineer', 'architect', 'game_designer', 'biz_designe
 | Agent 定义 | `server/agents.ts` |
 | 自定义工具 | `server/tools.ts` |
 | Creator 集成 | `server/creator-service.ts`、`creator/` |
+| Image 处理 | `server/image-service.ts`、`image-service/` |
+| Video 处理 | `server/video-service.ts`、`video-service/` |
 | Draw.io 集成 | `server/drawio-service.ts`、`drawio-service/` |
 | 数据库操作 | `server/db.ts` |
 | 文件存储 | `server/file-storage.ts`、`server/minio-client.ts` |
 | 提案附件 API | `server/proposal-attachments-api.ts` |
 | Lint 框架 | `server/lint/`（LintRunner + 可插拔检查器：SonarQube + GameEngineeringChecker） |
 | SonarQube 客户端 | `server/lint/checkers/sonar/sonarqube-client.ts`、`server/lint/checkers/sonar/sonarqube-token.ts` |
-| GameEngineering Checker | `server/lint/checkers/game-engineering/`（14 条规则：8 公共 + 6 H5） |
+| GameEngineering Checker | `server/lint/checkers/game-engineering/`（20 条规则：8 公共 + 6 H5 + 6 phaser-mobile） |
 | Scanner 服务客户端 | `server/sonar-scanner-service.ts` |
 | SSE 广播 | `server/sse-broadcaster.ts` |
 | Express 路由 | `server/index.ts` |
@@ -104,7 +108,8 @@ export const AGENT_IDS = ['engineer', 'architect', 'game_designer', 'biz_designe
 ### 数据库
 - 使用 `better-sqlite3` 的同步 API
 - 核心业务表通过 `project_id` 进行项目隔离（部分表通过会话/关联键间接归属项目）
-- 关键表：`projects`、`project_settings`、`agent_sessions`、`proposals`、`games`、`handoffs`、`task_board_tasks`、`agent_memories`、`logs`、`commands`、`permission_requests`
+- 关键表：`projects`、`project_settings`、`agent_sessions`、`proposals`、`games`、`handoffs`、`task_board_tasks`、`agent_memories`、`logs`、`commands`、`permission_requests`、`game_engineering_specs`
+- 微服务项目表：`blender_projects`、`drawio_projects`、`image_projects`、`video_projects`、`proposal_attachments`、`file_storages`
 - `games` 已移除 `author_agent_id`；`logs`/`commands`/`permission_requests` 均要求 `updated_at`
 
 ### 环境变量
@@ -118,6 +123,9 @@ PORT=3000                                  # 后端端口
 STAR_OFFICE_UI_URL=http://127.0.0.1:19000  # Star-Office-UI 地址
 SONARQUBE_PORT=9002                        # SonarQube 服务端口
 SONARQUBE_TOKEN=sonarpass                  # SonarQube 检查器访问 token（未配时使用默认值）
+CREATOR_SERVICE_URL=http://localhost:8080   # Creator (Blender) 服务地址
+IMAGE_SERVICE_URL=http://localhost:8089    # ImageMagick 图片处理服务地址
+VIDEO_SERVICE_URL=http://localhost:8084    # FFmpeg 视频处理服务地址
 SCANNER_SERVICE_URL=http://localhost:8081  # SonarQube scanner 微服务地址
 DRAWIO_SERVICE_URL=http://localhost:8082   # Draw.io 服务地址
 ```

@@ -939,11 +939,6 @@
     "ast_hash": "851e6a5f721527af7f4665a444a52b41",
     "semantic_hash": "851e6a5f721527af7f4665a444a52b41"
   },
-  ".agent/specs/session-end-handoff-check-research.md": {
-    "mtime": 1781099546.218897,
-    "ast_hash": "0a5863632a67eece8feaffb4a2dee25d",
-    "semantic_hash": "0a5863632a67eece8feaffb4a2dee25d"
-  },
   ".agent/specs/test-service.md": {
     "mtime": 1780907682.188237,
     "ast_hash": "6b1b573ccbf5662f69029f75b08e6d2d",
@@ -1208,5 +1203,1365 @@
     "mtime": 1781166726.1629846,
     "ast_hash": "0dad167a95bdb389f02fecffb60b1bc8",
     "semantic_hash": ""
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/skills/architecture-diagram/scripts/center_text.py": {
+    "mtime": 1781579741.508152,
+    "ast_hash": "ffc7aa43f592d052755eb1ad9701d1f4",
+    "semantic_hash": "ffc7aa43f592d052755eb1ad9701d1f4"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/skills/architecture-diagram/scripts/translate_svg.py": {
+    "mtime": 1781579741.5091605,
+    "ast_hash": "a15aef785e3a0856e6c045c5d7ed9855",
+    "semantic_hash": "a15aef785e3a0856e6c045c5d7ed9855"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/skills/ci-verification/scripts/check-ci.sh": {
+    "mtime": 1781019707.52477,
+    "ast_hash": "d8795b368ab56ce98235688165232890",
+    "semantic_hash": "d8795b368ab56ce98235688165232890"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/skills/ci-verification/scripts/get-logs.sh": {
+    "mtime": 1781019707.5253556,
+    "ast_hash": "11ea23c50315e8abf6a23e0e01be0e4c",
+    "semantic_hash": "11ea23c50315e8abf6a23e0e01be0e4c"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/skills/ci-verification/scripts/wait-for-ci.sh": {
+    "mtime": 1781019707.525855,
+    "ast_hash": "72dfc62a6ec0bca61018e6006aff7947",
+    "semantic_hash": "72dfc62a6ec0bca61018e6006aff7947"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/skills/code-lint/scripts/check_backticks.py": {
+    "mtime": 1781598345.6993458,
+    "ast_hash": "4587110c87d8c57741f68b36e6c98735",
+    "semantic_hash": "4587110c87d8c57741f68b36e6c98735"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/skills/promo-video-builder/examples/arch-config.json": {
+    "mtime": 1780986339.973284,
+    "ast_hash": "b8a4b34453b2bed496b98c7ef35259ef",
+    "semantic_hash": "b8a4b34453b2bed496b98c7ef35259ef"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/skills/promo-video-builder/examples/logo-config.json": {
+    "mtime": 1780986339.9737444,
+    "ast_hash": "5d80776416dcbdf5e7108faf4989c501",
+    "semantic_hash": "5d80776416dcbdf5e7108faf4989c501"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/skills/promo-video-builder/examples/pipeline-config.json": {
+    "mtime": 1780986339.9742815,
+    "ast_hash": "6358030e87b3994c0b43bd3fb73f70bb",
+    "semantic_hash": "6358030e87b3994c0b43bd3fb73f70bb"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/skills/promo-video-builder/scripts/compose_video.py": {
+    "mtime": 1780986339.9749553,
+    "ast_hash": "ff3b60d91c883895deadaee674df5311",
+    "semantic_hash": "ff3b60d91c883895deadaee674df5311"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/skills/promo-video-builder/scripts/gen_arch_html.py": {
+    "mtime": 1780986339.9753966,
+    "ast_hash": "40cf5e93a59780e627b9f4676d0e3331",
+    "semantic_hash": "40cf5e93a59780e627b9f4676d0e3331"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/skills/promo-video-builder/scripts/gen_logo_html.py": {
+    "mtime": 1780986339.9758549,
+    "ast_hash": "1130fcb42f9dfa834d6b6f625a8694cc",
+    "semantic_hash": "1130fcb42f9dfa834d6b6f625a8694cc"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/skills/promo-video-builder/scripts/gen_pipeline_html.py": {
+    "mtime": 1780986339.9762251,
+    "ast_hash": "75624f8f1a3ca39fabbd54875c0f76cf",
+    "semantic_hash": "75624f8f1a3ca39fabbd54875c0f76cf"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/skills/promo-video-builder/scripts/gen_voiceover.py": {
+    "mtime": 1780986339.9767456,
+    "ast_hash": "26b166cdb9411255d9d6eb0248273abd",
+    "semantic_hash": "26b166cdb9411255d9d6eb0248273abd"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/skills/promo-video-builder/scripts/mix_audio.py": {
+    "mtime": 1780986339.9773624,
+    "ast_hash": "f11c5a17b10fa2b35f87e88f1155ba8c",
+    "semantic_hash": "f11c5a17b10fa2b35f87e88f1155ba8c"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/skills/svg-to-png/scripts/convert.py": {
+    "mtime": 1781507887.4035602,
+    "ast_hash": "6ce7635f020ec22e300a00bb00a32652",
+    "semantic_hash": "6ce7635f020ec22e300a00bb00a32652"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/creator/app/__init__.py": {
+    "mtime": 1776841995.174155,
+    "ast_hash": "51c9bae3d4edf5a506085e65405638cc",
+    "semantic_hash": "51c9bae3d4edf5a506085e65405638cc"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/creator/app/blender.py": {
+    "mtime": 1777541996.1177726,
+    "ast_hash": "f6ee4660d8b20d93dc67c7e1323f1795",
+    "semantic_hash": "f6ee4660d8b20d93dc67c7e1323f1795"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/creator/app/main.py": {
+    "mtime": 1776841995.1755724,
+    "ast_hash": "16d31a0bcadc6833c61d1499d8949c28",
+    "semantic_hash": "16d31a0bcadc6833c61d1499d8949c28"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/creator/app/operations.py": {
+    "mtime": 1778049599.3325975,
+    "ast_hash": "7ad4c1b30208121ca690d7d3a79ce596",
+    "semantic_hash": "7ad4c1b30208121ca690d7d3a79ce596"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/creator/app/routers/__init__.py": {
+    "mtime": 1776841995.1767874,
+    "ast_hash": "e9151bc9598a9062ff547f0bdfcbbe63",
+    "semantic_hash": "e9151bc9598a9062ff547f0bdfcbbe63"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/creator/app/routers/blender.py": {
+    "mtime": 1778049599.3334763,
+    "ast_hash": "3b158b50785e2802b7a81ef1f52dcd5c",
+    "semantic_hash": "3b158b50785e2802b7a81ef1f52dcd5c"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/creator/app/routers/file.py": {
+    "mtime": 1778049599.3342083,
+    "ast_hash": "b22787dd18f13be31e0eee3e5ffe01d3",
+    "semantic_hash": "b22787dd18f13be31e0eee3e5ffe01d3"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/creator/app/routers/project.py": {
+    "mtime": 1780907682.1891353,
+    "ast_hash": "2e5e2f884b201c782965d0bb27692ec0",
+    "semantic_hash": "2e5e2f884b201c782965d0bb27692ec0"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/creator/app/safe_path.py": {
+    "mtime": 1778049599.335491,
+    "ast_hash": "cb3cab3a1325edcc143834f09069691f",
+    "semantic_hash": "cb3cab3a1325edcc143834f09069691f"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/creator/app/schemas.py": {
+    "mtime": 1778049599.3362367,
+    "ast_hash": "1520e47496c956d3b3e6039d763e0dcb",
+    "semantic_hash": "1520e47496c956d3b3e6039d763e0dcb"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/drawio-service/app/__init__.py": {
+    "mtime": 1777358553.3218267,
+    "ast_hash": "bc77c61deaa44258fe99f375d3694b1f",
+    "semantic_hash": "bc77c61deaa44258fe99f375d3694b1f"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/drawio-service/app/diagram_generator.py": {
+    "mtime": 1777358553.32559,
+    "ast_hash": "4f32df352e3a0bc00d94be908baebe75",
+    "semantic_hash": "4f32df352e3a0bc00d94be908baebe75"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/drawio-service/app/main.py": {
+    "mtime": 1777539081.6465812,
+    "ast_hash": "15fd15417297f5d2a46fb008da9b3e50",
+    "semantic_hash": "15fd15417297f5d2a46fb008da9b3e50"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/drawio-service/app/routers/__init__.py": {
+    "mtime": 1777358553.334742,
+    "ast_hash": "b4a3251f9534effffb2ba77f29e7d129",
+    "semantic_hash": "b4a3251f9534effffb2ba77f29e7d129"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/drawio-service/app/routers/diagram.py": {
+    "mtime": 1778049599.3374875,
+    "ast_hash": "86a0cf75bd984539bc765c6d966536c4",
+    "semantic_hash": "86a0cf75bd984539bc765c6d966536c4"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/drawio-service/app/routers/export.py": {
+    "mtime": 1777358553.3362072,
+    "ast_hash": "e26ba443c0edc87500a2d1997e5a520a",
+    "semantic_hash": "e26ba443c0edc87500a2d1997e5a520a"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/drawio-service/app/routers/project.py": {
+    "mtime": 1780907682.1904058,
+    "ast_hash": "43cec94e4b809e18c23e40385e8822f4",
+    "semantic_hash": "43cec94e4b809e18c23e40385e8822f4"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/drawio-service/app/safe_path.py": {
+    "mtime": 1778049599.3389282,
+    "ast_hash": "1230b84f6d16042eaef90631c5a8f089",
+    "semantic_hash": "1230b84f6d16042eaef90631c5a8f089"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/drawio-service/app/schemas.py": {
+    "mtime": 1778049599.3405058,
+    "ast_hash": "216f56ad7c8592fb70a580a236e07cc1",
+    "semantic_hash": "216f56ad7c8592fb70a580a236e07cc1"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/image-service/app/__init__.py": {
+    "mtime": 1780907682.1910698,
+    "ast_hash": "30b68635ca997a1e0d28f560b6d26609",
+    "semantic_hash": "30b68635ca997a1e0d28f560b6d26609"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/image-service/app/imagemagick.py": {
+    "mtime": 1780907682.1912916,
+    "ast_hash": "ffc2bacc96a39231917ed5164446ebfb",
+    "semantic_hash": "ffc2bacc96a39231917ed5164446ebfb"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/image-service/app/main.py": {
+    "mtime": 1780907682.1915152,
+    "ast_hash": "f0c90ae2c9505b6052a55104c1a553a0",
+    "semantic_hash": "f0c90ae2c9505b6052a55104c1a553a0"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/image-service/app/operations.py": {
+    "mtime": 1780907682.1918547,
+    "ast_hash": "ac070b1f9c5220494ea42d4d68966973",
+    "semantic_hash": "ac070b1f9c5220494ea42d4d68966973"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/image-service/app/routers/__init__.py": {
+    "mtime": 1780907682.1924572,
+    "ast_hash": "e9151bc9598a9062ff547f0bdfcbbe63",
+    "semantic_hash": "e9151bc9598a9062ff547f0bdfcbbe63"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/image-service/app/routers/file.py": {
+    "mtime": 1780907682.1927865,
+    "ast_hash": "9a1157b1bb0aa451341a5b289a0db000",
+    "semantic_hash": "9a1157b1bb0aa451341a5b289a0db000"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/image-service/app/routers/image.py": {
+    "mtime": 1780907682.193298,
+    "ast_hash": "bd1b37f711a09c324e035d1f8476c6d8",
+    "semantic_hash": "bd1b37f711a09c324e035d1f8476c6d8"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/image-service/app/routers/project.py": {
+    "mtime": 1780907682.1940067,
+    "ast_hash": "f77ec924d7fe35f0c7408a79f6c5a237",
+    "semantic_hash": "f77ec924d7fe35f0c7408a79f6c5a237"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/image-service/app/safe_path.py": {
+    "mtime": 1780907682.194302,
+    "ast_hash": "c86290c5f6e910750a9288c1ba6dee12",
+    "semantic_hash": "c86290c5f6e910750a9288c1ba6dee12"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/image-service/app/schemas.py": {
+    "mtime": 1780907682.1947908,
+    "ast_hash": "b8fb25bc55302b81c468f7ba26c70b4e",
+    "semantic_hash": "b8fb25bc55302b81c468f7ba26c70b4e"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/package.json": {
+    "mtime": 1778832211.0101647,
+    "ast_hash": "60f521d226b1d87e20691286505f3b23",
+    "semantic_hash": "60f521d226b1d87e20691286505f3b23"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/postcss.config.js": {
+    "mtime": 1775108230.9703188,
+    "ast_hash": "ef3ba2a81ba19f8ea5ddf625521e96f0",
+    "semantic_hash": "ef3ba2a81ba19f8ea5ddf625521e96f0"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/scripts/loc.sh": {
+    "mtime": 1780559172.9046905,
+    "ast_hash": "f0599f8ece2165f61c6c110685a1f089",
+    "semantic_hash": "f0599f8ece2165f61c6c110685a1f089"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/agent-manager.d.ts": {
+    "mtime": 1776829964.6598165,
+    "ast_hash": "537b6d9628c7c7ba299816dfb36b3079",
+    "semantic_hash": "537b6d9628c7c7ba299816dfb36b3079"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/agent-manager.js": {
+    "mtime": 1781149389.0426974,
+    "ast_hash": "1a110a6e6ff88d16ea7cc0ecc553ee8e",
+    "semantic_hash": "1a110a6e6ff88d16ea7cc0ecc553ee8e"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/agent-manager.ts": {
+    "mtime": 1781598345.711122,
+    "ast_hash": "a3ea3f27e075312ef584d3cd375ad527",
+    "semantic_hash": "a3ea3f27e075312ef584d3cd375ad527"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/agents.d.ts": {
+    "mtime": 1776246504.9780784,
+    "ast_hash": "e55597b1467c18766fb2a0faff6c0e59",
+    "semantic_hash": "e55597b1467c18766fb2a0faff6c0e59"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/agents.js": {
+    "mtime": 1781147662.2476723,
+    "ast_hash": "7c3f3b4dc1749ea6efb702880763f5c0",
+    "semantic_hash": "7c3f3b4dc1749ea6efb702880763f5c0"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/agents.ts": {
+    "mtime": 1781598345.7120159,
+    "ast_hash": "377521bb64241f2e0fd2c909cdbff2ff",
+    "semantic_hash": "377521bb64241f2e0fd2c909cdbff2ff"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/creator-service.d.ts": {
+    "mtime": 1781147662.4650664,
+    "ast_hash": "3c2c568791cd5f223c44e9251c67ce62",
+    "semantic_hash": "3c2c568791cd5f223c44e9251c67ce62"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/creator-service.js": {
+    "mtime": 1781149389.1462781,
+    "ast_hash": "afe88814864ed38ee073b0cf2875d5e7",
+    "semantic_hash": "afe88814864ed38ee073b0cf2875d5e7"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/creator-service.ts": {
+    "mtime": 1780907682.197094,
+    "ast_hash": "095128bf2bc49658e01d411fba1708d2",
+    "semantic_hash": "095128bf2bc49658e01d411fba1708d2"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/db.d.ts": {
+    "mtime": 1781149389.214333,
+    "ast_hash": "4bd36ebaa4ba53387e4a3d23d3b8a2c9",
+    "semantic_hash": "4bd36ebaa4ba53387e4a3d23d3b8a2c9"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/db.js": {
+    "mtime": 1781149389.2108016,
+    "ast_hash": "75d0e9c1a88f442a3fac779ee1763d36",
+    "semantic_hash": "75d0e9c1a88f442a3fac779ee1763d36"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/db.ts": {
+    "mtime": 1781598345.7132566,
+    "ast_hash": "0baf1584c69893192715c984be85ff55",
+    "semantic_hash": "0baf1584c69893192715c984be85ff55"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/drawio-service.d.ts": {
+    "mtime": 1781147662.45805,
+    "ast_hash": "75eea5461a0041f8f6ab991ef37a9e23",
+    "semantic_hash": "75eea5461a0041f8f6ab991ef37a9e23"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/drawio-service.js": {
+    "mtime": 1781149389.152782,
+    "ast_hash": "b71a8c61d1b63951d647b8c9ac3282c8",
+    "semantic_hash": "b71a8c61d1b63951d647b8c9ac3282c8"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/drawio-service.ts": {
+    "mtime": 1780907682.1981275,
+    "ast_hash": "8ac58f4bd4c1ab8d2462cb263eb3e1f8",
+    "semantic_hash": "8ac58f4bd4c1ab8d2462cb263eb3e1f8"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/file-storage.d.ts": {
+    "mtime": 1776829964.697587,
+    "ast_hash": "e995d910203bea4cee0fa3add5595fcb",
+    "semantic_hash": "e995d910203bea4cee0fa3add5595fcb"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/file-storage.js": {
+    "mtime": 1781149389.1239808,
+    "ast_hash": "99c40cc96eee5d6b2a42e3255de890ac",
+    "semantic_hash": "99c40cc96eee5d6b2a42e3255de890ac"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/file-storage.ts": {
+    "mtime": 1776696236.9840455,
+    "ast_hash": "42dda85b35c0b84a68381922e3f11c48",
+    "semantic_hash": "42dda85b35c0b84a68381922e3f11c48"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/image-service.d.ts": {
+    "mtime": 1781147662.4518929,
+    "ast_hash": "100329df44ea018f2f8a0c13c463b589",
+    "semantic_hash": "100329df44ea018f2f8a0c13c463b589"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/image-service.js": {
+    "mtime": 1781149389.170242,
+    "ast_hash": "ff9211ff1272ba49246c5069db5593fb",
+    "semantic_hash": "ff9211ff1272ba49246c5069db5593fb"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/image-service.ts": {
+    "mtime": 1780907682.1984236,
+    "ast_hash": "660277dd243dfa3a1c8e281f679c0cd7",
+    "semantic_hash": "660277dd243dfa3a1c8e281f679c0cd7"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/index.d.ts": {
+    "mtime": 1776246505.1134408,
+    "ast_hash": "e2ebd7ddedcadeeadbf819c35985c768",
+    "semantic_hash": "e2ebd7ddedcadeeadbf819c35985c768"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/index.js": {
+    "mtime": 1781149389.1086147,
+    "ast_hash": "4d0b2417992838883693e9770ea66f1b",
+    "semantic_hash": "4d0b2417992838883693e9770ea66f1b"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/index.ts": {
+    "mtime": 1780410830.581014,
+    "ast_hash": "dbb33b3d939e91b3f4db0a29fa1b661d",
+    "semantic_hash": "dbb33b3d939e91b3f4db0a29fa1b661d"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/lint/checkers/game-engineering/index.ts": {
+    "mtime": 1780559172.9077148,
+    "ast_hash": "8ba565fd927eb919f5ff76a096a0c4c5",
+    "semantic_hash": "8ba565fd927eb919f5ff76a096a0c4c5"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/lint/checkers/game-engineering/rules/common/asset-metadata-exists.ts": {
+    "mtime": 1779167542.0161896,
+    "ast_hash": "dacebd5aefbf015984788ae9bc5ad4d7",
+    "semantic_hash": "dacebd5aefbf015984788ae9bc5ad4d7"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/lint/checkers/game-engineering/rules/common/asset-metadata-schema.ts": {
+    "mtime": 1779167542.0168412,
+    "ast_hash": "a8c9e79b05b26cbdc0777d0259dc79ed",
+    "semantic_hash": "a8c9e79b05b26cbdc0777d0259dc79ed"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/lint/checkers/game-engineering/rules/common/html-body-not-empty.ts": {
+    "mtime": 1779167542.017452,
+    "ast_hash": "63aa7df681663eae79179aa35098afa2",
+    "semantic_hash": "63aa7df681663eae79179aa35098afa2"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/lint/checkers/game-engineering/rules/common/html-body.ts": {
+    "mtime": 1779167542.0180054,
+    "ast_hash": "aadb8a07b54b924a8ec830cc4c4467b0",
+    "semantic_hash": "aadb8a07b54b924a8ec830cc4c4467b0"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/lint/checkers/game-engineering/rules/common/html-charset.ts": {
+    "mtime": 1779167542.018788,
+    "ast_hash": "dbb4b9c990b166d75d02577ee94c9656",
+    "semantic_hash": "dbb4b9c990b166d75d02577ee94c9656"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/lint/checkers/game-engineering/rules/common/html-doctype.ts": {
+    "mtime": 1779167542.0191545,
+    "ast_hash": "9b7cbed32ee3be67cac70380fdba4f72",
+    "semantic_hash": "9b7cbed32ee3be67cac70380fdba4f72"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/lint/checkers/game-engineering/rules/common/html-head.ts": {
+    "mtime": 1779167542.0195458,
+    "ast_hash": "c0c94f3d741955c85fc0bd9621c2e153",
+    "semantic_hash": "c0c94f3d741955c85fc0bd9621c2e153"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/lint/checkers/game-engineering/rules/common/html-root.ts": {
+    "mtime": 1779167542.019968,
+    "ast_hash": "22b4e20f0056989529ca8ee089d3f5e8",
+    "semantic_hash": "22b4e20f0056989529ca8ee089d3f5e8"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/lint/checkers/game-engineering/rules/common/utils.ts": {
+    "mtime": 1780559172.9084911,
+    "ast_hash": "a02256e7f7a83ca03a2b80406e499c6a",
+    "semantic_hash": "a02256e7f7a83ca03a2b80406e499c6a"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/lint/checkers/game-engineering/rules/h5/asset-manifest-exists.ts": {
+    "mtime": 1779167542.0209296,
+    "ast_hash": "5ec2d8c1c9e56af8d58b2c8048de2536",
+    "semantic_hash": "5ec2d8c1c9e56af8d58b2c8048de2536"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/lint/checkers/game-engineering/rules/h5/asset-manifest-schema.ts": {
+    "mtime": 1779167542.0215797,
+    "ast_hash": "88b1bf2a3fac4288afac06d95bbf8c87",
+    "semantic_hash": "88b1bf2a3fac4288afac06d95bbf8c87"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/lint/checkers/game-engineering/rules/h5/asset-resource-relative-path.ts": {
+    "mtime": 1779167542.0223498,
+    "ast_hash": "43864c1da25845f264e38b73221a5ff3",
+    "semantic_hash": "43864c1da25845f264e38b73221a5ff3"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/lint/checkers/game-engineering/rules/h5/lifecycle-exports.ts": {
+    "mtime": 1779167542.0230803,
+    "ast_hash": "c9c314b3ae397a23cc73fced4a8a31e9",
+    "semantic_hash": "c9c314b3ae397a23cc73fced4a8a31e9"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/lint/checkers/game-engineering/rules/h5/lifecycle-script-tag.ts": {
+    "mtime": 1779167542.023571,
+    "ast_hash": "057e5a5f89c13a98d78c67e77e8fc27d",
+    "semantic_hash": "057e5a5f89c13a98d78c67e77e8fc27d"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/lint/checkers/game-engineering/rules/h5/lifecycle-window-global.ts": {
+    "mtime": 1779167542.0245109,
+    "ast_hash": "43ffe0681ac5026a3532d71e9130099c",
+    "semantic_hash": "43ffe0681ac5026a3532d71e9130099c"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/lint/checkers/game-engineering/rules/phaser-mobile/asset-capacitor-config.ts": {
+    "mtime": 1780559172.9095955,
+    "ast_hash": "b01f6bf32accdcd69c03223d89066042",
+    "semantic_hash": "b01f6bf32accdcd69c03223d89066042"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/lint/checkers/game-engineering/rules/phaser-mobile/asset-resource-relative-path.ts": {
+    "mtime": 1780559172.910099,
+    "ast_hash": "bdb178be05edaff93aec799cec8435d6",
+    "semantic_hash": "bdb178be05edaff93aec799cec8435d6"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/lint/checkers/game-engineering/rules/phaser-mobile/lifecycle-phaser-game.ts": {
+    "mtime": 1780559172.9107082,
+    "ast_hash": "dc37f00091cf5b6277a4fa89c2b8ea4f",
+    "semantic_hash": "dc37f00091cf5b6277a4fa89c2b8ea4f"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/lint/checkers/game-engineering/rules/phaser-mobile/lifecycle-phaser-scene-create.ts": {
+    "mtime": 1780559172.9112558,
+    "ast_hash": "7105ebb59ba911aa37f464f8be1837f8",
+    "semantic_hash": "7105ebb59ba911aa37f464f8be1837f8"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/lint/checkers/game-engineering/rules/phaser-mobile/lifecycle-phaser-scene-preload.ts": {
+    "mtime": 1780559172.9120457,
+    "ast_hash": "48594c8672a656656297ad15b9338d01",
+    "semantic_hash": "48594c8672a656656297ad15b9338d01"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/lint/checkers/game-engineering/rules/phaser-mobile/lifecycle-phaser-script-tag.ts": {
+    "mtime": 1780559172.9124968,
+    "ast_hash": "8e3c21eb2c67309ce918f2e05829bbc6",
+    "semantic_hash": "8e3c21eb2c67309ce918f2e05829bbc6"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/lint/checkers/game-engineering/rules/types.ts": {
+    "mtime": 1779167542.0255742,
+    "ast_hash": "f0a0ef6840fb5106363b2e5839c4d818",
+    "semantic_hash": "f0a0ef6840fb5106363b2e5839c4d818"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/lint/checkers/index.ts": {
+    "mtime": 1779167542.0266125,
+    "ast_hash": "b81dd1cc6ad228edaf17113d090e02ef",
+    "semantic_hash": "b81dd1cc6ad228edaf17113d090e02ef"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/lint/checkers/sonar/sonarqube-client.ts": {
+    "mtime": 1777277954.9148343,
+    "ast_hash": "4f40f9e6853bb35173a7f50a2db76404",
+    "semantic_hash": "4f40f9e6853bb35173a7f50a2db76404"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/lint/checkers/sonar/sonarqube.ts": {
+    "mtime": 1779167542.027903,
+    "ast_hash": "290d56454b7fc3948df1b3724b414b47",
+    "semantic_hash": "290d56454b7fc3948df1b3724b414b47"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/lint/index.ts": {
+    "mtime": 1779167542.0290427,
+    "ast_hash": "d1e818562be997932cb41d9cd1135691",
+    "semantic_hash": "d1e818562be997932cb41d9cd1135691"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/lint/types.ts": {
+    "mtime": 1779167542.030078,
+    "ast_hash": "e6b10ca157ce54124bd99a12f7cdeda2",
+    "semantic_hash": "e6b10ca157ce54124bd99a12f7cdeda2"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/minio-client.d.ts": {
+    "mtime": 1776829964.7154863,
+    "ast_hash": "a1bded1be3ce9fc659d9388336dc1008",
+    "semantic_hash": "a1bded1be3ce9fc659d9388336dc1008"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/minio-client.js": {
+    "mtime": 1781147662.543242,
+    "ast_hash": "3b06ad78aa42821def749b65baeb485d",
+    "semantic_hash": "3b06ad78aa42821def749b65baeb485d"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/minio-client.ts": {
+    "mtime": 1778917893.852147,
+    "ast_hash": "b720974fced5a397f745699d670a72e5",
+    "semantic_hash": "b720974fced5a397f745699d670a72e5"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/modeling-tool.d.ts": {
+    "mtime": 1776829964.5830245,
+    "ast_hash": "6357f23f9b587f02b76395cf46c1fdd4",
+    "semantic_hash": "6357f23f9b587f02b76395cf46c1fdd4"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/modeling-tool.js": {
+    "mtime": 1776829964.582132,
+    "ast_hash": "9c4052fa87ce88fb5d935f1915c41559",
+    "semantic_hash": "9c4052fa87ce88fb5d935f1915c41559"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/proposal-attachments-api.d.ts": {
+    "mtime": 1777535495.9675117,
+    "ast_hash": "771bf7d34674d13098f348597785e7b0",
+    "semantic_hash": "771bf7d34674d13098f348597785e7b0"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/proposal-attachments-api.js": {
+    "mtime": 1781149389.137291,
+    "ast_hash": "4b81f22cb20d6f1cd8d1426194d05c4a",
+    "semantic_hash": "4b81f22cb20d6f1cd8d1426194d05c4a"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/proposal-attachments-api.ts": {
+    "mtime": 1777539081.6508713,
+    "ast_hash": "a31d8ea3b752749e15321e344a602273",
+    "semantic_hash": "a31d8ea3b752749e15321e344a602273"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/sonar-scanner-service.d.ts": {
+    "mtime": 1777035200.5599935,
+    "ast_hash": "6b801fa3a293d98036ebb636ef992f7c",
+    "semantic_hash": "6b801fa3a293d98036ebb636ef992f7c"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/sonar-scanner-service.js": {
+    "mtime": 1781149388.9519348,
+    "ast_hash": "1ae02826ffbaa782a2e39673c53991fb",
+    "semantic_hash": "1ae02826ffbaa782a2e39673c53991fb"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/sonar-scanner-service.ts": {
+    "mtime": 1778917893.8529289,
+    "ast_hash": "be70d91763aecf6b551bdb5c688b2326",
+    "semantic_hash": "be70d91763aecf6b551bdb5c688b2326"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/specs/game-engineering-common.ts": {
+    "mtime": 1780559172.9130607,
+    "ast_hash": "ea95468ab40ffdeeb7d11f45ec5bbb42",
+    "semantic_hash": "ea95468ab40ffdeeb7d11f45ec5bbb42"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/specs/game-engineering-h5.ts": {
+    "mtime": 1779167542.0321245,
+    "ast_hash": "a5f791460b0f253558510597ff39d5b1",
+    "semantic_hash": "a5f791460b0f253558510597ff39d5b1"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/specs/game-engineering-phaser-mobile.ts": {
+    "mtime": 1780559172.9136133,
+    "ast_hash": "0ee6d122baa6225ba6ac84a61c36c2cd",
+    "semantic_hash": "0ee6d122baa6225ba6ac84a61c36c2cd"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/sse-broadcaster.d.ts": {
+    "mtime": 1781147662.4968488,
+    "ast_hash": "a461a2b144141a8c9cb44f80cffea3a4",
+    "semantic_hash": "a461a2b144141a8c9cb44f80cffea3a4"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/sse-broadcaster.js": {
+    "mtime": 1781147662.4950202,
+    "ast_hash": "cd677e0404a238b5d372f72af90eac33",
+    "semantic_hash": "cd677e0404a238b5d372f72af90eac33"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/sse-broadcaster.ts": {
+    "mtime": 1778917893.8536048,
+    "ast_hash": "68a518b55ea069ca920ae1b63099fdee",
+    "semantic_hash": "68a518b55ea069ca920ae1b63099fdee"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/star-office-sync.d.ts": {
+    "mtime": 1776829964.6368454,
+    "ast_hash": "a294e658dcec1c7a9d49fffd3823994b",
+    "semantic_hash": "a294e658dcec1c7a9d49fffd3823994b"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/star-office-sync.js": {
+    "mtime": 1781149389.0540812,
+    "ast_hash": "06a5df66e96c6c712d528c555aebbfc4",
+    "semantic_hash": "06a5df66e96c6c712d528c555aebbfc4"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/star-office-sync.ts": {
+    "mtime": 1779167542.0330937,
+    "ast_hash": "bda1f82a5d50506179d7fcd3c87edc53",
+    "semantic_hash": "bda1f82a5d50506179d7fcd3c87edc53"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/tools.d.ts": {
+    "mtime": 1776829964.6817594,
+    "ast_hash": "1bdc3e384a3e4f86c2506c9788bb1b51",
+    "semantic_hash": "1bdc3e384a3e4f86c2506c9788bb1b51"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/tools.js": {
+    "mtime": 1781149389.0174723,
+    "ast_hash": "74b7c9441cb95affb30aca3c565c272b",
+    "semantic_hash": "74b7c9441cb95affb30aca3c565c272b"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/tools.ts": {
+    "mtime": 1781598345.7149212,
+    "ast_hash": "32bec2d4d64c61f9e3681c5fe3b6d164",
+    "semantic_hash": "32bec2d4d64c61f9e3681c5fe3b6d164"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/utils/questionnaire-renderer.ts": {
+    "mtime": 1780410830.5838268,
+    "ast_hash": "a280f42168648c5374c914d8083af1be",
+    "semantic_hash": "a280f42168648c5374c914d8083af1be"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/utils/sanitize-html.ts": {
+    "mtime": 1778832211.014974,
+    "ast_hash": "b6b88d3d05b72c95b32d22db60481fd5",
+    "semantic_hash": "b6b88d3d05b72c95b32d22db60481fd5"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/server/video-service.ts": {
+    "mtime": 1781598345.7156932,
+    "ast_hash": "0611fca3a27a813378722181330c7489",
+    "semantic_hash": "0611fca3a27a813378722181330c7489"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/sonar-scanner-service/app/__init__.py": {
+    "mtime": 1777277954.923833,
+    "ast_hash": "920025af4ffde0f9a7922584e77b414c",
+    "semantic_hash": "920025af4ffde0f9a7922584e77b414c"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/sonar-scanner-service/app/main.py": {
+    "mtime": 1777277954.9245663,
+    "ast_hash": "bbaf2a9de952ace38a919aeb67339362",
+    "semantic_hash": "bbaf2a9de952ace38a919aeb67339362"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/sonar-scanner-service/app/routers/__init__.py": {
+    "mtime": 1777277954.9255705,
+    "ast_hash": "707aba2f27c990d8b7b19431d839830e",
+    "semantic_hash": "707aba2f27c990d8b7b19431d839830e"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/sonar-scanner-service/app/routers/scan.py": {
+    "mtime": 1777277954.9262908,
+    "ast_hash": "7f4eead30c19136870b65cacb2a0471e",
+    "semantic_hash": "7f4eead30c19136870b65cacb2a0471e"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/sonar-scanner-service/app/schemas.py": {
+    "mtime": 1777277954.927251,
+    "ast_hash": "d43f0700367a7a24880991b5fe094720",
+    "semantic_hash": "d43f0700367a7a24880991b5fe094720"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/src/App.tsx": {
+    "mtime": 1775715822.9136655,
+    "ast_hash": "d1fc83bf0f89089b076bcc656599c3b6",
+    "semantic_hash": "d1fc83bf0f89089b076bcc656599c3b6"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/src/components/AgentCard.tsx": {
+    "mtime": 1776245292.7473729,
+    "ast_hash": "8ea80eca43ffc9fbbc6ea1d4886f3abb",
+    "semantic_hash": "8ea80eca43ffc9fbbc6ea1d4886f3abb"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/src/components/CommandPanel.tsx": {
+    "mtime": 1776304481.0996277,
+    "ast_hash": "04cdaefcdd19e57c0192f5623a26e280",
+    "semantic_hash": "04cdaefcdd19e57c0192f5623a26e280"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/src/components/GameList.tsx": {
+    "mtime": 1778856299.7665048,
+    "ast_hash": "545cb9950c01b2a57ea215e79b83ea96",
+    "semantic_hash": "545cb9950c01b2a57ea215e79b83ea96"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/src/components/GamePreview.tsx": {
+    "mtime": 1778856318.847416,
+    "ast_hash": "cee03c598867a4051ff1e28c0d591f49",
+    "semantic_hash": "cee03c598867a4051ff1e28c0d591f49"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/src/components/HandoffPanel.tsx": {
+    "mtime": 1776442801.051029,
+    "ast_hash": "5af385ddd635872262acbc738410f5b1",
+    "semantic_hash": "5af385ddd635872262acbc738410f5b1"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/src/components/LogPanel.tsx": {
+    "mtime": 1776910834.631273,
+    "ast_hash": "77f2acfdcbd79832f31e34586f538879",
+    "semantic_hash": "77f2acfdcbd79832f31e34586f538879"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/src/components/PixelAgentAvatar.tsx": {
+    "mtime": 1776245292.7504184,
+    "ast_hash": "ac0fa44608a86d35097bc928cdb7d6a7",
+    "semantic_hash": "ac0fa44608a86d35097bc928cdb7d6a7"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/src/components/ProposalDetail.tsx": {
+    "mtime": 1777539081.6520188,
+    "ast_hash": "e0318e8fbcf6e4311574c3288c77544b",
+    "semantic_hash": "e0318e8fbcf6e4311574c3288c77544b"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/src/components/ProposalList.tsx": {
+    "mtime": 1780410830.5852537,
+    "ast_hash": "d7eb8355bd8a9dc545f202501760d63f",
+    "semantic_hash": "d7eb8355bd8a9dc545f202501760d63f"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/src/components/QuestionnaireForm.tsx": {
+    "mtime": 1780410830.5863898,
+    "ast_hash": "4a4c460de5fca3dc9b3ae33caf456189",
+    "semantic_hash": "4a4c460de5fca3dc9b3ae33caf456189"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/src/components/StarOfficeStudio.tsx": {
+    "mtime": 1775715822.9242568,
+    "ast_hash": "0514bfcf56b9e0b4e232ea092398c266",
+    "semantic_hash": "0514bfcf56b9e0b4e232ea092398c266"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/src/components/TaskBoardPanel.tsx": {
+    "mtime": 1776245292.7518616,
+    "ast_hash": "391e88fa4416b6b2bd69b56673be54f0",
+    "semantic_hash": "391e88fa4416b6b2bd69b56673be54f0"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/src/config.ts": {
+    "mtime": 1780410830.587381,
+    "ast_hash": "3faf561af5acd47bebd0dee0b5ff5e00",
+    "semantic_hash": "3faf561af5acd47bebd0dee0b5ff5e00"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/src/i18n.tsx": {
+    "mtime": 1775715822.9258938,
+    "ast_hash": "f37cdae92f11d1fe1835442a96274a42",
+    "semantic_hash": "f37cdae92f11d1fe1835442a96274a42"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/src/main.tsx": {
+    "mtime": 1775715822.9279377,
+    "ast_hash": "d3c3237517ea4e0da7da768d7b342b93",
+    "semantic_hash": "d3c3237517ea4e0da7da768d7b342b93"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/src/pages/StudioPage.tsx": {
+    "mtime": 1780410830.5914557,
+    "ast_hash": "f105e37af3fb593d0ee5d3b7ab94b2fa",
+    "semantic_hash": "f105e37af3fb593d0ee5d3b7ab94b2fa"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/src/types.ts": {
+    "mtime": 1780410830.592718,
+    "ast_hash": "745bcf45be6caa1e0411d6acdd034ae8",
+    "semantic_hash": "745bcf45be6caa1e0411d6acdd034ae8"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/src/vite-env.d.ts": {
+    "mtime": 1775550471.8193293,
+    "ast_hash": "b230bc8b38c4d9137c3735f0358db58f",
+    "semantic_hash": "b230bc8b38c4d9137c3735f0358db58f"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/tailwind.config.js": {
+    "mtime": 1775108231.0016763,
+    "ast_hash": "7ccc555d31b5a651613a27e7a344229b",
+    "semantic_hash": "7ccc555d31b5a651613a27e7a344229b"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/tests/mock-server/codebuddy-sdk-mock-server.mjs": {
+    "mtime": 1778835798.0322726,
+    "ast_hash": "5cd02b5a25f627bf96387fdf69a7b672",
+    "semantic_hash": "5cd02b5a25f627bf96387fdf69a7b672"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/tests/sonar-scanner/entrypoint.sh": {
+    "mtime": 1777277954.931135,
+    "ast_hash": "672a7e4ada9896bebb7fe64ba66dbeb3",
+    "semantic_hash": "672a7e4ada9896bebb7fe64ba66dbeb3"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/tests/sonar-scanner/parse_report.py": {
+    "mtime": 1777277954.9318953,
+    "ast_hash": "c1c1030e9d393ce6c7084a533a14e674",
+    "semantic_hash": "c1c1030e9d393ce6c7084a533a14e674"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/tests/ui/e2e/studio.spec.ts": {
+    "mtime": 1781598345.717408,
+    "ast_hash": "39c550c03858a335af608679de0e2eca",
+    "semantic_hash": "39c550c03858a335af608679de0e2eca"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/tests/ui/package.json": {
+    "mtime": 1777277954.9367137,
+    "ast_hash": "86f8217a95f0d9c29941362c848aa1e3",
+    "semantic_hash": "86f8217a95f0d9c29941362c848aa1e3"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/tests/ui/playwright.config.ts": {
+    "mtime": 1777277954.9380605,
+    "ast_hash": "41e9fbcbac93980f8c59dab3018a6826",
+    "semantic_hash": "41e9fbcbac93980f8c59dab3018a6826"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/tests/ui/scripts/check-ui-coverage.mjs": {
+    "mtime": 1777277954.9394112,
+    "ast_hash": "3ff4be01d91cf55aa7172e9e8e89412b",
+    "semantic_hash": "3ff4be01d91cf55aa7172e9e8e89412b"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/tests/ui/scripts/generate-ui-allure.sh": {
+    "mtime": 1777277954.9404879,
+    "ast_hash": "05fc9c7b16f66c628f0b7a426f8235fc",
+    "semantic_hash": "05fc9c7b16f66c628f0b7a426f8235fc"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/tests/ui/scripts/test-ui-ci.sh": {
+    "mtime": 1776245292.7559493,
+    "ast_hash": "1b5dd09a164cf2ce1a99a8de85ab2908",
+    "semantic_hash": "1b5dd09a164cf2ce1a99a8de85ab2908"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/tsconfig.json": {
+    "mtime": 1775613992.7937229,
+    "ast_hash": "35a063cede484a30865dc42b2ee5188c",
+    "semantic_hash": "35a063cede484a30865dc42b2ee5188c"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/tsconfig.node.json": {
+    "mtime": 1775180762.7765088,
+    "ast_hash": "56e5ad769ba75d3a0dbf288f84895cee",
+    "semantic_hash": "56e5ad769ba75d3a0dbf288f84895cee"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/tsconfig.server.json": {
+    "mtime": 1775616215.452782,
+    "ast_hash": "2e8161fb1b0f04af3d6ff7b0297dba72",
+    "semantic_hash": "2e8161fb1b0f04af3d6ff7b0297dba72"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/video-service/app/__init__.py": {
+    "mtime": 1781598345.7181675,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/video-service/app/ffmpeg.py": {
+    "mtime": 1781598345.719111,
+    "ast_hash": "9aab76487e7d63de5b22a673b3a1260c",
+    "semantic_hash": "9aab76487e7d63de5b22a673b3a1260c"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/video-service/app/main.py": {
+    "mtime": 1781598345.7198055,
+    "ast_hash": "93fa4fadfa8aa66a25617512250ce9d5",
+    "semantic_hash": "93fa4fadfa8aa66a25617512250ce9d5"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/video-service/app/operations.py": {
+    "mtime": 1781598345.7203732,
+    "ast_hash": "6e59ed44cc7106cf3cd58b5ce11be7c1",
+    "semantic_hash": "6e59ed44cc7106cf3cd58b5ce11be7c1"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/video-service/app/routers/__init__.py": {
+    "mtime": 1781598345.720486,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/video-service/app/routers/file.py": {
+    "mtime": 1781598345.7211373,
+    "ast_hash": "67a970046a63a542ac804623b494bbba",
+    "semantic_hash": "67a970046a63a542ac804623b494bbba"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/video-service/app/routers/project.py": {
+    "mtime": 1781598345.721677,
+    "ast_hash": "3e2648f93d2b10fc44e5e1ba569255fa",
+    "semantic_hash": "3e2648f93d2b10fc44e5e1ba569255fa"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/video-service/app/routers/video.py": {
+    "mtime": 1781598345.7226322,
+    "ast_hash": "7500baa430ef347dc02ab431178191b5",
+    "semantic_hash": "7500baa430ef347dc02ab431178191b5"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/video-service/app/safe_path.py": {
+    "mtime": 1781598345.723656,
+    "ast_hash": "4d119525b47f755b0c398a70f3c4b0b5",
+    "semantic_hash": "4d119525b47f755b0c398a70f3c4b0b5"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/video-service/app/schemas.py": {
+    "mtime": 1781598345.7243264,
+    "ast_hash": "0b429ca34230808e21adc4aeab071b99",
+    "semantic_hash": "0b429ca34230808e21adc4aeab071b99"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/vite.config.ts": {
+    "mtime": 1775550441.75466,
+    "ast_hash": "2b08f554118cc437c8b0b68ff7af5c63",
+    "semantic_hash": "2b08f554118cc437c8b0b68ff7af5c63"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/AI_AGENT_COMMON_INSTRUCTIONS.md": {
+    "mtime": 1781193618.5833566,
+    "ast_hash": "c4677c90e5772f05bde2f33843a80324",
+    "semantic_hash": "c4677c90e5772f05bde2f33843a80324"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/diagrams/INDEX.md": {
+    "mtime": 1776674050.8564916,
+    "ast_hash": "6e355c942d66a3509367ef6586377071",
+    "semantic_hash": "6e355c942d66a3509367ef6586377071"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/memory/ARCHITECTURE.md": {
+    "mtime": 1781598858.4006028,
+    "ast_hash": "942e131e021b60a1fa7876f19726ada9",
+    "semantic_hash": "942e131e021b60a1fa7876f19726ada9"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/memory/CONVENTIONS.md": {
+    "mtime": 1781598345.6930747,
+    "ast_hash": "ed5c36f24a5c823e56403174bc921a34",
+    "semantic_hash": "ed5c36f24a5c823e56403174bc921a34"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/memory/E2E_TESTING.md": {
+    "mtime": 1781598345.6939883,
+    "ast_hash": "96aff932bf2a1579c58c8f1395355ea1",
+    "semantic_hash": "96aff932bf2a1579c58c8f1395355ea1"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/memory/GRAPHIFY.md": {
+    "mtime": 1781193618.584299,
+    "ast_hash": "48483841f64d46aaa0397fae56593a42",
+    "semantic_hash": "48483841f64d46aaa0397fae56593a42"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/memory/INDEX.md": {
+    "mtime": 1781598345.6950195,
+    "ast_hash": "d9423d1de35bcd2ddae17db0d1829008",
+    "semantic_hash": "d9423d1de35bcd2ddae17db0d1829008"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/memory/LINT.md": {
+    "mtime": 1780559172.894163,
+    "ast_hash": "77ccb34f33acd61cce17f4682cb27e5a",
+    "semantic_hash": "77ccb34f33acd61cce17f4682cb27e5a"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/memory/MEMORY.md": {
+    "mtime": 1781579741.5064237,
+    "ast_hash": "d67967dcddfa6fc61a196e022bcacd14",
+    "semantic_hash": "d67967dcddfa6fc61a196e022bcacd14"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/memory/REUSABLE_PATTERNS.md": {
+    "mtime": 1776674050.8597724,
+    "ast_hash": "ee2a5f3ff0d988cdf2fd961bf90f759a",
+    "semantic_hash": "ee2a5f3ff0d988cdf2fd961bf90f759a"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/memory/SDK_MOCK.md": {
+    "mtime": 1776674050.860518,
+    "ast_hash": "0f33ce5b677a3a1a53d51a63c8d77ddc",
+    "semantic_hash": "0f33ce5b677a3a1a53d51a63c8d77ddc"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/memory/STAROFFICE.md": {
+    "mtime": 1776674050.861215,
+    "ast_hash": "10b949b81f6adc0b83aa76cc51304127",
+    "semantic_hash": "10b949b81f6adc0b83aa76cc51304127"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/skills/architecture-diagram/SKILL.md": {
+    "mtime": 1781598345.6960716,
+    "ast_hash": "ccb2c9e12bf8c63aaf7536e45939bcfa",
+    "semantic_hash": "ccb2c9e12bf8c63aaf7536e45939bcfa"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/skills/ci-verification/SKILL.md": {
+    "mtime": 1781598345.6969671,
+    "ast_hash": "4c08eb1e68ff0a151782470ab8f6eaea",
+    "semantic_hash": "4c08eb1e68ff0a151782470ab8f6eaea"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/skills/ci-verification/references/ci-workflow.md": {
+    "mtime": 1781598345.697771,
+    "ast_hash": "cd016d76307172bd18c6d3334a1f1b18",
+    "semantic_hash": "cd016d76307172bd18c6d3334a1f1b18"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/skills/code-lint/SKILL.md": {
+    "mtime": 1781598345.6985784,
+    "ast_hash": "920bc4939dceacff29c4b08148842752",
+    "semantic_hash": "920bc4939dceacff29c4b08148842752"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/skills/graphify/SKILL.md": {
+    "mtime": 1781193618.5895052,
+    "ast_hash": "41f700d6535cc2f2b6b6d0a9eecc7525",
+    "semantic_hash": "41f700d6535cc2f2b6b6d0a9eecc7525"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/skills/graphify/references/add-watch.md": {
+    "mtime": 1781193618.5906503,
+    "ast_hash": "0df0589623217ca38a12bdcabfb42f4c",
+    "semantic_hash": "0df0589623217ca38a12bdcabfb42f4c"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/skills/graphify/references/exports.md": {
+    "mtime": 1781193618.5916805,
+    "ast_hash": "7fb1a81aca17a462db70684a324fcfb0",
+    "semantic_hash": "7fb1a81aca17a462db70684a324fcfb0"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/skills/graphify/references/extraction-spec.md": {
+    "mtime": 1781193618.5926669,
+    "ast_hash": "24808b03abfeaf5f6435bb69c0125b2c",
+    "semantic_hash": "24808b03abfeaf5f6435bb69c0125b2c"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/skills/graphify/references/github-and-merge.md": {
+    "mtime": 1781193618.5932918,
+    "ast_hash": "cde13df085e4c492aeb7ba298a996d0d",
+    "semantic_hash": "cde13df085e4c492aeb7ba298a996d0d"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/skills/graphify/references/hooks.md": {
+    "mtime": 1781193618.5938854,
+    "ast_hash": "3f545db6ce646650bb9de588f5512a27",
+    "semantic_hash": "3f545db6ce646650bb9de588f5512a27"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/skills/graphify/references/query.md": {
+    "mtime": 1781193618.5948043,
+    "ast_hash": "8b40ed8c9e9060fc215219a8fc964091",
+    "semantic_hash": "8b40ed8c9e9060fc215219a8fc964091"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/skills/graphify/references/transcribe.md": {
+    "mtime": 1781193618.5957224,
+    "ast_hash": "70f6aa30d6211f3a2c7e9fc45479f50c",
+    "semantic_hash": "70f6aa30d6211f3a2c7e9fc45479f50c"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/skills/graphify/references/update.md": {
+    "mtime": 1781193618.5965424,
+    "ast_hash": "0dad167a95bdb389f02fecffb60b1bc8",
+    "semantic_hash": "0dad167a95bdb389f02fecffb60b1bc8"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/skills/promo-video-builder/SKILL.md": {
+    "mtime": 1780986339.9723384,
+    "ast_hash": "941c992bd73cb4d610db7cc53ebe1984",
+    "semantic_hash": "941c992bd73cb4d610db7cc53ebe1984"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/skills/spec-writer/SKILL.md": {
+    "mtime": 1781598345.700303,
+    "ast_hash": "f3b27e70ea8537b34a8a1933d7aaa61c",
+    "semantic_hash": "f3b27e70ea8537b34a8a1933d7aaa61c"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/skills/svg-to-png/SKILL.md": {
+    "mtime": 1781507887.4025633,
+    "ast_hash": "51c4a13d552455351529d16f23a07d51",
+    "semantic_hash": "51c4a13d552455351529d16f23a07d51"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/specs/INDEX.md": {
+    "mtime": 1781598345.7009592,
+    "ast_hash": "9496403488eeae1b9090c5ea1ebeeeda",
+    "semantic_hash": "9496403488eeae1b9090c5ea1ebeeeda"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/specs/build-service.md": {
+    "mtime": 1780907682.1860538,
+    "ast_hash": "10d8f18db39c25013f56143152494498",
+    "semantic_hash": "10d8f18db39c25013f56143152494498"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/specs/creator-service.md": {
+    "mtime": 1780907682.1863775,
+    "ast_hash": "1bc40d0410613341afc9689b7b6a3e9a",
+    "semantic_hash": "1bc40d0410613341afc9689b7b6a3e9a"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/specs/drawio-service.md": {
+    "mtime": 1780907682.1866064,
+    "ast_hash": "e97b6a738afba5dbd7b5420dcc88c6df",
+    "semantic_hash": "e97b6a738afba5dbd7b5420dcc88c6df"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/specs/game-framework-spec/GAME_ENGINEERING_COMMON.md": {
+    "mtime": 1780559172.8959827,
+    "ast_hash": "f96e2764c029daa8b5a8bd9466d3fa18",
+    "semantic_hash": "f96e2764c029daa8b5a8bd9466d3fa18"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/specs/game-framework-spec/GAME_ENGINEERING_FRAMEWORK_CHECKER.md": {
+    "mtime": 1780559172.8966563,
+    "ast_hash": "8daf5983c73c3d89b7006453c51616e5",
+    "semantic_hash": "8daf5983c73c3d89b7006453c51616e5"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/specs/game-framework-spec/GAME_ENGINEERING_FRAMEWORK_TOOL.md": {
+    "mtime": 1780559172.897304,
+    "ast_hash": "5c146ae15490050bf4030e40a0a7631b",
+    "semantic_hash": "5c146ae15490050bf4030e40a0a7631b"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/specs/game-framework-spec/H5_GAME_ENGINEERING_FRAMEWORK.md": {
+    "mtime": 1780394169.5819952,
+    "ast_hash": "509c2461ce2af8541cc46a65d1e7b4c5",
+    "semantic_hash": "509c2461ce2af8541cc46a65d1e7b4c5"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/specs/game-framework-spec/PHASER_MOBILE_GAME_ENGINEERING_FRAMEWORK.md": {
+    "mtime": 1781598345.701842,
+    "ast_hash": "1dc09d625ad7f356d324232c2a32487a",
+    "semantic_hash": "1dc09d625ad7f356d324232c2a32487a"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/specs/game-submission-lint-change-plan.md": {
+    "mtime": 1780394169.5824494,
+    "ast_hash": "221caa2ed13847484b1227addcd8bdc4",
+    "semantic_hash": "221caa2ed13847484b1227addcd8bdc4"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/specs/github-ci-agent.md": {
+    "mtime": 1780844030.3820446,
+    "ast_hash": "bf6300b19eb6feba9486181022b450c4",
+    "semantic_hash": "bf6300b19eb6feba9486181022b450c4"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/specs/image-service.md": {
+    "mtime": 1781598345.70261,
+    "ast_hash": "16e755875936e4f5dd687e6c8d483a47",
+    "semantic_hash": "16e755875936e4f5dd687e6c8d483a47"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/specs/layered-architecture.md": {
+    "mtime": 1781598345.703321,
+    "ast_hash": "f3b8676af978fcbf8feca290c152d026",
+    "semantic_hash": "f3b8676af978fcbf8feca290c152d026"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/specs/opentelemetry-tracing/opentelemetry-tracing.md": {
+    "mtime": 1781507887.4052458,
+    "ast_hash": "6a063446dc376704101553b79d2f6da2",
+    "semantic_hash": "6a063446dc376704101553b79d2f6da2"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/specs/proposal-xss-sanitize.md": {
+    "mtime": 1780394169.5829024,
+    "ast_hash": "eec28467bb5ae996a2363dad46c09172",
+    "semantic_hash": "eec28467bb5ae996a2363dad46c09172"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/specs/questionnaire-proposal.md": {
+    "mtime": 1780559172.8992848,
+    "ast_hash": "8c05f4b19e6326206e5a6b77faed34d2",
+    "semantic_hash": "8c05f4b19e6326206e5a6b77faed34d2"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/specs/run-service.md": {
+    "mtime": 1780907682.1878364,
+    "ast_hash": "851e6a5f721527af7f4665a444a52b41",
+    "semantic_hash": "851e6a5f721527af7f4665a444a52b41"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/specs/team-building-agent-indicator-light/ARDOT_DESIGN.md": {
+    "mtime": 1781509474.6313906,
+    "ast_hash": "6b6200bc3b62de8d45c4fcf90a6ca9ee",
+    "semantic_hash": "6b6200bc3b62de8d45c4fcf90a6ca9ee"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/specs/team-building-agent-indicator-light/spec.md": {
+    "mtime": 1781598345.7041836,
+    "ast_hash": "97ea6d08682b313f490c85397dff9819",
+    "semantic_hash": "97ea6d08682b313f490c85397dff9819"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/specs/test-service.md": {
+    "mtime": 1780907682.188237,
+    "ast_hash": "6b1b573ccbf5662f69029f75b08e6d2d",
+    "semantic_hash": "6b1b573ccbf5662f69029f75b08e6d2d"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/specs/tool-call-chain.md": {
+    "mtime": 1781598345.7050154,
+    "ast_hash": "6fe05df28aa711c48bbb70e87599f0c9",
+    "semantic_hash": "6fe05df28aa711c48bbb70e87599f0c9"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/specs/tool-search.md": {
+    "mtime": 1781598345.7061749,
+    "ast_hash": "406f9eb18d932c34e1010ed25c34e782",
+    "semantic_hash": "406f9eb18d932c34e1010ed25c34e782"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/specs/video-service.md": {
+    "mtime": 1781598345.707355,
+    "ast_hash": "04b8294c1860c0828d86f3a75d19531b",
+    "semantic_hash": "04b8294c1860c0828d86f3a75d19531b"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.github/copilot-instructions.md": {
+    "mtime": 1778309030.462755,
+    "ast_hash": "e2f7ede68fd7cf1cdaa838f4814d4d13",
+    "semantic_hash": "e2f7ede68fd7cf1cdaa838f4814d4d13"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.github/workflows/ci.yml": {
+    "mtime": 1778860995.2749689,
+    "ast_hash": "7c1bfa1047a7b033cae6868dfd5a94e5",
+    "semantic_hash": "7c1bfa1047a7b033cae6868dfd5a94e5"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.workbuddy/AI_AGENT_INSTRUCTIONS.md": {
+    "mtime": 1778833169.1671374,
+    "ast_hash": "134fb3fe882017a490a7d54fd058d55a",
+    "semantic_hash": "134fb3fe882017a490a7d54fd058d55a"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/README.md": {
+    "mtime": 1781579741.510293,
+    "ast_hash": "19c63fe34b1e84dc6e6459b5effb4097",
+    "semantic_hash": "19c63fe34b1e84dc6e6459b5effb4097"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/README.zh-CN.md": {
+    "mtime": 1781579741.5113645,
+    "ast_hash": "d7979025ef313fb32a68a798bb76bd14",
+    "semantic_hash": "d7979025ef313fb32a68a798bb76bd14"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/creator/requirements.txt": {
+    "mtime": 1776841995.1907723,
+    "ast_hash": "065934c22907962aa8bad4eee8157982",
+    "semantic_hash": "065934c22907962aa8bad4eee8157982"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/docker-compose-sonar-check.yml": {
+    "mtime": 1777277954.8945706,
+    "ast_hash": "80675a4edcf238beafabb19782885c7a",
+    "semantic_hash": "80675a4edcf238beafabb19782885c7a"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/docker-compose.ui-test.yml": {
+    "mtime": 1781598345.7086256,
+    "ast_hash": "52a9c7156e262a266612cfacd218364e",
+    "semantic_hash": "52a9c7156e262a266612cfacd218364e"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/docker-compose.yml": {
+    "mtime": 1781598345.7093744,
+    "ast_hash": "309ebd1473d158b127f3d0886cec82c3",
+    "semantic_hash": "309ebd1473d158b127f3d0886cec82c3"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/docs/ARCHITECTURE.md": {
+    "mtime": 1781579741.512193,
+    "ast_hash": "995fe0ae00da62b2d36d0f707d129ae3",
+    "semantic_hash": "995fe0ae00da62b2d36d0f707d129ae3"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/docs/ARCHITECTURE.zh-CN.md": {
+    "mtime": 1781579741.5129533,
+    "ast_hash": "e6a9318737ea239bf8329c059cbc9b70",
+    "semantic_hash": "e6a9318737ea239bf8329c059cbc9b70"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/docs/BRAND.md": {
+    "mtime": 1781016466.3700678,
+    "ast_hash": "3b00709114dc0eec5d98d46c4a2c8947",
+    "semantic_hash": "3b00709114dc0eec5d98d46c4a2c8947"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/docs/BRAND.zh-CN.md": {
+    "mtime": 1781016466.370646,
+    "ast_hash": "8cbd96f2bf1e67966363da6c1fdf6821",
+    "semantic_hash": "8cbd96f2bf1e67966363da6c1fdf6821"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/docs/DEVELOPMENT.md": {
+    "mtime": 1778309030.4676666,
+    "ast_hash": "d922264dcfc59c800e3f910801314758",
+    "semantic_hash": "d922264dcfc59c800e3f910801314758"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/docs/DEVELOPMENT.zh-CN.md": {
+    "mtime": 1778309030.4681761,
+    "ast_hash": "e0fd6423674980bc5c3456a7b0071c9a",
+    "semantic_hash": "e0fd6423674980bc5c3456a7b0071c9a"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/docs/README-Docker.md": {
+    "mtime": 1781579741.5136151,
+    "ast_hash": "2451e6a1a884f8680cd29d4ea181fc78",
+    "semantic_hash": "2451e6a1a884f8680cd29d4ea181fc78"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/docs/README-Docker.zh-CN.md": {
+    "mtime": 1781579741.5142496,
+    "ast_hash": "5a78fbe0ab9bcf735a40e53a09401861",
+    "semantic_hash": "5a78fbe0ab9bcf735a40e53a09401861"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/drawio-service/requirements.txt": {
+    "mtime": 1777358553.3385093,
+    "ast_hash": "9b92d26564ca6921c2ef073dead6329d",
+    "semantic_hash": "9b92d26564ca6921c2ef073dead6329d"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/image-service/requirements.txt": {
+    "mtime": 1780907682.1955233,
+    "ast_hash": "065934c22907962aa8bad4eee8157982",
+    "semantic_hash": "065934c22907962aa8bad4eee8157982"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/index.html": {
+    "mtime": 1775108230.9684157,
+    "ast_hash": "259f096a9a0278b61fc636592c940940",
+    "semantic_hash": "259f096a9a0278b61fc636592c940940"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/sonar-scanner-service/requirements.txt": {
+    "mtime": 1777277954.9286911,
+    "ast_hash": "7943ce10a24a6d6e6befb49838a9ef27",
+    "semantic_hash": "7943ce10a24a6d6e6befb49838a9ef27"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/video-service/requirements.txt": {
+    "mtime": 1781598345.7262895,
+    "ast_hash": "065934c22907962aa8bad4eee8157982",
+    "semantic_hash": "065934c22907962aa8bad4eee8157982"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/specs/opentelemetry-tracing/otel-spans.png": {
+    "mtime": 1781507887.4074125,
+    "ast_hash": "94e7a7c1b395d34df3c5ce11a61db44d",
+    "semantic_hash": "94e7a7c1b395d34df3c5ce11a61db44d"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/.agent/specs/team-building-agent-indicator-light/indicator-design-preview.webp": {
+    "mtime": 1781509474.6320379,
+    "ast_hash": "8090ab198e2ac04a1cb74eec7185b958",
+    "semantic_hash": "8090ab198e2ac04a1cb74eec7185b958"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/docs/images/architecture-en.png": {
+    "mtime": 1781579741.520352,
+    "ast_hash": "e9e8ad1e9f21ac7bc9ebf938b89ce604",
+    "semantic_hash": "e9e8ad1e9f21ac7bc9ebf938b89ce604"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/docs/images/architecture-en.svg": {
+    "mtime": 1781579741.5231378,
+    "ast_hash": "f12b352ddbba61b06282ab7b53c59954",
+    "semantic_hash": "f12b352ddbba61b06282ab7b53c59954"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/docs/images/architecture.png": {
+    "mtime": 1781598764.1077027,
+    "ast_hash": "aa475db40f4c1f5f23218a7c0e5ef5c5",
+    "semantic_hash": "aa475db40f4c1f5f23218a7c0e5ef5c5"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/docs/images/architecture.svg": {
+    "mtime": 1781598710.1811762,
+    "ast_hash": "7e535435bff9d91f810e3445a839c987",
+    "semantic_hash": "7e535435bff9d91f810e3445a839c987"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/docs/images/artifact.png": {
+    "mtime": 1775720839.228268,
+    "ast_hash": "ffcfcabd9e1bccd44ace02939e8c029c",
+    "semantic_hash": "ffcfcabd9e1bccd44ace02939e8c029c"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/docs/images/artifact.zh-CN.png": {
+    "mtime": 1775197925.9308865,
+    "ast_hash": "dfa96be996082a4e0d09b2ccd6f776e0",
+    "semantic_hash": "dfa96be996082a4e0d09b2ccd6f776e0"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/docs/images/brand/logo.svg": {
+    "mtime": 1781016466.3711476,
+    "ast_hash": "d0a8e8ca29dad25b708902ee25c78c96",
+    "semantic_hash": "d0a8e8ca29dad25b708902ee25c78c96"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/docs/images/command.png": {
+    "mtime": 1775719805.269358,
+    "ast_hash": "1fe05b64bb9c1d9e333c68367e1373f7",
+    "semantic_hash": "1fe05b64bb9c1d9e333c68367e1373f7"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/docs/images/command.zh-CN.png": {
+    "mtime": 1775197152.8563955,
+    "ast_hash": "23b8faebd29333dc4b4c065397ed2d21",
+    "semantic_hash": "23b8faebd29333dc4b4c065397ed2d21"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/docs/images/handoff.png": {
+    "mtime": 1775719857.9450414,
+    "ast_hash": "00af32581d2c6626ef0665d01b422417",
+    "semantic_hash": "00af32581d2c6626ef0665d01b422417"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/docs/images/handoff.zh-CN.png": {
+    "mtime": 1775197224.3131576,
+    "ast_hash": "33d385b6c96d78665bf48a3a0122f06e",
+    "semantic_hash": "33d385b6c96d78665bf48a3a0122f06e"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/docs/images/log.png": {
+    "mtime": 1775719917.8564544,
+    "ast_hash": "c357f0524b93f71faa89a0eaa8e24399",
+    "semantic_hash": "c357f0524b93f71faa89a0eaa8e24399"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/docs/images/log.zh-CN.png": {
+    "mtime": 1775197247.2405026,
+    "ast_hash": "1bd615c283845521933b3d70cb999fc0",
+    "semantic_hash": "1bd615c283845521933b3d70cb999fc0"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/docs/images/proposal.png": {
+    "mtime": 1775719686.5919764,
+    "ast_hash": "849acf497e2a089688ea287756a33910",
+    "semantic_hash": "849acf497e2a089688ea287756a33910"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/docs/images/proposal.zh-CN.png": {
+    "mtime": 1775197279.0395133,
+    "ast_hash": "2279928cb2d05c310c9226961de7f42b",
+    "semantic_hash": "2279928cb2d05c310c9226961de7f42b"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/docs/images/setting.png": {
+    "mtime": 1775719898.2825992,
+    "ast_hash": "fd581ff633ec45a69fdfee948a2a588c",
+    "semantic_hash": "fd581ff633ec45a69fdfee948a2a588c"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/docs/images/setting.zh-CN.png": {
+    "mtime": 1775721194.3858643,
+    "ast_hash": "e8584c03b49de827052dfe79e27e4210",
+    "semantic_hash": "e8584c03b49de827052dfe79e27e4210"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/docs/images/studio.png": {
+    "mtime": 1775719660.2247922,
+    "ast_hash": "83a87674c56a45d82fadae130f80b44a",
+    "semantic_hash": "83a87674c56a45d82fadae130f80b44a"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/docs/images/studio.zh-CN.png": {
+    "mtime": 1775715822.9091353,
+    "ast_hash": "10e2f8965104735a1f48ff6c353eed7f",
+    "semantic_hash": "10e2f8965104735a1f48ff6c353eed7f"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/docs/images/task.png": {
+    "mtime": 1775720364.210851,
+    "ast_hash": "01255f5e21158628080a5391db97b391",
+    "semantic_hash": "01255f5e21158628080a5391db97b391"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/docs/images/task.zh-CN.png": {
+    "mtime": 1775197188.5097275,
+    "ast_hash": "7f1ac86b0d35cd922ff275b721987057",
+    "semantic_hash": "7f1ac86b0d35cd922ff275b721987057"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/docs/images/team.png": {
+    "mtime": 1775719406.58464,
+    "ast_hash": "25bb64c2a96f7600342be0bee259855d",
+    "semantic_hash": "25bb64c2a96f7600342be0bee259855d"
+  },
+  "/Users/luoxiaojun/WorkBuddy/20260402130250/game-dev-studio/docs/images/team.zh-CN.png": {
+    "mtime": 1775197108.2374454,
+    "ast_hash": "18c7b15c50dad732fa7b68099e9aa6d2",
+    "semantic_hash": "18c7b15c50dad732fa7b68099e9aa6d2"
   }
 }
