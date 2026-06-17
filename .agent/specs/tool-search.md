@@ -58,13 +58,11 @@ tools.ts
 在 `server/tools.ts` 顶部（`createStudioToolsServer` 函数外部）新增：
 
 ```typescript
-import type { AnyZodRawShape } from 'zod';  // 或从 @tencent-ai/agent-sdk 导入
-
 /**
  * 工具元数据——仅包含定义/描述信息，不包含 handler 实现。
  * 用于 search_tools 查询和权限系统引用。
  */
-export interface ToolMeta<Schema extends AnyZodRawShape = AnyZodRawShape> {
+export interface ToolMeta<Schema extends Record<string, any> = Record<string, any>> {
   /** tool 唯一名称 */
   name: string;
   /** 工具用途描述（中文） */
@@ -252,7 +250,7 @@ const ALWAYS_ALLOW = [
 如果后续需要在 `ToolMeta` 中统一管理权限，可在 `ToolMeta` 接口中增加可选字段：
 
 ```typescript
-export interface ToolMeta<Schema extends AnyZodRawShape = AnyZodRawShape> {
+export interface ToolMeta<Schema extends Record<string, any> = Record<string, any>> {
   name: string;
   description: string;
   inputSchema: Schema;
@@ -405,7 +403,7 @@ export function getGameTypes(limit?: number): Array<{ type: string; description:
 - **`get_game_framework_spec` schema 降级**：从 `z.enum()` 降为 `z.string()` 后，handler 中的 `db.getGameFrameworkSpec(game_type)` 返回 null 时的"未找到"错误提示保持不变，agent 行为无影响。
 - **`get_game_types` 分页向后兼容**：`limit` 为可选参数默认 20，现有不传 `limit` 的调用方行为不变。
 - **handler 提取风险**：handler 如果引用 `TOOL_META_DEFINITIONS` 之外的局部变量（如 `uuidv4`、`sseBroadcaster`、`log`、`_tts`），必须确保这些变量在 handler 闭包中可访问——即 handler 仍在 `createStudioToolsServer()` 内部定义，不受元数据外提影响。
-- **TypeScript 类型安全**：`handlers` 对象的类型应为 `Record<string, ToolHandler<AnyZodRawShape>>`，确保 `TOOL_META_DEFINITIONS.map()` 中的 `handlers[meta.name]` 类型匹配。
+- **TypeScript 类型安全**：`handlers` 对象的类型应为 `Record<string, ToolHandler<Record<string, any>>>`，确保 `TOOL_META_DEFINITIONS.map()` 中的 `handlers[meta.name]` 类型匹配。
 
 ## 验证标准
 

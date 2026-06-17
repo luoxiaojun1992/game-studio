@@ -3,7 +3,6 @@
  */
 import { fileURLToPath } from 'url';
 import { z } from 'zod';
-import type { AnyZodRawShape } from 'zod';
 import { tool, createSdkMcpServer, type SdkMcpServerResult } from '@tencent-ai/agent-sdk';
 import yazl from 'yazl';
 import type { Stats } from 'fs';
@@ -143,7 +142,7 @@ const toSingleLinePreview = (content: string | null | undefined) =>
     .trim()
     .slice(0, CONTENT_PREVIEW_LENGTH);
 
-export interface ToolMeta<Schema extends AnyZodRawShape = AnyZodRawShape> {
+export interface ToolMeta<Schema extends Record<string, any> = Record<string, any>> {
   name: string;
   description: string;
   inputSchema: Schema;
