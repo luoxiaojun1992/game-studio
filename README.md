@@ -28,6 +28,7 @@ A multi-agent game development workspace built on the CodeBuddy Agent SDK, provi
 - Static analysis (extensible lint framework with pluggable checkers for HTML structure/HTTP method safety/JS security/SonarQube quality scan, supports HTML mode and ZIP package mode)
 - Sonar report download in game preview when scan artifacts are available
 - Long-term agent memory (save/query/clear)
+- Metadata-driven tool discovery (`search_tools` MCP tool for fuzzy searching available tools)
 - Project isolation (data and observability streams isolated by `project_id`)
 
 ## UI Preview
@@ -262,7 +263,7 @@ Based on [technical specs](./.agent/specs/INDEX.md):
 | SPEC-014 | GitHub Actions CI Agent | ✅ Implemented |
 | SPEC-015 | Creator (Blender) modeling microservice | ✅ Implemented |
 | SPEC-016 | Draw.io diagram microservice | ✅ Implemented |
-| SPEC-017 | Tool Search — metadata-driven tool discovery | 🚧 In Design |
+| SPEC-017 | Tool Search — metadata-driven tool discovery | ✅ Implemented |
 | SPEC-018 | Layered architecture refactoring — Data/Service/API+tools 3-tier | 🚧 In Design |
 | SPEC-019 | Tool Call Chain — real-time agent tool call visualization with icons | 🚧 In Design |
 | SPEC-020 | OpenTelemetry distributed tracing with Jaeger — in-service and cross-service spans | 🚧 In Design |

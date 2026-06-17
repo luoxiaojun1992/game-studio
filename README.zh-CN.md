@@ -27,6 +27,7 @@
 - 静态分析（可扩展 Lint 框架，支持 HTML 结构、HTTP 方法安全、JS 安全、SonarQube 质量扫描等可插拔检查器，覆盖 HTML 模式与 ZIP 模式）
 - 游戏预览支持下载 SonarQube 扫描报告
 - Agent 长期记忆（保存/查询/清理）
+- 元数据驱动的工具搜索（`search_tools` MCP 工具，支持按名称模糊搜索可用工具）
 - 项目隔离（按 `project_id` 隔离数据与观测流）
 
 ## 界面预览
@@ -265,7 +266,7 @@ game-studio/
 | SPEC-014 | GitHub Actions CI Agent | ✅ 已实现 |
 | SPEC-015 | Creator (Blender) 建模微服务 | ✅ 已实现 |
 | SPEC-016 | Draw.io 图表微服务 | ✅ 已实现 |
-| SPEC-017 | Tool Search — 元数据驱动的工具搜索 | 🚧 设计中 |
+| SPEC-017 | Tool Search — 元数据驱动的工具搜索 | ✅ 已实现 |
 | SPEC-018 | 分层架构重构 — Data/Service/API+tools 三层解耦 | 🚧 设计中 |
 | SPEC-019 | Tool Call Chain — Agent 工具调用链可视化（实时追踪，带图标） | 🚧 设计中 |
 | SPEC-020 | OpenTelemetry 分布式链路追踪（Jaeger）— 服务内函数调用 + 跨服务追踪 | 🚧 设计中 |

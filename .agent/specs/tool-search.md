@@ -1,6 +1,6 @@
 # Tool Search 功能规范
 
-> **SPEC-017** | 状态：设计中
+> **SPEC-017** | 状态：已实现
 
 ## 目标
 
@@ -211,7 +211,7 @@ search_tools: async ({ name: searchName }: { name?: string }) => {
 
 ### 5. agent-manager.ts 权限系统同步
 
-`agent-manager.ts` 中当前手动维护的 `STUDIO_TOOL_NAMES` set 和权限分组（`ALWAYS_ALLOW` / `AUTOPILOT_ALLOW` / `ENGINEER_ALLOW`）可以改为从 `TOOL_META_DEFINITIONS` 派生，消除重复维护：
+`agent-manager.ts` 中当前手动维护的 `STUDIO_TOOL_NAMES` set 和权限分组（`ALWAYS_ALLOW` / `AUTOPILOT_ALLOW` / `ENGINEER_ALLOW`）改为从 `TOOL_META_DEFINITIONS` 派生，消除重复维护：
 
 ```typescript
 // agent-manager.ts
@@ -222,6 +222,28 @@ const STUDIO_TOOL_NAMES = new Set<string>(
   TOOL_META_DEFINITIONS.map(m => m.name)
 );
 ```
+
+#### 5.1 `search_tools` 权限：ALWAYS_ALLOW
+
+`search_tools` 是**只读发现工具**，不修改任何数据，所有 Agent 都应能随时调用以发现可用工具。
+因此加入 `ALWAYS_ALLOW`，无需审批，不受 autopilot / engineer 角色限制。
+
+```typescript
+const ALWAYS_ALLOW = [
+  'save_memory', 'get_memories', 'get_project_latest_info', 'get_agents',
+  'get_proposal', 'get_proposals', 'get_agent_logs', 'get_handoff',
+  'get_handoffs', 'get_pending_handoffs', 'get_task', 'get_tasks',
+  'search_tools',  // ← 新增：只读工具发现
+];
+```
+
+#### 5.2 实施记录
+
+| 项目 | 设计 | 实施 |
+|------|------|------|
+| `STUDIO_TOOL_NAMES` | 改为从 `TOOL_META_DEFINITIONS` 派生 | ✅ 已实现（`TOOL_META_DEFINITIONS.map(m => m.name)`） |
+| `search_tools` 权限 | 加入 `ALWAYS_ALLOW` | ✅ 已实现 |
+| `permission` 字段 | 不实现，留给未来扩展 | ✅ 暂不实现 |
 
 > **可选优化**（非本 spec 范围）：在 `ToolMeta` 中增加 `permission` 字段，让权限分组也从元数据中导出，彻底消除 agent-manager.ts 中的硬编码分组。
 
@@ -387,12 +409,13 @@ export function getGameTypes(limit?: number): Array<{ type: string; description:
 
 ## 验证标准
 
-1. `search_tools` 不传 `name` → 返回全部 56 个（含自身）tool 的 name + description
-2. `search_tools name: "image"` → 返回所有 name 中包含 "image" 的工具（`image_resize`, `image_crop` 等，含 `search_t` 不匹配此例）
+1. `search_tools` 不传 `name` → 返回全部 80 个（含自身）tool 的 name + description
+2. `search_tools name: "image"` → 返回所有 name 中包含 "image" 的工具（`image_resize`, `image_crop` 等）
 3. `search_tools name: "search"` → 返回 `search_tools` 自身
 4. `search_tools name: "nonexistent"` → 返回 "未找到" 提示
 5. `get_game_types` 不传 `limit` → 返回最多 20 个（默认值）
 6. `get_game_types limit: 5` → 返回最多 5 个
-7. 所有现有 55 个 tool 的 handler 行为不变（功能回归）
+7. 所有现有 79 个 tool 的 handler 行为不变（功能回归）
 8. `TOOL_META_DEFINITIONS` 中元数据与原 inline 定义一致（description / inputSchema 逐字段核对）
 9. `agent-manager.ts` `STUDIO_TOOL_NAMES` set 与 `TOOL_META_DEFINITIONS` name 集合一致
+10. `search_tools` 在 `ALWAYS_ALLOW` 白名单中——任何 Agent 调用无需审批

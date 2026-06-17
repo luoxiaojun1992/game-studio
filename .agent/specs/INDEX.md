@@ -30,7 +30,7 @@
 | SPEC-014 | GitHub Actions CI Agent 规范 | [github-ci-agent.md](github-ci-agent.md) | 已实现 |
 | SPEC-015 | Creator (Blender) 建模微服务规范 | [creator-service.md](creator-service.md) | 已实现 |
 | SPEC-016 | Draw.io 图表微服务规范 | [drawio-service.md](drawio-service.md) | 已实现 |
-| SPEC-017 | Tool Search — 工具搜索与元数据分离 | [tool-search.md](tool-search.md) | 设计中 |
+| SPEC-017 | Tool Search — 工具搜索与元数据分离 | [tool-search.md](tool-search.md) | 已实现 |
 | SPEC-018 | 分层架构重构规范 | [layered-architecture.md](layered-architecture.md) | 设计中 |
 | SPEC-019 | Tool Call Chain — Agent 工具调用链可视化 | [tool-call-chain.md](tool-call-chain.md) | 设计中 |
 | SPEC-020 | OpenTelemetry 分布式链路追踪 | [opentelemetry-tracing/opentelemetry-tracing.md](opentelemetry-tracing/opentelemetry-tracing.md) | 设计中 |

@@ -3,6 +3,7 @@
  */
 import { fileURLToPath } from 'url';
 import { z } from 'zod';
+import type { AnyZodRawShape } from 'zod';
 import { tool, createSdkMcpServer, type SdkMcpServerResult } from '@tencent-ai/agent-sdk';
 import yazl from 'yazl';
 import type { Stats } from 'fs';
@@ -142,6 +143,817 @@ const toSingleLinePreview = (content: string | null | undefined) =>
     .trim()
     .slice(0, CONTENT_PREVIEW_LENGTH);
 
+export interface ToolMeta<Schema extends AnyZodRawShape = AnyZodRawShape> {
+  name: string;
+  description: string;
+  inputSchema: Schema;
+}
+
+const AGENT_ID_ENUM = z.enum(AGENT_IDS);
+
+export const TOOL_META_DEFINITIONS: ToolMeta[] = [
+  {
+    name: 'save_memory',
+    description: '保存一条长期记忆。在做出重要决策、获得经验教训、产出成果等关键时刻，你应该主动调用此工具保存信息。',
+    inputSchema: {
+      category: z.enum(['general', 'preference', 'decision', 'lesson', 'achievement']).describe(
+        '记忆分类：general=通用, preference=用户偏好, decision=重要决策, lesson=经验教训, achievement=成果产出'
+      ),
+      content: z.string().max(5000).describe('记忆内容，简明扼要，不超过5000字符'),
+      importance: z.enum(['low', 'normal', 'high', 'critical']).optional().default('normal').describe('重要程度'),
+      source_task: z.string().optional().describe('关联的任务名称')
+    }
+  },
+  {
+    name: 'get_memories',
+    description: '获取你之前保存的长期记忆，帮助你回忆之前的决策、经验和成果。',
+    inputSchema: {
+      category: z.enum(['general', 'preference', 'decision', 'lesson', 'achievement']).optional().describe('按类别筛选，不填则返回全部'),
+      keyword: z.string().trim().max(200).optional().describe('按关键词模糊搜索记忆内容，可选，最长 200 字符'),
+      limit: z.number().min(1).max(50).optional().default(20).describe('返回条数上限')
+    }
+  },
+  {
+    name: 'create_handoff',
+    description: '将任务移交给其他团队成员。当你完成自己的工作部分，需要其他 Agent 接手时调用此工具。交接需要管理者确认后目标 Agent 才会开始工作。',
+    inputSchema: {
+      to_agent_id: AGENT_ID_ENUM
+        .refine((value) => value !== TEAM_BUILDING_AGENT_ID, { message: 'to_agent_id 不支持 team_builder' })
+        .describe(
+          '目标 Agent ID：engineer=软件工程师（含软件测试）, architect=架构师, game_designer=游戏策划（含UI设计）, biz_designer=商业策划, ceo=CEO（不支持 team_builder）'
+        ),
+      title: singleLineTitleSchema('title').describe('简短的任务标题'),
+      description: requiredTextSchema('description').describe('详细的任务描述'),
+      context: z.string().optional().describe(
+        '上下文信息：你的工作成果摘要、相关文件路径、关键决策等。这些信息对下一个 Agent 完成任务至关重要。'
+      ),
+      priority: z.enum(db.HANDOFF_PRIORITIES).optional().default('normal').describe('任务优先级')
+    }
+  },
+  {
+    name: 'split_dev_test_tasks',
+    description: '将一个功能目标拆分为开发任务和测试任务，并写入任务看板。',
+    inputSchema: {
+      feature_title: singleLineTitleSchema('feature_title').describe('功能标题'),
+      development_description: requiredTextSchema('development_description').describe('开发任务描述'),
+      testing_description: z.string().optional().transform((value, ctx) => {
+        if (value === undefined) return undefined;
+        try {
+          const normalized = db.normalizeOptionalText(value, 'testing_description');
+          return normalized || undefined;
+        } catch (error: any) {
+          ctx.addIssue({ code: 'custom', message: error?.message || 'testing_description 验证失败' });
+          return z.NEVER;
+        }
+      }).describe('测试任务描述（不填则自动生成）'),
+      priority_hint: z.enum(db.HANDOFF_PRIORITIES).optional().default('normal').describe('优先级提示（用于描述，不影响状态机）')
+    }
+  },
+  {
+    name: 'get_tasks',
+    description: '查询任务看板中的任务，用于查看待办和当前进度。可选按 agent_id 筛选 created_by/updated_by；不传则查询项目内全部任务。',
+    inputSchema: {
+      status: z.enum(db.TASK_STATUSES).optional().describe('按状态筛选'),
+      task_type: z.enum(db.TASK_TYPES).optional().describe('按任务类型筛选'),
+      agent_id: AGENT_ID_ENUM.optional().describe('按创建者/更新者 Agent ID 筛选；不传则查询全部'),
+      limit: z.number().min(1).max(100).optional().default(20).describe('返回条数上限')
+    }
+  },
+  {
+    name: 'update_task_status',
+    description: '更新看板任务状态，维护开发与测试过程进度。',
+    inputSchema: {
+      task_id: z.string().describe('任务 ID'),
+      status: z.enum(db.TASK_STATUSES).describe('目标状态')
+    }
+  },
+  {
+    name: 'submit_proposal',
+    description: '提交一份策划案或方案文档（如游戏策划案、商业策划案、技术方案等）。提案提交后将通知管理者进行审批。可通过 attachment_storage_ids 参数关联最多 10 个图表附件（来自 drawio_download_diagram 返回的 file_storage_id）。内容会自动进行 XSS 安全过滤，仅保留 p/br/strong/em/ul/ol/li/code/pre/a/span/div 等安全标签。',
+    inputSchema: {
+      type: z.enum(db.PROPOSAL_TYPES).describe(
+        '提案类型：game_design=游戏策划, biz_design=商业策划, tech_arch=架构方案, tech_impl=技术方案'
+      ),
+      title: singleLineTitleSchema('title').describe('提案标题'),
+      content: requiredTextSchema('content').describe('提案的完整内容（Markdown 格式），提交时将自动过滤 XSS 内容'),
+      attachment_storage_ids: z.array(z.string().uuid()).max(10).optional().describe('关联的附件 file_storage_id 列表（最多 10 个），来自 drawio_download_diagram 返回的 file_storage_id')
+    }
+  },
+  {
+    name: 'write_game_file',
+    description: '将游戏文件写入到游戏产出目录。engineer 应先调用此工具写入游戏文件，再调用 submit_game 提交。文件写入路径: output/{当前项目ID}/games/latest/{path}',
+    inputSchema: {
+      path: z.string().min(1).max(256).describe('文件路径（相对于 game 目录，如 index.html、assets/models/player.glb）'),
+      content: z.string().describe('文件内容'),
+    }
+  },
+  {
+    name: 'submit_game',
+    description: `提交一个完成的游戏成品（仅 engineer 可用）。从 games/latest/ 目录打包游戏，创建游戏记录（自动分配 version_number）。游戏文件夹会被压缩为 ZIP 并上传到 MinIO 存储。
+
+⚠️ description 仅允许纯 HTML 文本，禁止包含 JS 脚本。`,
+    inputSchema: {
+      description: z.string().min(1, 'description 不能为空').max(db.MAX_DESCRIPTION_LENGTH, `description 长度不能超过 ${db.MAX_DESCRIPTION_LENGTH}`).describe('游戏简介（纯 HTML，仅允许 p/br/strong/em/ul/ol/li/code/pre/a/span/div 标签，禁止 script 标签）'),
+      version: z.preprocess(
+        (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+        z.string().max(db.MAX_VERSION_LENGTH, `version 长度不能超过 ${db.MAX_VERSION_LENGTH}`).transform((value, ctx) => {
+          try {
+            return db.normalizeAndValidateRequiredText(value, 'version');
+          } catch (error: any) {
+            ctx.addIssue({ code: 'custom', message: error?.message || 'version 验证失败' });
+            return z.NEVER;
+          }
+        }).optional().default('1.0.0')
+      ).describe('版本号'),
+      proposal_id: z.string().optional().describe('关联的策划案 ID（如果有）')
+    }
+  },
+  {
+    name: 'get_agent_logs',
+    description: '读取当前项目下你自己的历史日志，用于回顾上下文和最近执行记录。',
+    inputSchema: {
+      limit: z.number().min(1).max(200).optional().default(20).describe('返回条数上限')
+    }
+  },
+  {
+    name: 'get_agents',
+    description: '查询所有 Agent 的信息（含 agent_id、名称、职责等），用于确认可用 Agent ID。此工具不涉及项目数据，无需传 project_id。',
+    inputSchema: {}
+  },
+  {
+    name: 'get_proposals',
+    description: '查询已有的提案列表，用于了解当前项目的策划案进度。可选按 agent_id 筛选 author/reviewer；不传则查询项目内全部提案。',
+    inputSchema: {
+      status: z.enum(db.PROPOSAL_STATUSES).optional().describe('按状态筛选'),
+      agent_id: AGENT_ID_ENUM.optional().describe('按作者/评审 Agent ID 筛选；不传则查询全部'),
+      limit: z.number().min(1).max(50).optional().default(10).describe('返回条数上限')
+    }
+  },
+  {
+    name: 'get_pending_handoffs',
+    description: '查询待处理的任务交接。可选按 agent_id 筛选发给该 Agent 的交接；不传则查询项目内全部待处理交接。',
+    inputSchema: {
+      agent_id: AGENT_ID_ENUM.optional().describe('目标 Agent ID（to_agent_id）筛选；不传则查询全部'),
+      limit: z.number().min(1).max(20).optional().default(5).describe('返回条数上限')
+    }
+  },
+  {
+    name: 'get_games',
+    description: '获取当前项目下已提交的游戏成品列表，按时间倒序返回。用于查看有哪些游戏已提交及其基本信息。',
+    inputSchema: {
+      limit: z.number().min(1).max(100).optional().default(20).describe('返回条数上限')
+    }
+  },
+  {
+    name: 'get_game_info',
+    description: '获取指定游戏的详细信息，返回 MinIO presigned 下载链接。',
+    inputSchema: {
+      game_id: z.string().optional().describe('游戏 ID'),
+      version_number: z.number().int().positive().optional().describe('版本号（整数）')
+    }
+  },
+  {
+    name: 'get_project_latest_info',
+    description: '查询当前项目最新 n 条关键信息，覆盖提案、任务、交接、日志、记忆，供总结提炼使用。',
+    inputSchema: {
+      limit: z.number().min(1).max(100).optional().default(20).describe('返回条数上限（跨类型混合排序）')
+    }
+  },
+  {
+    name: 'blender_create_project',
+    description: '创建建模 project（仅 engineer 可用）。在 backend 数据库创建记录，然后调用 creator service 创建容器内项目目录，返回 blender_project_id。建议在完成建模工作后调用 blender_delete_project 清理资源。',
+    inputSchema: {
+      name: z.string().min(1).max(50).describe('建模 project 名称'),
+    }
+  },
+  {
+    name: 'blender_list_projects',
+    description: '列出当前 studio project 下所有建模 project（仅 engineer 可用）。',
+    inputSchema: {
+      limit: z.number().min(1).max(50).optional().default(20).describe('返回条数上限'),
+    }
+  },
+  {
+    name: 'blender_delete_project',
+    description: '删除建模 project（仅 engineer 可用）。先调用 creator service 删除远程目录（幂等），再删除 backend DB 记录。建议完成模型文件下载后主动调用以释放容器存储空间。',
+    inputSchema: {
+      blender_project_id: z.string().describe('blender_project_id（来自 blender_create_project 的返回值）'),
+    }
+  },
+  {
+    name: 'blender_create_mesh',
+    description: '在 Blender 场景中创建一个基础几何体（立方体/球体/平面/圆柱体/圆环/圆锥）（仅 engineer 可用）。',
+    inputSchema: {
+      blender_project_id: z.string().describe('blender_project_id'),
+      mesh_type: z.enum(['cube', 'sphere', 'plane', 'cylinder', 'torus', 'cone']).describe('几何体类型'),
+      name: z.string().min(1).max(64).describe('物体名称'),
+      location: z.tuple([z.number(), z.number(), z.number()]).optional()
+        .describe('位置 (x, y, z)，默认 (0, 0, 0)'),
+      scale: z.tuple([z.number(), z.number(), z.number()]).optional()
+        .describe('缩放 (x, y, z)，默认 (1, 1, 1)'),
+    }
+  },
+  {
+    name: 'blender_add_material',
+    description: '为 Blender 场景中的物体添加 PBR 材质（仅 engineer 可用）。',
+    inputSchema: {
+      blender_project_id: z.string().describe('blender_project_id'),
+      object_name: z.string().min(1).max(64).describe('物体名称'),
+      color: z.tuple([z.number(), z.number(), z.number()]).optional()
+        .describe('颜色 RGB (0-1)，默认 (0.8, 0.8, 0.8)'),
+      metallic: z.number().min(0).max(1).optional().describe('金属度 0-1，默认 0'),
+      roughness: z.number().min(0).max(1).optional().describe('粗糙度 0-1，默认 0.5'),
+    }
+  },
+  {
+    name: 'blender_export_model',
+    description: '将 Blender 场景中的物体导出为模型文件（GLB/FBX/OBJ/PLY/USD）到游戏目录下（仅 engineer 可用）。导出路径限制为 game 目录下的指定路径。',
+    inputSchema: {
+      blender_project_id: z.string().describe('blender_project_id'),
+      object_name: z.string().min(1).max(64).describe('要导出的物体名称'),
+      output_filename: z.string().min(1).max(128).describe('输出文件名（含扩展名，如 model.glb）'),
+      path: z.string().max(256).optional().default('assets').describe('导出路径（相对于 game 目录，如 assets/models 或 models）'),
+      format: z.enum(['glb', 'fbx', 'obj', 'ply', 'usd']).optional().default('glb').describe('导出格式'),
+    }
+  },
+  {
+    name: 'blender_download_model_file',
+    description: '从 creator service 下载模型文件到 backend 本地 output 目录（仅 engineer 可用）。下载完成后应主动调用 blender_delete_model_file 清理 creator 远程资源。',
+    inputSchema: {
+      blender_project_id: z.string().describe('blender_project_id'),
+      filename: z.string().min(1).max(128).describe('要下载的文件名'),
+    }
+  },
+  {
+    name: 'blender_delete_model_file',
+    description: '删除 creator 远程模型文件（幂等）（仅 engineer 可用）。下载到本地后应先调用此工具删除远程文件，再删除本地副本以释放容器存储空间。',
+    inputSchema: {
+      blender_project_id: z.string().describe('blender_project_id'),
+      filename: z.string().min(1).max(128).describe('要删除的文件名'),
+    }
+  },
+  {
+    name: 'blender_list_objects',
+    description: '分页列出 Blender 场景中的所有对象（网格、灯光等），供 agent 引用 object_name 用于 add_material/export 等操作',
+    inputSchema: {
+      blender_project_id: z.string().describe('blender_project_id（来自 blender_create_project）'),
+      page: z.number().int().min(1).optional().default(1).describe('页码（从 1 开始）'),
+      page_size: z.number().int().min(1).max(100).optional().default(20).describe('每页条数'),
+      object_type: z.string().optional().describe('按对象类型筛选，如 MESH、LIGHT、CAMERA'),
+    }
+  },
+  {
+    name: 'image_create_project',
+    description: '创建图片处理 project（仅 engineer 可用）。在 backend 数据库创建记录，然后调用 image service 创建容器内项目目录，返回 image_project_id。建议在完成图片处理后调用 image_delete_project 清理资源。',
+    inputSchema: {
+      name: z.string().min(1).max(50).describe('图片 project 名称'),
+    }
+  },
+  {
+    name: 'image_list_projects',
+    description: '列出当前 studio project 下所有图片处理 project（仅 engineer 可用）。',
+    inputSchema: {
+      limit: z.number().min(1).max(50).optional().default(20).describe('返回条数上限'),
+    }
+  },
+  {
+    name: 'image_delete_project',
+    description: '删除图片处理 project（仅 engineer 可用）。先调用 image service 删除远程目录（幂等），再删除 backend DB 记录。建议完成图片文件下载后主动调用以释放容器存储空间。',
+    inputSchema: {
+      image_project_id: z.string().describe('image_project_id（来自 image_create_project 的返回值）'),
+    }
+  },
+  {
+    name: 'image_resize',
+    description: '缩放图片到指定尺寸（仅 engineer 可用）。支持保持纵横比填充模式。',
+    inputSchema: {
+      image_project_id: z.string().describe('image_project_id'),
+      input_filename: z.string().min(1).max(128).describe('输入文件名'),
+      width: z.number().int().min(1).max(16384).describe('目标宽度（像素）'),
+      height: z.number().int().min(1).max(16384).describe('目标高度（像素）'),
+      keep_aspect: z.boolean().optional().default(true).describe('是否保持纵横比'),
+      output_filename: z.string().min(1).max(128).describe('输出文件名'),
+    }
+  },
+  {
+    name: 'image_crop',
+    description: '裁剪图片（仅 engineer 可用）。从指定坐标裁剪指定尺寸的区域。',
+    inputSchema: {
+      image_project_id: z.string().describe('image_project_id'),
+      input_filename: z.string().min(1).max(128).describe('输入文件名'),
+      width: z.number().int().min(1).max(16384).describe('裁剪宽度（像素）'),
+      height: z.number().int().min(1).max(16384).describe('裁剪高度（像素）'),
+      x: z.number().int().min(0).max(16384).optional().default(0).describe('起始 X 坐标'),
+      y: z.number().int().min(0).max(16384).optional().default(0).describe('起始 Y 坐标'),
+      output_filename: z.string().min(1).max(128).describe('输出文件名'),
+    }
+  },
+  {
+    name: 'image_convert',
+    description: '转换图片格式（仅 engineer 可用）。支持 PNG/JPG/WEBP/AVIF/GIF/BMP 互转。',
+    inputSchema: {
+      image_project_id: z.string().describe('image_project_id'),
+      input_filename: z.string().min(1).max(128).describe('输入文件名'),
+      target_format: z.enum(['png', 'jpg', 'webp', 'avif', 'gif', 'bmp']).describe('目标格式'),
+      output_filename: z.string().min(1).max(128).describe('输出文件名'),
+    }
+  },
+  {
+    name: 'image_compress',
+    description: '压缩图片（仅 engineer 可用）。通过调整质量参数控制文件大小。',
+    inputSchema: {
+      image_project_id: z.string().describe('image_project_id'),
+      input_filename: z.string().min(1).max(128).describe('输入文件名'),
+      quality: z.number().int().min(1).max(100).describe('压缩质量（1-100），越低压缩率越高'),
+      output_filename: z.string().min(1).max(128).describe('输出文件名'),
+    }
+  },
+  {
+    name: 'image_watermark',
+    description: '为图片添加水印（仅 engineer 可用）。支持文字水印和图片水印两种类型。',
+    inputSchema: {
+      image_project_id: z.string().describe('image_project_id'),
+      input_filename: z.string().min(1).max(128).describe('输入文件名'),
+      type: z.enum(['text', 'image']).optional().default('text').describe('水印类型：text 文字水印 / image 图片水印'),
+      content: z.string().max(256).optional().describe('水印文字内容或水印图片文件名'),
+      position: z.string().optional().default('southeast').describe('水印位置（center/north/south/east/west/northeast/northwest/southeast/southwest）'),
+      opacity: z.number().min(0).max(1).optional().default(0.5).describe('水印透明度（0-1）'),
+      output_filename: z.string().min(1).max(128).describe('输出文件名'),
+    }
+  },
+  {
+    name: 'image_composite',
+    description: '合成两张图片（仅 engineer 可用）。将一张图片叠加到另一张上面。',
+    inputSchema: {
+      image_project_id: z.string().describe('image_project_id'),
+      base_filename: z.string().min(1).max(128).describe('底图文件名'),
+      overlay_filename: z.string().min(1).max(128).describe('叠加图片文件名'),
+      gravity: z.string().optional().default('center').describe('对齐方式（center/north/south/east/west 等）'),
+      x: z.number().int().optional().default(0).describe('X 偏移（像素）'),
+      y: z.number().int().optional().default(0).describe('Y 偏移（像素）'),
+      output_filename: z.string().min(1).max(128).describe('输出文件名'),
+    }
+  },
+  {
+    name: 'image_flip_rotate',
+    description: '翻转或旋转图片（仅 engineer 可用）。支持水平/垂直翻转和任意角度旋转。',
+    inputSchema: {
+      image_project_id: z.string().describe('image_project_id'),
+      input_filename: z.string().min(1).max(128).describe('输入文件名'),
+      mode: z.enum(['flip', 'flop', 'rotate', 'transpose', 'transverse']).describe('模式：flip 垂直翻转 / flop 水平翻转 / rotate 旋转 / transpose / transverse'),
+      angle: z.number().int().min(0).max(360).optional().default(90).describe('旋转角度（仅 rotate 模式有效）'),
+      output_filename: z.string().min(1).max(128).describe('输出文件名'),
+    }
+  },
+  {
+    name: 'image_add_margin',
+    description: '为图片添加边距（仅 engineer 可用）。在图片四周添加指定颜色的边距。',
+    inputSchema: {
+      image_project_id: z.string().describe('image_project_id'),
+      input_filename: z.string().min(1).max(128).describe('输入文件名'),
+      top: z.number().int().min(0).max(4096).optional().default(0).describe('上边距（像素）'),
+      right: z.number().int().min(0).max(4096).optional().default(0).describe('右边距（像素）'),
+      bottom: z.number().int().min(0).max(4096).optional().default(0).describe('下边距（像素）'),
+      left: z.number().int().min(0).max(4096).optional().default(0).describe('左边距（像素）'),
+      color: z.string().max(32).optional().default('transparent').describe('边距颜色（名称/#hex/transparent）'),
+      output_filename: z.string().min(1).max(128).describe('输出文件名'),
+    }
+  },
+  {
+    name: 'image_color_adjust',
+    description: '调整图片色彩（仅 engineer 可用）。调整亮度、对比度、饱和度、色相。',
+    inputSchema: {
+      image_project_id: z.string().describe('image_project_id'),
+      input_filename: z.string().min(1).max(128).describe('输入文件名'),
+      brightness: z.number().int().min(-100).max(100).optional().default(0).describe('亮度调整（-100 到 100）'),
+      contrast: z.number().int().min(-100).max(100).optional().default(0).describe('对比度调整（-100 到 100）'),
+      saturation: z.number().int().min(0).max(200).optional().default(100).describe('饱和度（100=原值）'),
+      hue: z.number().int().min(0).max(200).optional().default(100).describe('色相（100=原值）'),
+      output_filename: z.string().min(1).max(128).describe('输出文件名'),
+    }
+  },
+  {
+    name: 'image_info',
+    description: '获取图片元信息（仅 engineer 可用）。返回尺寸、格式、色彩空间、文件大小等。',
+    inputSchema: {
+      image_project_id: z.string().describe('image_project_id'),
+      filename: z.string().min(1).max(128).describe('要查询的文件名'),
+    }
+  },
+  {
+    name: 'image_batch',
+    description: '批量处理图片（仅 engineer 可用）。对多个图片执行相同的操作。',
+    inputSchema: {
+      image_project_id: z.string().describe('image_project_id'),
+      input_pattern: z.string().min(1).max(256).describe('输入文件通配符或逗号分隔的文件名列表'),
+      operation: z.string().describe('批量操作类型（resize/convert/compress）'),
+      operation_params: z.record(z.string(), z.any()).optional().default({}).describe('操作参数'),
+      output_dir: z.string().optional().default('batch_output').describe('输出目录名'),
+    }
+  },
+  {
+    name: 'image_sprite_sheet',
+    description: '创建精灵图（仅 engineer 可用）。将多张图片拼合成一张网格图。',
+    inputSchema: {
+      image_project_id: z.string().describe('image_project_id'),
+      files: z.array(z.string().min(1).max(128)).min(1).max(256).describe('要拼合的图片文件名列表'),
+      columns: z.number().int().min(1).max(64).describe('列数'),
+      rows: z.number().int().min(1).max(64).describe('行数'),
+      output_filename: z.string().min(1).max(128).describe('输出文件名'),
+    }
+  },
+  {
+    name: 'image_write_file',
+    description: '将图片文件写入到本地图片产出目录（仅 engineer 可用）。接受 base64 编码的图片内容，工具内部将 base64 还原为二进制图片后写入本地文件系统。文件写入路径: output/{当前项目ID}/images/{filename}。写入后需调用 image_upload_file 上传到 image service 容器。',
+    inputSchema: {
+      filename: z.string().min(1).max(128).describe('文件名（如 background_raw.png、ui_sprite.png）。禁止路径分隔符'),
+      content: z.string().min(1).describe('base64 编码的图片内容'),
+    }
+  },
+  {
+    name: 'image_upload_file',
+    description: '将本地图片文件上传到 image service 容器目录（仅 engineer 可用）。从 output/{当前项目ID}/images/{filename} 读取文件，base64 编码后上传到 image service 对应 project。必须先调用 image_write_file 写入本地文件，再调用本工具上传。',
+    inputSchema: {
+      image_project_id: z.string().describe('image_project_id（来自 image_create_project 的返回值）'),
+      filename: z.string().min(1).max(128).describe('文件名（需与 image_write_file 写入的一致）'),
+    }
+  },
+  {
+    name: 'image_download_file',
+    description: '从 image service 下载图片文件到 backend 本地 output 目录（仅 engineer 可用）。下载完成后应主动调用 image_delete_file 清理远程资源。',
+    inputSchema: {
+      image_project_id: z.string().describe('image_project_id'),
+      filename: z.string().min(1).max(128).describe('要下载的文件名'),
+    }
+  },
+  {
+    name: 'image_delete_file',
+    description: '删除 image service 远程图片文件（幂等）（仅 engineer 可用）。下载到本地后应先调用此工具删除远程文件以释放容器存储空间。',
+    inputSchema: {
+      image_project_id: z.string().describe('image_project_id'),
+      filename: z.string().min(1).max(128).describe('要删除的文件名'),
+    }
+  },
+  {
+    name: 'video_create_project',
+    description: '创建视频处理 project（仅 engineer 可用）。在 backend 数据库创建记录，然后调用 video service 创建容器内项目目录，返回 video_project_id。建议在完成视频处理后调用 video_delete_project 清理资源。',
+    inputSchema: {
+      name: z.string().min(1).max(50).describe('视频 project 名称'),
+    }
+  },
+  {
+    name: 'video_list_projects',
+    description: '列出当前 studio project 下所有视频处理 project（仅 engineer 可用）。',
+    inputSchema: {
+      limit: z.number().min(1).max(50).optional().default(20).describe('返回条数上限'),
+    }
+  },
+  {
+    name: 'video_delete_project',
+    description: '删除视频处理 project（仅 engineer 可用）。先调用 video service 删除远程目录（幂等），再删除 backend DB 记录。建议完成视频文件下载后主动调用以释放容器存储空间。',
+    inputSchema: {
+      video_project_id: z.string().describe('video_project_id（来自 video_create_project 的返回值）'),
+    }
+  },
+  {
+    name: 'video_info',
+    description: '获取视频元信息（仅 engineer 可用）。返回时长、分辨率、编码、码率、帧率、音频流信息。',
+    inputSchema: {
+      video_project_id: z.string().describe('video_project_id'),
+      filename: z.string().min(1).max(128).describe('要查询的文件名'),
+    }
+  },
+  {
+    name: 'video_convert',
+    description: '转换视频格式（仅 engineer 可用）。支持 MP4/WebM/MOV/GIF/AVI/MKV 互转。',
+    inputSchema: {
+      video_project_id: z.string().describe('video_project_id'),
+      input_filename: z.string().min(1).max(128).describe('输入文件名'),
+      target_format: z.enum(['mp4', 'webm', 'mov', 'gif', 'avi', 'mkv']).describe('目标格式'),
+      output_filename: z.string().min(1).max(128).describe('输出文件名'),
+      video_codec: z.string().max(32).optional().describe('视频编码器（h264/h265/vp8/vp9/av1，留空自动选择）'),
+      audio_codec: z.string().max(32).optional().describe('音频编码器（aac/mp3/opus/vorbis/copy，留空自动选择）'),
+    }
+  },
+  {
+    name: 'video_trim',
+    description: '截取视频片段（仅 engineer 可用）。从指定时间点截取指定时长的片段。',
+    inputSchema: {
+      video_project_id: z.string().describe('video_project_id'),
+      input_filename: z.string().min(1).max(128).describe('输入文件名'),
+      start_time: z.number().min(0).describe('起始时间（秒）'),
+      duration: z.number().positive().optional().describe('持续时长（秒）'),
+      end_time: z.number().positive().optional().describe('结束时间（秒）'),
+      output_filename: z.string().min(1).max(128).describe('输出文件名'),
+    }
+  },
+  {
+    name: 'video_concat',
+    description: '拼接多个视频（仅 engineer 可用）。将多个视频按顺序拼接为一个。',
+    inputSchema: {
+      video_project_id: z.string().describe('video_project_id'),
+      input_filenames: z.array(z.string().min(1).max(128)).min(2).max(64).describe('要拼接的视频文件名列表'),
+      output_filename: z.string().min(1).max(128).describe('输出文件名'),
+    }
+  },
+  {
+    name: 'video_resize',
+    description: '缩放视频（仅 engineer 可用）。改变视频分辨率，支持保持纵横比填充。',
+    inputSchema: {
+      video_project_id: z.string().describe('video_project_id'),
+      input_filename: z.string().min(1).max(128).describe('输入文件名'),
+      width: z.number().int().min(1).max(7680).describe('目标宽度（像素）'),
+      height: z.number().int().min(1).max(7680).describe('目标高度（像素）'),
+      keep_aspect: z.boolean().optional().default(true).describe('是否保持纵横比'),
+      output_filename: z.string().min(1).max(128).describe('输出文件名'),
+    }
+  },
+  {
+    name: 'video_compress',
+    description: '压缩视频（仅 engineer 可用）。通过 CRF 或码率控制压缩视频文件大小。',
+    inputSchema: {
+      video_project_id: z.string().describe('video_project_id'),
+      input_filename: z.string().min(1).max(128).describe('输入文件名'),
+      crf: z.number().int().min(0).max(51).optional().default(23).describe('CRF 值（0-51，默认23，越小质量越高）'),
+      bitrate: z.string().max(16).optional().describe('目标码率（如 "1M"、"2500k"）'),
+      preset: z.string().max(32).optional().default('medium').describe('编码预设（ultrafast~veryslow）'),
+      output_filename: z.string().min(1).max(128).describe('输出文件名'),
+    }
+  },
+  {
+    name: 'video_crop',
+    description: '裁剪视频画面（仅 engineer 可用）。从指定坐标裁剪指定尺寸的区域。',
+    inputSchema: {
+      video_project_id: z.string().describe('video_project_id'),
+      input_filename: z.string().min(1).max(128).describe('输入文件名'),
+      width: z.number().int().min(1).max(7680).describe('裁剪宽度（像素）'),
+      height: z.number().int().min(1).max(7680).describe('裁剪高度（像素）'),
+      x: z.number().int().min(0).max(7680).optional().default(0).describe('起始 X 坐标'),
+      y: z.number().int().min(0).max(7680).optional().default(0).describe('起始 Y 坐标'),
+      output_filename: z.string().min(1).max(128).describe('输出文件名'),
+    }
+  },
+  {
+    name: 'video_rotate',
+    description: '旋转视频（仅 engineer 可用）。支持 90°/180°/270° 旋转。',
+    inputSchema: {
+      video_project_id: z.string().describe('video_project_id'),
+      input_filename: z.string().min(1).max(128).describe('输入文件名'),
+      angle: z.number().int().min(0).max(360).describe('旋转角度'),
+      output_filename: z.string().min(1).max(128).describe('输出文件名'),
+    }
+  },
+  {
+    name: 'video_change_speed',
+    description: '视频变速（仅 engineer 可用）。改变视频播放速度（0.25x ~ 4x）。',
+    inputSchema: {
+      video_project_id: z.string().describe('video_project_id'),
+      input_filename: z.string().min(1).max(128).describe('输入文件名'),
+      speed: z.number().min(0.25).max(4.0).describe('速度倍数（0.25-4.0）'),
+      output_filename: z.string().min(1).max(128).describe('输出文件名'),
+    }
+  },
+  {
+    name: 'video_extract_frames',
+    description: '提取视频帧为图片序列（仅 engineer 可用）。按指定帧率提取帧保存为图片。',
+    inputSchema: {
+      video_project_id: z.string().describe('video_project_id'),
+      input_filename: z.string().min(1).max(128).describe('输入文件名'),
+      fps: z.number().int().min(1).max(120).optional().default(1).describe('帧率（每秒提取帧数）'),
+      frame_count: z.number().int().min(1).max(10000).optional().describe('最大提取帧数'),
+      output_pattern: z.string().min(1).max(128).optional().default('frame_%04d.png').describe('输出文件名模式'),
+      format: z.string().max(16).optional().default('png').describe('输出图片格式'),
+    }
+  },
+  {
+    name: 'video_extract_audio',
+    description: '提取视频音频轨（仅 engineer 可用）。从视频中提取音频保存为独立文件。',
+    inputSchema: {
+      video_project_id: z.string().describe('video_project_id'),
+      input_filename: z.string().min(1).max(128).describe('输入文件名'),
+      output_filename: z.string().min(1).max(128).describe('输出文件名'),
+      format: z.string().max(16).optional().default('mp3').describe('音频格式（mp3/aac/ogg/opus/wav）'),
+    }
+  },
+  {
+    name: 'video_add_audio',
+    description: '添加/替换视频音轨（仅 engineer 可用）。支持混合原音频或完全替换。',
+    inputSchema: {
+      video_project_id: z.string().describe('video_project_id'),
+      video_filename: z.string().min(1).max(128).describe('视频文件名'),
+      audio_filename: z.string().min(1).max(128).describe('音频文件名'),
+      output_filename: z.string().min(1).max(128).describe('输出文件名'),
+      mix: z.boolean().optional().default(false).describe('是否混合原音频（true=叠加 / false=替换）'),
+    }
+  },
+  {
+    name: 'video_add_text',
+    description: '添加文字叠加层（仅 engineer 可用）。在视频上叠加文字。',
+    inputSchema: {
+      video_project_id: z.string().describe('video_project_id'),
+      input_filename: z.string().min(1).max(128).describe('输入文件名'),
+      text: z.string().min(1).max(512).describe('要叠加的文字'),
+      x: z.number().int().min(0).max(7680).optional().default(10).describe('X 坐标'),
+      y: z.number().int().min(0).max(7680).optional().default(10).describe('Y 坐标'),
+      font_size: z.number().int().min(8).max(256).optional().default(24).describe('字体大小'),
+      color: z.string().max(32).optional().default('white').describe('文字颜色（名称或#hex）'),
+      output_filename: z.string().min(1).max(128).describe('输出文件名'),
+    }
+  },
+  {
+    name: 'video_add_watermark',
+    description: '添加图片水印（仅 engineer 可用）。在视频上叠加图片水印。',
+    inputSchema: {
+      video_project_id: z.string().describe('video_project_id'),
+      input_filename: z.string().min(1).max(128).describe('输入文件名'),
+      watermark_filename: z.string().min(1).max(128).describe('水印图片文件名'),
+      position: z.enum(['top-left', 'top-right', 'bottom-left', 'bottom-right', 'center']).optional().default('bottom-right').describe('水印位置'),
+      opacity: z.number().min(0).max(1).optional().default(0.5).describe('水印透明度（0-1）'),
+      output_filename: z.string().min(1).max(128).describe('输出文件名'),
+    }
+  },
+  {
+    name: 'video_generate_gif',
+    description: '视频转 GIF（仅 engineer 可用）。将视频片段转换为动态 GIF。',
+    inputSchema: {
+      video_project_id: z.string().describe('video_project_id'),
+      input_filename: z.string().min(1).max(128).describe('输入文件名'),
+      fps: z.number().int().min(1).max(60).optional().default(10).describe('帧率'),
+      width: z.number().int().min(1).max(3840).optional().default(480).describe('输出宽度（像素）'),
+      output_filename: z.string().min(1).max(128).describe('输出文件名'),
+    }
+  },
+  {
+    name: 'video_gif_to_video',
+    description: 'GIF 转视频（仅 engineer 可用）。将 GIF 动画转换为视频格式。',
+    inputSchema: {
+      video_project_id: z.string().describe('video_project_id'),
+      input_filename: z.string().min(1).max(128).describe('输入文件名'),
+      target_format: z.string().max(16).optional().default('mp4').describe('目标视频格式'),
+      output_filename: z.string().min(1).max(128).describe('输出文件名'),
+    }
+  },
+  {
+    name: 'video_create_thumbnail',
+    description: '生成视频缩略图（仅 engineer 可用）。从指定时间点截取一帧作为缩略图。',
+    inputSchema: {
+      video_project_id: z.string().describe('video_project_id'),
+      filename: z.string().min(1).max(128).describe('视频文件名'),
+      time: z.number().min(0).optional().default(5).describe('截取时间点（秒）'),
+      width: z.number().int().min(1).max(3840).optional().default(320).describe('缩略图宽度（像素）'),
+      output_filename: z.string().min(1).max(128).describe('输出文件名'),
+    }
+  },
+  {
+    name: 'video_write_file',
+    description: '将视频文件写入到本地视频产出目录（仅 engineer 可用）。接受 base64 编码的视频内容，工具内部将 base64 还原为二进制后写入本地文件系统。文件写入路径: output/{当前项目ID}/videos/{filename}。写入后需调用 video_upload_file 上传到 video service 容器。',
+    inputSchema: {
+      filename: z.string().min(1).max(128).describe('文件名（如 intro.mp4、gameplay.webm）。禁止路径分隔符'),
+      content: z.string().min(1).describe('base64 编码的视频内容'),
+    }
+  },
+  {
+    name: 'video_upload_file',
+    description: '将本地视频文件上传到 video service 容器目录（仅 engineer 可用）。从 output/{当前项目ID}/videos/{filename} 读取文件，base64 编码后上传到 video service 对应 project。必须先调用 video_write_file 写入本地文件，再调用本工具上传。',
+    inputSchema: {
+      video_project_id: z.string().describe('video_project_id（来自 video_create_project 的返回值）'),
+      filename: z.string().min(1).max(128).describe('文件名（需与 video_write_file 写入的一致）'),
+    }
+  },
+  {
+    name: 'video_download_file',
+    description: '从 video service 下载视频文件到 backend 本地 output 目录（仅 engineer 可用）。下载完成后应主动调用 video_delete_file 清理远程资源。',
+    inputSchema: {
+      video_project_id: z.string().describe('video_project_id'),
+      filename: z.string().min(1).max(128).describe('要下载的文件名'),
+    }
+  },
+  {
+    name: 'video_delete_file',
+    description: '删除 video service 远程视频文件（幂等）（仅 engineer 可用）。下载到本地后应先调用此工具删除远程文件以释放容器存储空间。',
+    inputSchema: {
+      video_project_id: z.string().describe('video_project_id'),
+      filename: z.string().min(1).max(128).describe('要删除的文件名'),
+    }
+  },
+  {
+    name: 'drawio_create_project',
+    description: '创建 draw.io 图表 project。在 backend 数据库创建记录，然后调用 drawio service 创建项目目录，返回 drawio_project_id。',
+    inputSchema: {
+      name: z.string().min(1).max(50).describe('图表 project 名称'),
+    }
+  },
+  {
+    name: 'drawio_list_projects',
+    description: '列出当前 studio project 下所有图表 project。',
+    inputSchema: {
+      limit: z.number().min(1).max(50).optional().default(20).describe('返回条数上限'),
+    }
+  },
+  {
+    name: 'drawio_delete_project',
+    description: '删除图表 project。先调用 drawio service 删除远程目录（幂等），再删除 backend DB 记录。',
+    inputSchema: {
+      drawio_project_id: z.string().describe('drawio_project_id（来自 drawio_create_project 的返回值）'),
+    }
+  },
+  {
+    name: 'drawio_create_diagram',
+    description: '在图表 project 中创建一个新图表。返回 diagram_id，后续 add_shape/add_connector 需要用到。',
+    inputSchema: {
+      drawio_project_id: z.string().describe('drawio_project_id'),
+      name: z.string().min(1).max(100).describe('图表名称'),
+    }
+  },
+  {
+    name: 'drawio_add_shape',
+    description: '向图表添加一个形状。支持矩形、椭圆、菱形、六边形、圆柱、云形等多种形状类型。返回 shape_id，后续 add_connector 需要用到。',
+    inputSchema: {
+      drawio_project_id: z.string().describe('drawio_project_id'),
+      diagram_id: z.string().describe('diagram_id（来自 drawio_create_diagram）'),
+      shape_type: z.enum([
+        'rectangle', 'ellipse', 'diamond', 'parallelogram',
+        'hexagon', 'cylinder', 'cloud', 'process',
+        'decision', 'document', 'person', 'database'
+      ]).describe('形状类型'),
+      label: z.string().describe('形状内显示的文本'),
+      x: z.number().describe('X 坐标'),
+      y: z.number().describe('Y 坐标'),
+      width: z.number().optional().default(120).describe('宽度'),
+      height: z.number().optional().default(60).describe('高度'),
+      fill_color: z.string().optional().describe('填充颜色，如 #dae8fc'),
+      stroke_color: z.string().optional().describe('边框颜色'),
+    }
+  },
+  {
+    name: 'drawio_add_connector',
+    description: '将两个形状用连接线连接起来。支持直线、肘形、曲线等多种连接线类型，可设置箭头。',
+    inputSchema: {
+      drawio_project_id: z.string().describe('drawio_project_id'),
+      diagram_id: z.string().describe('diagram_id'),
+      from_shape_id: z.string().describe('起点形状 ID（add_shape 返回值）'),
+      to_shape_id: z.string().describe('终点形状 ID（add_shape 返回值）'),
+      label: z.string().optional().describe('连接线上显示的文本'),
+      connector_type: z.enum(['straight', 'orthogonal', 'elbow', 'curved'])
+        .optional().default('straight').describe('连接线类型'),
+      arrow_start: z.boolean().optional().default(false).describe('起点是否加箭头'),
+      arrow_end: z.boolean().optional().default(true).describe('终点是否加箭头（默认加）'),
+      stroke_color: z.string().optional().describe('线条颜色'),
+      stroke_width: z.number().optional().default(1).describe('线条粗细'),
+    }
+  },
+  {
+    name: 'drawio_download_diagram',
+    description: '将图表导出为 PNG/SVG/PDF/XML 并下载到本地 output 目录，同时自动上传到 MinIO 存储（object_key: design/{project_id}/{UUID}.{format}），返回 file_storage_id。可在提交策划案时作为附件传入 attachment_storage_ids。',
+    inputSchema: {
+      drawio_project_id: z.string().describe('drawio_project_id'),
+      diagram_id: z.string().describe('diagram_id'),
+      filename: z.string().optional().describe('输出文件名（含扩展名）'),
+      format: z.enum(['png', 'svg', 'pdf', 'xml']).optional().default('png').describe('导出格式'),
+      scale: z.number().optional().default(1.0).describe('PNG 缩放比例'),
+    }
+  },
+  {
+    name: 'drawio_list_elements',
+    description: '分页列出 draw.io 图表中的所有元素（形状和连接线），供 agent 引用 element_id 用于 add_connector 等操作',
+    inputSchema: {
+      drawio_project_id: z.string().describe('drawio_project_id（来自 drawio_create_project）'),
+      diagram_id: z.string().describe('diagram_id（来自 drawio_create_diagram）'),
+      page: z.number().int().min(1).optional().default(1).describe('页码（从 1 开始）'),
+      page_size: z.number().int().min(1).max(100).optional().default(20).describe('每页条数'),
+      element_type: z.enum(['shape', 'connector']).optional().describe('按类型筛选：shape 或 connector'),
+    }
+  },
+  {
+    name: 'get_game_types',
+    description: '获取所有已注册的游戏类型列表，供 Engineer Agent 在开发前确认支持的游戏类型。',
+    inputSchema: {
+      limit: z.number().min(1).max(50).optional().default(20).describe('返回条数上限')
+    }
+  },
+  {
+    name: 'get_game_framework_spec',
+    description: '根据游戏类型获取对应的工程框架规范。Engineer Agent 在开发前 MUST 调用此工具获取规范。',
+    inputSchema: {
+      game_type: z.string().describe('游戏类型，从 get_game_types 获取当前支持的类型')
+    }
+  },
+  {
+    name: 'get_common_spec',
+    description: '获取所有游戏类型共享的公共工程规范。',
+    inputSchema: {}
+  },
+  {
+    name: 'search_tools',
+    description: '搜索可用的 studio 工具。支持按名称正则模糊匹配，不传或传空时返回所有工具描述。',
+    inputSchema: {
+      name: z.string().max(100).optional().describe(
+        '工具名称关键词，支持正则模糊匹配（只要工具名包含此关键词即匹配）。不传或传空字符串时返回全部工具。'
+      )
+    }
+  },
+];
+
 /**
  *
  */
@@ -178,3005 +990,2230 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
     biz_designer: ['ceo'],
     team_builder: []
   };
-  const AGENT_ID_ENUM = z.enum(AGENT_IDS);
+
+  const handlers: Record<string, (...args: any[]) => Promise<any>> = {
+    save_memory: async ({ category, content, importance, source_task }: any) => {
+      console.error(`[Tool] ${_tts()} save_memory START agentId=${agentId} projectId=${scopedProjectId} category=${category} contentLength=${content.length}`);
+      const now = new Date().toISOString();
+      const memory = db.createAgentMemory({
+        id: uuidv4(),
+        project_id: scopedProjectId,
+        agent_id: agentId,
+        category,
+        content,
+        importance: importance || 'normal',
+        source_task: source_task || null,
+        created_at: now,
+        updated_at: now
+      });
+      log(agentId, '保存记忆', `类别: ${category} | 重要度: ${importance}`, 'info');
+      console.error(`[Tool] ${_tts()} save_memory DONE memoryId=${memory.id.slice(0, 8)}`);
+      return {
+        content: [{ type: 'text' as const, text: `记忆已保存 (ID: ${memory.id.slice(0, 8)})` }]
+      };
+    },
+
+    get_memories: async ({ category, keyword, limit }: any) => {
+      const memories = db.getAgentMemories(scopedProjectId, agentId, {
+        category,
+        keyword,
+        limit
+      });
+      if (memories.length === 0) {
+        return {
+          content: [{ type: 'text' as const, text: '暂无保存的记忆。' }]
+        };
+      }
+      const text = memories.map(m =>
+        `[${m.category}/${m.importance}] (${m.created_at.slice(0, 10)}) ${m.content}`
+      ).join('\n');
+      return {
+        content: [{ type: 'text' as const, text }]
+      };
+    },
+
+    create_handoff: async ({ to_agent_id, title, description, context, priority }: any) => {
+      console.error(`[Tool] ${_tts()} create_handoff START agentId=${agentId} projectId=${scopedProjectId} from=${agentId} to=${to_agent_id} title=${title}`);
+      const allowedTargets = ALLOWED_HANDOFF_TARGETS[agentId] || [];
+      if (!allowedTargets.includes(to_agent_id)) {
+        console.error(`[Tool] ${_tts()} create_handoff INVALID_TARGET agentId=${agentId} to=${to_agent_id} allowed=${allowedTargets.join(',') || 'none'}`);
+        throw new Error(`交接目标不合法：${agentId} 仅可移交给 ${allowedTargets.join(' / ') || '无'}`);
+      }
+      const now = new Date().toISOString();
+      const settings = db.getProjectSettings(scopedProjectId);
+      const autoHandoffEnabled = settings.autopilot_enabled === 1;
+      console.error(`[Tool] ${_tts()} create_handoff autopilot=${autoHandoffEnabled}`);
+      const handoff = db.createHandoff({
+        id: uuidv4(),
+        project_id: scopedProjectId,
+        from_agent_id: agentId,
+        to_agent_id,
+        title,
+        description,
+        context: context || null,
+        status: autoHandoffEnabled ? 'working' : 'pending',
+        priority: priority || 'normal',
+        result: null,
+        accepted_at: autoHandoffEnabled ? now : null,
+        completed_at: null,
+        source_command_id: null,
+        created_at: now,
+        updated_at: now,
+      });
+      console.error(`[Tool] ${_tts()} create_handoff broadcast handoff_created handoffId=${handoff.id.slice(0, 8)}`);
+      sseBroadcaster.broadcast({ type: 'handoff_created', handoff }, scopedProjectId);
+      log(agentId, '创建交接', `${agentId} → ${to_agent_id}: ${title}`, 'success');
+      console.error(`[Tool] ${_tts()} create_handoff DONE handoffId=${handoff.id.slice(0, 8)} status=${autoHandoffEnabled ? 'working' : 'pending'}`);
+      if (autoHandoffEnabled && onAutoHandoff) {
+        try {
+          await onAutoHandoff(handoff);
+        } catch (error: any) {
+          log(
+            to_agent_id,
+            '交接任务执行失败',
+            `[${agentId} → ${to_agent_id}: ${title}] ${error?.message || String(error)}`,
+            'error'
+          );
+        }
+      }
+      return {
+        content: [{
+          type: 'text' as const,
+          text: autoHandoffEnabled
+            ? `交接已创建并自动接收 (ID: ${handoff.id})，${to_agent_id} 已进入执行状态。`
+            : `交接已创建 (ID: ${handoff.id})，等待管理者确认后 ${to_agent_id} 才会开始工作。`
+        }]
+      };
+    },
+
+    split_dev_test_tasks: async ({ feature_title, development_description, testing_description, priority_hint }: any) => {
+      validateAgentPermission(['engineer'], '拆分开发与测试任务');
+      console.error(`[Tool] ${_tts()} split_dev_test_tasks START agentId=${agentId} projectId=${scopedProjectId} feature=${feature_title}`);
+      const now = new Date().toISOString();
+      const devTask = db.createTaskBoardTask({
+        id: uuidv4(),
+        project_id: scopedProjectId,
+        title: `开发：${feature_title}`,
+        description: `[优先级:${priority_hint || 'normal'}] ${development_description}`,
+        task_type: 'development',
+        status: 'todo',
+        source_task_id: null,
+        created_by: agentId,
+        updated_by: agentId,
+        started_at: null,
+        completed_at: null,
+        created_at: now,
+        updated_at: now
+      });
+
+      const testTask = db.createTaskBoardTask({
+        id: uuidv4(),
+        project_id: scopedProjectId,
+        title: `测试：${feature_title}`,
+        description: testing_description || `验证"${feature_title}"功能正确性与回归影响，覆盖功能、边界和异常路径。`,
+        task_type: 'testing',
+        status: 'todo',
+        source_task_id: devTask.id,
+        created_by: agentId,
+        updated_by: agentId,
+        started_at: null,
+        completed_at: null,
+        created_at: now,
+        updated_at: now
+      });
+
+      sseBroadcaster.broadcast({ type: 'task_created', task: devTask }, scopedProjectId);
+      sseBroadcaster.broadcast({ type: 'task_created', task: testTask }, scopedProjectId);
+      log(agentId, '拆分任务看板', `${feature_title} -> 开发+测试`, 'success');
+      console.error(`[Tool] ${_tts()} split_dev_test_tasks DONE devTaskId=${devTask.id.slice(0, 8)} testTaskId=${testTask.id.slice(0, 8)}`);
+
+      return {
+        content: [{
+          type: 'text' as const,
+          text: `已拆分任务：开发任务 ${devTask.id}，测试任务 ${testTask.id}。`
+        }]
+      };
+    },
+
+    get_tasks: async ({ status, task_type, agent_id, limit }: any) => {
+      const tasks = db.getTaskBoardTasks({
+        projectId: scopedProjectId,
+        status,
+        taskType: task_type,
+        agentId: agent_id,
+        limit: limit || 20
+      });
+      if (tasks.length === 0) {
+        return { content: [{ type: 'text' as const, text: '没有匹配的看板任务。' }] };
+      }
+      const text = tasks.map(t => {
+        const rel = t.source_task_id ? ` | 来源:${t.source_task_id}` : '';
+        return `[${t.status}/${t.task_type}] ${t.title} (ID:${t.id}, 创建:${t.created_by}, 更新:${t.updated_by || '-'})${rel}`;
+      }).join('\n');
+      return { content: [{ type: 'text' as const, text }] };
+    },
+
+    update_task_status: async ({ task_id, status }: any) => {
+      validateAgentPermission(['engineer'], '更新任务看板状态');
+      console.error(`[Tool] ${_tts()} update_task_status START agentId=${agentId} taskId=${task_id} targetStatus=${status}`);
+      const normalizedTaskId = task_id.trim();
+      if (!UUID_PATTERN.test(normalizedTaskId)) {
+        return { content: [{ type: 'text' as const, text: `任务 ID 格式非法: ${normalizedTaskId}。${TASK_ID_HELP_TEXT}` }] };
+      }
+      const task = db.getTaskBoardTask(normalizedTaskId);
+
+      if (!task) {
+        return { content: [{ type: 'text' as const, text: `任务不存在: ${normalizedTaskId}。${TASK_ID_HELP_TEXT}` }] };
+      }
+      if (!TASK_STATUS_FLOW[task.status]?.includes(status)) {
+        const allowed = TASK_STATUS_FLOW[task.status] || [];
+        const allowedLabel = allowed.length > 0
+          ? allowed.map(s => TASK_STATUS_LABEL[s] || s).join('、')
+          : '无（终态）';
+        return {
+          content: [{
+            type: 'text' as const,
+            text: `状态流转非法: ${TASK_STATUS_LABEL[task.status] || task.status} -> ${TASK_STATUS_LABEL[status] || status}。合法流转: ${allowedLabel}`
+          }]
+        };
+      }
+
+      const now = new Date().toISOString();
+      const updates: Partial<db.DbTaskBoardTask> = { status, updated_by: agentId };
+      if (status === 'developing' || status === 'testing') {
+        updates.started_at = task.started_at || now;
+      }
+      if (status === 'done') {
+        updates.completed_at = now;
+      } else if (task.status === 'done') {
+        updates.completed_at = null;
+      }
+
+      const success = db.updateTaskBoardTask(task.id, updates);
+      if (!success) {
+        return { content: [{ type: 'text' as const, text: `任务状态更新失败: ${task_id}` }] };
+      }
+      const updated = db.getTaskBoardTask(task.id)!;
+      sseBroadcaster.broadcast({ type: 'task_updated', task: updated }, task.project_id);
+      log(agentId, '维护任务状态', `${task.title}: ${task.status} -> ${status}`, 'success');
+
+      return {
+        content: [{ type: 'text' as const, text: `任务状态已更新: ${task.id} -> ${status}` }]
+      };
+    },
+
+    submit_proposal: async ({ type, title, content, attachment_storage_ids }: any) => {
+      console.error(`[Tool] ${_tts()} submit_proposal START agentId=${agentId} projectId=${scopedProjectId} type=${type} title=${title} contentLength=${content.length}`);
+      if (type === 'game_design') {
+        validateAgentPermission(['game_designer'], '提交游戏策划案');
+      } else if (type === 'biz_design') {
+        validateAgentPermission(['biz_designer'], '提交商业策划案');
+      } else if (type === 'tech_arch') {
+        validateAgentPermission(['architect'], '提交技术架构方案');
+      } else if (type === 'tech_impl') {
+        validateAgentPermission(['engineer'], '提交技术实现方案');
+      } else if (type === 'ceo_review') {
+        validateAgentPermission(['ceo'], '提交 CEO 评审结论');
+      }
+
+      // XSS 安全过滤（与 submit_game 复用同一工具）
+      const { validateHtmlSafe, sanitizeHtml } = await import('./utils/sanitize-html.js');
+      const validationErrors = validateHtmlSafe(content);
+      if (validationErrors.length > 0) {
+        console.error(`[Tool ${_tts()} submit_proposal] content 安全校验失败: ${validationErrors.map(e => e.message).join('; ')}`);
+        return {
+          content: [{ type: 'text' as const, text: `提交提案失败：内容存在安全问题：\n${validationErrors.map(e => `- ${e.message}${e.detail ? `（${e.detail}）` : ''}`).join('\n')}` }]
+        };
+      }
+      const safeContent = sanitizeHtml(content);
+      console.error(`[Tool ${_tts()} submit_proposal] content 安全校验通过`);
+
+      // 校验附件数量
+      if (attachment_storage_ids && attachment_storage_ids.length > 10) {
+        return { content: [{ type: 'text' as const, text: '附件数量不能超过 10 个' }] };
+      }
+
+      const now = new Date().toISOString();
+      const proposal = db.createProposal({
+        id: uuidv4(),
+        project_id: scopedProjectId,
+        type,
+        title,
+        content: safeContent,
+        author_agent_id: agentId,
+        status: 'pending_review',
+        reviewer_agent_id: null,
+        review_comment: null,
+        user_decision: null,
+        user_comment: null,
+        version: 1,
+        parent_id: null,
+        source: 'manual',
+        created_at: now,
+        updated_at: now
+      });
+
+      // 关联附件
+      if (attachment_storage_ids && attachment_storage_ids.length > 0) {
+        for (const storageId of attachment_storage_ids) {
+          const storage = db.getFileStorage(storageId.trim());
+          if (!storage) {
+            log(agentId, '关联附件', `file_storage_id ${storageId} 不存在，跳过`, 'warn');
+            continue;
+          }
+          try {
+            db.createProposalAttachment({
+              id: uuidv4(),
+              proposal_id: proposal.id,
+              file_storage_id: storageId.trim(),
+              source_type: 'drawio_export',
+              custom_name: null,
+              created_at: now,
+            });
+          } catch (error: any) {
+            log(agentId, '关联附件', `创建附件记录失败: ${error?.message || String(error)}`, 'warn');
+          }
+        }
+        log(agentId, '关联附件', `已关联 ${attachment_storage_ids.length} 个附件到提案 ${proposal.id.slice(0, 8)}`, 'success');
+      }
+
+      const filePath = db.saveProposalToFile(proposal);
+      sseBroadcaster.broadcast({ type: 'proposal_created', proposal, filePath }, scopedProjectId);
+      log(agentId, '提交提案', `提案: ${title}${filePath ? ' → 已保存' : ''}`, 'success');
+      console.error(`[Tool] ${_tts()} submit_proposal DONE proposalId=${proposal.id.slice(0, 8)} status=pending_review filePath=${filePath || 'none'}`);
+      return {
+        content: [{ type: 'text' as const, text: `提案已提交 (ID: ${proposal.id.slice(0, 8)})，等待审批。${attachment_storage_ids?.length ? ` 已关联 ${attachment_storage_ids.length} 个附件。` : ''}` }]
+      };
+    },
+
+    write_game_file: async ({ path: filePath, content }: any) => {
+      validateAgentPermission(['engineer'], '写入游戏文件');
+
+      console.error("[DEBUG write_game_file] START agentId=" + agentId + " projectId=" + scopedProjectId + " path=" + filePath + " contentLength=" + content.length);
+
+      const outputDir = path.resolve(_toolsDirname, '..', 'output', scopedProjectId);
+      const latestDir = path.join(outputDir, 'games', 'latest');
+      const fullPath = path.join(latestDir, filePath);
+
+      // 安全检查：确保路径在 latest 目录下（防止路径越权）
+      const resolvedPath = path.resolve(fullPath);
+      if (!resolvedPath.startsWith(latestDir + path.sep) && resolvedPath !== latestDir) {
+        console.error("[DEBUG write_game_file] 路径越权 latestDir=" + latestDir + " resolvedPath=" + resolvedPath);
+        return {
+          content: [{ type: 'text' as const, text: '写入游戏文件失败：路径越权，只能写入 game 目录下。' }]
+        };
+      }
+
+      console.error("[DEBUG write_game_file] latestDir=" + latestDir + " filePath=" + fullPath + " resolvedPath=" + resolvedPath);
+
+      try {
+        // 创建目录
+        const dirPath = path.dirname(resolvedPath);
+        fs.mkdirSync(dirPath, { recursive: true });
+
+        // 写入文件
+        fs.writeFileSync(resolvedPath, content, 'utf-8');
+        console.error("[DEBUG write_game_file] SUCCESS wrote " + resolvedPath);
+
+        log(agentId, '写入游戏文件', '路径: ' + filePath + ' | 大小: ' + content.length + ' bytes', 'success');
+        console.error(`[Tool] ${_tts()} write_game_file DONE path=${filePath} size=${content.length}`);
+        return {
+          content: [{ type: 'text' as const, text: '游戏文件已写入到 output/' + scopedProjectId + '/games/latest/' + filePath }]
+        };
+      } catch (error: any) {
+        console.error("[DEBUG write_game_file] ERROR " + error.message);
+        console.error(`[Tool] ${_tts()} write_game_file ERROR ${error.message}`);
+        return {
+          content: [{ type: 'text' as const, text: '写入游戏文件失败：' + (error?.message || String(error)) }]
+        };
+      }
+    },
+
+    submit_game: async ({ description, version, proposal_id }: any) => {
+      try {
+      validateAgentPermission(['engineer'], '提交游戏成品');
+      console.error(`[Tool] ${_tts()} submit_game START agentId=${agentId} projectId=${scopedProjectId} version=${version} proposalId=${proposal_id || 'none'}`);
+
+      // ========== 确定游戏路径（从 games/latest 读取）==========
+      const resolvedFilePath = 'games/latest';
+
+      // [DEBUG] 添加日志用于排查 UI-007
+      console.error(`[DEBUG submit_game] START projectId=${scopedProjectId} resolvedPath=${resolvedFilePath} _toolsDirname=${_toolsDirname}`);
+
+      // ========== 校验 description 安全性 ==========
+      const { validateHtmlSafe, sanitizeHtml } = await import('./utils/sanitize-html.js');
+      const validationErrors = validateHtmlSafe(description);
+      if (validationErrors.length > 0) {
+        console.error(`[DEBUG submit_game] description 安全校验失败: ${validationErrors.map(e => e.message).join('; ')}`);
+        return {
+          content: [{ type: 'text' as const, text: `提交游戏失败：description 存在安全问题：\n${validationErrors.map(e => `- ${e.message}${e.detail ? `（${e.detail}）` : ''}`).join('\n')}` }]
+        };
+      }
+      const safeDescription = sanitizeHtml(description);
+      console.error(`[DEBUG submit_game] description 安全校验通过`);
+
+      let fileStorageId: string | null = null;
+      let sonarStorageId: string | null = null;
+
+      // ========== 文件打包模式 ==========
+      // 路径校验：只允许 output/{project_id} 下的路径
+      const outputDir = path.resolve(path.join(_toolsDirname, '..', 'output', scopedProjectId));
+      console.error(`[DEBUG submit_game] outputDir=${outputDir}`);
+      let targetPath: string;
+      try {
+        targetPath = path.resolve(outputDir, resolvedFilePath);
+        // 检查路径是否在 output/{project_id} 下
+        if (!targetPath.startsWith(outputDir + path.sep) && targetPath !== outputDir) {
+          return {
+            content: [{ type: 'text' as const, text: `提交游戏失败：路径只能在 output/${scopedProjectId} 目录下。` }]
+          };
+        }
+      } catch (error: any) {
+        return {
+          content: [{ type: 'text' as const, text: `提交游戏失败：无效的路径。` }]
+        };
+      }
+      console.error(`[DEBUG submit_game] outputDir=${outputDir} targetPath=${targetPath}`);
+
+      // 检查路径是否存在且为目录
+      let stat: Stats;
+      try {
+        stat = fs.statSync(targetPath);
+        // [DEBUG] 添加日志用于排查 UI-007
+        console.error(`[DEBUG submit_game] targetPath=${targetPath} exists=true isDirectory=${stat.isDirectory()}`);
+      } catch (err) {
+        // [DEBUG] 添加日志用于排查 UI-007
+        console.error(`[DEBUG submit_game] targetPath=${targetPath} exists=false error=${err}`);
+        return {
+          content: [{ type: 'text' as const, text: `提交游戏失败：目录不存在（games/latest）。请先调用 write_game_file 创建游戏文件。` }]
+        };
+      }
+      if (!stat.isDirectory()) {
+        return {
+          content: [{ type: 'text' as const, text: `提交游戏失败：路径必须是目录，不支持单文件提交。` }]
+        };
+      }
+
+      // 创建临时 ZIP 文件
+      const zipId = uuidv4();
+      const zipName = `${scopedProjectId}_${zipId}.zip`;
+      const zipTempPath = path.join('/tmp', zipName);
+
+        try {
+          // 切换到 output/{project_id} 目录执行 zip，保留相对路径
+          const zipCmd = `cd "${outputDir}" && zip -r "${zipTempPath}" "${resolvedFilePath}"`;
+
+          execSync(zipCmd, { stdio: 'pipe' });
+
+          if (!fs.existsSync(zipTempPath)) {
+            return {
+              content: [{ type: 'text' as const, text: '提交游戏失败：ZIP 打包失败。' }]
+            };
+          }
+
+          // 直接调用内部函数上传文件到 MinIO
+          const objectKey = `games/${zipName}`;
+          const fileBuffer = fs.readFileSync(zipTempPath);
+
+          // lint 检查：ZIP 内每个 HTML 逐一检查，遇第一个 error 即阻断
+          console.error(`[Tool] ${_tts()} submit_game calling lintZipBuffer zipSize=${fileBuffer.length}`);
+          const zipLintResult = await lintZipBuffer(fileBuffer, {
+            submitDir: targetPath,
+            projectId: scopedProjectId,
+          });
+          console.error(`[Tool] ${_tts()} submit_game lintZipBuffer done passed=${zipLintResult.passed} errors=${zipLintResult.errors.length} warnings=${zipLintResult.warnings.length} summary=${zipLintResult.summary}`);
+          if (!zipLintResult.passed) {
+            try { fs.unlinkSync(zipTempPath); } catch { /* ignore */ }
+            return {
+              content: [{ type: 'text' as const, text: `提交游戏失败：\n${zipLintResult.summary}` }]
+            };
+          }
+          if (zipLintResult.warnings.length > 0) {
+            log(agentId, '提交游戏-lint', `警告: ${zipLintResult.warnings.map(w => w.message).join('; ')}`, 'warn');
+          }
+
+          // === Sonar 报告生成：从 lint 结果中读取 extraPayloads ===
+          const sonarPayload = zipLintResult.extraPayloads?.['sonar-report'] as { version: string; issues: SonarQubeIssue[] } | undefined;
+          const sonarIssues = sonarPayload?.issues ?? [];
+
+          // 使用 yazl 将 sonar-issues.json 追加到 ZIP（不改变原文件内容）
+          const sonarReportBuffer = Buffer.from(
+            JSON.stringify({ version: '1.0', issues: sonarIssues }, null, 2),
+            'utf-8'
+          );
+          const finalZipBuffer = await new Promise<Buffer>((resolve, reject) => {
+            const zip = new yazl.ZipFile();
+            zip.on('error', reject);
+            zip.addBuffer(fileBuffer, zipName);
+            zip.addBuffer(sonarReportBuffer, 'sonar-issues.json');
+            zip.end();
+            const chunks: Buffer[] = [];
+            zip.outputStream.on('data', (chunk: Buffer) => chunks.push(chunk));
+            zip.outputStream.on('end', () => resolve(Buffer.concat(chunks)));
+            zip.outputStream.on('error', reject);
+          });
+          const finalFileSize = finalZipBuffer.length;
+
+          // 重置扫描历史，允许后续 submit_game 重新扫描
+          resetSonarScanHistory(`game-${scopedProjectId}`);
+
+          console.error(`[DEBUG submit_game] 开始上传文件到 MinIO objectKey=${objectKey} finalFileSize=${finalFileSize}`);
+          try {
+            // 创建游戏文件存储记录
+            console.error(`[DEBUG submit_game] createFileStorageRecord start objectKey=${objectKey}`);
+            const { storage: gameStorage } = await createFileStorageRecord({
+              project_id: scopedProjectId,
+              object_key: objectKey,
+              file_name: zipName,
+              file_size: finalFileSize,
+              content_type: 'application/zip'
+            });
+            fileStorageId = gameStorage.id;
+            console.error(`[DEBUG submit_game] createFileStorageRecord done fileStorageId=${fileStorageId.slice(0, 8)}`);
+
+            // 上传含 sonar 报告的最终 ZIP 到 MinIO
+            console.error(`[DEBUG submit_game] uploadBuffer start objectKey=${objectKey}`);
+            await uploadBuffer(finalZipBuffer, objectKey, 'application/zip');
+            console.error(`[DEBUG submit_game] uploadBuffer done`);
+
+            // 上传独立 sonar-issues.json 报告到 MinIO
+            const sonarObjectKey = `sonar/${zipName}`;
+            console.error(`[DEBUG submit_game] prepare sonar upload sonarObjectKey=${sonarObjectKey} sonarReportSize=${sonarReportBuffer.length}`);
+            const { storage: sonarStorage } = await createFileStorageRecord({
+              project_id: scopedProjectId,
+              object_key: sonarObjectKey,
+              file_name: `${zipName.replace('.zip', '')}-sonar-issues.json`,
+              file_size: sonarReportBuffer.length,
+              content_type: 'application/json'
+            });
+            sonarStorageId = sonarStorage.id;
+            console.error(`[DEBUG submit_game] sonar storage created sonarStorageId=${sonarStorageId.slice(0, 8)}`);
+            await uploadBuffer(sonarReportBuffer, sonarObjectKey, 'application/json');
+            console.error(`[DEBUG submit_game] sonar upload done`);
+
+          } catch (error: any) {
+            console.error(`[DEBUG submit_game] 文件上传异常: ${error?.message || String(error)}`);
+            return {
+              content: [{ type: 'text' as const, text: `提交游戏失败：文件上传异常 ${error?.message || String(error)}` }]
+            };
+          } finally {
+            // 清理临时文件
+            try { fs.unlinkSync(zipTempPath); } catch { /* ignore */ }
+          }
+
+        } catch (error: any) {
+          try { fs.unlinkSync(zipTempPath); } catch { /* ignore */ }
+          return {
+            content: [{ type: 'text' as const, text: `提交游戏失败：ZIP 打包失败 ${error?.message || String(error)}` }]
+          };
+        }
+
+        // 创建游戏记录
+        const now = new Date().toISOString();
+        let game: db.DbGame;
+        console.error(`[DEBUG submit_game] 开始创建游戏记录 fileStorageId=${fileStorageId ? fileStorageId.slice(0, 8) : 'null'} sonarStorageId=${sonarStorageId ? sonarStorageId.slice(0, 8) : 'null'}`);
+        try {
+          game = db.createGame({
+            id: uuidv4(),
+            project_id: scopedProjectId,
+            version_number: 0, // 会由数据库自动生成
+            description: safeDescription,
+            proposal_id: proposal_id || null,
+            version: version || '1.0.0',
+            status: 'draft',
+            file_storage_id: fileStorageId,
+            sonar_storage_id: sonarStorageId,
+            created_at: now,
+            updated_at: now
+          });
+          console.error(`[DEBUG submit_game] 游戏记录创建成功 gameId=${game.id.slice(0, 8)} versionNumber=${game.version_number}`);
+        } catch (error: any) {
+          console.error(`[DEBUG submit_game] 游戏记录创建失败: ${error?.message || String(error)}`);
+          return {
+            content: [{ type: 'text' as const, text: `提交游戏失败：${error?.message || String(error)}` }]
+          };
+        }
+
+        console.error(`[DEBUG submit_game] 广播 game_submitted SSE 事件`);
+        sseBroadcaster.broadcast({ type: 'game_submitted', game: { ...game, fileStorageId, sonarStorageId }, filePath: null }, scopedProjectId);
+        // [DEBUG] 添加日志用于排查 UI-007
+        console.error(`[DEBUG submit_game] SUCCESS game_submitted broadcasted projectId=${scopedProjectId} gameId=${game.id} versionNumber=${game.version_number}`);
+        log(agentId, '提交游戏', `版本号: ${game.version_number} v${version || '1.0.0'} [文件模式，ZIP: ${zipName}，Sonar报告: sonar/${zipName}]`, 'success');
+        console.error(`[Tool] ${_tts()} submit_game DONE gameId=${game.id.slice(0, 8)} versionNumber=${game.version_number} fileStorageId=${fileStorageId ? fileStorageId.slice(0, 8) : 'none'} sonarStorageId=${sonarStorageId ? sonarStorageId.slice(0, 8) : 'none'}`);
+        return {
+          content: [{ type: 'text' as const, text: `游戏已提交 (版本号: ${game.version_number})，版本: ${version || '1.0.0'}，文件已上传到存储。` }]
+        };
+      } catch (error: any) {
+        const errMsg = error?.message || String(error);
+        const errStack = error?.stack || '';
+        console.error(`[Tool] ${_tts()} submit_game FATAL ERROR: ${errMsg}`);
+        console.error(`[Tool] ${_tts()} submit_game FATAL STACK: ${errStack}`);
+        return {
+          content: [{ type: 'text' as const, text: `提交游戏失败：系统内部错误 (${errMsg})` }]
+        };
+      }
+    },
+
+    get_agent_logs: async ({ limit }: any) => {
+      const logs = db.getLogs(scopedProjectId, agentId, limit);
+      if (logs.length === 0) {
+        return {
+          content: [{ type: 'text' as const, text: '暂无历史日志。' }]
+        };
+      }
+      const text = logs.map(logItem => {
+        const actionPart = logItem.action ? `[${logItem.action}] ` : '';
+        const toolPart = logItem.tool_name ? ` (tool: ${logItem.tool_name})` : '';
+        return `[${logItem.created_at}][${logItem.level}/${logItem.log_type}] ${actionPart}${logItem.content}${toolPart}`;
+      }).join('\n');
+      return {
+        content: [{ type: 'text' as const, text }]
+      };
+    },
+
+    get_agents: async () => {
+      const agents = getAllAgents();
+      if (agents.length === 0) {
+        return {
+          content: [{ type: 'text' as const, text: '当前没有可用的 Agent。' }]
+        };
+      }
+      const text = agents.map(a =>
+        `${a.id} | ${a.name} | ${a.title}\n职责: ${a.responsibilities.join('、')}`
+      ).join('\n\n');
+      return {
+        content: [{ type: 'text' as const, text }]
+      };
+    },
+
+    get_proposals: async ({ status, agent_id, limit }: any) => {
+      const proposals = db.getScopedProposals(scopedProjectId, {
+        status,
+        agentId: agent_id,
+        limit: limit || 10
+      });
+      if (proposals.length === 0) {
+        return {
+          content: [{ type: 'text' as const, text: '没有找到匹配的提案。' }]
+        };
+      }
+      const text = proposals.map(p =>
+        `[${p.status}] ${p.title} (作者: ${p.author_agent_id}, 评审: ${p.reviewer_agent_id || '未分配'}, 类型: ${p.type}, ${p.created_at.slice(0, 10)})`
+      ).join('\n');
+      return {
+        content: [{ type: 'text' as const, text }]
+      };
+    },
+
+    get_pending_handoffs: async ({ agent_id, limit }: any) => {
+      const handoffs = db.getPendingHandoffs(scopedProjectId, agent_id, limit || 5);
+      if (handoffs.length === 0) {
+        return {
+          content: [{ type: 'text' as const, text: '没有待处理的交接任务。' }]
+        };
+      }
+      const text = handoffs.map(h =>
+        `[${h.status}] ${h.title} (来自: ${h.from_agent_id}, 发给: ${h.to_agent_id}, 优先级: ${h.priority}, ${h.created_at.slice(0, 10)})\n  描述: ${h.description.slice(0, 100)}`
+      ).join('\n\n');
+      return {
+        content: [{ type: 'text' as const, text }]
+      };
+    },
+
+    get_games: async ({ limit }: any) => {
+      const allGames = db.getAllGames().filter(g => g.project_id === scopedProjectId);
+      const games = allGames.slice(0, limit || 20).map(g => ({
+        id: g.id,
+        version_number: g.version_number,
+        description: g.description,
+        version: g.version,
+        status: g.status,
+        created_at: g.created_at,
+      }));
+      if (games.length === 0) {
+        return {
+          content: [{ type: 'text' as const, text: '当前项目下还没有提交过游戏。' }]
+        };
+      }
+      const lines = games.map(g =>
+        `[${g.status}] v${g.version} (#${g.version_number}) | ${g.created_at.slice(0, 10)} | ${g.description.slice(0, 50)}`
+      ).join('\n');
+      return {
+        content: [{ type: 'text' as const, text: lines }]
+      };
+    },
+
+    get_game_info: async ({ game_id, version_number }: any) => {
+      let game: db.DbGame | undefined;
+
+      // 优先通过 version_number 查询
+      if (version_number !== undefined) {
+        game = db.getGameByVersionNumber(version_number);
+      } else if (game_id) {
+        game = db.getGame(game_id);
+      } else {
+        // 如果都没有，返回最新版本
+        game = db.getLatestGame(scopedProjectId);
+      }
+
+      if (!game) {
+        return {
+          content: [{ type: 'text' as const, text: version_number !== undefined ? `游戏不存在（版本号: ${version_number}）` : `游戏不存在：${game_id}` }]
+        };
+      }
+      if (game.project_id !== scopedProjectId) {
+        return {
+          content: [{ type: 'text' as const, text: '游戏不存在或无权限访问。' }]
+        };
+      }
+      // 仅有文件模式：生成 MinIO presigned 下载链接
+      if (!game.file_storage_id) {
+        return {
+          content: [{ type: 'text' as const, text: '该游戏尚未关联文件存储记录。' }]
+        };
+      }
+      const storage = db.getFileStorage(game.file_storage_id!);
+      if (!storage) {
+        return {
+          content: [{ type: 'text' as const, text: `游戏文件记录不存在（ID: ${game.file_storage_id}），无法获取下载链接。` }]
+        };
+      }
+      const fullObjectKey = `${storage.project_id}/${storage.object_key}`;
+      let downloadUrl: string;
+      try {
+        downloadUrl = await getPresignedDownloadUrl(fullObjectKey);
+      } catch (error: any) {
+        return {
+          content: [{ type: 'text' as const, text: `生成下载链接失败：${error?.message || String(error)}` }]
+        };
+      }
+      const result = {
+        id: game.id,
+        version_number: game.version_number,
+        description: game.description,
+        version: game.version,
+        status: game.status,
+        created_at: game.created_at,
+        downloadUrl
+      };
+      return {
+        content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }]
+      };
+    },
+
+    get_project_latest_info: async ({ limit }: any) => {
+      validateAgentPermission([TEAM_BUILDING_AGENT_ID], '查询项目最新信息');
+      const effectiveLimit = limit || 20;
+      const fetchWindow = Math.min(Math.max(effectiveLimit * FETCH_MULTIPLIER, MIN_FETCH_WINDOW), MAX_FETCH_WINDOW);
+      const proposals = db.getScopedProposals(scopedProjectId, { limit: fetchWindow });
+      const projectTasks = db.getTaskBoardTasks({ projectId: scopedProjectId, limit: fetchWindow });
+      const handoffs = db.getAllHandoffs(scopedProjectId, fetchWindow);
+      const logs = db.getLogs(scopedProjectId, undefined, fetchWindow);
+      const memories = db.getAllAgentMemories(scopedProjectId, fetchWindow);
+
+      const unified = [
+        ...proposals.map(item => ({
+          timestamp: item.created_at,
+          line: `[proposal][${item.status}] ${item.title} | author=${item.author_agent_id} | reviewer=${item.reviewer_agent_id || '-'} | sort_at=${item.created_at} | created_at=${item.created_at}${item.updated_at ? ` | updated_at=${item.updated_at}` : ''}`
+        })),
+        ...projectTasks.map(item => ({
+          timestamp: item.created_at,
+          line: `[task][${item.status}/${item.task_type}] ${item.title} | by=${item.created_by} | sort_at=${item.created_at} | created_at=${item.created_at}${item.updated_at ? ` | updated_at=${item.updated_at}` : ''}`
+        })),
+        ...handoffs.map(item => ({
+          timestamp: item.created_at,
+          line: `[handoff][${item.status}/${item.priority}] ${item.title} | ${item.from_agent_id}→${item.to_agent_id} | sort_at=${item.created_at} | created_at=${item.created_at}${item.updated_at ? ` | updated_at=${item.updated_at}` : ''}`
+        })),
+        ...logs.map(item => ({
+          timestamp: item.created_at,
+          line: `[log][${item.level}/${item.log_type}] ${item.agent_id} | ${item.action || '-'} | ${toSingleLinePreview(item.content)} | sort_at=${item.created_at}`
+        })),
+        ...memories.map(item => ({
+          timestamp: item.created_at,
+          line: `[memory][${item.category}/${item.importance}] ${item.agent_id} | ${toSingleLinePreview(item.content)} | sort_at=${item.created_at} | created_at=${item.created_at}${item.updated_at ? ` | updated_at=${item.updated_at}` : ''}`
+        }))
+      ]
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+        .slice(0, effectiveLimit);
+
+      if (unified.length === 0) {
+        return {
+          content: [{ type: 'text' as const, text: '当前项目暂无可用于总结的信息。' }]
+        };
+      }
+
+      return {
+        content: [{ type: 'text' as const, text: unified.map(item => item.line).join('\n') }]
+      };
+    },
+
+    blender_create_project: async ({ name }: any) => {
+      const opts: CreateBlenderProjectOptions = {
+        projectId: scopedProjectId,
+        name,
+        agentId,
+        logFn: log,
+      };
+      try {
+        const { dbId, blenderProjectId } = await createBlenderProject(opts);
+        return {
+          content: [{
+            type: 'text' as const,
+            text: `建模 project 已创建 (DB ID: ${dbId.slice(0, 8)}, blender_project_id: ${blenderProjectId})，名称: ${name}`,
+          }]
+        };
+      } catch (error: any) {
+        return {
+          content: [{ type: 'text' as const, text: `创建建模 project 失败：${error?.message || String(error)}` }]
+        };
+      }
+    },
+
+    blender_list_projects: async ({ limit }: any) => {
+      const records = listBlenderProjects(scopedProjectId, limit || 20);
+      if (records.length === 0) {
+        return { content: [{ type: 'text' as const, text: '暂无建模 project。' }] };
+      }
+      const lines = records.map(r =>
+        `[${r.id.slice(0, 8)}] ${r.name} | blender_project_id=${r.blender_project_id} | ${r.created_at.slice(0, 10)}`
+      ).join('\n');
+      return { content: [{ type: 'text' as const, text: lines }] };
+    },
+
+    blender_delete_project: async ({ blender_project_id }: any) => {
+      if (!blender_project_id || typeof blender_project_id !== 'string') {
+        throw new Error('blender_project_id 不能为空');
+      }
+      const opts: DeleteBlenderProjectOptions = {
+        projectId: scopedProjectId,
+        blenderProjectId: blender_project_id.trim(),
+        agentId,
+        logFn: log,
+      };
+      await deleteBlenderProject(opts);
+      return {
+        content: [{ type: 'text' as const, text: `建模 project 已删除 (blender_project_id: ${blender_project_id})` }]
+      };
+    },
+
+    blender_create_mesh: async ({ blender_project_id, mesh_type, name, location, scale }: any) => {
+      if (!blender_project_id || typeof blender_project_id !== 'string') {
+        throw new Error('blender_project_id 不能为空');
+      }
+      const opts: BlenderCreateMeshOptions = {
+        blenderProjectId: blender_project_id.trim(),
+        meshType: mesh_type,
+        name,
+        location,
+        scale,
+        agentId,
+        logFn: log,
+      };
+      const output = await blenderCreateMesh(opts);
+      return {
+        content: [{ type: 'text' as const, text: `已创建 ${mesh_type} "${name}"。${output}` }]
+      };
+    },
+
+    blender_add_material: async ({ blender_project_id, object_name, color, metallic, roughness }: any) => {
+      if (!blender_project_id || typeof blender_project_id !== 'string') {
+        throw new Error('blender_project_id 不能为空');
+      }
+      const opts: BlenderAddMaterialOptions = {
+        blenderProjectId: blender_project_id.trim(),
+        objectName: object_name,
+        color,
+        metallic,
+        roughness,
+        agentId,
+        logFn: log,
+      };
+      const output = await blenderAddMaterial(opts);
+      return {
+        content: [{ type: 'text' as const, text: `材质已添加到 "${object_name}"。${output}` }]
+      };
+    },
+
+    blender_export_model: async ({ blender_project_id, object_name, output_filename, path: outPath, format }: any) => {
+      if (!blender_project_id || typeof blender_project_id !== 'string') {
+        throw new Error('blender_project_id 不能为空');
+      }
+      console.error(`[Tool] ${_tts()} blender_export_model START agentId=${agentId} blenderProjectId=${blender_project_id} object=${object_name} format=${format || 'glb'}`);
+
+      // 限制导出路径为 games/latest 目录下
+      const pathModule = await import('path');
+      const latestDir = pathModule.resolve(_toolsDirname, '..', 'output', scopedProjectId, 'games', 'latest');
+      const outputDir = pathModule.resolve(latestDir, outPath || 'assets');
+
+      // 安全检查：确保输出路径在 latest 目录下
+      if (!outputDir.startsWith(latestDir + pathModule.sep)) {
+        throw new Error('导出路径越权：只能导出到 game 目录下');
+      }
+
+      console.error(`[DEBUG blender_export_model] objectName=${object_name} outputDir=${outputDir}`);
+
+      const opts: BlenderExportModelOptions = {
+        blenderProjectId: blender_project_id.trim(),
+        objectName: object_name,
+        outputFilename: output_filename,
+        outputDir,
+        format,
+        agentId,
+        logFn: log,
+      };
+      const output = await blenderExportModel(opts);
+      return {
+        content: [{ type: 'text' as const, text: `已导出 "${object_name}" 为 ${format || 'glb'} 格式到 games/latest/${outPath || 'assets'}/${output_filename}。${output}` }]
+      };
+    },
+
+    blender_download_model_file: async ({ blender_project_id, filename }: any) => {
+      if (!blender_project_id || typeof blender_project_id !== 'string') {
+        throw new Error('blender_project_id 不能为空');
+      }
+      if (!filename || typeof filename !== 'string' || !filename.trim()) {
+        throw new Error('filename 不能为空');
+      }
+      // 使用动态 import 解析 _toolsDirname（ESM）
+      const pathModule = await import('path');
+      const localOutputDir = pathModule.resolve(_toolsDirname, '..', 'output', scopedProjectId, 'models');
+      const opts: DownloadModelFileOptions = {
+        blenderProjectId: blender_project_id.trim(),
+        filename: filename.trim(),
+        localOutputDir,
+        agentId,
+        logFn: log,
+      };
+      const { localPath, sizeBytes } = await downloadModelFile(opts);
+      return {
+        content: [{
+          type: 'text' as const,
+          text: `文件已下载到：${localPath} (${sizeBytes} bytes)`,
+        }]
+      };
+    },
+
+    blender_delete_model_file: async ({ blender_project_id, filename }: any) => {
+      if (!blender_project_id || typeof blender_project_id !== 'string') {
+        throw new Error('blender_project_id 不能为空');
+      }
+      if (!filename || typeof filename !== 'string' || !filename.trim()) {
+        throw new Error('filename 不能为空');
+      }
+      const pathModule = await import('path');
+      const localOutputDir = pathModule.resolve(_toolsDirname, '..', 'output', scopedProjectId, 'models');
+      const opts: DeleteModelFileOptions = {
+        blenderProjectId: blender_project_id.trim(),
+        filename: filename.trim(),
+        localOutputDir,
+        agentId,
+        logFn: log,
+      };
+      await deleteModelFile(opts);
+      return {
+        content: [{ type: 'text' as const, text: `已删除模型文件：${filename}（远程 + 本地）` }]
+      };
+    },
+
+    blender_list_objects: async ({ blender_project_id, page, page_size, object_type }: any) => {
+      if (!blender_project_id || typeof blender_project_id !== 'string') {
+        throw new Error('blender_project_id 不能为空');
+      }
+      const { blenderListObjects } = await import('./creator-service.js');
+      const result = await blenderListObjects({
+        blenderProjectId: blender_project_id.trim(),
+        page,
+        pageSize: page_size,
+        objectType: object_type,
+      });
+
+      const lines: string[] = [];
+      const totalPages = Math.ceil(result.total / result.pageSize);
+      lines.push(`第 ${result.page} 页 / 共 ${totalPages} 页（共 ${result.total} 个对象）`);
+
+      if (result.objects.length > 0) {
+        lines.push('');
+        for (const o of result.objects) {
+          const loc = o.location?.map((n: number) => n.toFixed(2)).join(', ') ?? '0, 0, 0';
+          lines.push(`  [${o.name}] ${o.type} @(${loc})`);
+        }
+      } else {
+        lines.push('（无对象）');
+      }
+
+      return {
+        content: [{ type: 'text' as const, text: lines.join('\n') }]
+      };
+    },
+
+    image_create_project: async ({ name }: any) => {
+      const opts: CreateImageProjectOptions = {
+        projectId: scopedProjectId,
+        name,
+        agentId,
+        logFn: log,
+      };
+      try {
+        const { dbId, imageProjectId } = await createImageProject(opts);
+        return {
+          content: [{
+            type: 'text' as const,
+            text: `图片 project 已创建 (DB ID: ${dbId.slice(0, 8)}, image_project_id: ${imageProjectId})，名称: ${name}`,
+          }]
+        };
+      } catch (error: any) {
+        return {
+          content: [{ type: 'text' as const, text: `创建图片 project 失败：${error?.message || String(error)}` }]
+        };
+      }
+    },
+
+    image_list_projects: async ({ limit }: any) => {
+      const records = listImageProjects(scopedProjectId, limit || 20);
+      if (records.length === 0) {
+        return { content: [{ type: 'text' as const, text: '暂无图片 project。' }] };
+      }
+      const lines = records.map(r =>
+        `[${r.id.slice(0, 8)}] ${r.name} | image_project_id=${r.image_project_id} | ${r.created_at.slice(0, 10)}`
+      ).join('\n');
+      return { content: [{ type: 'text' as const, text: lines }] };
+    },
+
+    image_delete_project: async ({ image_project_id }: any) => {
+      if (!image_project_id || typeof image_project_id !== 'string') {
+        throw new Error('image_project_id 不能为空');
+      }
+      const opts: DeleteImageProjectOptions = {
+        projectId: scopedProjectId,
+        imageProjectId: image_project_id.trim(),
+        agentId,
+        logFn: log,
+      };
+      await deleteImageProject(opts);
+      return {
+        content: [{ type: 'text' as const, text: `图片 project 已删除 (image_project_id: ${image_project_id})` }]
+      };
+    },
+
+    image_resize: async ({ image_project_id, input_filename, width, height, keep_aspect, output_filename }: any) => {
+      if (!image_project_id || typeof image_project_id !== 'string') {
+        throw new Error('image_project_id 不能为空');
+      }
+      const opts: ImageResizeOptions = {
+        imageProjectId: image_project_id.trim(),
+        inputFilename: input_filename,
+        width,
+        height,
+        keepAspect: keep_aspect,
+        outputFilename: output_filename,
+        agentId,
+        logFn: log,
+      };
+      const output = await imageResize(opts);
+      return {
+        content: [{ type: 'text' as const, text: `已缩放图片：${output_filename} (${width}x${height})。${output}` }]
+      };
+    },
+
+    image_crop: async ({ image_project_id, input_filename, width, height, x = 0, y = 0, output_filename }: any) => {
+      if (!image_project_id || typeof image_project_id !== 'string') {
+        throw new Error('image_project_id 不能为空');
+      }
+      const opts: ImageCropOptions = {
+        imageProjectId: image_project_id.trim(),
+        inputFilename: input_filename,
+        width,
+        height,
+        x,
+        y,
+        outputFilename: output_filename,
+        agentId,
+        logFn: log,
+      };
+      const output = await imageCrop(opts);
+      return {
+        content: [{ type: 'text' as const, text: `已裁剪图片：${output_filename} (${width}x${height}+${x}+${y})。${output}` }]
+      };
+    },
+
+    image_convert: async ({ image_project_id, input_filename, target_format, output_filename }: any) => {
+      if (!image_project_id || typeof image_project_id !== 'string') {
+        throw new Error('image_project_id 不能为空');
+      }
+      const opts: ImageConvertOptions = {
+        imageProjectId: image_project_id.trim(),
+        inputFilename: input_filename,
+        targetFormat: target_format,
+        outputFilename: output_filename,
+        agentId,
+        logFn: log,
+      };
+      const output = await imageConvert(opts);
+      return {
+        content: [{ type: 'text' as const, text: `已转换格式：${output_filename} -> ${target_format}。${output}` }]
+      };
+    },
+
+    image_compress: async ({ image_project_id, input_filename, quality, output_filename }: any) => {
+      if (!image_project_id || typeof image_project_id !== 'string') {
+        throw new Error('image_project_id 不能为空');
+      }
+      const opts: ImageCompressOptions = {
+        imageProjectId: image_project_id.trim(),
+        inputFilename: input_filename,
+        quality,
+        outputFilename: output_filename,
+        agentId,
+        logFn: log,
+      };
+      const output = await imageCompress(opts);
+      return {
+        content: [{ type: 'text' as const, text: `已压缩图片：${output_filename} (quality=${quality})。${output}` }]
+      };
+    },
+
+    image_watermark: async ({ image_project_id, input_filename, type = 'text', content, position = 'southeast', opacity = 0.5, output_filename }: any) => {
+      if (!image_project_id || typeof image_project_id !== 'string') {
+        throw new Error('image_project_id 不能为空');
+      }
+      if (!content || !content.trim()) {
+        throw new Error('content 不能为空');
+      }
+      const opts: ImageWatermarkOptions = {
+        imageProjectId: image_project_id.trim(),
+        inputFilename: input_filename,
+        type,
+        content: content.trim(),
+        position,
+        opacity,
+        outputFilename: output_filename,
+        agentId,
+        logFn: log,
+      };
+      const output = await imageWatermark(opts);
+      return {
+        content: [{ type: 'text' as const, text: `已添加水印：${output_filename}。${output}` }]
+      };
+    },
+
+    image_composite: async ({ image_project_id, base_filename, overlay_filename, gravity = 'center', x = 0, y = 0, output_filename }: any) => {
+      if (!image_project_id || typeof image_project_id !== 'string') {
+        throw new Error('image_project_id 不能为空');
+      }
+      const opts: ImageCompositeOptions = {
+        imageProjectId: image_project_id.trim(),
+        baseFilename: base_filename,
+        overlayFilename: overlay_filename,
+        gravity,
+        x,
+        y,
+        outputFilename: output_filename,
+        agentId,
+        logFn: log,
+      };
+      const output = await imageComposite(opts);
+      return {
+        content: [{ type: 'text' as const, text: `已合成图片：${output_filename}。${output}` }]
+      };
+    },
+
+    image_flip_rotate: async ({ image_project_id, input_filename, mode, angle = 90, output_filename }: any) => {
+      if (!image_project_id || typeof image_project_id !== 'string') {
+        throw new Error('image_project_id 不能为空');
+      }
+      const opts: ImageFlipRotateOptions = {
+        imageProjectId: image_project_id.trim(),
+        inputFilename: input_filename,
+        mode,
+        angle,
+        outputFilename: output_filename,
+        agentId,
+        logFn: log,
+      };
+      const output = await imageFlipRotate(opts);
+      return {
+        content: [{ type: 'text' as const, text: `已${mode}图片：${output_filename}。${output}` }]
+      };
+    },
+
+    image_add_margin: async ({ image_project_id, input_filename, top = 0, right = 0, bottom = 0, left = 0, color = 'transparent', output_filename }: any) => {
+      if (!image_project_id || typeof image_project_id !== 'string') {
+        throw new Error('image_project_id 不能为空');
+      }
+      const opts: ImageAddMarginOptions = {
+        imageProjectId: image_project_id.trim(),
+        inputFilename: input_filename,
+        top,
+        right,
+        bottom,
+        left,
+        color,
+        outputFilename: output_filename,
+        agentId,
+        logFn: log,
+      };
+      const output = await imageAddMargin(opts);
+      return {
+        content: [{ type: 'text' as const, text: `已添加边距：${output_filename}。${output}` }]
+      };
+    },
+
+    image_color_adjust: async ({ image_project_id, input_filename, brightness = 0, contrast = 0, saturation = 100, hue = 100, output_filename }: any) => {
+      if (!image_project_id || typeof image_project_id !== 'string') {
+        throw new Error('image_project_id 不能为空');
+      }
+      const opts: ImageColorAdjustOptions = {
+        imageProjectId: image_project_id.trim(),
+        inputFilename: input_filename,
+        brightness,
+        contrast,
+        saturation,
+        hue,
+        outputFilename: output_filename,
+        agentId,
+        logFn: log,
+      };
+      const output = await imageColorAdjust(opts);
+      return {
+        content: [{ type: 'text' as const, text: `已调整色彩：${output_filename}。${output}` }]
+      };
+    },
+
+    image_info: async ({ image_project_id, filename }: any) => {
+      if (!image_project_id || typeof image_project_id !== 'string') {
+        throw new Error('image_project_id 不能为空');
+      }
+      const info = await imageGetInfo({ imageProjectId: image_project_id.trim(), filename });
+      return {
+        content: [{ type: 'text' as const, text: JSON.stringify(info, null, 2) }]
+      };
+    },
+
+    image_batch: async ({ image_project_id, input_pattern, operation, operation_params = {}, output_dir = 'batch_output' }: any) => {
+      if (!image_project_id || typeof image_project_id !== 'string') {
+        throw new Error('image_project_id 不能为空');
+      }
+      const opts: ImageBatchOptions = {
+        imageProjectId: image_project_id.trim(),
+        inputPattern: input_pattern,
+        operation,
+        operationParams: operation_params,
+        outputDir: output_dir,
+        agentId,
+        logFn: log,
+      };
+      const output = await imageBatch(opts);
+      return {
+        content: [{ type: 'text' as const, text: `批量处理完成。${output}` }]
+      };
+    },
+
+    image_sprite_sheet: async ({ image_project_id, files, columns, rows, output_filename }: any) => {
+      if (!image_project_id || typeof image_project_id !== 'string') {
+        throw new Error('image_project_id 不能为空');
+      }
+      const opts: ImageSpriteSheetOptions = {
+        imageProjectId: image_project_id.trim(),
+        files,
+        columns,
+        rows,
+        outputFilename: output_filename,
+        agentId,
+        logFn: log,
+      };
+      const output = await imageSpriteSheet(opts);
+      return {
+        content: [{ type: 'text' as const, text: `精灵图已创建：${output_filename} (${columns}x${rows})。${output}` }]
+      };
+    },
+
+    image_write_file: async ({ filename, content }: any) => {
+      validateAgentPermission(['engineer'], '写入图片文件');
+      if (!filename || typeof filename !== 'string' || !filename.trim()) {
+        throw new Error('filename 不能为空');
+      }
+      if (!content || typeof content !== 'string') {
+        throw new Error('content 不能为空');
+      }
+      // 文件名安全校验（禁止路径分隔符）
+      if (filename.includes('/') || filename.includes('\\')) {
+        throw new Error('filename 不能包含路径分隔符');
+      }
+
+      console.error("[DEBUG image_write_file] START agentId=" + agentId + " projectId=" + scopedProjectId + " filename=" + filename + " contentLength=" + content.length);
+
+      const outputDir = path.resolve(_toolsDirname, '..', 'output', scopedProjectId);
+      const imagesDir = path.join(outputDir, 'images');
+      const fullPath = path.join(imagesDir, filename.trim());
+
+      // 安全检查：确保路径在 images 目录下（防止路径越权）
+      const resolvedPath = path.resolve(fullPath);
+      if (!resolvedPath.startsWith(imagesDir + path.sep) && resolvedPath !== imagesDir) {
+        console.error("[DEBUG image_write_file] 路径越权 imagesDir=" + imagesDir + " resolvedPath=" + resolvedPath);
+        return {
+          content: [{ type: 'text' as const, text: '写入图片文件失败：路径越权，只能写入 images 目录下。' }]
+        };
+      }
+
+      try {
+        // 解码 base64 → Buffer
+        const buffer = Buffer.from(content, 'base64');
+
+        // 创建目录
+        const dirPath = path.dirname(resolvedPath);
+        fs.mkdirSync(dirPath, { recursive: true });
+
+        // 写入文件（二进制）
+        fs.writeFileSync(resolvedPath, buffer);
+        const sizeKB = (buffer.length / 1024).toFixed(1);
+        console.error("[DEBUG image_write_file] SUCCESS wrote " + resolvedPath + " size=" + sizeKB + "KB");
+
+        log(agentId, '写入图片文件', '文件: ' + filename.trim() + ' | 大小: ' + sizeKB + ' KB', 'success');
+        return {
+          content: [{ type: 'text' as const, text: `图片文件已写入：output/${scopedProjectId}/images/${filename.trim()} (${sizeKB} KB)` }]
+        };
+      } catch (error: any) {
+        console.error("[DEBUG image_write_file] ERROR " + error.message);
+        return {
+          content: [{ type: 'text' as const, text: '写入图片文件失败：' + (error?.message || String(error)) }]
+        };
+      }
+    },
+
+    image_upload_file: async ({ image_project_id, filename }: any) => {
+      validateAgentPermission(['engineer'], '上传图片文件');
+      if (!image_project_id || typeof image_project_id !== 'string') {
+        throw new Error('image_project_id 不能为空');
+      }
+      if (!filename || typeof filename !== 'string' || !filename.trim()) {
+        throw new Error('filename 不能为空');
+      }
+      if (filename.includes('/') || filename.includes('\\')) {
+        throw new Error('filename 不能包含路径分隔符');
+      }
+
+      console.error("[DEBUG image_upload_file] START projectId=" + scopedProjectId + " ip=" + image_project_id + " filename=" + filename);
+
+      const outputDir = path.resolve(_toolsDirname, '..', 'output', scopedProjectId);
+      const imagesDir = path.join(outputDir, 'images');
+      const localPath = path.resolve(imagesDir, filename.trim());
+
+      // 安全检查
+      if (!localPath.startsWith(imagesDir + path.sep) && localPath !== imagesDir) {
+        return {
+          content: [{ type: 'text' as const, text: '上传图片文件失败：路径越权。' }]
+        };
+      }
+
+      if (!fs.existsSync(localPath)) {
+        return {
+          content: [{ type: 'text' as const, text: `上传图片文件失败：本地文件不存在（${localPath}）。请先调用 image_write_file。` }]
+        };
+      }
+
+      try {
+        // 读取文件 → base64 编码
+        const buffer = fs.readFileSync(localPath);
+        const content = buffer.toString('base64');
+
+        const opts: UploadImageFileOptions = {
+          imageProjectId: image_project_id.trim(),
+          filename: filename.trim(),
+          content,
+          agentId,
+          logFn: log,
+        };
+        const { sizeBytes } = await uploadImageFile(opts);
+        const sizeKB = (sizeBytes / 1024).toFixed(1);
+        console.error("[DEBUG image_upload_file] SUCCESS uploaded " + filename + " size=" + sizeKB + "KB");
+        return {
+          content: [{ type: 'text' as const, text: `图片已上传到 image service：${filename} (${sizeKB} KB) -> project ${image_project_id}` }]
+        };
+      } catch (error: any) {
+        console.error("[DEBUG image_upload_file] ERROR " + error.message);
+        return {
+          content: [{ type: 'text' as const, text: '上传图片文件失败：' + (error?.message || String(error)) }]
+        };
+      }
+    },
+
+    image_download_file: async ({ image_project_id, filename }: any) => {
+      if (!image_project_id || typeof image_project_id !== 'string') {
+        throw new Error('image_project_id 不能为空');
+      }
+      if (!filename || typeof filename !== 'string' || !filename.trim()) {
+        throw new Error('filename 不能为空');
+      }
+      const pathModule = await import('path');
+      const localOutputDir = pathModule.resolve(_toolsDirname, '..', 'output', scopedProjectId, 'images');
+      const opts: DownloadImageFileOptions = {
+        imageProjectId: image_project_id.trim(),
+        filename: filename.trim(),
+        localOutputDir,
+        agentId,
+        logFn: log,
+      };
+      const { localPath, sizeBytes } = await downloadImageFile(opts);
+      return {
+        content: [{
+          type: 'text' as const,
+          text: `文件已下载到：${localPath} (${sizeBytes} bytes)`,
+        }]
+      };
+    },
+
+    image_delete_file: async ({ image_project_id, filename }: any) => {
+      if (!image_project_id || typeof image_project_id !== 'string') {
+        throw new Error('image_project_id 不能为空');
+      }
+      if (!filename || typeof filename !== 'string' || !filename.trim()) {
+        throw new Error('filename 不能为空');
+      }
+      const pathModule = await import('path');
+      const localOutputDir = pathModule.resolve(_toolsDirname, '..', 'output', scopedProjectId, 'images');
+      const opts: DeleteImageFileOptions = {
+        imageProjectId: image_project_id.trim(),
+        filename: filename.trim(),
+        localOutputDir,
+        agentId,
+        logFn: log,
+      };
+      await deleteImageFile(opts);
+      return {
+        content: [{ type: 'text' as const, text: `已删除图片文件：${filename}（远程 + 本地）` }]
+      };
+    },
+
+    video_create_project: async ({ name }: any) => {
+      const opts: CreateVideoProjectOptions = {
+        projectId: scopedProjectId,
+        name,
+        agentId,
+        logFn: log,
+      };
+      try {
+        const { dbId, videoProjectId } = await createVideoProject(opts);
+        return {
+          content: [{
+            type: 'text' as const,
+            text: `视频 project 已创建 (DB ID: ${dbId.slice(0, 8)}, video_project_id: ${videoProjectId})，名称: ${name}`,
+          }]
+        };
+      } catch (error: any) {
+        return {
+          content: [{ type: 'text' as const, text: `创建视频 project 失败：${error?.message || String(error)}` }]
+        };
+      }
+    },
+
+    video_list_projects: async ({ limit }: any) => {
+      const records = listVideoProjects(scopedProjectId, limit || 20);
+      if (records.length === 0) {
+        return { content: [{ type: 'text' as const, text: '暂无视频 project。' }] };
+      }
+      const lines = records.map(r =>
+        `[${r.id.slice(0, 8)}] ${r.name} | video_project_id=${r.video_project_id} | ${r.created_at.slice(0, 10)}`
+      ).join('\n');
+      return { content: [{ type: 'text' as const, text: lines }] };
+    },
+
+    video_delete_project: async ({ video_project_id }: any) => {
+      if (!video_project_id || typeof video_project_id !== 'string') {
+        throw new Error('video_project_id 不能为空');
+      }
+      const opts: DeleteVideoProjectOptions = {
+        projectId: scopedProjectId,
+        videoProjectId: video_project_id.trim(),
+        agentId,
+        logFn: log,
+      };
+      await deleteVideoProject(opts);
+      return {
+        content: [{ type: 'text' as const, text: `视频 project 已删除 (video_project_id: ${video_project_id})` }]
+      };
+    },
+
+    video_info: async ({ video_project_id, filename }: any) => {
+      if (!video_project_id || typeof video_project_id !== 'string') {
+        throw new Error('video_project_id 不能为空');
+      }
+      const info = await videoGetInfo({ videoProjectId: video_project_id.trim(), filename });
+      return {
+        content: [{ type: 'text' as const, text: JSON.stringify(info, null, 2) }]
+      };
+    },
+
+    video_convert: async ({ video_project_id, input_filename, target_format, output_filename, video_codec, audio_codec }: any) => {
+      if (!video_project_id || typeof video_project_id !== 'string') {
+        throw new Error('video_project_id 不能为空');
+      }
+      const opts: VideoConvertOptions = {
+        videoProjectId: video_project_id.trim(),
+        inputFilename: input_filename,
+        targetFormat: target_format,
+        outputFilename: output_filename,
+        videoCodec: video_codec,
+        audioCodec: audio_codec,
+        agentId,
+        logFn: log,
+      };
+      const output = await videoConvert(opts);
+      return {
+        content: [{ type: 'text' as const, text: `已转换格式：${output_filename} -> ${target_format}。${output}` }]
+      };
+    },
+
+    video_trim: async ({ video_project_id, input_filename, start_time, duration, end_time, output_filename }: any) => {
+      if (!video_project_id || typeof video_project_id !== 'string') {
+        throw new Error('video_project_id 不能为空');
+      }
+      const opts: VideoTrimOptions = {
+        videoProjectId: video_project_id.trim(),
+        inputFilename: input_filename,
+        startTime: start_time,
+        duration,
+        endTime: end_time,
+        outputFilename: output_filename,
+        agentId,
+        logFn: log,
+      };
+      const output = await videoTrim(opts);
+      return {
+        content: [{ type: 'text' as const, text: `已截取视频：${output_filename}（从 ${start_time}s 开始）。${output}` }]
+      };
+    },
+
+    video_concat: async ({ video_project_id, input_filenames, output_filename }: any) => {
+      if (!video_project_id || typeof video_project_id !== 'string') {
+        throw new Error('video_project_id 不能为空');
+      }
+      const opts: VideoConcatOptions = {
+        videoProjectId: video_project_id.trim(),
+        inputFilenames: input_filenames,
+        outputFilename: output_filename,
+        agentId,
+        logFn: log,
+      };
+      const output = await videoConcat(opts);
+      return {
+        content: [{ type: 'text' as const, text: `已拼接 ${input_filenames.length} 个视频：${output_filename}。${output}` }]
+      };
+    },
+
+    video_resize: async ({ video_project_id, input_filename, width, height, keep_aspect, output_filename }: any) => {
+      if (!video_project_id || typeof video_project_id !== 'string') {
+        throw new Error('video_project_id 不能为空');
+      }
+      const opts: VideoResizeOptions = {
+        videoProjectId: video_project_id.trim(),
+        inputFilename: input_filename,
+        width,
+        height,
+        keepAspect: keep_aspect,
+        outputFilename: output_filename,
+        agentId,
+        logFn: log,
+      };
+      const output = await videoResize(opts);
+      return {
+        content: [{ type: 'text' as const, text: `已缩放视频：${output_filename} (${width}x${height})。${output}` }]
+      };
+    },
+
+    video_compress: async ({ video_project_id, input_filename, crf = 23, bitrate, preset = 'medium', output_filename }: any) => {
+      if (!video_project_id || typeof video_project_id !== 'string') {
+        throw new Error('video_project_id 不能为空');
+      }
+      const opts: VideoCompressOptions = {
+        videoProjectId: video_project_id.trim(),
+        inputFilename: input_filename,
+        crf,
+        bitrate,
+        preset,
+        outputFilename: output_filename,
+        agentId,
+        logFn: log,
+      };
+      const output = await videoCompress(opts);
+      return {
+        content: [{ type: 'text' as const, text: `已压缩视频：${output_filename} (crf=${crf})。${output}` }]
+      };
+    },
+
+    video_crop: async ({ video_project_id, input_filename, width, height, x = 0, y = 0, output_filename }: any) => {
+      if (!video_project_id || typeof video_project_id !== 'string') {
+        throw new Error('video_project_id 不能为空');
+      }
+      const opts: VideoCropOptions = {
+        videoProjectId: video_project_id.trim(),
+        inputFilename: input_filename,
+        width,
+        height,
+        x,
+        y,
+        outputFilename: output_filename,
+        agentId,
+        logFn: log,
+      };
+      const output = await videoCrop(opts);
+      return {
+        content: [{ type: 'text' as const, text: `已裁剪视频：${output_filename} (${width}x${height}+${x}+${y})。${output}` }]
+      };
+    },
+
+    video_rotate: async ({ video_project_id, input_filename, angle, output_filename }: any) => {
+      if (!video_project_id || typeof video_project_id !== 'string') {
+        throw new Error('video_project_id 不能为空');
+      }
+      const opts: VideoRotateOptions = {
+        videoProjectId: video_project_id.trim(),
+        inputFilename: input_filename,
+        angle,
+        outputFilename: output_filename,
+        agentId,
+        logFn: log,
+      };
+      const output = await videoRotate(opts);
+      return {
+        content: [{ type: 'text' as const, text: `已旋转视频 ${angle}°：${output_filename}。${output}` }]
+      };
+    },
+
+    video_change_speed: async ({ video_project_id, input_filename, speed, output_filename }: any) => {
+      if (!video_project_id || typeof video_project_id !== 'string') {
+        throw new Error('video_project_id 不能为空');
+      }
+      const opts: VideoChangeSpeedOptions = {
+        videoProjectId: video_project_id.trim(),
+        inputFilename: input_filename,
+        speed,
+        outputFilename: output_filename,
+        agentId,
+        logFn: log,
+      };
+      const output = await videoChangeSpeed(opts);
+      return {
+        content: [{ type: 'text' as const, text: `已变速 ${speed}x：${output_filename}。${output}` }]
+      };
+    },
+
+    video_extract_frames: async ({ video_project_id, input_filename, fps = 1, frame_count, output_pattern = 'frame_%04d.png', format = 'png' }: any) => {
+      if (!video_project_id || typeof video_project_id !== 'string') {
+        throw new Error('video_project_id 不能为空');
+      }
+      const opts: VideoExtractFramesOptions = {
+        videoProjectId: video_project_id.trim(),
+        inputFilename: input_filename,
+        fps,
+        frameCount: frame_count,
+        outputPattern: output_pattern,
+        format,
+        agentId,
+        logFn: log,
+      };
+      const output = await videoExtractFrames(opts);
+      return {
+        content: [{ type: 'text' as const, text: `已提取帧（${fps}fps）：${output_pattern}。${output}` }]
+      };
+    },
+
+    video_extract_audio: async ({ video_project_id, input_filename, output_filename, format = 'mp3' }: any) => {
+      if (!video_project_id || typeof video_project_id !== 'string') {
+        throw new Error('video_project_id 不能为空');
+      }
+      const opts: VideoExtractAudioOptions = {
+        videoProjectId: video_project_id.trim(),
+        inputFilename: input_filename,
+        outputFilename: output_filename,
+        format,
+        agentId,
+        logFn: log,
+      };
+      const output = await videoExtractAudio(opts);
+      return {
+        content: [{ type: 'text' as const, text: `已提取音频：${output_filename}。${output}` }]
+      };
+    },
+
+    video_add_audio: async ({ video_project_id, video_filename, audio_filename, output_filename, mix = false }: any) => {
+      if (!video_project_id || typeof video_project_id !== 'string') {
+        throw new Error('video_project_id 不能为空');
+      }
+      const opts: VideoAddAudioOptions = {
+        videoProjectId: video_project_id.trim(),
+        videoFilename: video_filename,
+        audioFilename: audio_filename,
+        outputFilename: output_filename,
+        mix,
+        agentId,
+        logFn: log,
+      };
+      const output = await videoAddAudio(opts);
+      return {
+        content: [{ type: 'text' as const, text: `已${mix ? '混合' : '替换'}音频：${output_filename}。${output}` }]
+      };
+    },
+
+    video_add_text: async ({ video_project_id, input_filename, text, x = 10, y = 10, font_size = 24, color = 'white', output_filename }: any) => {
+      if (!video_project_id || typeof video_project_id !== 'string') {
+        throw new Error('video_project_id 不能为空');
+      }
+      const opts: VideoAddTextOptions = {
+        videoProjectId: video_project_id.trim(),
+        inputFilename: input_filename,
+        text,
+        x,
+        y,
+        fontSize: font_size,
+        color,
+        outputFilename: output_filename,
+        agentId,
+        logFn: log,
+      };
+      const output = await videoAddText(opts);
+      return {
+        content: [{ type: 'text' as const, text: `已添加文字：${output_filename}。${output}` }]
+      };
+    },
+
+    video_add_watermark: async ({ video_project_id, input_filename, watermark_filename, position = 'bottom-right', opacity = 0.5, output_filename }: any) => {
+      if (!video_project_id || typeof video_project_id !== 'string') {
+        throw new Error('video_project_id 不能为空');
+      }
+      const opts: VideoAddWatermarkOptions = {
+        videoProjectId: video_project_id.trim(),
+        inputFilename: input_filename,
+        watermarkFilename: watermark_filename,
+        position,
+        opacity,
+        outputFilename: output_filename,
+        agentId,
+        logFn: log,
+      };
+      const output = await videoAddWatermark(opts);
+      return {
+        content: [{ type: 'text' as const, text: `已添加水印：${output_filename}（位置: ${position}）。${output}` }]
+      };
+    },
+
+    video_generate_gif: async ({ video_project_id, input_filename, fps = 10, width = 480, output_filename }: any) => {
+      if (!video_project_id || typeof video_project_id !== 'string') {
+        throw new Error('video_project_id 不能为空');
+      }
+      const opts: VideoGenerateGifOptions = {
+        videoProjectId: video_project_id.trim(),
+        inputFilename: input_filename,
+        fps,
+        width,
+        outputFilename: output_filename,
+        agentId,
+        logFn: log,
+      };
+      const output = await videoGenerateGif(opts);
+      return {
+        content: [{ type: 'text' as const, text: `已生成 GIF：${output_filename} (${fps}fps)。${output}` }]
+      };
+    },
+
+    video_gif_to_video: async ({ video_project_id, input_filename, target_format = 'mp4', output_filename }: any) => {
+      if (!video_project_id || typeof video_project_id !== 'string') {
+        throw new Error('video_project_id 不能为空');
+      }
+      const opts: VideoGifToVideoOptions = {
+        videoProjectId: video_project_id.trim(),
+        inputFilename: input_filename,
+        targetFormat: target_format,
+        outputFilename: output_filename,
+        agentId,
+        logFn: log,
+      };
+      const output = await videoGifToVideo(opts);
+      return {
+        content: [{ type: 'text' as const, text: `GIF 已转为视频：${output_filename}。${output}` }]
+      };
+    },
+
+    video_create_thumbnail: async ({ video_project_id, filename, time = 5, width = 320, output_filename }: any) => {
+      if (!video_project_id || typeof video_project_id !== 'string') {
+        throw new Error('video_project_id 不能为空');
+      }
+      const opts: VideoCreateThumbnailOptions = {
+        videoProjectId: video_project_id.trim(),
+        filename,
+        time,
+        width,
+        outputFilename: output_filename,
+        agentId,
+        logFn: log,
+      };
+      const output = await videoCreateThumbnail(opts);
+      return {
+        content: [{ type: 'text' as const, text: `已生成缩略图：${output_filename}。${output}` }]
+      };
+    },
+
+    video_write_file: async ({ filename, content }: any) => {
+      validateAgentPermission(['engineer'], '写入视频文件');
+      if (!filename || typeof filename !== 'string' || !filename.trim()) {
+        throw new Error('filename 不能为空');
+      }
+      if (!content || typeof content !== 'string') {
+        throw new Error('content 不能为空');
+      }
+      // 文件名安全校验（禁止路径分隔符）
+      if (filename.includes('/') || filename.includes('\\')) {
+        throw new Error('filename 不能包含路径分隔符');
+      }
+
+      console.error("[DEBUG video_write_file] START agentId=" + agentId + " projectId=" + scopedProjectId + " filename=" + filename + " contentLength=" + content.length);
+
+      const outputDir = path.resolve(_toolsDirname, '..', 'output', scopedProjectId);
+      const videosDir = path.join(outputDir, 'videos');
+      const fullPath = path.join(videosDir, filename.trim());
+
+      // 安全检查：确保路径在 videos 目录下（防止路径越权）
+      const resolvedPath = path.resolve(fullPath);
+      if (!resolvedPath.startsWith(videosDir + path.sep) && resolvedPath !== videosDir) {
+        console.error("[DEBUG video_write_file] 路径越权 videosDir=" + videosDir + " resolvedPath=" + resolvedPath);
+        return {
+          content: [{ type: 'text' as const, text: '写入视频文件失败：路径越权，只能写入 videos 目录下。' }]
+        };
+      }
+
+      try {
+        // 解码 base64 → Buffer
+        const buffer = Buffer.from(content, 'base64');
+
+        // 创建目录
+        const dirPath = path.dirname(resolvedPath);
+        fs.mkdirSync(dirPath, { recursive: true });
+
+        // 写入文件（二进制）
+        fs.writeFileSync(resolvedPath, buffer);
+        const sizeKB = (buffer.length / 1024).toFixed(1);
+        console.error("[DEBUG video_write_file] SUCCESS wrote " + resolvedPath + " size=" + sizeKB + "KB");
+
+        log(agentId, '写入视频文件', '文件: ' + filename.trim() + ' | 大小: ' + sizeKB + ' KB', 'success');
+        return {
+          content: [{ type: 'text' as const, text: `视频文件已写入：output/${scopedProjectId}/videos/${filename.trim()} (${sizeKB} KB)` }]
+        };
+      } catch (error: any) {
+        console.error("[DEBUG video_write_file] ERROR " + error.message);
+        return {
+          content: [{ type: 'text' as const, text: '写入视频文件失败：' + (error?.message || String(error)) }]
+        };
+      }
+    },
+
+    video_upload_file: async ({ video_project_id, filename }: any) => {
+      validateAgentPermission(['engineer'], '上传视频文件');
+      if (!video_project_id || typeof video_project_id !== 'string') {
+        throw new Error('video_project_id 不能为空');
+      }
+      if (!filename || typeof filename !== 'string' || !filename.trim()) {
+        throw new Error('filename 不能为空');
+      }
+      if (filename.includes('/') || filename.includes('\\')) {
+        throw new Error('filename 不能包含路径分隔符');
+      }
+
+      console.error("[DEBUG video_upload_file] START projectId=" + scopedProjectId + " vp=" + video_project_id + " filename=" + filename);
+
+      const outputDir = path.resolve(_toolsDirname, '..', 'output', scopedProjectId);
+      const videosDir = path.join(outputDir, 'videos');
+      const localPath = path.resolve(videosDir, filename.trim());
+
+      // 安全检查
+      if (!localPath.startsWith(videosDir + path.sep) && localPath !== videosDir) {
+        return {
+          content: [{ type: 'text' as const, text: '上传视频文件失败：路径越权。' }]
+        };
+      }
+
+      if (!fs.existsSync(localPath)) {
+        return {
+          content: [{ type: 'text' as const, text: `上传视频文件失败：本地文件不存在（${localPath}）。请先调用 video_write_file。` }]
+        };
+      }
+
+      try {
+        // 读取文件 → base64 编码
+        const buffer = fs.readFileSync(localPath);
+        const content = buffer.toString('base64');
+
+        const opts: UploadVideoFileOptions = {
+          videoProjectId: video_project_id.trim(),
+          filename: filename.trim(),
+          content,
+          agentId,
+          logFn: log,
+        };
+        const { sizeBytes } = await uploadVideoFile(opts);
+        const sizeKB = (sizeBytes / 1024).toFixed(1);
+        console.error("[DEBUG video_upload_file] SUCCESS uploaded " + filename + " size=" + sizeKB + "KB");
+        return {
+          content: [{ type: 'text' as const, text: `视频已上传到 video service：${filename} (${sizeKB} KB) -> project ${video_project_id}` }]
+        };
+      } catch (error: any) {
+        console.error("[DEBUG video_upload_file] ERROR " + error.message);
+        return {
+          content: [{ type: 'text' as const, text: '上传视频文件失败：' + (error?.message || String(error)) }]
+        };
+      }
+    },
+
+    video_download_file: async ({ video_project_id, filename }: any) => {
+      if (!video_project_id || typeof video_project_id !== 'string') {
+        throw new Error('video_project_id 不能为空');
+      }
+      if (!filename || typeof filename !== 'string' || !filename.trim()) {
+        throw new Error('filename 不能为空');
+      }
+      const pathModule = await import('path');
+      const localOutputDir = pathModule.resolve(_toolsDirname, '..', 'output', scopedProjectId, 'videos');
+      const opts: DownloadVideoFileOptions = {
+        videoProjectId: video_project_id.trim(),
+        filename: filename.trim(),
+        localOutputDir,
+        agentId,
+        logFn: log,
+      };
+      const { localPath, sizeBytes } = await downloadVideoFile(opts);
+      return {
+        content: [{
+          type: 'text' as const,
+          text: `文件已下载到：${localPath} (${sizeBytes} bytes)`,
+        }]
+      };
+    },
+
+    video_delete_file: async ({ video_project_id, filename }: any) => {
+      if (!video_project_id || typeof video_project_id !== 'string') {
+        throw new Error('video_project_id 不能为空');
+      }
+      if (!filename || typeof filename !== 'string' || !filename.trim()) {
+        throw new Error('filename 不能为空');
+      }
+      const pathModule = await import('path');
+      const localOutputDir = pathModule.resolve(_toolsDirname, '..', 'output', scopedProjectId, 'videos');
+      const opts: DeleteVideoFileOptions = {
+        videoProjectId: video_project_id.trim(),
+        filename: filename.trim(),
+        localOutputDir,
+        agentId,
+        logFn: log,
+      };
+      await deleteVideoFile(opts);
+      return {
+        content: [{ type: 'text' as const, text: `已删除视频文件：${filename}（远程 + 本地）` }]
+      };
+    },
+
+    drawio_create_project: async ({ name }: any) => {
+      const opts: CreateDrawioProjectOptions = {
+        projectId: scopedProjectId,
+        name,
+        agentId,
+        logFn: log,
+      };
+      try {
+        const { dbId, drawioProjectId } = await createDrawioProject(opts);
+        return {
+          content: [{
+            type: 'text' as const,
+            text: `图表 project 已创建 (DB ID: ${dbId.slice(0, 8)}, drawio_project_id: ${drawioProjectId})，名称: ${name}`,
+          }]
+        };
+      } catch (error: any) {
+        return {
+          content: [{ type: 'text' as const, text: `创建图表 project 失败：${error?.message || String(error)}` }]
+        };
+      }
+    },
+
+    drawio_list_projects: async ({ limit }: any) => {
+      const records = listDrawioProjects(scopedProjectId, limit || 20);
+      if (records.length === 0) {
+        return { content: [{ type: 'text' as const, text: '暂无图表 project。' }] };
+      }
+      const lines = records.map(r =>
+        `[${r.id.slice(0, 8)}] ${r.name} | drawio_project_id=${r.drawio_project_id} | ${r.created_at.slice(0, 10)}`
+      ).join('\n');
+      return { content: [{ type: 'text' as const, text: lines }] };
+    },
+
+    drawio_delete_project: async ({ drawio_project_id }: any) => {
+      if (!drawio_project_id || typeof drawio_project_id !== 'string') {
+        throw new Error('drawio_project_id 不能为空');
+      }
+      const opts: DeleteDrawioProjectOptions = {
+        projectId: scopedProjectId,
+        drawioProjectId: drawio_project_id.trim(),
+        agentId,
+        logFn: log,
+      };
+      await deleteDrawioProject(opts);
+      return {
+        content: [{ type: 'text' as const, text: `图表 project 已删除 (drawio_project_id: ${drawio_project_id})` }]
+      };
+    },
+
+    drawio_create_diagram: async ({ drawio_project_id, name }: any) => {
+      if (!drawio_project_id || typeof drawio_project_id !== 'string') {
+        throw new Error('drawio_project_id 不能为空');
+      }
+      const opts: DrawioCreateDiagramOptions = {
+        drawioProjectId: drawio_project_id.trim(),
+        name,
+        agentId,
+        logFn: log,
+      };
+      const { diagramId } = await createDiagram(opts);
+      return {
+        content: [{
+          type: 'text' as const,
+          text: `图表已创建 (diagram_id: ${diagramId})，名称: ${name}`,
+        }]
+      };
+    },
+
+    drawio_add_shape: async ({ drawio_project_id, diagram_id, shape_type, label, x, y, width, height, fill_color, stroke_color }: any) => {
+      if (!drawio_project_id || typeof drawio_project_id !== 'string') {
+        throw new Error('drawio_project_id 不能为空');
+      }
+      if (!diagram_id || typeof diagram_id !== 'string') {
+        throw new Error('diagram_id 不能为空');
+      }
+      const style: { fillColor?: string; strokeColor?: string } = {};
+      if (fill_color) style.fillColor = fill_color;
+      if (stroke_color) style.strokeColor = stroke_color;
+      const opts: DrawioAddShapeOptions = {
+        drawioProjectId: drawio_project_id.trim(),
+        diagramId: diagram_id.trim(),
+        shapeType: shape_type,
+        label,
+        x,
+        y,
+        width,
+        height,
+        style: Object.keys(style).length > 0 ? style : undefined,
+        agentId,
+        logFn: log,
+      };
+      const shapeId = await addShape(opts);
+      return {
+        content: [{ type: 'text' as const, text: `已添加 ${shape_type} "${label}"，shape_id: ${shapeId}` }]
+      };
+    },
+
+    drawio_add_connector: async ({ drawio_project_id, diagram_id, from_shape_id, to_shape_id, label, connector_type, arrow_start, arrow_end, stroke_color, stroke_width }: any) => {
+      if (!drawio_project_id || typeof drawio_project_id !== 'string') {
+        throw new Error('drawio_project_id 不能为空');
+      }
+      if (!diagram_id || typeof diagram_id !== 'string') {
+        throw new Error('diagram_id 不能为空');
+      }
+      const style: { strokeColor?: string; strokeWidth?: number } = {};
+      if (stroke_color) style.strokeColor = stroke_color;
+      if (stroke_width) style.strokeWidth = stroke_width;
+      const opts: DrawioAddConnectorOptions = {
+        drawioProjectId: drawio_project_id.trim(),
+        diagramId: diagram_id.trim(),
+        fromShapeId: from_shape_id.trim(),
+        toShapeId: to_shape_id.trim(),
+        label,
+        connectorType: connector_type,
+        arrowStart: arrow_start,
+        arrowEnd: arrow_end,
+        style: Object.keys(style).length > 0 ? style : undefined,
+        agentId,
+        logFn: log,
+      };
+      const connectorId = await addConnector(opts);
+      return {
+        content: [{ type: 'text' as const, text: `已连接 ${from_shape_id} → ${to_shape_id}，connector_id: ${connectorId}` }]
+      };
+    },
+
+    drawio_download_diagram: async ({ drawio_project_id, diagram_id, filename, format }: any) => {
+      if (!drawio_project_id || typeof drawio_project_id !== 'string') {
+        throw new Error('drawio_project_id 不能为空');
+      }
+      if (!diagram_id || typeof diagram_id !== 'string') {
+        throw new Error('diagram_id 不能为空');
+      }
+      const pathModule = await import('path');
+      const fsModule = await import('fs');
+      const localOutputDir = pathModule.resolve(_toolsDirname, '..', 'output', scopedProjectId, 'diagrams');
+
+      // 1. 调用 drawio service 导出图表 Buffer
+      const { exportDiagram } = await import('./drawio-service.js');
+      const effectiveFormat = format || 'png';
+      const safeFilename = (filename || `${diagram_id}.${effectiveFormat}`).trim();
+      const fileUuid = uuidv4();
+      const objectKey = `design/${fileUuid}.${effectiveFormat}`;
+
+      const buffer = await exportDiagram({
+        drawioProjectId: drawio_project_id.trim(),
+        diagramId: diagram_id.trim(),
+        format: effectiveFormat,
+      });
+
+      // 2. 保存到本地 output 目录
+      if (!fs.existsSync(localOutputDir)) {
+        fs.mkdirSync(localOutputDir, { recursive: true });
+      }
+      const localPath = pathModule.resolve(localOutputDir, safeFilename);
+      fs.writeFileSync(localPath, buffer);
+
+      // 3. 上传到 MinIO（内部函数，不走外部 API）
+      let fileStorageId: string;
+      const contentType = effectiveFormat === 'png' ? 'image/png'
+        : effectiveFormat === 'svg' ? 'image/svg+xml'
+        : effectiveFormat === 'pdf' ? 'application/pdf'
+        : 'application/xml';
+      try {
+        const { storage, fullObjectKey } = await createFileStorageRecord({
+          project_id: scopedProjectId,
+          object_key: objectKey,
+          file_name: safeFilename,
+          file_size: buffer.length,
+          content_type: contentType,
+        });
+        fileStorageId = storage.id;
+        await uploadBuffer(buffer, fullObjectKey, contentType);
+        log(agentId, '图表上传 MinIO', `design 文件已上传: ${fullObjectKey}`, 'success');
+      } catch (error: any) {
+        return {
+          content: [{ type: 'text' as const, text: `图表已保存到本地 ${localPath}，但上传 MinIO 失败：${error?.message || String(error)}` }]
+        };
+      }
+
+      return {
+        content: [{
+          type: 'text' as const,
+          text: `图表已导出到：${localPath} (${buffer.length} bytes)，已上传 MinIO (file_storage_id: ${fileStorageId})。在提交策划案时传入 attachment_storage_ids: ["${fileStorageId}"] 可将此图表作为附件关联到策划案。`,
+        }]
+      };
+    },
+
+    drawio_list_elements: async ({ drawio_project_id, diagram_id, page, page_size, element_type }: any) => {
+      if (!drawio_project_id || typeof drawio_project_id !== 'string') {
+        throw new Error('drawio_project_id 不能为空');
+      }
+      if (!diagram_id || typeof diagram_id !== 'string') {
+        throw new Error('diagram_id 不能为空');
+      }
+
+      const { listDiagramElements } = await import('./drawio-service.js');
+      const result = await listDiagramElements({
+        drawioProjectId: drawio_project_id.trim(),
+        diagramId: diagram_id.trim(),
+        page,
+        pageSize: page_size,
+        elementType: element_type,
+      });
+
+      // 格式化输出
+      const lines: string[] = [];
+      lines.push(`第 ${result.page} 页 / 共 ${Math.ceil(result.total / result.pageSize)} 页（共 ${result.total} 个元素）`);
+
+      const shapes = result.elements.filter(e => e.elementType === 'shape');
+      const connectors = result.elements.filter(e => e.elementType === 'connector');
+
+      if (shapes.length > 0) {
+        lines.push('');
+        lines.push(`形状 (${shapes.length})：`);
+        for (const s of shapes) {
+          lines.push(`  [${s.elementId}] "${s.label}" @(${s.x ?? 0},${s.y ?? 0} ${s.width ?? 0}x${s.height ?? 0})`);
+        }
+      }
+
+      if (connectors.length > 0) {
+        lines.push('');
+        lines.push(`连接线 (${connectors.length})：`);
+        for (const c of connectors) {
+          lines.push(`  [${c.elementId}] "${c.label}" ${c.sourceId} → ${c.targetId}`);
+        }
+      }
+
+      if (result.elements.length === 0) {
+        lines.push('（无元素）');
+      }
+
+      return {
+        content: [{ type: 'text' as const, text: lines.join('\n') }]
+      };
+    },
+
+    get_game_types: async ({ limit }: { limit?: number }) => {
+      const gameTypes = db.getGameTypes(limit);
+      console.error(`[Tool] ${_tts()} get_game_types START agentId=${agentId} projectId=${scopedProjectId}`);
+      console.error(`[Tool] ${_tts()} get_game_types DONE types=${gameTypes.length}`);
+      return {
+        content: [{ type: 'text' as const, text: JSON.stringify({ game_types: gameTypes }, null, 2) }]
+      };
+    },
+
+    get_game_framework_spec: async ({ game_type }: { game_type: string }) => {
+      console.error(`[Tool] ${_tts()} get_game_framework_spec START agentId=${agentId} projectId=${scopedProjectId} game_type=${game_type}`);
+      const content = db.getGameFrameworkSpec(game_type);
+      if (!content) {
+        console.error(`[Tool] ${_tts()} get_game_framework_spec NOT_FOUND game_type=${game_type}`);
+        return {
+          content: [{ type: 'text' as const, text: `未找到游戏类型 "${game_type}" 的规范。请先调用 get_game_types 确认支持的类型。` }]
+        };
+      }
+      console.error(`[Tool] ${_tts()} get_game_framework_spec DONE game_type=${game_type} contentLength=${content.length}`);
+      return {
+        content: [{ type: 'text' as const, text: content }]
+      };
+    },
+
+    get_common_spec: async () => {
+      console.error(`[Tool] ${_tts()} get_common_spec START agentId=${agentId} projectId=${scopedProjectId}`);
+      const content = db.getCommonSpec();
+      if (!content) {
+        console.error(`[Tool] ${_tts()} get_common_spec NOT_FOUND`);
+        return {
+          content: [{ type: 'text' as const, text: '公共规范暂未配置。' }]
+        };
+      }
+      console.error(`[Tool] ${_tts()} get_common_spec DONE contentLength=${content.length}`);
+      return {
+        content: [{ type: 'text' as const, text: content }]
+      };
+    },
+
+    search_tools: async ({ name: searchName }: { name?: string }) => {
+      if (!searchName || searchName.trim() === '') {
+        const results = TOOL_META_DEFINITIONS.map(m => ({ name: m.name, description: m.description }));
+        results.sort((a, b) => a.name.localeCompare(b.name));
+        const text = [`找到 ${results.length} 个工具：`, '', ...results.map(r => `- **${r.name}**: ${r.description}`)].join('\n');
+        console.error(`[Tool] ${_tts()} search_tools DONE query="" results=${results.length}`);
+        return { content: [{ type: 'text' as const, text }] };
+      }
+      const escapedName = searchName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(escapedName, 'i');
+      const results = TOOL_META_DEFINITIONS.filter(m => regex.test(m.name)).map(m => ({ name: m.name, description: m.description }));
+      if (results.length === 0) {
+        return { content: [{ type: 'text' as const, text: `未找到名称包含 "${searchName}" 的工具。` }] };
+      }
+      results.sort((a, b) => a.name.localeCompare(b.name));
+      const text = [`找到 ${results.length} 个匹配的工具：`, '', ...results.map(r => `- **${r.name}**: ${r.description}`)].join('\n');
+      console.error(`[Tool] ${_tts()} search_tools DONE query="${searchName}" results=${results.length}`);
+      return { content: [{ type: 'text' as const, text }] };
+    },
+  };
 
   const server = createSdkMcpServer({
     name: 'studio-tools',
     version: '1.0.0',
-    tools: [
-      tool(
-        'save_memory',
-        '保存一条长期记忆。在做出重要决策、获得经验教训、产出成果等关键时刻，你应该主动调用此工具保存信息。',
-        {
-          category: z.enum(['general', 'preference', 'decision', 'lesson', 'achievement']).describe(
-            '记忆分类：general=通用, preference=用户偏好, decision=重要决策, lesson=经验教训, achievement=成果产出'
-          ),
-          content: z.string().max(5000).describe('记忆内容，简明扼要，不超过5000字符'),
-          importance: z.enum(['low', 'normal', 'high', 'critical']).optional().default('normal').describe('重要程度'),
-          source_task: z.string().optional().describe('关联的任务名称')
-        },
-        async ({ category, content, importance, source_task }) => {
-          console.error(`[Tool] ${_tts()} save_memory START agentId=${agentId} projectId=${scopedProjectId} category=${category} contentLength=${content.length}`);
-          const now = new Date().toISOString();
-          const memory = db.createAgentMemory({
-            id: uuidv4(),
-            project_id: scopedProjectId,
-            agent_id: agentId,
-            category,
-            content,
-            importance: importance || 'normal',
-            source_task: source_task || null,
-            created_at: now,
-            updated_at: now
-          });
-          log(agentId, '保存记忆', `类别: ${category} | 重要度: ${importance}`, 'info');
-          console.error(`[Tool] ${_tts()} save_memory DONE memoryId=${memory.id.slice(0, 8)}`);
-          return {
-            content: [{ type: 'text' as const, text: `记忆已保存 (ID: ${memory.id.slice(0, 8)})` }]
-          };
-        }
-      ),
-
-      tool(
-        'get_memories',
-        '获取你之前保存的长期记忆，帮助你回忆之前的决策、经验和成果。',
-        {
-          category: z.enum(['general', 'preference', 'decision', 'lesson', 'achievement']).optional().describe('按类别筛选，不填则返回全部'),
-          keyword: z.string().trim().max(200).optional().describe('按关键词模糊搜索记忆内容，可选，最长 200 字符'),
-          limit: z.number().min(1).max(50).optional().default(20).describe('返回条数上限')
-        },
-        async ({ category, keyword, limit }) => {
-          const memories = db.getAgentMemories(scopedProjectId, agentId, {
-            category,
-            keyword,
-            limit
-          });
-          if (memories.length === 0) {
-            return {
-              content: [{ type: 'text' as const, text: '暂无保存的记忆。' }]
-            };
-          }
-          const text = memories.map(m =>
-            `[${m.category}/${m.importance}] (${m.created_at.slice(0, 10)}) ${m.content}`
-          ).join('\n');
-          return {
-            content: [{ type: 'text' as const, text }]
-          };
-        }
-      ),
-      tool(
-        'create_handoff',
-        '将任务移交给其他团队成员。当你完成自己的工作部分，需要其他 Agent 接手时调用此工具。交接需要管理者确认后目标 Agent 才会开始工作。',
-        {
-          to_agent_id: AGENT_ID_ENUM
-            .refine((value) => value !== TEAM_BUILDING_AGENT_ID, { message: 'to_agent_id 不支持 team_builder' })
-            .describe(
-              '目标 Agent ID：engineer=软件工程师（含软件测试）, architect=架构师, game_designer=游戏策划（含UI设计）, biz_designer=商业策划, ceo=CEO（不支持 team_builder）'
-            ),
-          title: singleLineTitleSchema('title').describe('简短的任务标题'),
-          description: requiredTextSchema('description').describe('详细的任务描述'),
-          context: z.string().optional().describe(
-            '上下文信息：你的工作成果摘要、相关文件路径、关键决策等。这些信息对下一个 Agent 完成任务至关重要。'
-          ),
-          priority: z.enum(db.HANDOFF_PRIORITIES).optional().default('normal').describe('任务优先级')
-        },
-        async ({ to_agent_id, title, description, context, priority }) => {
-          console.error(`[Tool] ${_tts()} create_handoff START agentId=${agentId} projectId=${scopedProjectId} from=${agentId} to=${to_agent_id} title=${title}`);
-          const allowedTargets = ALLOWED_HANDOFF_TARGETS[agentId] || [];
-          if (!allowedTargets.includes(to_agent_id)) {
-            console.error(`[Tool] ${_tts()} create_handoff INVALID_TARGET agentId=${agentId} to=${to_agent_id} allowed=${allowedTargets.join(',') || 'none'}`);
-            throw new Error(`交接目标不合法：${agentId} 仅可移交给 ${allowedTargets.join(' / ') || '无'}`);
-          }
-          const now = new Date().toISOString();
-          const settings = db.getProjectSettings(scopedProjectId);
-          const autoHandoffEnabled = settings.autopilot_enabled === 1;
-          console.error(`[Tool] ${_tts()} create_handoff autopilot=${autoHandoffEnabled}`);
-          const handoff = db.createHandoff({
-            id: uuidv4(),
-            project_id: scopedProjectId,
-            from_agent_id: agentId,
-            to_agent_id,
-            title,
-            description,
-            context: context || null,
-            status: autoHandoffEnabled ? 'working' : 'pending',
-            priority: priority || 'normal',
-            result: null,
-            accepted_at: autoHandoffEnabled ? now : null,
-            completed_at: null,
-            source_command_id: null,
-            created_at: now,
-            updated_at: now,
-          });
-          console.error(`[Tool] ${_tts()} create_handoff broadcast handoff_created handoffId=${handoff.id.slice(0, 8)}`);
-          sseBroadcaster.broadcast({ type: 'handoff_created', handoff }, scopedProjectId);
-          log(agentId, '创建交接', `${agentId} → ${to_agent_id}: ${title}`, 'success');
-          console.error(`[Tool] ${_tts()} create_handoff DONE handoffId=${handoff.id.slice(0, 8)} status=${autoHandoffEnabled ? 'working' : 'pending'}`);
-          if (autoHandoffEnabled && onAutoHandoff) {
-            try {
-              await onAutoHandoff(handoff);
-            } catch (error: any) {
-              log(
-                to_agent_id,
-                '交接任务执行失败',
-                `[${agentId} → ${to_agent_id}: ${title}] ${error?.message || String(error)}`,
-                'error'
-              );
-            }
-          }
-          return {
-            content: [{
-              type: 'text' as const,
-              text: autoHandoffEnabled
-                ? `交接已创建并自动接收 (ID: ${handoff.id})，${to_agent_id} 已进入执行状态。`
-                : `交接已创建 (ID: ${handoff.id})，等待管理者确认后 ${to_agent_id} 才会开始工作。`
-            }]
-          };
-        }
-      ),
-      tool(
-        'split_dev_test_tasks',
-        '将一个功能目标拆分为开发任务和测试任务，并写入任务看板。',
-        {
-          feature_title: singleLineTitleSchema('feature_title').describe('功能标题'),
-          development_description: requiredTextSchema('development_description').describe('开发任务描述'),
-          testing_description: z.string().optional().transform((value, ctx) => {
-            if (value === undefined) return undefined;
-            try {
-              const normalized = db.normalizeOptionalText(value, 'testing_description');
-              return normalized || undefined;
-            } catch (error: any) {
-              ctx.addIssue({ code: 'custom', message: error?.message || 'testing_description 验证失败' });
-              return z.NEVER;
-            }
-          }).describe('测试任务描述（不填则自动生成）'),
-          priority_hint: z.enum(db.HANDOFF_PRIORITIES).optional().default('normal').describe('优先级提示（用于描述，不影响状态机）')
-        },
-        async ({ feature_title, development_description, testing_description, priority_hint }) => {
-          validateAgentPermission(['engineer'], '拆分开发与测试任务');
-          console.error(`[Tool] ${_tts()} split_dev_test_tasks START agentId=${agentId} projectId=${scopedProjectId} feature=${feature_title}`);
-          const now = new Date().toISOString();
-          const devTask = db.createTaskBoardTask({
-            id: uuidv4(),
-            project_id: scopedProjectId,
-            title: `开发：${feature_title}`,
-            description: `[优先级:${priority_hint || 'normal'}] ${development_description}`,
-            task_type: 'development',
-            status: 'todo',
-            source_task_id: null,
-            created_by: agentId,
-            updated_by: agentId,
-            started_at: null,
-            completed_at: null,
-            created_at: now,
-            updated_at: now
-          });
-
-          const testTask = db.createTaskBoardTask({
-            id: uuidv4(),
-            project_id: scopedProjectId,
-            title: `测试：${feature_title}`,
-            description: testing_description || `验证"${feature_title}"功能正确性与回归影响，覆盖功能、边界和异常路径。`,
-            task_type: 'testing',
-            status: 'todo',
-            source_task_id: devTask.id,
-            created_by: agentId,
-            updated_by: agentId,
-            started_at: null,
-            completed_at: null,
-            created_at: now,
-            updated_at: now
-          });
-
-          sseBroadcaster.broadcast({ type: 'task_created', task: devTask }, scopedProjectId);
-          sseBroadcaster.broadcast({ type: 'task_created', task: testTask }, scopedProjectId);
-          log(agentId, '拆分任务看板', `${feature_title} -> 开发+测试`, 'success');
-          console.error(`[Tool] ${_tts()} split_dev_test_tasks DONE devTaskId=${devTask.id.slice(0, 8)} testTaskId=${testTask.id.slice(0, 8)}`);
-
-          return {
-            content: [{
-              type: 'text' as const,
-              text: `已拆分任务：开发任务 ${devTask.id}，测试任务 ${testTask.id}。`
-            }]
-          };
-        }
-      ),
-
-      tool(
-        'get_tasks',
-        '查询任务看板中的任务，用于查看待办和当前进度。可选按 agent_id 筛选 created_by/updated_by；不传则查询项目内全部任务。',
-        {
-          status: z.enum(db.TASK_STATUSES).optional().describe('按状态筛选'),
-          task_type: z.enum(db.TASK_TYPES).optional().describe('按任务类型筛选'),
-          agent_id: AGENT_ID_ENUM.optional().describe('按创建者/更新者 Agent ID 筛选；不传则查询全部'),
-          limit: z.number().min(1).max(100).optional().default(20).describe('返回条数上限')
-        },
-        async ({ status, task_type, agent_id, limit }) => {
-          const tasks = db.getTaskBoardTasks({
-            projectId: scopedProjectId,
-            status,
-            taskType: task_type,
-            agentId: agent_id,
-            limit: limit || 20
-          });
-          if (tasks.length === 0) {
-            return { content: [{ type: 'text' as const, text: '没有匹配的看板任务。' }] };
-          }
-          const text = tasks.map(t => {
-            const rel = t.source_task_id ? ` | 来源:${t.source_task_id}` : '';
-            return `[${t.status}/${t.task_type}] ${t.title} (ID:${t.id}, 创建:${t.created_by}, 更新:${t.updated_by || '-'})${rel}`;
-          }).join('\n');
-          return { content: [{ type: 'text' as const, text }] };
-        }
-      ),
-
-      tool(
-        'update_task_status',
-        '更新看板任务状态，维护开发与测试过程进度。',
-        {
-          task_id: z.string().describe('任务 ID'),
-          status: z.enum(db.TASK_STATUSES).describe('目标状态')
-        },
-        async ({ task_id, status }) => {
-          validateAgentPermission(['engineer'], '更新任务看板状态');
-          console.error(`[Tool] ${_tts()} update_task_status START agentId=${agentId} taskId=${task_id} targetStatus=${status}`);
-          const normalizedTaskId = task_id.trim();
-          if (!UUID_PATTERN.test(normalizedTaskId)) {
-            return { content: [{ type: 'text' as const, text: `任务 ID 格式非法: ${normalizedTaskId}。${TASK_ID_HELP_TEXT}` }] };
-          }
-          const task = db.getTaskBoardTask(normalizedTaskId);
-
-          if (!task) {
-            return { content: [{ type: 'text' as const, text: `任务不存在: ${normalizedTaskId}。${TASK_ID_HELP_TEXT}` }] };
-          }
-          if (!TASK_STATUS_FLOW[task.status]?.includes(status)) {
-            const allowed = TASK_STATUS_FLOW[task.status] || [];
-            const allowedLabel = allowed.length > 0
-              ? allowed.map(s => TASK_STATUS_LABEL[s] || s).join('、')
-              : '无（终态）';
-            return {
-              content: [{
-                type: 'text' as const,
-                text: `状态流转非法: ${TASK_STATUS_LABEL[task.status] || task.status} -> ${TASK_STATUS_LABEL[status] || status}。合法流转: ${allowedLabel}`
-              }]
-            };
-          }
-
-          const now = new Date().toISOString();
-          const updates: Partial<db.DbTaskBoardTask> = { status, updated_by: agentId };
-          if (status === 'developing' || status === 'testing') {
-            updates.started_at = task.started_at || now;
-          }
-          if (status === 'done') {
-            updates.completed_at = now;
-          } else if (task.status === 'done') {
-            updates.completed_at = null;
-          }
-
-          const success = db.updateTaskBoardTask(task.id, updates);
-          if (!success) {
-            return { content: [{ type: 'text' as const, text: `任务状态更新失败: ${task_id}` }] };
-          }
-          const updated = db.getTaskBoardTask(task.id)!;
-          sseBroadcaster.broadcast({ type: 'task_updated', task: updated }, task.project_id);
-          log(agentId, '维护任务状态', `${task.title}: ${task.status} -> ${status}`, 'success');
-
-          return {
-            content: [{ type: 'text' as const, text: `任务状态已更新: ${task.id} -> ${status}` }]
-          };
-        }
-      ),
-      tool(
-        'submit_proposal',
-        '提交一份策划案或方案文档（如游戏策划案、商业策划案、技术方案等）。提案提交后将通知管理者进行审批。可通过 attachment_storage_ids 参数关联最多 10 个图表附件（来自 drawio_download_diagram 返回的 file_storage_id）。内容会自动进行 XSS 安全过滤，仅保留 p/br/strong/em/ul/ol/li/code/pre/a/span/div 等安全标签。',
-        {
-          type: z.enum(db.PROPOSAL_TYPES).describe(
-            '提案类型：game_design=游戏策划, biz_design=商业策划, tech_arch=架构方案, tech_impl=技术方案'
-          ),
-          title: singleLineTitleSchema('title').describe('提案标题'),
-          content: requiredTextSchema('content').describe('提案的完整内容（Markdown 格式），提交时将自动过滤 XSS 内容'),
-          attachment_storage_ids: z.array(z.string().uuid()).max(10).optional().describe('关联的附件 file_storage_id 列表（最多 10 个），来自 drawio_download_diagram 返回的 file_storage_id')
-        },
-        async ({ type, title, content, attachment_storage_ids }) => {
-          console.error(`[Tool] ${_tts()} submit_proposal START agentId=${agentId} projectId=${scopedProjectId} type=${type} title=${title} contentLength=${content.length}`);
-          if (type === 'game_design') {
-            validateAgentPermission(['game_designer'], '提交游戏策划案');
-          } else if (type === 'biz_design') {
-            validateAgentPermission(['biz_designer'], '提交商业策划案');
-          } else if (type === 'tech_arch') {
-            validateAgentPermission(['architect'], '提交技术架构方案');
-          } else if (type === 'tech_impl') {
-            validateAgentPermission(['engineer'], '提交技术实现方案');
-          } else if (type === 'ceo_review') {
-            validateAgentPermission(['ceo'], '提交 CEO 评审结论');
-          }
-
-          // XSS 安全过滤（与 submit_game 复用同一工具）
-          const { validateHtmlSafe, sanitizeHtml } = await import('./utils/sanitize-html.js');
-          const validationErrors = validateHtmlSafe(content);
-          if (validationErrors.length > 0) {
-            console.error(`[Tool ${_tts()} submit_proposal] content 安全校验失败: ${validationErrors.map(e => e.message).join('; ')}`);
-            return {
-              content: [{ type: 'text' as const, text: `提交提案失败：内容存在安全问题：\n${validationErrors.map(e => `- ${e.message}${e.detail ? `（${e.detail}）` : ''}`).join('\n')}` }]
-            };
-          }
-          const safeContent = sanitizeHtml(content);
-          console.error(`[Tool ${_tts()} submit_proposal] content 安全校验通过`);
-
-          // 校验附件数量
-          if (attachment_storage_ids && attachment_storage_ids.length > 10) {
-            return { content: [{ type: 'text' as const, text: '附件数量不能超过 10 个' }] };
-          }
-
-          const now = new Date().toISOString();
-          const proposal = db.createProposal({
-            id: uuidv4(),
-            project_id: scopedProjectId,
-            type,
-            title,
-            content: safeContent,
-            author_agent_id: agentId,
-            status: 'pending_review',
-            reviewer_agent_id: null,
-            review_comment: null,
-            user_decision: null,
-            user_comment: null,
-            version: 1,
-            parent_id: null,
-            source: 'manual',
-            created_at: now,
-            updated_at: now
-          });
-
-          // 关联附件
-          if (attachment_storage_ids && attachment_storage_ids.length > 0) {
-            for (const storageId of attachment_storage_ids) {
-              const storage = db.getFileStorage(storageId.trim());
-              if (!storage) {
-                log(agentId, '关联附件', `file_storage_id ${storageId} 不存在，跳过`, 'warn');
-                continue;
-              }
-              try {
-                db.createProposalAttachment({
-                  id: uuidv4(),
-                  proposal_id: proposal.id,
-                  file_storage_id: storageId.trim(),
-                  source_type: 'drawio_export',
-                  custom_name: null,
-                  created_at: now,
-                });
-              } catch (error: any) {
-                log(agentId, '关联附件', `创建附件记录失败: ${error?.message || String(error)}`, 'warn');
-              }
-            }
-            log(agentId, '关联附件', `已关联 ${attachment_storage_ids.length} 个附件到提案 ${proposal.id.slice(0, 8)}`, 'success');
-          }
-
-          const filePath = db.saveProposalToFile(proposal);
-          sseBroadcaster.broadcast({ type: 'proposal_created', proposal, filePath }, scopedProjectId);
-          log(agentId, '提交提案', `提案: ${title}${filePath ? ' → 已保存' : ''}`, 'success');
-          console.error(`[Tool] ${_tts()} submit_proposal DONE proposalId=${proposal.id.slice(0, 8)} status=pending_review filePath=${filePath || 'none'}`);
-          return {
-            content: [{ type: 'text' as const, text: `提案已提交 (ID: ${proposal.id.slice(0, 8)})，等待审批。${attachment_storage_ids?.length ? ` 已关联 ${attachment_storage_ids.length} 个附件。` : ''}` }]
-          };
-        }
-      ),
-
-      tool(
-        'write_game_file',
-        '将游戏文件写入到游戏产出目录。engineer 应先调用此工具写入游戏文件，再调用 submit_game 提交。文件写入路径: output/{当前项目ID}/games/latest/{path}',
-        {
-          path: z.string().min(1).max(256).describe('文件路径（相对于 game 目录，如 index.html、assets/models/player.glb）'),
-          content: z.string().describe('文件内容'),
-        },
-        async ({ path: filePath, content }) => {
-          validateAgentPermission(['engineer'], '写入游戏文件');
-
-          console.error("[DEBUG write_game_file] START agentId=" + agentId + " projectId=" + scopedProjectId + " path=" + filePath + " contentLength=" + content.length);
-
-          const outputDir = path.resolve(_toolsDirname, '..', 'output', scopedProjectId);
-          const latestDir = path.join(outputDir, 'games', 'latest');
-          const fullPath = path.join(latestDir, filePath);
-
-          // 安全检查：确保路径在 latest 目录下（防止路径越权）
-          const resolvedPath = path.resolve(fullPath);
-          if (!resolvedPath.startsWith(latestDir + path.sep) && resolvedPath !== latestDir) {
-            console.error("[DEBUG write_game_file] 路径越权 latestDir=" + latestDir + " resolvedPath=" + resolvedPath);
-            return {
-              content: [{ type: 'text' as const, text: '写入游戏文件失败：路径越权，只能写入 game 目录下。' }]
-            };
-          }
-
-          console.error("[DEBUG write_game_file] latestDir=" + latestDir + " filePath=" + fullPath + " resolvedPath=" + resolvedPath);
-
-          try {
-            // 创建目录
-            const dirPath = path.dirname(resolvedPath);
-            fs.mkdirSync(dirPath, { recursive: true });
-
-            // 写入文件
-            fs.writeFileSync(resolvedPath, content, 'utf-8');
-            console.error("[DEBUG write_game_file] SUCCESS wrote " + resolvedPath);
-
-            log(agentId, '写入游戏文件', '路径: ' + filePath + ' | 大小: ' + content.length + ' bytes', 'success');
-            console.error(`[Tool] ${_tts()} write_game_file DONE path=${filePath} size=${content.length}`);
-            return {
-              content: [{ type: 'text' as const, text: '游戏文件已写入到 output/' + scopedProjectId + '/games/latest/' + filePath }]
-            };
-          } catch (error: any) {
-            console.error("[DEBUG write_game_file] ERROR " + error.message);
-            console.error(`[Tool] ${_tts()} write_game_file ERROR ${error.message}`);
-            return {
-              content: [{ type: 'text' as const, text: '写入游戏文件失败：' + (error?.message || String(error)) }]
-            };
-          }
-        }
-      ),
-
-
-      tool(
-        'submit_game',
-        `提交一个完成的游戏成品（仅 engineer 可用）。从 games/latest/ 目录打包游戏，创建游戏记录（自动分配 version_number）。游戏文件夹会被压缩为 ZIP 并上传到 MinIO 存储。
-
-⚠️ description 仅允许纯 HTML 文本，禁止包含 JS 脚本。`,
-        {
-          description: z.string().min(1, 'description 不能为空').max(db.MAX_DESCRIPTION_LENGTH, `description 长度不能超过 ${db.MAX_DESCRIPTION_LENGTH}`).describe('游戏简介（纯 HTML，仅允许 p/br/strong/em/ul/ol/li/code/pre/a/span/div 标签，禁止 script 标签）'),
-          version: z.preprocess(
-            (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
-            z.string().max(db.MAX_VERSION_LENGTH, `version 长度不能超过 ${db.MAX_VERSION_LENGTH}`).transform((value, ctx) => {
-              try {
-                return db.normalizeAndValidateRequiredText(value, 'version');
-              } catch (error: any) {
-                ctx.addIssue({ code: 'custom', message: error?.message || 'version 验证失败' });
-                return z.NEVER;
-              }
-            }).optional().default('1.0.0')
-          ).describe('版本号'),
-          proposal_id: z.string().optional().describe('关联的策划案 ID（如果有）')
-        },
-        async ({ description, version, proposal_id }) => {
-          try {
-          validateAgentPermission(['engineer'], '提交游戏成品');
-          console.error(`[Tool] ${_tts()} submit_game START agentId=${agentId} projectId=${scopedProjectId} version=${version} proposalId=${proposal_id || 'none'}`);
-
-          // ========== 确定游戏路径（从 games/latest 读取）==========
-          const resolvedFilePath = 'games/latest';
-
-          // [DEBUG] 添加日志用于排查 UI-007
-          console.error(`[DEBUG submit_game] START projectId=${scopedProjectId} resolvedPath=${resolvedFilePath} _toolsDirname=${_toolsDirname}`);
-
-          // ========== 校验 description 安全性 ==========
-          const { validateHtmlSafe, sanitizeHtml } = await import('./utils/sanitize-html.js');
-          const validationErrors = validateHtmlSafe(description);
-          if (validationErrors.length > 0) {
-            console.error(`[DEBUG submit_game] description 安全校验失败: ${validationErrors.map(e => e.message).join('; ')}`);
-            return {
-              content: [{ type: 'text' as const, text: `提交游戏失败：description 存在安全问题：\n${validationErrors.map(e => `- ${e.message}${e.detail ? `（${e.detail}）` : ''}`).join('\n')}` }]
-            };
-          }
-          const safeDescription = sanitizeHtml(description);
-          console.error(`[DEBUG submit_game] description 安全校验通过`);
-
-          let fileStorageId: string | null = null;
-          let sonarStorageId: string | null = null;
-
-          // ========== 文件打包模式 ==========
-          // 路径校验：只允许 output/{project_id} 下的路径
-          const outputDir = path.resolve(path.join(_toolsDirname, '..', 'output', scopedProjectId));
-          console.error(`[DEBUG submit_game] outputDir=${outputDir}`);
-          let targetPath: string;
-          try {
-            targetPath = path.resolve(outputDir, resolvedFilePath);
-            // 检查路径是否在 output/{project_id} 下
-            if (!targetPath.startsWith(outputDir + path.sep) && targetPath !== outputDir) {
-              return {
-                content: [{ type: 'text' as const, text: `提交游戏失败：路径只能在 output/${scopedProjectId} 目录下。` }]
-              };
-            }
-          } catch (error: any) {
-            return {
-              content: [{ type: 'text' as const, text: `提交游戏失败：无效的路径。` }]
-            };
-          }
-          console.error(`[DEBUG submit_game] outputDir=${outputDir} targetPath=${targetPath}`);
-
-          // 检查路径是否存在且为目录
-          let stat: Stats;
-          try {
-            stat = fs.statSync(targetPath);
-            // [DEBUG] 添加日志用于排查 UI-007
-            console.error(`[DEBUG submit_game] targetPath=${targetPath} exists=true isDirectory=${stat.isDirectory()}`);
-          } catch (err) {
-            // [DEBUG] 添加日志用于排查 UI-007
-            console.error(`[DEBUG submit_game] targetPath=${targetPath} exists=false error=${err}`);
-            return {
-              content: [{ type: 'text' as const, text: `提交游戏失败：目录不存在（games/latest）。请先调用 write_game_file 创建游戏文件。` }]
-            };
-          }
-          if (!stat.isDirectory()) {
-            return {
-              content: [{ type: 'text' as const, text: `提交游戏失败：路径必须是目录，不支持单文件提交。` }]
-            };
-          }
-
-          // 创建临时 ZIP 文件
-          const zipId = uuidv4();
-          const zipName = `${scopedProjectId}_${zipId}.zip`;
-          const zipTempPath = path.join('/tmp', zipName);
-
-            try {
-              // 切换到 output/{project_id} 目录执行 zip，保留相对路径
-              const zipCmd = `cd "${outputDir}" && zip -r "${zipTempPath}" "${resolvedFilePath}"`;
-
-              execSync(zipCmd, { stdio: 'pipe' });
-
-              if (!fs.existsSync(zipTempPath)) {
-                return {
-                  content: [{ type: 'text' as const, text: '提交游戏失败：ZIP 打包失败。' }]
-                };
-              }
-
-              // 直接调用内部函数上传文件到 MinIO
-              const objectKey = `games/${zipName}`;
-              const fileBuffer = fs.readFileSync(zipTempPath);
-
-              // lint 检查：ZIP 内每个 HTML 逐一检查，遇第一个 error 即阻断
-              console.error(`[Tool] ${_tts()} submit_game calling lintZipBuffer zipSize=${fileBuffer.length}`);
-              const zipLintResult = await lintZipBuffer(fileBuffer, {
-                submitDir: targetPath,
-                projectId: scopedProjectId,
-              });
-              console.error(`[Tool] ${_tts()} submit_game lintZipBuffer done passed=${zipLintResult.passed} errors=${zipLintResult.errors.length} warnings=${zipLintResult.warnings.length} summary=${zipLintResult.summary}`);
-              if (!zipLintResult.passed) {
-                try { fs.unlinkSync(zipTempPath); } catch { /* ignore */ }
-                return {
-                  content: [{ type: 'text' as const, text: `提交游戏失败：\n${zipLintResult.summary}` }]
-                };
-              }
-              if (zipLintResult.warnings.length > 0) {
-                log(agentId, '提交游戏-lint', `警告: ${zipLintResult.warnings.map(w => w.message).join('; ')}`, 'warn');
-              }
-
-              // === Sonar 报告生成：从 lint 结果中读取 extraPayloads ===
-              const sonarPayload = zipLintResult.extraPayloads?.['sonar-report'] as { version: string; issues: SonarQubeIssue[] } | undefined;
-              const sonarIssues = sonarPayload?.issues ?? [];
-
-              // 使用 yazl 将 sonar-issues.json 追加到 ZIP（不改变原文件内容）
-              const sonarReportBuffer = Buffer.from(
-                JSON.stringify({ version: '1.0', issues: sonarIssues }, null, 2),
-                'utf-8'
-              );
-              const finalZipBuffer = await new Promise<Buffer>((resolve, reject) => {
-                const zip = new yazl.ZipFile();
-                zip.on('error', reject);
-                zip.addBuffer(fileBuffer, zipName);
-                zip.addBuffer(sonarReportBuffer, 'sonar-issues.json');
-                zip.end();
-                const chunks: Buffer[] = [];
-                zip.outputStream.on('data', (chunk: Buffer) => chunks.push(chunk));
-                zip.outputStream.on('end', () => resolve(Buffer.concat(chunks)));
-                zip.outputStream.on('error', reject);
-              });
-              const finalFileSize = finalZipBuffer.length;
-
-              // 重置扫描历史，允许后续 submit_game 重新扫描
-              resetSonarScanHistory(`game-${scopedProjectId}`);
-
-              console.error(`[DEBUG submit_game] 开始上传文件到 MinIO objectKey=${objectKey} finalFileSize=${finalFileSize}`);
-              try {
-                // 创建游戏文件存储记录
-                console.error(`[DEBUG submit_game] createFileStorageRecord start objectKey=${objectKey}`);
-                const { storage: gameStorage } = await createFileStorageRecord({
-                  project_id: scopedProjectId,
-                  object_key: objectKey,
-                  file_name: zipName,
-                  file_size: finalFileSize,
-                  content_type: 'application/zip'
-                });
-                fileStorageId = gameStorage.id;
-                console.error(`[DEBUG submit_game] createFileStorageRecord done fileStorageId=${fileStorageId.slice(0, 8)}`);
-
-                // 上传含 sonar 报告的最终 ZIP 到 MinIO
-                console.error(`[DEBUG submit_game] uploadBuffer start objectKey=${objectKey}`);
-                await uploadBuffer(finalZipBuffer, objectKey, 'application/zip');
-                console.error(`[DEBUG submit_game] uploadBuffer done`);
-
-                // 上传独立 sonar-issues.json 报告到 MinIO
-                const sonarObjectKey = `sonar/${zipName}`;
-                console.error(`[DEBUG submit_game] prepare sonar upload sonarObjectKey=${sonarObjectKey} sonarReportSize=${sonarReportBuffer.length}`);
-                const { storage: sonarStorage } = await createFileStorageRecord({
-                  project_id: scopedProjectId,
-                  object_key: sonarObjectKey,
-                  file_name: `${zipName.replace('.zip', '')}-sonar-issues.json`,
-                  file_size: sonarReportBuffer.length,
-                  content_type: 'application/json'
-                });
-                sonarStorageId = sonarStorage.id;
-                console.error(`[DEBUG submit_game] sonar storage created sonarStorageId=${sonarStorageId.slice(0, 8)}`);
-                await uploadBuffer(sonarReportBuffer, sonarObjectKey, 'application/json');
-                console.error(`[DEBUG submit_game] sonar upload done`);
-
-              } catch (error: any) {
-                console.error(`[DEBUG submit_game] 文件上传异常: ${error?.message || String(error)}`);
-                return {
-                  content: [{ type: 'text' as const, text: `提交游戏失败：文件上传异常 ${error?.message || String(error)}` }]
-                };
-              } finally {
-                // 清理临时文件
-                try { fs.unlinkSync(zipTempPath); } catch { /* ignore */ }
-              }
-
-            } catch (error: any) {
-              try { fs.unlinkSync(zipTempPath); } catch { /* ignore */ }
-              return {
-                content: [{ type: 'text' as const, text: `提交游戏失败：ZIP 打包失败 ${error?.message || String(error)}` }]
-              };
-            }
-
-            // 创建游戏记录
-            const now = new Date().toISOString();
-            let game: db.DbGame;
-            console.error(`[DEBUG submit_game] 开始创建游戏记录 fileStorageId=${fileStorageId ? fileStorageId.slice(0, 8) : 'null'} sonarStorageId=${sonarStorageId ? sonarStorageId.slice(0, 8) : 'null'}`);
-            try {
-              game = db.createGame({
-                id: uuidv4(),
-                project_id: scopedProjectId,
-                version_number: 0, // 会由数据库自动生成
-                description: safeDescription,
-                proposal_id: proposal_id || null,
-                version: version || '1.0.0',
-                status: 'draft',
-                file_storage_id: fileStorageId,
-                sonar_storage_id: sonarStorageId,
-                created_at: now,
-                updated_at: now
-              });
-              console.error(`[DEBUG submit_game] 游戏记录创建成功 gameId=${game.id.slice(0, 8)} versionNumber=${game.version_number}`);
-            } catch (error: any) {
-              console.error(`[DEBUG submit_game] 游戏记录创建失败: ${error?.message || String(error)}`);
-              return {
-                content: [{ type: 'text' as const, text: `提交游戏失败：${error?.message || String(error)}` }]
-              };
-            }
-
-            console.error(`[DEBUG submit_game] 广播 game_submitted SSE 事件`);
-            sseBroadcaster.broadcast({ type: 'game_submitted', game: { ...game, fileStorageId, sonarStorageId }, filePath: null }, scopedProjectId);
-            // [DEBUG] 添加日志用于排查 UI-007
-            console.error(`[DEBUG submit_game] SUCCESS game_submitted broadcasted projectId=${scopedProjectId} gameId=${game.id} versionNumber=${game.version_number}`);
-            log(agentId, '提交游戏', `版本号: ${game.version_number} v${version || '1.0.0'} [文件模式，ZIP: ${zipName}，Sonar报告: sonar/${zipName}]`, 'success');
-            console.error(`[Tool] ${_tts()} submit_game DONE gameId=${game.id.slice(0, 8)} versionNumber=${game.version_number} fileStorageId=${fileStorageId ? fileStorageId.slice(0, 8) : 'none'} sonarStorageId=${sonarStorageId ? sonarStorageId.slice(0, 8) : 'none'}`);
-            return {
-              content: [{ type: 'text' as const, text: `游戏已提交 (版本号: ${game.version_number})，版本: ${version || '1.0.0'}，文件已上传到存储。` }]
-            };
-          } catch (error: any) {
-            const errMsg = error?.message || String(error);
-            const errStack = error?.stack || '';
-            console.error(`[Tool] ${_tts()} submit_game FATAL ERROR: ${errMsg}`);
-            console.error(`[Tool] ${_tts()} submit_game FATAL STACK: ${errStack}`);
-            return {
-              content: [{ type: 'text' as const, text: `提交游戏失败：系统内部错误 (${errMsg})` }]
-            };
-          }
-        }
-      ),
-      tool(
-        'get_agent_logs',
-        '读取当前项目下你自己的历史日志，用于回顾上下文和最近执行记录。',
-        {
-          limit: z.number().min(1).max(200).optional().default(20).describe('返回条数上限')
-        },
-        async ({ limit }) => {
-          const logs = db.getLogs(scopedProjectId, agentId, limit);
-          if (logs.length === 0) {
-            return {
-              content: [{ type: 'text' as const, text: '暂无历史日志。' }]
-            };
-          }
-          const text = logs.map(logItem => {
-            const actionPart = logItem.action ? `[${logItem.action}] ` : '';
-            const toolPart = logItem.tool_name ? ` (tool: ${logItem.tool_name})` : '';
-            return `[${logItem.created_at}][${logItem.level}/${logItem.log_type}] ${actionPart}${logItem.content}${toolPart}`;
-          }).join('\n');
-          return {
-            content: [{ type: 'text' as const, text }]
-          };
-        }
-      ),
-
-      tool(
-        'get_agents',
-        '查询所有 Agent 的信息（含 agent_id、名称、职责等），用于确认可用 Agent ID。此工具不涉及项目数据，无需传 project_id。',
-        {},
-        async () => {
-          const agents = getAllAgents();
-          if (agents.length === 0) {
-            return {
-              content: [{ type: 'text' as const, text: '当前没有可用的 Agent。' }]
-            };
-          }
-          const text = agents.map(a =>
-            `${a.id} | ${a.name} | ${a.title}\n职责: ${a.responsibilities.join('、')}`
-          ).join('\n\n');
-          return {
-            content: [{ type: 'text' as const, text }]
-          };
-        }
-      ),
-
-      tool(
-        'get_proposals',
-        '查询已有的提案列表，用于了解当前项目的策划案进度。可选按 agent_id 筛选 author/reviewer；不传则查询项目内全部提案。',
-        {
-          status: z.enum(db.PROPOSAL_STATUSES).optional().describe('按状态筛选'),
-          agent_id: AGENT_ID_ENUM.optional().describe('按作者/评审 Agent ID 筛选；不传则查询全部'),
-          limit: z.number().min(1).max(50).optional().default(10).describe('返回条数上限')
-        },
-        async ({ status, agent_id, limit }) => {
-          const proposals = db.getScopedProposals(scopedProjectId, {
-            status,
-            agentId: agent_id,
-            limit: limit || 10
-          });
-          if (proposals.length === 0) {
-            return {
-              content: [{ type: 'text' as const, text: '没有找到匹配的提案。' }]
-            };
-          }
-          const text = proposals.map(p =>
-            `[${p.status}] ${p.title} (作者: ${p.author_agent_id}, 评审: ${p.reviewer_agent_id || '未分配'}, 类型: ${p.type}, ${p.created_at.slice(0, 10)})`
-          ).join('\n');
-          return {
-            content: [{ type: 'text' as const, text }]
-          };
-        }
-      ),
-
-      tool(
-        'get_pending_handoffs',
-        '查询待处理的任务交接。可选按 agent_id 筛选发给该 Agent 的交接；不传则查询项目内全部待处理交接。',
-        {
-          agent_id: AGENT_ID_ENUM.optional().describe('目标 Agent ID（to_agent_id）筛选；不传则查询全部'),
-          limit: z.number().min(1).max(20).optional().default(5).describe('返回条数上限')
-        },
-        async ({ agent_id, limit }) => {
-          const handoffs = db.getPendingHandoffs(scopedProjectId, agent_id, limit || 5);
-          if (handoffs.length === 0) {
-            return {
-              content: [{ type: 'text' as const, text: '没有待处理的交接任务。' }]
-            };
-          }
-          const text = handoffs.map(h =>
-            `[${h.status}] ${h.title} (来自: ${h.from_agent_id}, 发给: ${h.to_agent_id}, 优先级: ${h.priority}, ${h.created_at.slice(0, 10)})\n  描述: ${h.description.slice(0, 100)}`
-          ).join('\n\n');
-          return {
-            content: [{ type: 'text' as const, text }]
-          };
-        }
-      ),
-
-      tool(
-        'get_games',
-        '获取当前项目下已提交的游戏成品列表，按时间倒序返回。用于查看有哪些游戏已提交及其基本信息。',
-        {
-          limit: z.number().min(1).max(100).optional().default(20).describe('返回条数上限')
-        },
-        async ({ limit }) => {
-          const allGames = db.getAllGames().filter(g => g.project_id === scopedProjectId);
-          const games = allGames.slice(0, limit || 20).map(g => ({
-            id: g.id,
-            version_number: g.version_number,
-            description: g.description,
-            version: g.version,
-            status: g.status,
-            created_at: g.created_at,
-          }));
-          if (games.length === 0) {
-            return {
-              content: [{ type: 'text' as const, text: '当前项目下还没有提交过游戏。' }]
-            };
-          }
-          const lines = games.map(g =>
-            `[${g.status}] v${g.version} (#${g.version_number}) | ${g.created_at.slice(0, 10)} | ${g.description.slice(0, 50)}`
-          ).join('\n');
-          return {
-            content: [{ type: 'text' as const, text: lines }]
-          };
-        }
-      ),
-
-      tool(
-        'get_game_info',
-        '获取指定游戏的详细信息，返回 MinIO presigned 下载链接。',
-        {
-          game_id: z.string().optional().describe('游戏 ID'),
-          version_number: z.number().int().positive().optional().describe('版本号（整数）')
-        },
-        async ({ game_id, version_number }) => {
-          let game: db.DbGame | undefined;
-
-          // 优先通过 version_number 查询
-          if (version_number !== undefined) {
-            game = db.getGameByVersionNumber(version_number);
-          } else if (game_id) {
-            game = db.getGame(game_id);
-          } else {
-            // 如果都没有，返回最新版本
-            game = db.getLatestGame(scopedProjectId);
-          }
-
-          if (!game) {
-            return {
-              content: [{ type: 'text' as const, text: version_number !== undefined ? `游戏不存在（版本号: ${version_number}）` : `游戏不存在：${game_id}` }]
-            };
-          }
-          if (game.project_id !== scopedProjectId) {
-            return {
-              content: [{ type: 'text' as const, text: '游戏不存在或无权限访问。' }]
-            };
-          }
-          // 仅有文件模式：生成 MinIO presigned 下载链接
-          if (!game.file_storage_id) {
-            return {
-              content: [{ type: 'text' as const, text: '该游戏尚未关联文件存储记录。' }]
-            };
-          }
-          const storage = db.getFileStorage(game.file_storage_id!);
-          if (!storage) {
-            return {
-              content: [{ type: 'text' as const, text: `游戏文件记录不存在（ID: ${game.file_storage_id}），无法获取下载链接。` }]
-            };
-          }
-          const fullObjectKey = `${storage.project_id}/${storage.object_key}`;
-          let downloadUrl: string;
-          try {
-            downloadUrl = await getPresignedDownloadUrl(fullObjectKey);
-          } catch (error: any) {
-            return {
-              content: [{ type: 'text' as const, text: `生成下载链接失败：${error?.message || String(error)}` }]
-            };
-          }
-          const result = {
-            id: game.id,
-            version_number: game.version_number,
-            description: game.description,
-            version: game.version,
-            status: game.status,
-            created_at: game.created_at,
-            downloadUrl
-          };
-          return {
-            content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }]
-          };
-        }
-      ),
-
-      tool(
-        'get_project_latest_info',
-        '查询当前项目最新 n 条关键信息，覆盖提案、任务、交接、日志、记忆，供总结提炼使用。',
-        {
-          limit: z.number().min(1).max(100).optional().default(20).describe('返回条数上限（跨类型混合排序）')
-        },
-        async ({ limit }) => {
-          validateAgentPermission([TEAM_BUILDING_AGENT_ID], '查询项目最新信息');
-          const effectiveLimit = limit || 20;
-          const fetchWindow = Math.min(Math.max(effectiveLimit * FETCH_MULTIPLIER, MIN_FETCH_WINDOW), MAX_FETCH_WINDOW);
-          const proposals = db.getScopedProposals(scopedProjectId, { limit: fetchWindow });
-          const projectTasks = db.getTaskBoardTasks({ projectId: scopedProjectId, limit: fetchWindow });
-          const handoffs = db.getAllHandoffs(scopedProjectId, fetchWindow);
-          const logs = db.getLogs(scopedProjectId, undefined, fetchWindow);
-          const memories = db.getAllAgentMemories(scopedProjectId, fetchWindow);
-
-          const unified = [
-            ...proposals.map(item => ({
-              timestamp: item.created_at,
-              line: `[proposal][${item.status}] ${item.title} | author=${item.author_agent_id} | reviewer=${item.reviewer_agent_id || '-'} | sort_at=${item.created_at} | created_at=${item.created_at}${item.updated_at ? ` | updated_at=${item.updated_at}` : ''}`
-            })),
-            ...projectTasks.map(item => ({
-              timestamp: item.created_at,
-              line: `[task][${item.status}/${item.task_type}] ${item.title} | by=${item.created_by} | sort_at=${item.created_at} | created_at=${item.created_at}${item.updated_at ? ` | updated_at=${item.updated_at}` : ''}`
-            })),
-            ...handoffs.map(item => ({
-              timestamp: item.created_at,
-              line: `[handoff][${item.status}/${item.priority}] ${item.title} | ${item.from_agent_id}→${item.to_agent_id} | sort_at=${item.created_at} | created_at=${item.created_at}${item.updated_at ? ` | updated_at=${item.updated_at}` : ''}`
-            })),
-            ...logs.map(item => ({
-              timestamp: item.created_at,
-              line: `[log][${item.level}/${item.log_type}] ${item.agent_id} | ${item.action || '-'} | ${toSingleLinePreview(item.content)} | sort_at=${item.created_at}`
-            })),
-            ...memories.map(item => ({
-              timestamp: item.created_at,
-              line: `[memory][${item.category}/${item.importance}] ${item.agent_id} | ${toSingleLinePreview(item.content)} | sort_at=${item.created_at} | created_at=${item.created_at}${item.updated_at ? ` | updated_at=${item.updated_at}` : ''}`
-            }))
-          ]
-            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-            .slice(0, effectiveLimit);
-
-          if (unified.length === 0) {
-            return {
-              content: [{ type: 'text' as const, text: '当前项目暂无可用于总结的信息。' }]
-            };
-          }
-
-          return {
-            content: [{ type: 'text' as const, text: unified.map(item => item.line).join('\n') }]
-          };
-        }
-      ),
-
-      // ---- Blender / 建模工具（仅 engineer 可用）----
-
-      tool(
-        'blender_create_project',
-        '创建建模 project（仅 engineer 可用）。在 backend 数据库创建记录，然后调用 creator service 创建容器内项目目录，返回 blender_project_id。建议在完成建模工作后调用 blender_delete_project 清理资源。',
-        {
-          name: z.string().min(1).max(50).describe('建模 project 名称'),
-        },
-        async ({ name }) => {
-          const opts: CreateBlenderProjectOptions = {
-            projectId: scopedProjectId,
-            name,
-            agentId,
-            logFn: log,
-          };
-          try {
-            const { dbId, blenderProjectId } = await createBlenderProject(opts);
-            return {
-              content: [{
-                type: 'text' as const,
-                text: `建模 project 已创建 (DB ID: ${dbId.slice(0, 8)}, blender_project_id: ${blenderProjectId})，名称: ${name}`,
-              }]
-            };
-          } catch (error: any) {
-            return {
-              content: [{ type: 'text' as const, text: `创建建模 project 失败：${error?.message || String(error)}` }]
-            };
-          }
-        }
-      ),
-
-      tool(
-        'blender_list_projects',
-        '列出当前 studio project 下所有建模 project（仅 engineer 可用）。',
-        {
-          limit: z.number().min(1).max(50).optional().default(20).describe('返回条数上限'),
-        },
-        async ({ limit }) => {
-          const records = listBlenderProjects(scopedProjectId, limit || 20);
-          if (records.length === 0) {
-            return { content: [{ type: 'text' as const, text: '暂无建模 project。' }] };
-          }
-          const lines = records.map(r =>
-            `[${r.id.slice(0, 8)}] ${r.name} | blender_project_id=${r.blender_project_id} | ${r.created_at.slice(0, 10)}`
-          ).join('\n');
-          return { content: [{ type: 'text' as const, text: lines }] };
-        }
-      ),
-
-      tool(
-        'blender_delete_project',
-        '删除建模 project（仅 engineer 可用）。先调用 creator service 删除远程目录（幂等），再删除 backend DB 记录。建议完成模型文件下载后主动调用以释放容器存储空间。',
-        {
-          blender_project_id: z.string().describe('blender_project_id（来自 blender_create_project 的返回值）'),
-        },
-        async ({ blender_project_id }) => {
-          if (!blender_project_id || typeof blender_project_id !== 'string') {
-            throw new Error('blender_project_id 不能为空');
-          }
-          const opts: DeleteBlenderProjectOptions = {
-            projectId: scopedProjectId,
-            blenderProjectId: blender_project_id.trim(),
-            agentId,
-            logFn: log,
-          };
-          await deleteBlenderProject(opts);
-          return {
-            content: [{ type: 'text' as const, text: `建模 project 已删除 (blender_project_id: ${blender_project_id})` }]
-          };
-        }
-      ),
-
-      tool(
-        'blender_create_mesh',
-        '在 Blender 场景中创建一个基础几何体（立方体/球体/平面/圆柱体/圆环/圆锥）（仅 engineer 可用）。',
-        {
-          blender_project_id: z.string().describe('blender_project_id'),
-          mesh_type: z.enum(['cube', 'sphere', 'plane', 'cylinder', 'torus', 'cone']).describe('几何体类型'),
-          name: z.string().min(1).max(64).describe('物体名称'),
-          location: z.tuple([z.number(), z.number(), z.number()]).optional()
-            .describe('位置 (x, y, z)，默认 (0, 0, 0)'),
-          scale: z.tuple([z.number(), z.number(), z.number()]).optional()
-            .describe('缩放 (x, y, z)，默认 (1, 1, 1)'),
-        },
-        async ({ blender_project_id, mesh_type, name, location, scale }) => {
-          if (!blender_project_id || typeof blender_project_id !== 'string') {
-            throw new Error('blender_project_id 不能为空');
-          }
-          const opts: BlenderCreateMeshOptions = {
-            blenderProjectId: blender_project_id.trim(),
-            meshType: mesh_type,
-            name,
-            location,
-            scale,
-            agentId,
-            logFn: log,
-          };
-          const output = await blenderCreateMesh(opts);
-          return {
-            content: [{ type: 'text' as const, text: `已创建 ${mesh_type} "${name}"。${output}` }]
-          };
-        }
-      ),
-
-      tool(
-        'blender_add_material',
-        '为 Blender 场景中的物体添加 PBR 材质（仅 engineer 可用）。',
-        {
-          blender_project_id: z.string().describe('blender_project_id'),
-          object_name: z.string().min(1).max(64).describe('物体名称'),
-          color: z.tuple([z.number(), z.number(), z.number()]).optional()
-            .describe('颜色 RGB (0-1)，默认 (0.8, 0.8, 0.8)'),
-          metallic: z.number().min(0).max(1).optional().describe('金属度 0-1，默认 0'),
-          roughness: z.number().min(0).max(1).optional().describe('粗糙度 0-1，默认 0.5'),
-        },
-        async ({ blender_project_id, object_name, color, metallic, roughness }) => {
-          if (!blender_project_id || typeof blender_project_id !== 'string') {
-            throw new Error('blender_project_id 不能为空');
-          }
-          const opts: BlenderAddMaterialOptions = {
-            blenderProjectId: blender_project_id.trim(),
-            objectName: object_name,
-            color,
-            metallic,
-            roughness,
-            agentId,
-            logFn: log,
-          };
-          const output = await blenderAddMaterial(opts);
-          return {
-            content: [{ type: 'text' as const, text: `材质已添加到 "${object_name}"。${output}` }]
-          };
-        }
-      ),
-
-      tool(
-        'blender_export_model',
-        '将 Blender 场景中的物体导出为模型文件（GLB/FBX/OBJ/PLY/USD）到游戏目录下（仅 engineer 可用）。导出路径限制为 game 目录下的指定路径。',
-        {
-          blender_project_id: z.string().describe('blender_project_id'),
-          object_name: z.string().min(1).max(64).describe('要导出的物体名称'),
-          output_filename: z.string().min(1).max(128).describe('输出文件名（含扩展名，如 model.glb）'),
-          path: z.string().max(256).optional().default('assets').describe('导出路径（相对于 game 目录，如 assets/models 或 models）'),
-          format: z.enum(['glb', 'fbx', 'obj', 'ply', 'usd']).optional().default('glb').describe('导出格式'),
-        },
-        async ({ blender_project_id, object_name, output_filename, path, format }) => {
-          if (!blender_project_id || typeof blender_project_id !== 'string') {
-            throw new Error('blender_project_id 不能为空');
-          }
-          console.error(`[Tool] ${_tts()} blender_export_model START agentId=${agentId} blenderProjectId=${blender_project_id} object=${object_name} format=${format || 'glb'}`);
-
-          // 限制导出路径为 games/latest 目录下
-          const pathModule = await import('path');
-          const latestDir = pathModule.resolve(_toolsDirname, '..', 'output', scopedProjectId, 'games', 'latest');
-          const outputDir = pathModule.resolve(latestDir, path || 'assets');
-
-          // 安全检查：确保输出路径在 latest 目录下
-          if (!outputDir.startsWith(latestDir + pathModule.sep)) {
-            throw new Error('导出路径越权：只能导出到 game 目录下');
-          }
-
-          console.error(`[DEBUG blender_export_model] objectName=${object_name} outputDir=${outputDir}`);
-
-          const opts: BlenderExportModelOptions = {
-            blenderProjectId: blender_project_id.trim(),
-            objectName: object_name,
-            outputFilename: output_filename,
-            outputDir,
-            format,
-            agentId,
-            logFn: log,
-          };
-          const output = await blenderExportModel(opts);
-          return {
-            content: [{ type: 'text' as const, text: `已导出 "${object_name}" 为 ${format || 'glb'} 格式到 games/latest/${path || 'assets'}/${output_filename}。${output}` }]
-          };
-        }
-      ),
-
-      tool(
-        'blender_download_model_file',
-        '从 creator service 下载模型文件到 backend 本地 output 目录（仅 engineer 可用）。下载完成后应主动调用 blender_delete_model_file 清理 creator 远程资源。',
-        {
-          blender_project_id: z.string().describe('blender_project_id'),
-          filename: z.string().min(1).max(128).describe('要下载的文件名'),
-        },
-        async ({ blender_project_id, filename }) => {
-          if (!blender_project_id || typeof blender_project_id !== 'string') {
-            throw new Error('blender_project_id 不能为空');
-          }
-          if (!filename || typeof filename !== 'string' || !filename.trim()) {
-            throw new Error('filename 不能为空');
-          }
-          // 使用动态 import 解析 _toolsDirname（ESM）
-          const pathModule = await import('path');
-          const localOutputDir = pathModule.resolve(_toolsDirname, '..', 'output', scopedProjectId, 'models');
-          const opts: DownloadModelFileOptions = {
-            blenderProjectId: blender_project_id.trim(),
-            filename: filename.trim(),
-            localOutputDir,
-            agentId,
-            logFn: log,
-          };
-          const { localPath, sizeBytes } = await downloadModelFile(opts);
-          return {
-            content: [{
-              type: 'text' as const,
-              text: `文件已下载到：${localPath} (${sizeBytes} bytes)`,
-            }]
-          };
-        }
-      ),
-
-      tool(
-        'blender_delete_model_file',
-        '删除 creator 远程模型文件（幂等）（仅 engineer 可用）。下载到本地后应先调用此工具删除远程文件，再删除本地副本以释放容器存储空间。',
-        {
-          blender_project_id: z.string().describe('blender_project_id'),
-          filename: z.string().min(1).max(128).describe('要删除的文件名'),
-        },
-        async ({ blender_project_id, filename }) => {
-          if (!blender_project_id || typeof blender_project_id !== 'string') {
-            throw new Error('blender_project_id 不能为空');
-          }
-          if (!filename || typeof filename !== 'string' || !filename.trim()) {
-            throw new Error('filename 不能为空');
-          }
-          const pathModule = await import('path');
-          const localOutputDir = pathModule.resolve(_toolsDirname, '..', 'output', scopedProjectId, 'models');
-          const opts: DeleteModelFileOptions = {
-            blenderProjectId: blender_project_id.trim(),
-            filename: filename.trim(),
-            localOutputDir,
-            agentId,
-            logFn: log,
-          };
-          await deleteModelFile(opts);
-          return {
-            content: [{ type: 'text' as const, text: `已删除模型文件：${filename}（远程 + 本地）` }]
-          };
-        }
-      ),
-
-      tool(
-        'blender_list_objects',
-        '分页列出 Blender 场景中的所有对象（网格、灯光等），供 agent 引用 object_name 用于 add_material/export 等操作',
-        {
-          blender_project_id: z.string().describe('blender_project_id（来自 blender_create_project）'),
-          page: z.number().int().min(1).optional().default(1).describe('页码（从 1 开始）'),
-          page_size: z.number().int().min(1).max(100).optional().default(20).describe('每页条数'),
-          object_type: z.string().optional().describe('按对象类型筛选，如 MESH、LIGHT、CAMERA'),
-        },
-        async ({ blender_project_id, page, page_size, object_type }) => {
-          if (!blender_project_id || typeof blender_project_id !== 'string') {
-            throw new Error('blender_project_id 不能为空');
-          }
-          const { blenderListObjects } = await import('./creator-service.js');
-          const result = await blenderListObjects({
-            blenderProjectId: blender_project_id.trim(),
-            page,
-            pageSize: page_size,
-            objectType: object_type,
-          });
-
-          const lines: string[] = [];
-          const totalPages = Math.ceil(result.total / result.pageSize);
-          lines.push(`第 ${result.page} 页 / 共 ${totalPages} 页（共 ${result.total} 个对象）`);
-
-          if (result.objects.length > 0) {
-            lines.push('');
-            for (const o of result.objects) {
-              const loc = o.location?.map((n: number) => n.toFixed(2)).join(', ') ?? '0, 0, 0';
-              lines.push(`  [${o.name}] ${o.type} @(${loc})`);
-            }
-          } else {
-            lines.push('（无对象）');
-          }
-
-          return {
-            content: [{ type: 'text' as const, text: lines.join('\n') }]
-          };
-        }
-      ),
-
-      // ---- Image / 图片处理工具（仅 engineer 可用）----
-
-      tool(
-        'image_create_project',
-        '创建图片处理 project（仅 engineer 可用）。在 backend 数据库创建记录，然后调用 image service 创建容器内项目目录，返回 image_project_id。建议在完成图片处理后调用 image_delete_project 清理资源。',
-        {
-          name: z.string().min(1).max(50).describe('图片 project 名称'),
-        },
-        async ({ name }) => {
-          const opts: CreateImageProjectOptions = {
-            projectId: scopedProjectId,
-            name,
-            agentId,
-            logFn: log,
-          };
-          try {
-            const { dbId, imageProjectId } = await createImageProject(opts);
-            return {
-              content: [{
-                type: 'text' as const,
-                text: `图片 project 已创建 (DB ID: ${dbId.slice(0, 8)}, image_project_id: ${imageProjectId})，名称: ${name}`,
-              }]
-            };
-          } catch (error: any) {
-            return {
-              content: [{ type: 'text' as const, text: `创建图片 project 失败：${error?.message || String(error)}` }]
-            };
-          }
-        }
-      ),
-
-      tool(
-        'image_list_projects',
-        '列出当前 studio project 下所有图片处理 project（仅 engineer 可用）。',
-        {
-          limit: z.number().min(1).max(50).optional().default(20).describe('返回条数上限'),
-        },
-        async ({ limit }) => {
-          const records = listImageProjects(scopedProjectId, limit || 20);
-          if (records.length === 0) {
-            return { content: [{ type: 'text' as const, text: '暂无图片 project。' }] };
-          }
-          const lines = records.map(r =>
-            `[${r.id.slice(0, 8)}] ${r.name} | image_project_id=${r.image_project_id} | ${r.created_at.slice(0, 10)}`
-          ).join('\n');
-          return { content: [{ type: 'text' as const, text: lines }] };
-        }
-      ),
-
-      tool(
-        'image_delete_project',
-        '删除图片处理 project（仅 engineer 可用）。先调用 image service 删除远程目录（幂等），再删除 backend DB 记录。建议完成图片文件下载后主动调用以释放容器存储空间。',
-        {
-          image_project_id: z.string().describe('image_project_id（来自 image_create_project 的返回值）'),
-        },
-        async ({ image_project_id }) => {
-          if (!image_project_id || typeof image_project_id !== 'string') {
-            throw new Error('image_project_id 不能为空');
-          }
-          const opts: DeleteImageProjectOptions = {
-            projectId: scopedProjectId,
-            imageProjectId: image_project_id.trim(),
-            agentId,
-            logFn: log,
-          };
-          await deleteImageProject(opts);
-          return {
-            content: [{ type: 'text' as const, text: `图片 project 已删除 (image_project_id: ${image_project_id})` }]
-          };
-        }
-      ),
-
-      tool(
-        'image_resize',
-        '缩放图片到指定尺寸（仅 engineer 可用）。支持保持纵横比填充模式。',
-        {
-          image_project_id: z.string().describe('image_project_id'),
-          input_filename: z.string().min(1).max(128).describe('输入文件名'),
-          width: z.number().int().min(1).max(16384).describe('目标宽度（像素）'),
-          height: z.number().int().min(1).max(16384).describe('目标高度（像素）'),
-          keep_aspect: z.boolean().optional().default(true).describe('是否保持纵横比'),
-          output_filename: z.string().min(1).max(128).describe('输出文件名'),
-        },
-        async ({ image_project_id, input_filename, width, height, keep_aspect, output_filename }) => {
-          if (!image_project_id || typeof image_project_id !== 'string') {
-            throw new Error('image_project_id 不能为空');
-          }
-          const opts: ImageResizeOptions = {
-            imageProjectId: image_project_id.trim(),
-            inputFilename: input_filename,
-            width,
-            height,
-            keepAspect: keep_aspect,
-            outputFilename: output_filename,
-            agentId,
-            logFn: log,
-          };
-          const output = await imageResize(opts);
-          return {
-            content: [{ type: 'text' as const, text: `已缩放图片：${output_filename} (${width}x${height})。${output}` }]
-          };
-        }
-      ),
-
-      tool(
-        'image_crop',
-        '裁剪图片（仅 engineer 可用）。从指定坐标裁剪指定尺寸的区域。',
-        {
-          image_project_id: z.string().describe('image_project_id'),
-          input_filename: z.string().min(1).max(128).describe('输入文件名'),
-          width: z.number().int().min(1).max(16384).describe('裁剪宽度（像素）'),
-          height: z.number().int().min(1).max(16384).describe('裁剪高度（像素）'),
-          x: z.number().int().min(0).max(16384).optional().default(0).describe('起始 X 坐标'),
-          y: z.number().int().min(0).max(16384).optional().default(0).describe('起始 Y 坐标'),
-          output_filename: z.string().min(1).max(128).describe('输出文件名'),
-        },
-        async ({ image_project_id, input_filename, width, height, x = 0, y = 0, output_filename }) => {
-          if (!image_project_id || typeof image_project_id !== 'string') {
-            throw new Error('image_project_id 不能为空');
-          }
-          const opts: ImageCropOptions = {
-            imageProjectId: image_project_id.trim(),
-            inputFilename: input_filename,
-            width,
-            height,
-            x,
-            y,
-            outputFilename: output_filename,
-            agentId,
-            logFn: log,
-          };
-          const output = await imageCrop(opts);
-          return {
-            content: [{ type: 'text' as const, text: `已裁剪图片：${output_filename} (${width}x${height}+${x}+${y})。${output}` }]
-          };
-        }
-      ),
-
-      tool(
-        'image_convert',
-        '转换图片格式（仅 engineer 可用）。支持 PNG/JPG/WEBP/AVIF/GIF/BMP 互转。',
-        {
-          image_project_id: z.string().describe('image_project_id'),
-          input_filename: z.string().min(1).max(128).describe('输入文件名'),
-          target_format: z.enum(['png', 'jpg', 'webp', 'avif', 'gif', 'bmp']).describe('目标格式'),
-          output_filename: z.string().min(1).max(128).describe('输出文件名'),
-        },
-        async ({ image_project_id, input_filename, target_format, output_filename }) => {
-          if (!image_project_id || typeof image_project_id !== 'string') {
-            throw new Error('image_project_id 不能为空');
-          }
-          const opts: ImageConvertOptions = {
-            imageProjectId: image_project_id.trim(),
-            inputFilename: input_filename,
-            targetFormat: target_format,
-            outputFilename: output_filename,
-            agentId,
-            logFn: log,
-          };
-          const output = await imageConvert(opts);
-          return {
-            content: [{ type: 'text' as const, text: `已转换格式：${output_filename} -> ${target_format}。${output}` }]
-          };
-        }
-      ),
-
-      tool(
-        'image_compress',
-        '压缩图片（仅 engineer 可用）。通过调整质量参数控制文件大小。',
-        {
-          image_project_id: z.string().describe('image_project_id'),
-          input_filename: z.string().min(1).max(128).describe('输入文件名'),
-          quality: z.number().int().min(1).max(100).describe('压缩质量（1-100），越低压缩率越高'),
-          output_filename: z.string().min(1).max(128).describe('输出文件名'),
-        },
-        async ({ image_project_id, input_filename, quality, output_filename }) => {
-          if (!image_project_id || typeof image_project_id !== 'string') {
-            throw new Error('image_project_id 不能为空');
-          }
-          const opts: ImageCompressOptions = {
-            imageProjectId: image_project_id.trim(),
-            inputFilename: input_filename,
-            quality,
-            outputFilename: output_filename,
-            agentId,
-            logFn: log,
-          };
-          const output = await imageCompress(opts);
-          return {
-            content: [{ type: 'text' as const, text: `已压缩图片：${output_filename} (quality=${quality})。${output}` }]
-          };
-        }
-      ),
-
-      tool(
-        'image_watermark',
-        '为图片添加水印（仅 engineer 可用）。支持文字水印和图片水印两种类型。',
-        {
-          image_project_id: z.string().describe('image_project_id'),
-          input_filename: z.string().min(1).max(128).describe('输入文件名'),
-          type: z.enum(['text', 'image']).optional().default('text').describe('水印类型：text 文字水印 / image 图片水印'),
-          content: z.string().max(256).optional().describe('水印文字内容或水印图片文件名'),
-          position: z.string().optional().default('southeast').describe('水印位置（center/north/south/east/west/northeast/northwest/southeast/southwest）'),
-          opacity: z.number().min(0).max(1).optional().default(0.5).describe('水印透明度（0-1）'),
-          output_filename: z.string().min(1).max(128).describe('输出文件名'),
-        },
-        async ({ image_project_id, input_filename, type = 'text', content, position = 'southeast', opacity = 0.5, output_filename }) => {
-          if (!image_project_id || typeof image_project_id !== 'string') {
-            throw new Error('image_project_id 不能为空');
-          }
-          if (!content || !content.trim()) {
-            throw new Error('content 不能为空');
-          }
-          const opts: ImageWatermarkOptions = {
-            imageProjectId: image_project_id.trim(),
-            inputFilename: input_filename,
-            type,
-            content: content.trim(),
-            position,
-            opacity,
-            outputFilename: output_filename,
-            agentId,
-            logFn: log,
-          };
-          const output = await imageWatermark(opts);
-          return {
-            content: [{ type: 'text' as const, text: `已添加水印：${output_filename}。${output}` }]
-          };
-        }
-      ),
-
-      tool(
-        'image_composite',
-        '合成两张图片（仅 engineer 可用）。将一张图片叠加到另一张上面。',
-        {
-          image_project_id: z.string().describe('image_project_id'),
-          base_filename: z.string().min(1).max(128).describe('底图文件名'),
-          overlay_filename: z.string().min(1).max(128).describe('叠加图片文件名'),
-          gravity: z.string().optional().default('center').describe('对齐方式（center/north/south/east/west 等）'),
-          x: z.number().int().optional().default(0).describe('X 偏移（像素）'),
-          y: z.number().int().optional().default(0).describe('Y 偏移（像素）'),
-          output_filename: z.string().min(1).max(128).describe('输出文件名'),
-        },
-        async ({ image_project_id, base_filename, overlay_filename, gravity = 'center', x = 0, y = 0, output_filename }) => {
-          if (!image_project_id || typeof image_project_id !== 'string') {
-            throw new Error('image_project_id 不能为空');
-          }
-          const opts: ImageCompositeOptions = {
-            imageProjectId: image_project_id.trim(),
-            baseFilename: base_filename,
-            overlayFilename: overlay_filename,
-            gravity,
-            x,
-            y,
-            outputFilename: output_filename,
-            agentId,
-            logFn: log,
-          };
-          const output = await imageComposite(opts);
-          return {
-            content: [{ type: 'text' as const, text: `已合成图片：${output_filename}。${output}` }]
-          };
-        }
-      ),
-
-      tool(
-        'image_flip_rotate',
-        '翻转或旋转图片（仅 engineer 可用）。支持水平/垂直翻转和任意角度旋转。',
-        {
-          image_project_id: z.string().describe('image_project_id'),
-          input_filename: z.string().min(1).max(128).describe('输入文件名'),
-          mode: z.enum(['flip', 'flop', 'rotate', 'transpose', 'transverse']).describe('模式：flip 垂直翻转 / flop 水平翻转 / rotate 旋转 / transpose / transverse'),
-          angle: z.number().int().min(0).max(360).optional().default(90).describe('旋转角度（仅 rotate 模式有效）'),
-          output_filename: z.string().min(1).max(128).describe('输出文件名'),
-        },
-        async ({ image_project_id, input_filename, mode, angle = 90, output_filename }) => {
-          if (!image_project_id || typeof image_project_id !== 'string') {
-            throw new Error('image_project_id 不能为空');
-          }
-          const opts: ImageFlipRotateOptions = {
-            imageProjectId: image_project_id.trim(),
-            inputFilename: input_filename,
-            mode,
-            angle,
-            outputFilename: output_filename,
-            agentId,
-            logFn: log,
-          };
-          const output = await imageFlipRotate(opts);
-          return {
-            content: [{ type: 'text' as const, text: `已${mode}图片：${output_filename}。${output}` }]
-          };
-        }
-      ),
-
-      tool(
-        'image_add_margin',
-        '为图片添加边距（仅 engineer 可用）。在图片四周添加指定颜色的边距。',
-        {
-          image_project_id: z.string().describe('image_project_id'),
-          input_filename: z.string().min(1).max(128).describe('输入文件名'),
-          top: z.number().int().min(0).max(4096).optional().default(0).describe('上边距（像素）'),
-          right: z.number().int().min(0).max(4096).optional().default(0).describe('右边距（像素）'),
-          bottom: z.number().int().min(0).max(4096).optional().default(0).describe('下边距（像素）'),
-          left: z.number().int().min(0).max(4096).optional().default(0).describe('左边距（像素）'),
-          color: z.string().max(32).optional().default('transparent').describe('边距颜色（名称/#hex/transparent）'),
-          output_filename: z.string().min(1).max(128).describe('输出文件名'),
-        },
-        async ({ image_project_id, input_filename, top = 0, right = 0, bottom = 0, left = 0, color = 'transparent', output_filename }) => {
-          if (!image_project_id || typeof image_project_id !== 'string') {
-            throw new Error('image_project_id 不能为空');
-          }
-          const opts: ImageAddMarginOptions = {
-            imageProjectId: image_project_id.trim(),
-            inputFilename: input_filename,
-            top,
-            right,
-            bottom,
-            left,
-            color,
-            outputFilename: output_filename,
-            agentId,
-            logFn: log,
-          };
-          const output = await imageAddMargin(opts);
-          return {
-            content: [{ type: 'text' as const, text: `已添加边距：${output_filename}。${output}` }]
-          };
-        }
-      ),
-
-      tool(
-        'image_color_adjust',
-        '调整图片色彩（仅 engineer 可用）。调整亮度、对比度、饱和度、色相。',
-        {
-          image_project_id: z.string().describe('image_project_id'),
-          input_filename: z.string().min(1).max(128).describe('输入文件名'),
-          brightness: z.number().int().min(-100).max(100).optional().default(0).describe('亮度调整（-100 到 100）'),
-          contrast: z.number().int().min(-100).max(100).optional().default(0).describe('对比度调整（-100 到 100）'),
-          saturation: z.number().int().min(0).max(200).optional().default(100).describe('饱和度（100=原值）'),
-          hue: z.number().int().min(0).max(200).optional().default(100).describe('色相（100=原值）'),
-          output_filename: z.string().min(1).max(128).describe('输出文件名'),
-        },
-        async ({ image_project_id, input_filename, brightness = 0, contrast = 0, saturation = 100, hue = 100, output_filename }) => {
-          if (!image_project_id || typeof image_project_id !== 'string') {
-            throw new Error('image_project_id 不能为空');
-          }
-          const opts: ImageColorAdjustOptions = {
-            imageProjectId: image_project_id.trim(),
-            inputFilename: input_filename,
-            brightness,
-            contrast,
-            saturation,
-            hue,
-            outputFilename: output_filename,
-            agentId,
-            logFn: log,
-          };
-          const output = await imageColorAdjust(opts);
-          return {
-            content: [{ type: 'text' as const, text: `已调整色彩：${output_filename}。${output}` }]
-          };
-        }
-      ),
-
-      tool(
-        'image_info',
-        '获取图片元信息（仅 engineer 可用）。返回尺寸、格式、色彩空间、文件大小等。',
-        {
-          image_project_id: z.string().describe('image_project_id'),
-          filename: z.string().min(1).max(128).describe('要查询的文件名'),
-        },
-        async ({ image_project_id, filename }) => {
-          if (!image_project_id || typeof image_project_id !== 'string') {
-            throw new Error('image_project_id 不能为空');
-          }
-          const info = await imageGetInfo({ imageProjectId: image_project_id.trim(), filename });
-          return {
-            content: [{ type: 'text' as const, text: JSON.stringify(info, null, 2) }]
-          };
-        }
-      ),
-
-      tool(
-        'image_batch',
-        '批量处理图片（仅 engineer 可用）。对多个图片执行相同的操作。',
-        {
-          image_project_id: z.string().describe('image_project_id'),
-          input_pattern: z.string().min(1).max(256).describe('输入文件通配符或逗号分隔的文件名列表'),
-          operation: z.string().describe('批量操作类型（resize/convert/compress）'),
-          operation_params: z.record(z.string(), z.any()).optional().default({}).describe('操作参数'),
-          output_dir: z.string().optional().default('batch_output').describe('输出目录名'),
-        },
-        async ({ image_project_id, input_pattern, operation, operation_params = {}, output_dir = 'batch_output' }) => {
-          if (!image_project_id || typeof image_project_id !== 'string') {
-            throw new Error('image_project_id 不能为空');
-          }
-          const opts: ImageBatchOptions = {
-            imageProjectId: image_project_id.trim(),
-            inputPattern: input_pattern,
-            operation,
-            operationParams: operation_params,
-            outputDir: output_dir,
-            agentId,
-            logFn: log,
-          };
-          const output = await imageBatch(opts);
-          return {
-            content: [{ type: 'text' as const, text: `批量处理完成。${output}` }]
-          };
-        }
-      ),
-
-      tool(
-        'image_sprite_sheet',
-        '创建精灵图（仅 engineer 可用）。将多张图片拼合成一张网格图。',
-        {
-          image_project_id: z.string().describe('image_project_id'),
-          files: z.array(z.string().min(1).max(128)).min(1).max(256).describe('要拼合的图片文件名列表'),
-          columns: z.number().int().min(1).max(64).describe('列数'),
-          rows: z.number().int().min(1).max(64).describe('行数'),
-          output_filename: z.string().min(1).max(128).describe('输出文件名'),
-        },
-        async ({ image_project_id, files, columns, rows, output_filename }) => {
-          if (!image_project_id || typeof image_project_id !== 'string') {
-            throw new Error('image_project_id 不能为空');
-          }
-          const opts: ImageSpriteSheetOptions = {
-            imageProjectId: image_project_id.trim(),
-            files,
-            columns,
-            rows,
-            outputFilename: output_filename,
-            agentId,
-            logFn: log,
-          };
-          const output = await imageSpriteSheet(opts);
-          return {
-            content: [{ type: 'text' as const, text: `精灵图已创建：${output_filename} (${columns}x${rows})。${output}` }]
-          };
-        }
-      ),
-
-      tool(
-        'image_write_file',
-        '将图片文件写入到本地图片产出目录（仅 engineer 可用）。接受 base64 编码的图片内容，工具内部将 base64 还原为二进制图片后写入本地文件系统。文件写入路径: output/{当前项目ID}/images/{filename}。写入后需调用 image_upload_file 上传到 image service 容器。',
-        {
-          filename: z.string().min(1).max(128).describe('文件名（如 background_raw.png、ui_sprite.png）。禁止路径分隔符'),
-          content: z.string().min(1).describe('base64 编码的图片内容'),
-        },
-        async ({ filename, content }) => {
-          validateAgentPermission(['engineer'], '写入图片文件');
-          if (!filename || typeof filename !== 'string' || !filename.trim()) {
-            throw new Error('filename 不能为空');
-          }
-          if (!content || typeof content !== 'string') {
-            throw new Error('content 不能为空');
-          }
-          // 文件名安全校验（禁止路径分隔符）
-          if (filename.includes('/') || filename.includes('\\')) {
-            throw new Error('filename 不能包含路径分隔符');
-          }
-
-          console.error("[DEBUG image_write_file] START agentId=" + agentId + " projectId=" + scopedProjectId + " filename=" + filename + " contentLength=" + content.length);
-
-          const outputDir = path.resolve(_toolsDirname, '..', 'output', scopedProjectId);
-          const imagesDir = path.join(outputDir, 'images');
-          const fullPath = path.join(imagesDir, filename.trim());
-
-          // 安全检查：确保路径在 images 目录下（防止路径越权）
-          const resolvedPath = path.resolve(fullPath);
-          if (!resolvedPath.startsWith(imagesDir + path.sep) && resolvedPath !== imagesDir) {
-            console.error("[DEBUG image_write_file] 路径越权 imagesDir=" + imagesDir + " resolvedPath=" + resolvedPath);
-            return {
-              content: [{ type: 'text' as const, text: '写入图片文件失败：路径越权，只能写入 images 目录下。' }]
-            };
-          }
-
-          try {
-            // 解码 base64 → Buffer
-            const buffer = Buffer.from(content, 'base64');
-
-            // 创建目录
-            const dirPath = path.dirname(resolvedPath);
-            fs.mkdirSync(dirPath, { recursive: true });
-
-            // 写入文件（二进制）
-            fs.writeFileSync(resolvedPath, buffer);
-            const sizeKB = (buffer.length / 1024).toFixed(1);
-            console.error("[DEBUG image_write_file] SUCCESS wrote " + resolvedPath + " size=" + sizeKB + "KB");
-
-            log(agentId, '写入图片文件', '文件: ' + filename.trim() + ' | 大小: ' + sizeKB + ' KB', 'success');
-            return {
-              content: [{ type: 'text' as const, text: `图片文件已写入：output/${scopedProjectId}/images/${filename.trim()} (${sizeKB} KB)` }]
-            };
-          } catch (error: any) {
-            console.error("[DEBUG image_write_file] ERROR " + error.message);
-            return {
-              content: [{ type: 'text' as const, text: '写入图片文件失败：' + (error?.message || String(error)) }]
-            };
-          }
-        }
-      ),
-
-      tool(
-        'image_upload_file',
-        '将本地图片文件上传到 image service 容器目录（仅 engineer 可用）。从 output/{当前项目ID}/images/{filename} 读取文件，base64 编码后上传到 image service 对应 project。必须先调用 image_write_file 写入本地文件，再调用本工具上传。',
-        {
-          image_project_id: z.string().describe('image_project_id（来自 image_create_project 的返回值）'),
-          filename: z.string().min(1).max(128).describe('文件名（需与 image_write_file 写入的一致）'),
-        },
-        async ({ image_project_id, filename }) => {
-          validateAgentPermission(['engineer'], '上传图片文件');
-          if (!image_project_id || typeof image_project_id !== 'string') {
-            throw new Error('image_project_id 不能为空');
-          }
-          if (!filename || typeof filename !== 'string' || !filename.trim()) {
-            throw new Error('filename 不能为空');
-          }
-          if (filename.includes('/') || filename.includes('\\')) {
-            throw new Error('filename 不能包含路径分隔符');
-          }
-
-          console.error("[DEBUG image_upload_file] START projectId=" + scopedProjectId + " ip=" + image_project_id + " filename=" + filename);
-
-          const outputDir = path.resolve(_toolsDirname, '..', 'output', scopedProjectId);
-          const imagesDir = path.join(outputDir, 'images');
-          const localPath = path.resolve(imagesDir, filename.trim());
-
-          // 安全检查
-          if (!localPath.startsWith(imagesDir + path.sep) && localPath !== imagesDir) {
-            return {
-              content: [{ type: 'text' as const, text: '上传图片文件失败：路径越权。' }]
-            };
-          }
-
-          if (!fs.existsSync(localPath)) {
-            return {
-              content: [{ type: 'text' as const, text: `上传图片文件失败：本地文件不存在（${localPath}）。请先调用 image_write_file。` }]
-            };
-          }
-
-          try {
-            // 读取文件 → base64 编码
-            const buffer = fs.readFileSync(localPath);
-            const content = buffer.toString('base64');
-
-            const opts: UploadImageFileOptions = {
-              imageProjectId: image_project_id.trim(),
-              filename: filename.trim(),
-              content,
-              agentId,
-              logFn: log,
-            };
-            const { sizeBytes } = await uploadImageFile(opts);
-            const sizeKB = (sizeBytes / 1024).toFixed(1);
-            console.error("[DEBUG image_upload_file] SUCCESS uploaded " + filename + " size=" + sizeKB + "KB");
-            return {
-              content: [{ type: 'text' as const, text: `图片已上传到 image service：${filename} (${sizeKB} KB) -> project ${image_project_id}` }]
-            };
-          } catch (error: any) {
-            console.error("[DEBUG image_upload_file] ERROR " + error.message);
-            return {
-              content: [{ type: 'text' as const, text: '上传图片文件失败：' + (error?.message || String(error)) }]
-            };
-          }
-        }
-      ),
-
-      tool(
-        'image_download_file',
-        '从 image service 下载图片文件到 backend 本地 output 目录（仅 engineer 可用）。下载完成后应主动调用 image_delete_file 清理远程资源。',
-        {
-          image_project_id: z.string().describe('image_project_id'),
-          filename: z.string().min(1).max(128).describe('要下载的文件名'),
-        },
-        async ({ image_project_id, filename }) => {
-          if (!image_project_id || typeof image_project_id !== 'string') {
-            throw new Error('image_project_id 不能为空');
-          }
-          if (!filename || typeof filename !== 'string' || !filename.trim()) {
-            throw new Error('filename 不能为空');
-          }
-          const pathModule = await import('path');
-          const localOutputDir = pathModule.resolve(_toolsDirname, '..', 'output', scopedProjectId, 'images');
-          const opts: DownloadImageFileOptions = {
-            imageProjectId: image_project_id.trim(),
-            filename: filename.trim(),
-            localOutputDir,
-            agentId,
-            logFn: log,
-          };
-          const { localPath, sizeBytes } = await downloadImageFile(opts);
-          return {
-            content: [{
-              type: 'text' as const,
-              text: `文件已下载到：${localPath} (${sizeBytes} bytes)`,
-            }]
-          };
-        }
-      ),
-
-      tool(
-        'image_delete_file',
-        '删除 image service 远程图片文件（幂等）（仅 engineer 可用）。下载到本地后应先调用此工具删除远程文件以释放容器存储空间。',
-        {
-          image_project_id: z.string().describe('image_project_id'),
-          filename: z.string().min(1).max(128).describe('要删除的文件名'),
-        },
-        async ({ image_project_id, filename }) => {
-          if (!image_project_id || typeof image_project_id !== 'string') {
-            throw new Error('image_project_id 不能为空');
-          }
-          if (!filename || typeof filename !== 'string' || !filename.trim()) {
-            throw new Error('filename 不能为空');
-          }
-          const pathModule = await import('path');
-          const localOutputDir = pathModule.resolve(_toolsDirname, '..', 'output', scopedProjectId, 'images');
-          const opts: DeleteImageFileOptions = {
-            imageProjectId: image_project_id.trim(),
-            filename: filename.trim(),
-            localOutputDir,
-            agentId,
-            logFn: log,
-          };
-          await deleteImageFile(opts);
-          return {
-            content: [{ type: 'text' as const, text: `已删除图片文件：${filename}（远程 + 本地）` }]
-          };
-        }
-      ),
-
-      // ---- Video / 视频处理工具（仅 engineer 可用）----
-
-      tool(
-        'video_create_project',
-        '创建视频处理 project（仅 engineer 可用）。在 backend 数据库创建记录，然后调用 video service 创建容器内项目目录，返回 video_project_id。建议在完成视频处理后调用 video_delete_project 清理资源。',
-        {
-          name: z.string().min(1).max(50).describe('视频 project 名称'),
-        },
-        async ({ name }) => {
-          const opts: CreateVideoProjectOptions = {
-            projectId: scopedProjectId,
-            name,
-            agentId,
-            logFn: log,
-          };
-          try {
-            const { dbId, videoProjectId } = await createVideoProject(opts);
-            return {
-              content: [{
-                type: 'text' as const,
-                text: `视频 project 已创建 (DB ID: ${dbId.slice(0, 8)}, video_project_id: ${videoProjectId})，名称: ${name}`,
-              }]
-            };
-          } catch (error: any) {
-            return {
-              content: [{ type: 'text' as const, text: `创建视频 project 失败：${error?.message || String(error)}` }]
-            };
-          }
-        }
-      ),
-
-      tool(
-        'video_list_projects',
-        '列出当前 studio project 下所有视频处理 project（仅 engineer 可用）。',
-        {
-          limit: z.number().min(1).max(50).optional().default(20).describe('返回条数上限'),
-        },
-        async ({ limit }) => {
-          const records = listVideoProjects(scopedProjectId, limit || 20);
-          if (records.length === 0) {
-            return { content: [{ type: 'text' as const, text: '暂无视频 project。' }] };
-          }
-          const lines = records.map(r =>
-            `[${r.id.slice(0, 8)}] ${r.name} | video_project_id=${r.video_project_id} | ${r.created_at.slice(0, 10)}`
-          ).join('\n');
-          return { content: [{ type: 'text' as const, text: lines }] };
-        }
-      ),
-
-      tool(
-        'video_delete_project',
-        '删除视频处理 project（仅 engineer 可用）。先调用 video service 删除远程目录（幂等），再删除 backend DB 记录。建议完成视频文件下载后主动调用以释放容器存储空间。',
-        {
-          video_project_id: z.string().describe('video_project_id（来自 video_create_project 的返回值）'),
-        },
-        async ({ video_project_id }) => {
-          if (!video_project_id || typeof video_project_id !== 'string') {
-            throw new Error('video_project_id 不能为空');
-          }
-          const opts: DeleteVideoProjectOptions = {
-            projectId: scopedProjectId,
-            videoProjectId: video_project_id.trim(),
-            agentId,
-            logFn: log,
-          };
-          await deleteVideoProject(opts);
-          return {
-            content: [{ type: 'text' as const, text: `视频 project 已删除 (video_project_id: ${video_project_id})` }]
-          };
-        }
-      ),
-
-      tool(
-        'video_info',
-        '获取视频元信息（仅 engineer 可用）。返回时长、分辨率、编码、码率、帧率、音频流信息。',
-        {
-          video_project_id: z.string().describe('video_project_id'),
-          filename: z.string().min(1).max(128).describe('要查询的文件名'),
-        },
-        async ({ video_project_id, filename }) => {
-          if (!video_project_id || typeof video_project_id !== 'string') {
-            throw new Error('video_project_id 不能为空');
-          }
-          const info = await videoGetInfo({ videoProjectId: video_project_id.trim(), filename });
-          return {
-            content: [{ type: 'text' as const, text: JSON.stringify(info, null, 2) }]
-          };
-        }
-      ),
-
-      tool(
-        'video_convert',
-        '转换视频格式（仅 engineer 可用）。支持 MP4/WebM/MOV/GIF/AVI/MKV 互转。',
-        {
-          video_project_id: z.string().describe('video_project_id'),
-          input_filename: z.string().min(1).max(128).describe('输入文件名'),
-          target_format: z.enum(['mp4', 'webm', 'mov', 'gif', 'avi', 'mkv']).describe('目标格式'),
-          output_filename: z.string().min(1).max(128).describe('输出文件名'),
-          video_codec: z.string().max(32).optional().describe('视频编码器（h264/h265/vp8/vp9/av1，留空自动选择）'),
-          audio_codec: z.string().max(32).optional().describe('音频编码器（aac/mp3/opus/vorbis/copy，留空自动选择）'),
-        },
-        async ({ video_project_id, input_filename, target_format, output_filename, video_codec, audio_codec }) => {
-          if (!video_project_id || typeof video_project_id !== 'string') {
-            throw new Error('video_project_id 不能为空');
-          }
-          const opts: VideoConvertOptions = {
-            videoProjectId: video_project_id.trim(),
-            inputFilename: input_filename,
-            targetFormat: target_format,
-            outputFilename: output_filename,
-            videoCodec: video_codec,
-            audioCodec: audio_codec,
-            agentId,
-            logFn: log,
-          };
-          const output = await videoConvert(opts);
-          return {
-            content: [{ type: 'text' as const, text: `已转换格式：${output_filename} -> ${target_format}。${output}` }]
-          };
-        }
-      ),
-
-      tool(
-        'video_trim',
-        '截取视频片段（仅 engineer 可用）。从指定时间点截取指定时长的片段。',
-        {
-          video_project_id: z.string().describe('video_project_id'),
-          input_filename: z.string().min(1).max(128).describe('输入文件名'),
-          start_time: z.number().min(0).describe('起始时间（秒）'),
-          duration: z.number().positive().optional().describe('持续时长（秒）'),
-          end_time: z.number().positive().optional().describe('结束时间（秒）'),
-          output_filename: z.string().min(1).max(128).describe('输出文件名'),
-        },
-        async ({ video_project_id, input_filename, start_time, duration, end_time, output_filename }) => {
-          if (!video_project_id || typeof video_project_id !== 'string') {
-            throw new Error('video_project_id 不能为空');
-          }
-          const opts: VideoTrimOptions = {
-            videoProjectId: video_project_id.trim(),
-            inputFilename: input_filename,
-            startTime: start_time,
-            duration,
-            endTime: end_time,
-            outputFilename: output_filename,
-            agentId,
-            logFn: log,
-          };
-          const output = await videoTrim(opts);
-          return {
-            content: [{ type: 'text' as const, text: `已截取视频：${output_filename}（从 ${start_time}s 开始）。${output}` }]
-          };
-        }
-      ),
-
-      tool(
-        'video_concat',
-        '拼接多个视频（仅 engineer 可用）。将多个视频按顺序拼接为一个。',
-        {
-          video_project_id: z.string().describe('video_project_id'),
-          input_filenames: z.array(z.string().min(1).max(128)).min(2).max(64).describe('要拼接的视频文件名列表'),
-          output_filename: z.string().min(1).max(128).describe('输出文件名'),
-        },
-        async ({ video_project_id, input_filenames, output_filename }) => {
-          if (!video_project_id || typeof video_project_id !== 'string') {
-            throw new Error('video_project_id 不能为空');
-          }
-          const opts: VideoConcatOptions = {
-            videoProjectId: video_project_id.trim(),
-            inputFilenames: input_filenames,
-            outputFilename: output_filename,
-            agentId,
-            logFn: log,
-          };
-          const output = await videoConcat(opts);
-          return {
-            content: [{ type: 'text' as const, text: `已拼接 ${input_filenames.length} 个视频：${output_filename}。${output}` }]
-          };
-        }
-      ),
-
-      tool(
-        'video_resize',
-        '缩放视频（仅 engineer 可用）。改变视频分辨率，支持保持纵横比填充。',
-        {
-          video_project_id: z.string().describe('video_project_id'),
-          input_filename: z.string().min(1).max(128).describe('输入文件名'),
-          width: z.number().int().min(1).max(7680).describe('目标宽度（像素）'),
-          height: z.number().int().min(1).max(7680).describe('目标高度（像素）'),
-          keep_aspect: z.boolean().optional().default(true).describe('是否保持纵横比'),
-          output_filename: z.string().min(1).max(128).describe('输出文件名'),
-        },
-        async ({ video_project_id, input_filename, width, height, keep_aspect, output_filename }) => {
-          if (!video_project_id || typeof video_project_id !== 'string') {
-            throw new Error('video_project_id 不能为空');
-          }
-          const opts: VideoResizeOptions = {
-            videoProjectId: video_project_id.trim(),
-            inputFilename: input_filename,
-            width,
-            height,
-            keepAspect: keep_aspect,
-            outputFilename: output_filename,
-            agentId,
-            logFn: log,
-          };
-          const output = await videoResize(opts);
-          return {
-            content: [{ type: 'text' as const, text: `已缩放视频：${output_filename} (${width}x${height})。${output}` }]
-          };
-        }
-      ),
-
-      tool(
-        'video_compress',
-        '压缩视频（仅 engineer 可用）。通过 CRF 或码率控制压缩视频文件大小。',
-        {
-          video_project_id: z.string().describe('video_project_id'),
-          input_filename: z.string().min(1).max(128).describe('输入文件名'),
-          crf: z.number().int().min(0).max(51).optional().default(23).describe('CRF 值（0-51，默认23，越小质量越高）'),
-          bitrate: z.string().max(16).optional().describe('目标码率（如 "1M"、"2500k"）'),
-          preset: z.string().max(32).optional().default('medium').describe('编码预设（ultrafast~veryslow）'),
-          output_filename: z.string().min(1).max(128).describe('输出文件名'),
-        },
-        async ({ video_project_id, input_filename, crf = 23, bitrate, preset = 'medium', output_filename }) => {
-          if (!video_project_id || typeof video_project_id !== 'string') {
-            throw new Error('video_project_id 不能为空');
-          }
-          const opts: VideoCompressOptions = {
-            videoProjectId: video_project_id.trim(),
-            inputFilename: input_filename,
-            crf,
-            bitrate,
-            preset,
-            outputFilename: output_filename,
-            agentId,
-            logFn: log,
-          };
-          const output = await videoCompress(opts);
-          return {
-            content: [{ type: 'text' as const, text: `已压缩视频：${output_filename} (crf=${crf})。${output}` }]
-          };
-        }
-      ),
-
-      tool(
-        'video_crop',
-        '裁剪视频画面（仅 engineer 可用）。从指定坐标裁剪指定尺寸的区域。',
-        {
-          video_project_id: z.string().describe('video_project_id'),
-          input_filename: z.string().min(1).max(128).describe('输入文件名'),
-          width: z.number().int().min(1).max(7680).describe('裁剪宽度（像素）'),
-          height: z.number().int().min(1).max(7680).describe('裁剪高度（像素）'),
-          x: z.number().int().min(0).max(7680).optional().default(0).describe('起始 X 坐标'),
-          y: z.number().int().min(0).max(7680).optional().default(0).describe('起始 Y 坐标'),
-          output_filename: z.string().min(1).max(128).describe('输出文件名'),
-        },
-        async ({ video_project_id, input_filename, width, height, x = 0, y = 0, output_filename }) => {
-          if (!video_project_id || typeof video_project_id !== 'string') {
-            throw new Error('video_project_id 不能为空');
-          }
-          const opts: VideoCropOptions = {
-            videoProjectId: video_project_id.trim(),
-            inputFilename: input_filename,
-            width,
-            height,
-            x,
-            y,
-            outputFilename: output_filename,
-            agentId,
-            logFn: log,
-          };
-          const output = await videoCrop(opts);
-          return {
-            content: [{ type: 'text' as const, text: `已裁剪视频：${output_filename} (${width}x${height}+${x}+${y})。${output}` }]
-          };
-        }
-      ),
-
-      tool(
-        'video_rotate',
-        '旋转视频（仅 engineer 可用）。支持 90°/180°/270° 旋转。',
-        {
-          video_project_id: z.string().describe('video_project_id'),
-          input_filename: z.string().min(1).max(128).describe('输入文件名'),
-          angle: z.number().int().min(0).max(360).describe('旋转角度'),
-          output_filename: z.string().min(1).max(128).describe('输出文件名'),
-        },
-        async ({ video_project_id, input_filename, angle, output_filename }) => {
-          if (!video_project_id || typeof video_project_id !== 'string') {
-            throw new Error('video_project_id 不能为空');
-          }
-          const opts: VideoRotateOptions = {
-            videoProjectId: video_project_id.trim(),
-            inputFilename: input_filename,
-            angle,
-            outputFilename: output_filename,
-            agentId,
-            logFn: log,
-          };
-          const output = await videoRotate(opts);
-          return {
-            content: [{ type: 'text' as const, text: `已旋转视频 ${angle}°：${output_filename}。${output}` }]
-          };
-        }
-      ),
-
-      tool(
-        'video_change_speed',
-        '视频变速（仅 engineer 可用）。改变视频播放速度（0.25x ~ 4x）。',
-        {
-          video_project_id: z.string().describe('video_project_id'),
-          input_filename: z.string().min(1).max(128).describe('输入文件名'),
-          speed: z.number().min(0.25).max(4.0).describe('速度倍数（0.25-4.0）'),
-          output_filename: z.string().min(1).max(128).describe('输出文件名'),
-        },
-        async ({ video_project_id, input_filename, speed, output_filename }) => {
-          if (!video_project_id || typeof video_project_id !== 'string') {
-            throw new Error('video_project_id 不能为空');
-          }
-          const opts: VideoChangeSpeedOptions = {
-            videoProjectId: video_project_id.trim(),
-            inputFilename: input_filename,
-            speed,
-            outputFilename: output_filename,
-            agentId,
-            logFn: log,
-          };
-          const output = await videoChangeSpeed(opts);
-          return {
-            content: [{ type: 'text' as const, text: `已变速 ${speed}x：${output_filename}。${output}` }]
-          };
-        }
-      ),
-
-      tool(
-        'video_extract_frames',
-        '提取视频帧为图片序列（仅 engineer 可用）。按指定帧率提取帧保存为图片。',
-        {
-          video_project_id: z.string().describe('video_project_id'),
-          input_filename: z.string().min(1).max(128).describe('输入文件名'),
-          fps: z.number().int().min(1).max(120).optional().default(1).describe('帧率（每秒提取帧数）'),
-          frame_count: z.number().int().min(1).max(10000).optional().describe('最大提取帧数'),
-          output_pattern: z.string().min(1).max(128).optional().default('frame_%04d.png').describe('输出文件名模式'),
-          format: z.string().max(16).optional().default('png').describe('输出图片格式'),
-        },
-        async ({ video_project_id, input_filename, fps = 1, frame_count, output_pattern = 'frame_%04d.png', format = 'png' }) => {
-          if (!video_project_id || typeof video_project_id !== 'string') {
-            throw new Error('video_project_id 不能为空');
-          }
-          const opts: VideoExtractFramesOptions = {
-            videoProjectId: video_project_id.trim(),
-            inputFilename: input_filename,
-            fps,
-            frameCount: frame_count,
-            outputPattern: output_pattern,
-            format,
-            agentId,
-            logFn: log,
-          };
-          const output = await videoExtractFrames(opts);
-          return {
-            content: [{ type: 'text' as const, text: `已提取帧（${fps}fps）：${output_pattern}。${output}` }]
-          };
-        }
-      ),
-
-      tool(
-        'video_extract_audio',
-        '提取视频音频轨（仅 engineer 可用）。从视频中提取音频保存为独立文件。',
-        {
-          video_project_id: z.string().describe('video_project_id'),
-          input_filename: z.string().min(1).max(128).describe('输入文件名'),
-          output_filename: z.string().min(1).max(128).describe('输出文件名'),
-          format: z.string().max(16).optional().default('mp3').describe('音频格式（mp3/aac/ogg/opus/wav）'),
-        },
-        async ({ video_project_id, input_filename, output_filename, format = 'mp3' }) => {
-          if (!video_project_id || typeof video_project_id !== 'string') {
-            throw new Error('video_project_id 不能为空');
-          }
-          const opts: VideoExtractAudioOptions = {
-            videoProjectId: video_project_id.trim(),
-            inputFilename: input_filename,
-            outputFilename: output_filename,
-            format,
-            agentId,
-            logFn: log,
-          };
-          const output = await videoExtractAudio(opts);
-          return {
-            content: [{ type: 'text' as const, text: `已提取音频：${output_filename}。${output}` }]
-          };
-        }
-      ),
-
-      tool(
-        'video_add_audio',
-        '添加/替换视频音轨（仅 engineer 可用）。支持混合原音频或完全替换。',
-        {
-          video_project_id: z.string().describe('video_project_id'),
-          video_filename: z.string().min(1).max(128).describe('视频文件名'),
-          audio_filename: z.string().min(1).max(128).describe('音频文件名'),
-          output_filename: z.string().min(1).max(128).describe('输出文件名'),
-          mix: z.boolean().optional().default(false).describe('是否混合原音频（true=叠加 / false=替换）'),
-        },
-        async ({ video_project_id, video_filename, audio_filename, output_filename, mix = false }) => {
-          if (!video_project_id || typeof video_project_id !== 'string') {
-            throw new Error('video_project_id 不能为空');
-          }
-          const opts: VideoAddAudioOptions = {
-            videoProjectId: video_project_id.trim(),
-            videoFilename: video_filename,
-            audioFilename: audio_filename,
-            outputFilename: output_filename,
-            mix,
-            agentId,
-            logFn: log,
-          };
-          const output = await videoAddAudio(opts);
-          return {
-            content: [{ type: 'text' as const, text: `已${mix ? '混合' : '替换'}音频：${output_filename}。${output}` }]
-          };
-        }
-      ),
-
-      tool(
-        'video_add_text',
-        '添加文字叠加层（仅 engineer 可用）。在视频上叠加文字。',
-        {
-          video_project_id: z.string().describe('video_project_id'),
-          input_filename: z.string().min(1).max(128).describe('输入文件名'),
-          text: z.string().min(1).max(512).describe('要叠加的文字'),
-          x: z.number().int().min(0).max(7680).optional().default(10).describe('X 坐标'),
-          y: z.number().int().min(0).max(7680).optional().default(10).describe('Y 坐标'),
-          font_size: z.number().int().min(8).max(256).optional().default(24).describe('字体大小'),
-          color: z.string().max(32).optional().default('white').describe('文字颜色（名称或#hex）'),
-          output_filename: z.string().min(1).max(128).describe('输出文件名'),
-        },
-        async ({ video_project_id, input_filename, text, x = 10, y = 10, font_size = 24, color = 'white', output_filename }) => {
-          if (!video_project_id || typeof video_project_id !== 'string') {
-            throw new Error('video_project_id 不能为空');
-          }
-          const opts: VideoAddTextOptions = {
-            videoProjectId: video_project_id.trim(),
-            inputFilename: input_filename,
-            text,
-            x,
-            y,
-            fontSize: font_size,
-            color,
-            outputFilename: output_filename,
-            agentId,
-            logFn: log,
-          };
-          const output = await videoAddText(opts);
-          return {
-            content: [{ type: 'text' as const, text: `已添加文字：${output_filename}。${output}` }]
-          };
-        }
-      ),
-
-      tool(
-        'video_add_watermark',
-        '添加图片水印（仅 engineer 可用）。在视频上叠加图片水印。',
-        {
-          video_project_id: z.string().describe('video_project_id'),
-          input_filename: z.string().min(1).max(128).describe('输入文件名'),
-          watermark_filename: z.string().min(1).max(128).describe('水印图片文件名'),
-          position: z.enum(['top-left', 'top-right', 'bottom-left', 'bottom-right', 'center']).optional().default('bottom-right').describe('水印位置'),
-          opacity: z.number().min(0).max(1).optional().default(0.5).describe('水印透明度（0-1）'),
-          output_filename: z.string().min(1).max(128).describe('输出文件名'),
-        },
-        async ({ video_project_id, input_filename, watermark_filename, position = 'bottom-right', opacity = 0.5, output_filename }) => {
-          if (!video_project_id || typeof video_project_id !== 'string') {
-            throw new Error('video_project_id 不能为空');
-          }
-          const opts: VideoAddWatermarkOptions = {
-            videoProjectId: video_project_id.trim(),
-            inputFilename: input_filename,
-            watermarkFilename: watermark_filename,
-            position,
-            opacity,
-            outputFilename: output_filename,
-            agentId,
-            logFn: log,
-          };
-          const output = await videoAddWatermark(opts);
-          return {
-            content: [{ type: 'text' as const, text: `已添加水印：${output_filename}（位置: ${position}）。${output}` }]
-          };
-        }
-      ),
-
-      tool(
-        'video_generate_gif',
-        '视频转 GIF（仅 engineer 可用）。将视频片段转换为动态 GIF。',
-        {
-          video_project_id: z.string().describe('video_project_id'),
-          input_filename: z.string().min(1).max(128).describe('输入文件名'),
-          fps: z.number().int().min(1).max(60).optional().default(10).describe('帧率'),
-          width: z.number().int().min(1).max(3840).optional().default(480).describe('输出宽度（像素）'),
-          output_filename: z.string().min(1).max(128).describe('输出文件名'),
-        },
-        async ({ video_project_id, input_filename, fps = 10, width = 480, output_filename }) => {
-          if (!video_project_id || typeof video_project_id !== 'string') {
-            throw new Error('video_project_id 不能为空');
-          }
-          const opts: VideoGenerateGifOptions = {
-            videoProjectId: video_project_id.trim(),
-            inputFilename: input_filename,
-            fps,
-            width,
-            outputFilename: output_filename,
-            agentId,
-            logFn: log,
-          };
-          const output = await videoGenerateGif(opts);
-          return {
-            content: [{ type: 'text' as const, text: `已生成 GIF：${output_filename} (${fps}fps)。${output}` }]
-          };
-        }
-      ),
-
-      tool(
-        'video_gif_to_video',
-        'GIF 转视频（仅 engineer 可用）。将 GIF 动画转换为视频格式。',
-        {
-          video_project_id: z.string().describe('video_project_id'),
-          input_filename: z.string().min(1).max(128).describe('输入文件名'),
-          target_format: z.string().max(16).optional().default('mp4').describe('目标视频格式'),
-          output_filename: z.string().min(1).max(128).describe('输出文件名'),
-        },
-        async ({ video_project_id, input_filename, target_format = 'mp4', output_filename }) => {
-          if (!video_project_id || typeof video_project_id !== 'string') {
-            throw new Error('video_project_id 不能为空');
-          }
-          const opts: VideoGifToVideoOptions = {
-            videoProjectId: video_project_id.trim(),
-            inputFilename: input_filename,
-            targetFormat: target_format,
-            outputFilename: output_filename,
-            agentId,
-            logFn: log,
-          };
-          const output = await videoGifToVideo(opts);
-          return {
-            content: [{ type: 'text' as const, text: `GIF 已转为视频：${output_filename}。${output}` }]
-          };
-        }
-      ),
-
-      tool(
-        'video_create_thumbnail',
-        '生成视频缩略图（仅 engineer 可用）。从指定时间点截取一帧作为缩略图。',
-        {
-          video_project_id: z.string().describe('video_project_id'),
-          filename: z.string().min(1).max(128).describe('视频文件名'),
-          time: z.number().min(0).optional().default(5).describe('截取时间点（秒）'),
-          width: z.number().int().min(1).max(3840).optional().default(320).describe('缩略图宽度（像素）'),
-          output_filename: z.string().min(1).max(128).describe('输出文件名'),
-        },
-        async ({ video_project_id, filename, time = 5, width = 320, output_filename }) => {
-          if (!video_project_id || typeof video_project_id !== 'string') {
-            throw new Error('video_project_id 不能为空');
-          }
-          const opts: VideoCreateThumbnailOptions = {
-            videoProjectId: video_project_id.trim(),
-            filename,
-            time,
-            width,
-            outputFilename: output_filename,
-            agentId,
-            logFn: log,
-          };
-          const output = await videoCreateThumbnail(opts);
-          return {
-            content: [{ type: 'text' as const, text: `已生成缩略图：${output_filename}。${output}` }]
-          };
-        }
-      ),
-
-      tool(
-        'video_write_file',
-        '将视频文件写入到本地视频产出目录（仅 engineer 可用）。接受 base64 编码的视频内容，工具内部将 base64 还原为二进制后写入本地文件系统。文件写入路径: output/{当前项目ID}/videos/{filename}。写入后需调用 video_upload_file 上传到 video service 容器。',
-        {
-          filename: z.string().min(1).max(128).describe('文件名（如 intro.mp4、gameplay.webm）。禁止路径分隔符'),
-          content: z.string().min(1).describe('base64 编码的视频内容'),
-        },
-        async ({ filename, content }) => {
-          validateAgentPermission(['engineer'], '写入视频文件');
-          if (!filename || typeof filename !== 'string' || !filename.trim()) {
-            throw new Error('filename 不能为空');
-          }
-          if (!content || typeof content !== 'string') {
-            throw new Error('content 不能为空');
-          }
-          // 文件名安全校验（禁止路径分隔符）
-          if (filename.includes('/') || filename.includes('\\')) {
-            throw new Error('filename 不能包含路径分隔符');
-          }
-
-          console.error("[DEBUG video_write_file] START agentId=" + agentId + " projectId=" + scopedProjectId + " filename=" + filename + " contentLength=" + content.length);
-
-          const outputDir = path.resolve(_toolsDirname, '..', 'output', scopedProjectId);
-          const videosDir = path.join(outputDir, 'videos');
-          const fullPath = path.join(videosDir, filename.trim());
-
-          // 安全检查：确保路径在 videos 目录下（防止路径越权）
-          const resolvedPath = path.resolve(fullPath);
-          if (!resolvedPath.startsWith(videosDir + path.sep) && resolvedPath !== videosDir) {
-            console.error("[DEBUG video_write_file] 路径越权 videosDir=" + videosDir + " resolvedPath=" + resolvedPath);
-            return {
-              content: [{ type: 'text' as const, text: '写入视频文件失败：路径越权，只能写入 videos 目录下。' }]
-            };
-          }
-
-          try {
-            // 解码 base64 → Buffer
-            const buffer = Buffer.from(content, 'base64');
-
-            // 创建目录
-            const dirPath = path.dirname(resolvedPath);
-            fs.mkdirSync(dirPath, { recursive: true });
-
-            // 写入文件（二进制）
-            fs.writeFileSync(resolvedPath, buffer);
-            const sizeKB = (buffer.length / 1024).toFixed(1);
-            console.error("[DEBUG video_write_file] SUCCESS wrote " + resolvedPath + " size=" + sizeKB + "KB");
-
-            log(agentId, '写入视频文件', '文件: ' + filename.trim() + ' | 大小: ' + sizeKB + ' KB', 'success');
-            return {
-              content: [{ type: 'text' as const, text: `视频文件已写入：output/${scopedProjectId}/videos/${filename.trim()} (${sizeKB} KB)` }]
-            };
-          } catch (error: any) {
-            console.error("[DEBUG video_write_file] ERROR " + error.message);
-            return {
-              content: [{ type: 'text' as const, text: '写入视频文件失败：' + (error?.message || String(error)) }]
-            };
-          }
-        }
-      ),
-
-      tool(
-        'video_upload_file',
-        '将本地视频文件上传到 video service 容器目录（仅 engineer 可用）。从 output/{当前项目ID}/videos/{filename} 读取文件，base64 编码后上传到 video service 对应 project。必须先调用 video_write_file 写入本地文件，再调用本工具上传。',
-        {
-          video_project_id: z.string().describe('video_project_id（来自 video_create_project 的返回值）'),
-          filename: z.string().min(1).max(128).describe('文件名（需与 video_write_file 写入的一致）'),
-        },
-        async ({ video_project_id, filename }) => {
-          validateAgentPermission(['engineer'], '上传视频文件');
-          if (!video_project_id || typeof video_project_id !== 'string') {
-            throw new Error('video_project_id 不能为空');
-          }
-          if (!filename || typeof filename !== 'string' || !filename.trim()) {
-            throw new Error('filename 不能为空');
-          }
-          if (filename.includes('/') || filename.includes('\\')) {
-            throw new Error('filename 不能包含路径分隔符');
-          }
-
-          console.error("[DEBUG video_upload_file] START projectId=" + scopedProjectId + " vp=" + video_project_id + " filename=" + filename);
-
-          const outputDir = path.resolve(_toolsDirname, '..', 'output', scopedProjectId);
-          const videosDir = path.join(outputDir, 'videos');
-          const localPath = path.resolve(videosDir, filename.trim());
-
-          // 安全检查
-          if (!localPath.startsWith(videosDir + path.sep) && localPath !== videosDir) {
-            return {
-              content: [{ type: 'text' as const, text: '上传视频文件失败：路径越权。' }]
-            };
-          }
-
-          if (!fs.existsSync(localPath)) {
-            return {
-              content: [{ type: 'text' as const, text: `上传视频文件失败：本地文件不存在（${localPath}）。请先调用 video_write_file。` }]
-            };
-          }
-
-          try {
-            // 读取文件 → base64 编码
-            const buffer = fs.readFileSync(localPath);
-            const content = buffer.toString('base64');
-
-            const opts: UploadVideoFileOptions = {
-              videoProjectId: video_project_id.trim(),
-              filename: filename.trim(),
-              content,
-              agentId,
-              logFn: log,
-            };
-            const { sizeBytes } = await uploadVideoFile(opts);
-            const sizeKB = (sizeBytes / 1024).toFixed(1);
-            console.error("[DEBUG video_upload_file] SUCCESS uploaded " + filename + " size=" + sizeKB + "KB");
-            return {
-              content: [{ type: 'text' as const, text: `视频已上传到 video service：${filename} (${sizeKB} KB) -> project ${video_project_id}` }]
-            };
-          } catch (error: any) {
-            console.error("[DEBUG video_upload_file] ERROR " + error.message);
-            return {
-              content: [{ type: 'text' as const, text: '上传视频文件失败：' + (error?.message || String(error)) }]
-            };
-          }
-        }
-      ),
-
-      tool(
-        'video_download_file',
-        '从 video service 下载视频文件到 backend 本地 output 目录（仅 engineer 可用）。下载完成后应主动调用 video_delete_file 清理远程资源。',
-        {
-          video_project_id: z.string().describe('video_project_id'),
-          filename: z.string().min(1).max(128).describe('要下载的文件名'),
-        },
-        async ({ video_project_id, filename }) => {
-          if (!video_project_id || typeof video_project_id !== 'string') {
-            throw new Error('video_project_id 不能为空');
-          }
-          if (!filename || typeof filename !== 'string' || !filename.trim()) {
-            throw new Error('filename 不能为空');
-          }
-          const pathModule = await import('path');
-          const localOutputDir = pathModule.resolve(_toolsDirname, '..', 'output', scopedProjectId, 'videos');
-          const opts: DownloadVideoFileOptions = {
-            videoProjectId: video_project_id.trim(),
-            filename: filename.trim(),
-            localOutputDir,
-            agentId,
-            logFn: log,
-          };
-          const { localPath, sizeBytes } = await downloadVideoFile(opts);
-          return {
-            content: [{
-              type: 'text' as const,
-              text: `文件已下载到：${localPath} (${sizeBytes} bytes)`,
-            }]
-          };
-        }
-      ),
-
-      tool(
-        'video_delete_file',
-        '删除 video service 远程视频文件（幂等）（仅 engineer 可用）。下载到本地后应先调用此工具删除远程文件以释放容器存储空间。',
-        {
-          video_project_id: z.string().describe('video_project_id'),
-          filename: z.string().min(1).max(128).describe('要删除的文件名'),
-        },
-        async ({ video_project_id, filename }) => {
-          if (!video_project_id || typeof video_project_id !== 'string') {
-            throw new Error('video_project_id 不能为空');
-          }
-          if (!filename || typeof filename !== 'string' || !filename.trim()) {
-            throw new Error('filename 不能为空');
-          }
-          const pathModule = await import('path');
-          const localOutputDir = pathModule.resolve(_toolsDirname, '..', 'output', scopedProjectId, 'videos');
-          const opts: DeleteVideoFileOptions = {
-            videoProjectId: video_project_id.trim(),
-            filename: filename.trim(),
-            localOutputDir,
-            agentId,
-            logFn: log,
-          };
-          await deleteVideoFile(opts);
-          return {
-            content: [{ type: 'text' as const, text: `已删除视频文件：${filename}（远程 + 本地）` }]
-          };
-        }
-      ),
-
-      // ---- Draw.io / 图表工具（全员可用）----
-
-      tool(
-        'drawio_create_project',
-        '创建 draw.io 图表 project。在 backend 数据库创建记录，然后调用 drawio service 创建项目目录，返回 drawio_project_id。',
-        {
-          name: z.string().min(1).max(50).describe('图表 project 名称'),
-        },
-        async ({ name }) => {
-          const opts: CreateDrawioProjectOptions = {
-            projectId: scopedProjectId,
-            name,
-            agentId,
-            logFn: log,
-          };
-          try {
-            const { dbId, drawioProjectId } = await createDrawioProject(opts);
-            return {
-              content: [{
-                type: 'text' as const,
-                text: `图表 project 已创建 (DB ID: ${dbId.slice(0, 8)}, drawio_project_id: ${drawioProjectId})，名称: ${name}`,
-              }]
-            };
-          } catch (error: any) {
-            return {
-              content: [{ type: 'text' as const, text: `创建图表 project 失败：${error?.message || String(error)}` }]
-            };
-          }
-        }
-      ),
-
-      tool(
-        'drawio_list_projects',
-        '列出当前 studio project 下所有图表 project。',
-        {
-          limit: z.number().min(1).max(50).optional().default(20).describe('返回条数上限'),
-        },
-        async ({ limit }) => {
-          const records = listDrawioProjects(scopedProjectId, limit || 20);
-          if (records.length === 0) {
-            return { content: [{ type: 'text' as const, text: '暂无图表 project。' }] };
-          }
-          const lines = records.map(r =>
-            `[${r.id.slice(0, 8)}] ${r.name} | drawio_project_id=${r.drawio_project_id} | ${r.created_at.slice(0, 10)}`
-          ).join('\n');
-          return { content: [{ type: 'text' as const, text: lines }] };
-        }
-      ),
-
-      tool(
-        'drawio_delete_project',
-        '删除图表 project。先调用 drawio service 删除远程目录（幂等），再删除 backend DB 记录。',
-        {
-          drawio_project_id: z.string().describe('drawio_project_id（来自 drawio_create_project 的返回值）'),
-        },
-        async ({ drawio_project_id }) => {
-          if (!drawio_project_id || typeof drawio_project_id !== 'string') {
-            throw new Error('drawio_project_id 不能为空');
-          }
-          const opts: DeleteDrawioProjectOptions = {
-            projectId: scopedProjectId,
-            drawioProjectId: drawio_project_id.trim(),
-            agentId,
-            logFn: log,
-          };
-          await deleteDrawioProject(opts);
-          return {
-            content: [{ type: 'text' as const, text: `图表 project 已删除 (drawio_project_id: ${drawio_project_id})` }]
-          };
-        }
-      ),
-
-      tool(
-        'drawio_create_diagram',
-        '在图表 project 中创建一个新图表。返回 diagram_id，后续 add_shape/add_connector 需要用到。',
-        {
-          drawio_project_id: z.string().describe('drawio_project_id'),
-          name: z.string().min(1).max(100).describe('图表名称'),
-        },
-        async ({ drawio_project_id, name }) => {
-          if (!drawio_project_id || typeof drawio_project_id !== 'string') {
-            throw new Error('drawio_project_id 不能为空');
-          }
-          const opts: DrawioCreateDiagramOptions = {
-            drawioProjectId: drawio_project_id.trim(),
-            name,
-            agentId,
-            logFn: log,
-          };
-          const { diagramId } = await createDiagram(opts);
-          return {
-            content: [{
-              type: 'text' as const,
-              text: `图表已创建 (diagram_id: ${diagramId})，名称: ${name}`,
-            }]
-          };
-        }
-      ),
-
-      tool(
-        'drawio_add_shape',
-        '向图表添加一个形状。支持矩形、椭圆、菱形、六边形、圆柱、云形等多种形状类型。返回 shape_id，后续 add_connector 需要用到。',
-        {
-          drawio_project_id: z.string().describe('drawio_project_id'),
-          diagram_id: z.string().describe('diagram_id（来自 drawio_create_diagram）'),
-          shape_type: z.enum([
-            'rectangle', 'ellipse', 'diamond', 'parallelogram',
-            'hexagon', 'cylinder', 'cloud', 'process',
-            'decision', 'document', 'person', 'database'
-          ]).describe('形状类型'),
-          label: z.string().describe('形状内显示的文本'),
-          x: z.number().describe('X 坐标'),
-          y: z.number().describe('Y 坐标'),
-          width: z.number().optional().default(120).describe('宽度'),
-          height: z.number().optional().default(60).describe('高度'),
-          fill_color: z.string().optional().describe('填充颜色，如 #dae8fc'),
-          stroke_color: z.string().optional().describe('边框颜色'),
-        },
-        async ({ drawio_project_id, diagram_id, shape_type, label, x, y, width, height, fill_color, stroke_color }) => {
-          if (!drawio_project_id || typeof drawio_project_id !== 'string') {
-            throw new Error('drawio_project_id 不能为空');
-          }
-          if (!diagram_id || typeof diagram_id !== 'string') {
-            throw new Error('diagram_id 不能为空');
-          }
-          const style: { fillColor?: string; strokeColor?: string } = {};
-          if (fill_color) style.fillColor = fill_color;
-          if (stroke_color) style.strokeColor = stroke_color;
-          const opts: DrawioAddShapeOptions = {
-            drawioProjectId: drawio_project_id.trim(),
-            diagramId: diagram_id.trim(),
-            shapeType: shape_type,
-            label,
-            x,
-            y,
-            width,
-            height,
-            style: Object.keys(style).length > 0 ? style : undefined,
-            agentId,
-            logFn: log,
-          };
-          const shapeId = await addShape(opts);
-          return {
-            content: [{ type: 'text' as const, text: `已添加 ${shape_type} "${label}"，shape_id: ${shapeId}` }]
-          };
-        }
-      ),
-
-      tool(
-        'drawio_add_connector',
-        '将两个形状用连接线连接起来。支持直线、肘形、曲线等多种连接线类型，可设置箭头。',
-        {
-          drawio_project_id: z.string().describe('drawio_project_id'),
-          diagram_id: z.string().describe('diagram_id'),
-          from_shape_id: z.string().describe('起点形状 ID（add_shape 返回值）'),
-          to_shape_id: z.string().describe('终点形状 ID（add_shape 返回值）'),
-          label: z.string().optional().describe('连接线上显示的文本'),
-          connector_type: z.enum(['straight', 'orthogonal', 'elbow', 'curved'])
-            .optional().default('straight').describe('连接线类型'),
-          arrow_start: z.boolean().optional().default(false).describe('起点是否加箭头'),
-          arrow_end: z.boolean().optional().default(true).describe('终点是否加箭头（默认加）'),
-          stroke_color: z.string().optional().describe('线条颜色'),
-          stroke_width: z.number().optional().default(1).describe('线条粗细'),
-        },
-        async ({ drawio_project_id, diagram_id, from_shape_id, to_shape_id, label, connector_type, arrow_start, arrow_end, stroke_color, stroke_width }) => {
-          if (!drawio_project_id || typeof drawio_project_id !== 'string') {
-            throw new Error('drawio_project_id 不能为空');
-          }
-          if (!diagram_id || typeof diagram_id !== 'string') {
-            throw new Error('diagram_id 不能为空');
-          }
-          const style: { strokeColor?: string; strokeWidth?: number } = {};
-          if (stroke_color) style.strokeColor = stroke_color;
-          if (stroke_width) style.strokeWidth = stroke_width;
-          const opts: DrawioAddConnectorOptions = {
-            drawioProjectId: drawio_project_id.trim(),
-            diagramId: diagram_id.trim(),
-            fromShapeId: from_shape_id.trim(),
-            toShapeId: to_shape_id.trim(),
-            label,
-            connectorType: connector_type,
-            arrowStart: arrow_start,
-            arrowEnd: arrow_end,
-            style: Object.keys(style).length > 0 ? style : undefined,
-            agentId,
-            logFn: log,
-          };
-          const connectorId = await addConnector(opts);
-          return {
-            content: [{ type: 'text' as const, text: `已连接 ${from_shape_id} → ${to_shape_id}，connector_id: ${connectorId}` }]
-          };
-        }
-      ),
-
-      tool(
-        'drawio_download_diagram',
-        '将图表导出为 PNG/SVG/PDF/XML 并下载到本地 output 目录，同时自动上传到 MinIO 存储（object_key: design/{project_id}/{UUID}.{format}），返回 file_storage_id。可在提交策划案时作为附件传入 attachment_storage_ids。',
-        {
-          drawio_project_id: z.string().describe('drawio_project_id'),
-          diagram_id: z.string().describe('diagram_id'),
-          filename: z.string().optional().describe('输出文件名（含扩展名）'),
-          format: z.enum(['png', 'svg', 'pdf', 'xml']).optional().default('png').describe('导出格式'),
-          scale: z.number().optional().default(1.0).describe('PNG 缩放比例'),
-        },
-        async ({ drawio_project_id, diagram_id, filename, format }) => {
-          if (!drawio_project_id || typeof drawio_project_id !== 'string') {
-            throw new Error('drawio_project_id 不能为空');
-          }
-          if (!diagram_id || typeof diagram_id !== 'string') {
-            throw new Error('diagram_id 不能为空');
-          }
-          const pathModule = await import('path');
-          const fsModule = await import('fs');
-          const localOutputDir = pathModule.resolve(_toolsDirname, '..', 'output', scopedProjectId, 'diagrams');
-
-          // 1. 调用 drawio service 导出图表 Buffer
-          const { exportDiagram } = await import('./drawio-service.js');
-          const effectiveFormat = format || 'png';
-          const safeFilename = (filename || `${diagram_id}.${effectiveFormat}`).trim();
-          const fileUuid = uuidv4();
-          const objectKey = `design/${fileUuid}.${effectiveFormat}`;
-
-          const buffer = await exportDiagram({
-            drawioProjectId: drawio_project_id.trim(),
-            diagramId: diagram_id.trim(),
-            format: effectiveFormat,
-          });
-
-          // 2. 保存到本地 output 目录
-          if (!fs.existsSync(localOutputDir)) {
-            fs.mkdirSync(localOutputDir, { recursive: true });
-          }
-          const localPath = pathModule.resolve(localOutputDir, safeFilename);
-          fs.writeFileSync(localPath, buffer);
-
-          // 3. 上传到 MinIO（内部函数，不走外部 API）
-          let fileStorageId: string;
-          const contentType = effectiveFormat === 'png' ? 'image/png'
-            : effectiveFormat === 'svg' ? 'image/svg+xml'
-            : effectiveFormat === 'pdf' ? 'application/pdf'
-            : 'application/xml';
-          try {
-            const { storage, fullObjectKey } = await createFileStorageRecord({
-              project_id: scopedProjectId,
-              object_key: objectKey,
-              file_name: safeFilename,
-              file_size: buffer.length,
-              content_type: contentType,
-            });
-            fileStorageId = storage.id;
-            await uploadBuffer(buffer, fullObjectKey, contentType);
-            log(agentId, '图表上传 MinIO', `design 文件已上传: ${fullObjectKey}`, 'success');
-          } catch (error: any) {
-            return {
-              content: [{ type: 'text' as const, text: `图表已保存到本地 ${localPath}，但上传 MinIO 失败：${error?.message || String(error)}` }]
-            };
-          }
-
-          return {
-            content: [{
-              type: 'text' as const,
-              text: `图表已导出到：${localPath} (${buffer.length} bytes)，已上传 MinIO (file_storage_id: ${fileStorageId})。在提交策划案时传入 attachment_storage_ids: ["${fileStorageId}"] 可将此图表作为附件关联到策划案。`,
-            }]
-          };
-        }
-      ),
-      tool(
-        'drawio_list_elements',
-        '分页列出 draw.io 图表中的所有元素（形状和连接线），供 agent 引用 element_id 用于 add_connector 等操作',
-        {
-          drawio_project_id: z.string().describe('drawio_project_id（来自 drawio_create_project）'),
-          diagram_id: z.string().describe('diagram_id（来自 drawio_create_diagram）'),
-          page: z.number().int().min(1).optional().default(1).describe('页码（从 1 开始）'),
-          page_size: z.number().int().min(1).max(100).optional().default(20).describe('每页条数'),
-          element_type: z.enum(['shape', 'connector']).optional().describe('按类型筛选：shape 或 connector'),
-        },
-        async ({ drawio_project_id, diagram_id, page, page_size, element_type }) => {
-          if (!drawio_project_id || typeof drawio_project_id !== 'string') {
-            throw new Error('drawio_project_id 不能为空');
-          }
-          if (!diagram_id || typeof diagram_id !== 'string') {
-            throw new Error('diagram_id 不能为空');
-          }
-
-          const { listDiagramElements } = await import('./drawio-service.js');
-          const result = await listDiagramElements({
-            drawioProjectId: drawio_project_id.trim(),
-            diagramId: diagram_id.trim(),
-            page,
-            pageSize: page_size,
-            elementType: element_type,
-          });
-
-          // 格式化输出
-          const lines: string[] = [];
-          lines.push(`第 ${result.page} 页 / 共 ${Math.ceil(result.total / result.pageSize)} 页（共 ${result.total} 个元素）`);
-
-          const shapes = result.elements.filter(e => e.elementType === 'shape');
-          const connectors = result.elements.filter(e => e.elementType === 'connector');
-
-          if (shapes.length > 0) {
-            lines.push('');
-            lines.push(`形状 (${shapes.length})：`);
-            for (const s of shapes) {
-              lines.push(`  [${s.elementId}] "${s.label}" @(${s.x ?? 0},${s.y ?? 0} ${s.width ?? 0}x${s.height ?? 0})`);
-            }
-          }
-
-          if (connectors.length > 0) {
-            lines.push('');
-            lines.push(`连接线 (${connectors.length})：`);
-            for (const c of connectors) {
-              lines.push(`  [${c.elementId}] "${c.label}" ${c.sourceId} → ${c.targetId}`);
-            }
-          }
-
-          if (result.elements.length === 0) {
-            lines.push('（无元素）');
-          }
-
-          return {
-            content: [{ type: 'text' as const, text: lines.join('\n') }]
-          };
-        }
-      ),
-
-      // ====== 游戏工程规范查询工具 ======
-
-      tool(
-        'get_game_types',
-        '获取所有已注册的游戏类型列表，供 Engineer Agent 在开发前确认支持的游戏类型。',
-        {},
-        async () => {
-          const gameTypes = db.getGameTypes();
-          console.error(`[Tool] ${_tts()} get_game_types START agentId=${agentId} projectId=${scopedProjectId}`);
-          console.error(`[Tool] ${_tts()} get_game_types DONE types=${gameTypes.length}`);
-          return {
-            content: [{ type: 'text' as const, text: JSON.stringify({ game_types: gameTypes }, null, 2) }]
-          };
-        }
-      ),
-
-      tool(
-        'get_game_framework_spec',
-        '根据游戏类型获取对应的工程框架规范。Engineer Agent 在开发前 MUST 调用此工具获取规范。',
-        (() => {
-          const registeredTypes = db.getGameTypes().map((t: { type: string }) => t.type);
-          const gameTypeEnum = registeredTypes.length > 0
-            ? z.enum(registeredTypes as [string, ...string[]])
-            : z.enum([] as unknown as [string, ...string[]]);
-          return { game_type: gameTypeEnum.describe('游戏类型，从 get_game_types 获取当前支持的类型') };
-        })(),
-        async ({ game_type }: { game_type: string }) => {
-          console.error(`[Tool] ${_tts()} get_game_framework_spec START agentId=${agentId} projectId=${scopedProjectId} game_type=${game_type}`);
-          const content = db.getGameFrameworkSpec(game_type);
-          if (!content) {
-            console.error(`[Tool] ${_tts()} get_game_framework_spec NOT_FOUND game_type=${game_type}`);
-            return {
-              content: [{ type: 'text' as const, text: `未找到游戏类型 "${game_type}" 的规范。请先调用 get_game_types 确认支持的类型。` }]
-            };
-          }
-          console.error(`[Tool] ${_tts()} get_game_framework_spec DONE game_type=${game_type} contentLength=${content.length}`);
-          return {
-            content: [{ type: 'text' as const, text: content }]
-          };
-        }
-      ),
-
-      tool(
-        'get_common_spec',
-        '获取所有游戏类型共享的公共工程规范。',
-        {},
-        async () => {
-          console.error(`[Tool] ${_tts()} get_common_spec START agentId=${agentId} projectId=${scopedProjectId}`);
-          const content = db.getCommonSpec();
-          if (!content) {
-            console.error(`[Tool] ${_tts()} get_common_spec NOT_FOUND`);
-            return {
-              content: [{ type: 'text' as const, text: '公共规范暂未配置。' }]
-            };
-          }
-          console.error(`[Tool] ${_tts()} get_common_spec DONE contentLength=${content.length}`);
-          return {
-            content: [{ type: 'text' as const, text: content }]
-          };
-        }
-      ),
-
-    ]
+    tools: TOOL_META_DEFINITIONS.map(meta => {
+      const handler = handlers[meta.name];
+      if (!handler) throw new Error(`Handler not found for tool: ${meta.name}`);
+      return tool(meta.name, meta.description, meta.inputSchema, handler);
+    }),
   });
 
   return server;
@@ -3197,4 +3234,3 @@ export function getMemorySummaryForPrompt(projectId: string, agentId: string): s
 ${summary}
 `;
 }
-

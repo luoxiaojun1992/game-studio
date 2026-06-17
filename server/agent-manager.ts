@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { AgentRole, AGENT_DEFINITIONS, AGENT_IDS } from './agents.js';
 import * as db from './db.js';
 import { sseBroadcaster } from './sse-broadcaster.js';
-import { createStudioToolsServer, getMemorySummaryForPrompt } from './tools.js';
+import { createStudioToolsServer, getMemorySummaryForPrompt, TOOL_META_DEFINITIONS } from './tools.js';
 
 const CODEBUDDY_BASE_URL = process.env.CODEBUDDY_BASE_URL?.trim() || undefined;
 
@@ -462,6 +462,7 @@ class AgentManager extends EventEmitter {
         'save_memory', 'get_memories', 'get_project_latest_info', 'get_agents',
         'get_proposal', 'get_proposals', 'get_agent_logs', 'get_handoff',
         'get_handoffs', 'get_pending_handoffs', 'get_task', 'get_tasks',
+        'search_tools',
       ];
 
       // 2. 受 autopilot 控制（autopilot 开启时所有 Agent 可用）
@@ -498,68 +499,7 @@ class AgentManager extends EventEmitter {
         ...(isEngineer ? ENGINEER_ALLOW : []),
       ];
       const STUDIO_TOOL_PREFIX = 'mcp__studio_tools__';
-      const STUDIO_TOOL_NAMES = new Set<string>([
-        'create_handoff',
-        'split_dev_test_tasks',
-        'update_task_status',
-        'submit_proposal',
-        'submit_game',
-        'write_game_file',
-        // Blender tools
-        'blender_create_project',
-        'blender_list_projects',
-        'blender_delete_project',
-        'blender_create_mesh',
-        'blender_add_material',
-        'blender_export_model',
-        'blender_download_model_file',
-        'blender_delete_model_file',
-        // Image tools
-        'image_create_project',
-        'image_list_projects',
-        'image_delete_project',
-        'image_resize',
-        'image_crop',
-        'image_convert',
-        'image_compress',
-        'image_watermark',
-        'image_composite',
-        'image_flip_rotate',
-        'image_add_margin',
-        'image_color_adjust',
-        'image_info',
-        'image_batch',
-        'image_sprite_sheet',
-        'image_write_file',
-        'image_upload_file',
-        'image_download_file',
-        'image_delete_file',
-        // Video tools
-        'video_create_project',
-        'video_list_projects',
-        'video_delete_project',
-        'video_info',
-        'video_convert',
-        'video_trim',
-        'video_concat',
-        'video_resize',
-        'video_compress',
-        'video_crop',
-        'video_rotate',
-        'video_change_speed',
-        'video_extract_frames',
-        'video_extract_audio',
-        'video_add_audio',
-        'video_add_text',
-        'video_add_watermark',
-        'video_generate_gif',
-        'video_gif_to_video',
-        'video_create_thumbnail',
-        'video_write_file',
-        'video_upload_file',
-        'video_download_file',
-        'video_delete_file',
-      ]);
+      const STUDIO_TOOL_NAMES = new Set<string>(TOOL_META_DEFINITIONS.map(m => m.name));
       const READ_ONLY_SDK_TOOLS = ['Read', 'Grep', 'WebSearch', 'WebFetch', 'Glob'];
 
       const canUseTool: CanUseTool = async (toolName, input, options) => {
