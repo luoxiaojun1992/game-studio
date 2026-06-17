@@ -12,6 +12,24 @@
 - [REUSABLE_PATTERNS.md](./REUSABLE_PATTERNS.md) — 可复用代码片段、代码模板、设计模式汇总
 
 ## 关键工程决策记录
+- **2026-06-17**: 实现 SPEC-017 Tool Search（元数据驱动的工具发现）。核心改造：将 `server/tools.ts` 中 79 个 tool 的元数据（name/description/inputSchema）从 inline `tool()` 调用中分离，提取为模块级 `TOOL_META_DEFINITIONS` 数组（80 个条目，含新增 `search_tools`）。
+
+  **关键架构决策**：
+  - `ToolMeta` 接口包含 `name`/`description`/`inputSchema`，不含 handler
+  - `AGENT_ID_ENUM` 从 `createStudioToolsServer()` 内部提至模块级
+  - `get_game_framework_spec` schema 从 IIFE `z.enum()` 降为 `z.string()`（避免模块加载时依赖 DB）
+  - `get_game_types` 新增可选 `limit` 参数（对齐其他 listing tool 的分页模式）
+  - `createStudioToolsServer()` 内部用 `TOOL_META_DEFINITIONS.map()` + `handlers` Record 组装 tool，替代原 inline 方式
+  - `agent-manager.ts` 的 `STUDIO_TOOL_NAMES` set 改为从 `TOOL_META_DEFINITIONS` 自动派生（`TOOL_META_DEFINITIONS.map(m => m.name)`），消除 3 处手动维护的重复
+  - `search_tools` 自身也在 `TOOL_META_DEFINITIONS` 中，搜索 `"search"` 会返回自身
+  - `db.getGameTypes()` 新增可选 `limit` 参数，使用条件 SQL（`LIMIT ?`）而非默认全量
+
+  **文件变更**：
+  - `server/tools.ts`: 核心重构（+ToolMeta, +TOOL_META_DEFINITIONS, +search_tools, handlers Record）
+  - `server/db.ts`: `getGameTypes(limit?)` (+5行)
+  - `server/agent-manager.ts`: `STUDIO_TOOL_NAMES` 自动派生 (-60行/+1行)
+  - 无新增微服务、无新增 Docker 容器、无新增 DB 表、无前端 UI 变更
+
 - **2026-06-13**: 设计 SPEC-020 OpenTelemetry 分布式链路追踪。使用 Jaeger all-in-one 作为追踪后端（端口 16686），集成到 `docker-compose.yml` 和 `docker-compose.ui-test.yml`（`docker-compose-sonar-check.yml` 不添加 — SonarQube 自有扫描报告）。
 
   **关键架构决策**：

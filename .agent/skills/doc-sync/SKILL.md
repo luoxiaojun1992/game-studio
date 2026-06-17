@@ -162,19 +162,38 @@ agent_created: true
   - PNG 是否重新导出？（svg-to-png skill）
 ```
 
+### 区域 H：知识图谱（代码结构可视化）
+
+代码结构变更后，必须运行 `graphify update .` 重建知识图谱。该命令仅做 AST 结构提取（无需 LLM API key），自动复用已有语义数据。
+
+```
+□ graphify-out/graph.json
+  - 是否已执行 graphify update . ？
+  - 图谱的 HTML/Report 是否自动生成？
+
+□ 执行 graphify update <项目根目录>
+  - 该命令仅做 AST 提取，无需 LLM API key
+  - 输出会显示节点/边/社区计数，人工确认数量级合理即可
+    （如重构后节点数骤降 50% 则可能提取异常，需 --force 重试）
+  - 增量检测无变化但代码已变更时，使用 --force 强制重写
+```
+
+> **Skill 引用**：更新图谱时加载 `graphify` skill 获取完整操作指引。不要通过硬编码路径调用 skill —— 使用 skill 的 name 标识符 `graphify` 加载即可。
+
 ## 变更影响矩阵
 
 当以下变更发生时，MUST 更新对应的文档区域（参考上方区域编号）：
 
 | 变更类型 | 必查区域 | 常见遗漏 |
 |---------|---------|---------|
-| 新微服务 | A, B1-B2, C2-C5, D-E, G | README spec 状态忘记改为"已实现" |
-| 新 MCP 工具 | A, C1-C3, C6 | 工具总数忘记更新 |
-| 新 DB 表 | A, C2 | docs/ 架构文档表列表 |
-| 新 Docker 服务 | B5, C2（依赖图） | README-Docker 端口表 |
+| 新微服务 | A, B1-B2, C2-C5, D-E, G, H | README spec 状态忘记改为"已实现" |
+| 新 MCP 工具 | A, C1-C3, C6, H | 工具总数忘记更新 |
+| 新 DB 表 | A, C2, H | docs/ 架构文档表列表 |
+| 新 Docker 服务 | B5, C2（依赖图）, H | README-Docker 端口表 |
 | 新 E2E 用例 | C4（3 处：标题+表格+case.json） | 标题数字（最高频失误） |
-| 新 spec | D1-D2 | .agent/specs/INDEX.md |
+| 新 spec | D1-D2, H | .agent/specs/INDEX.md |
 | 架构图变更 | G（全量：中英 SVG+PNG） | 英文版未翻译 + PNG 未导出 |
+| 代码重构（无新服务） | H | 图谱未更新，节点/边数过时 |
 
 ## 工作流
 
@@ -203,7 +222,29 @@ agent_created: true
 - 如果某文件不需要更新（如 BRAND.md 与本次变更无关），打 ✅ 跳过
 - **反过来，如果变更类型矩阵说"必查"，你必须实际读完文件并确认不需要改，才能打 ✅**
 
-### Step 3: 架构图更新（如涉及）
+### Step 3: 知识图谱更新（必须）
+
+**任何实质性代码变更后都需要更新知识图谱**，确保 graphify-out/ 中的节点/边/社区数与最新代码一致。
+
+```
+1. 加载 graphify skill（使用 name: "graphify"，不硬编码路径）
+2. 判断更新模式：
+   - 代码结构变更（AST 层）→ 执行 graphify update .（无 LLM API key 需求）
+   - 文档/图片内容变更（语义层）→ 需要完整 rebuild（需 API key）
+   - 图谱已过期但 update 检测无变化 → 使用 --force
+3. 执行更新命令，等待完成
+4. 检查输出的最后一行统计数字，做 sanity check：
+   命令执行完毕后会输出类似：
+   [graphify] Rebuilt: 3195 nodes, 5098 edges, 253 communities
+   - 只需扫一眼确认数量级合理：新增文件后节点数应上升，重构后与上次相差不大
+   - 如果节点数骤降 50% 或边数为 0，说明提取异常，用 --force 重试
+   - 不需要对比文件、不需要精确断言
+5. 如果图谱数据异常，用 graphify update . --force 强制重写
+```
+
+> **调用方式**：使用 Skill 工具加载 `graphify` skill（by name），不通过文件路径引用。CMD 的 SKILL.md 中提供了 `--code-only`、`--update`、`--force` 等模式的详细说明和 CLI 命令对照。实际 CLI 调用统一为 `cd <项目根目录> && graphify update .`（AST-only 增量）。
+
+### Step 4: 架构图更新（如涉及）
 
 如果变更涉及新服务、新端口或层级结构变化：
 
@@ -213,7 +254,7 @@ agent_created: true
 3. 参考 architecture-diagram 的 SKILL.md 中 Phase 2 的"架构文档同步"
 ```
 
-### Step 4: Spec 更新（如涉及）
+### Step 5: Spec 更新（如涉及）
 
 如果变更对应一个已知 spec：
 
@@ -222,7 +263,7 @@ agent_created: true
 2. 同步更新 .agent/specs/INDEX.md
 ```
 
-### Step 5: 验证
+### Step 6: 验证
 
 ```
 1. 检查所有被修改文件的 git diff，确认没有遗漏
@@ -257,6 +298,7 @@ agent_created: true
 
 | Skill | 使用场景 | 触发阶段 |
 |-------|---------|---------|
+| `graphify` | 知识图谱更新（AST + 语义数据合并） | 任何代码变更后（Step 3） |
 | `architecture-diagram` | 架构图绘制/更新 | 涉及层结构、新服务、新端口时 |
 | `spec-writer` | Spec 文档编写/更新 | 涉及 spec 状态变更时 |
 | `svg-to-png` | SVG→PNG 转换 | 架构图更新后 |

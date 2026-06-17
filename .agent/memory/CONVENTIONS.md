@@ -47,6 +47,7 @@
   - **不相关的文档不需要修改**（如 LINT.md 与问卷提案无关则不更新）
 - **UI Test 编号规则**：`UI-XXX` 从现有最大编号 +1 递增，测试文件中用 `[UI-XXX]` 作为 test 名称前缀
 - **前端组件 data-testid 规范**：新组件必须添加 `data-testid` 属性供 E2E 测试使用，命名采用 `{功能缩写}-{元素}` 格式（如 `q-game-name`）
+- **元数据驱动的 Tool 定义**（SPEC-017）：新增 MCP tool 时必须在 `TOOL_META_DEFINITIONS` 中添加元数据条目（`name`/`description`/`inputSchema`），handler 逻辑放入 `createStudioToolsServer()` 内的 `handlers` Record。`STUDIO_TOOL_NAMES` 从 `TOOL_META_DEFINITIONS` 自动派生，禁止手动维护独立的 tool name 列表。
 
 - **添加详细 debug 日志以方便 UI Test 调试**：新增前端交互功能、后端 API 路由、E2E 测试用例时，必须同步添加 `console.log` / `process.stderr.write` debug 日志，方便测试失败时快速定位问题：
   1. **后端 API 路由**：在路由入口、校验步骤（PASS/FAIL）、关键操作（DB 写入、SSE 广播）处添加 `console.log('[DEBUG:路由名] stepN: ...')` 格式日志

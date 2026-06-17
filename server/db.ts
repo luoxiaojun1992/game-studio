@@ -1804,10 +1804,13 @@ export interface DbGameEngineeringSpec {
   updated_at: string;
 }
 
-/** 获取所有已注册的游戏类型列表 */
-export function getGameTypes(): Array<{ type: string; description: string }> {
-  const stmt = db.prepare('SELECT game_type, description FROM game_engineering_specs WHERE spec_type = ?');
-  const rows = stmt.all('framework') as Array<{ game_type: string; description: string | null }>;
+/** 获取所有已注册的游戏类型列表，支持可选的 limit 分页 */
+export function getGameTypes(limit?: number): Array<{ type: string; description: string }> {
+  const sql = limit
+    ? 'SELECT game_type, description FROM game_engineering_specs WHERE spec_type = ? LIMIT ?'
+    : 'SELECT game_type, description FROM game_engineering_specs WHERE spec_type = ?';
+  const stmt = db.prepare(sql);
+  const rows = (limit ? stmt.all('framework', limit) : stmt.all('framework')) as Array<{ game_type: string; description: string | null }>;
   return rows.map(r => ({ type: r.game_type, description: r.description || '' }));
 }
 
