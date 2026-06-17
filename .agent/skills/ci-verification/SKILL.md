@@ -125,6 +125,12 @@ Open the downloaded logs and identify the root cause. See `references/ci-workflo
 - UI element mismatches → add `data-testid` attributes, don't change selectors
 - Mock data must match zod schemas exactly
 
+**🚫 Red-line rules — zero tolerance:**
+- **NEVER delete a UI test case** to make CI pass
+- **NEVER downgrade a test assertion** (e.g. `toPass()` → `toPass({ timeout })`, removing checks, `.skip`, `.fixme`)
+- **NEVER modify business logic** to work around a test failure — the test is telling you something is wrong
+- **Face the problem directly**: root-cause the failure, fix the actual bug, and let the test confirm the fix
+
 ### Step 4: Fix the code
 
 Apply the fix based on root cause analysis. Common failure patterns:
@@ -142,36 +148,63 @@ bash scripts/wait-for-ci.sh
 
 Repeat steps 2–5 until CI passes or retry limit (10) is reached.
 
-### Step 6: Verify service logs
+### Step 6: 假性成功排查 — 检查日志中的隐藏错误
 
-**CRITICAL** — even after CI reports "passed", mock chains can mask real API errors.
-Check that microservice containers returned no >=400 status codes:
+**CI "passed" ≠ 真的没问题。** Mock chains 会掩盖真实的 API 错误，导致测试通过但底层服务实际返回了错误码。CI 通过后必须执行以下检查：
+
+#### 6.1 下载完整日志
 
 ```bash
-# Download ui-tests job logs and filter for service errors
-GITHUB_TOKEN=$(cat .github-pat) gh api \
-  repos/{owner}/{repo}/actions/jobs/{ui_tests_job_id}/logs \
-  | grep "{service_name}-1" \
-  | grep -v "/health" \
-  | grep -E "HTTP/1.1\" [45][0-9]{2}"
+# 下载 ui-tests job 的完整日志（不仅 failed-only）
+GITHUB_TOKEN=$(cat .github-pat) curl -sL \
+  -H "Authorization: token $GITHUB_TOKEN" \
+  "https://api.github.com/repos/{owner}/{repo}/actions/jobs/{ui_tests_job_id}/logs" \
+  -o /tmp/ui-tests-full.log
 ```
 
-For each microservice involved in the change:
-- `image-service-1` — check ImageMagick API calls
-- `video-service-1` — check FFmpeg API calls
-- `creator-1` — check Blender API calls
-- `drawio-service-1` — check Draw.io API calls
+#### 6.2 检查微服务 HTTP 错误码
 
-If any >=400 codes are found, investigate and fix the root cause even though CI passed.
-Common causes: FFmpeg failing on single-frame input (422), missing files (404),
-validation errors (422).
+```bash
+# 逐个微服务过滤 >=400 的错误响应（排除 /health 检查）
+cat /tmp/ui-tests-full.log \
+  | grep "{service_name}-1" \
+  | grep -v "/health" \
+  | grep -E "HTTP/[0-9.]+\" [45][0-9]{2}"
+```
 
-### After CI Passes
+当以下任一容器出现 >=400 状态码时，CI 视为**假性成功**，必须修复：
 
-- **Check microservice HTTP status codes in logs** — mandatory post-pass verification:
-  mock chains can mask real API errors. Even when CI reports "passed", check that
-  microservice containers returned no >=400 status codes (excluding /health checks).
-  See [Step 6: Verify service logs](#step-6-verify-service-logs) below for the command.
+| 容器 | 覆盖范围 | 常见假性成功 |
+|------|---------|-------------|
+| `image-service-1` | ImageMagick API | 422 (格式不支持), 404 (文件不存在) |
+| `video-service-1` | FFmpeg API | 422 (单帧输入), 404, 500 (编码错误) |
+| `creator-1` | Blender API | 404, 422 |
+| `drawio-service-1` | Draw.io API | 404, 422 |
+| `scanner-1` | SonarQube Scanner | 连接超时 |
+| `studio-backend-1` | Studio Backend | 500 (未捕获异常) |
+
+#### 6.3 检查应用层错误日志
+
+HTTP 200 不意味着业务逻辑正确。还需检查错误级别的日志输出：
+
+```bash
+# 搜索 Error/ERROR/fail/异常 等关键字（排除误匹配）
+cat /tmp/ui-tests-full.log \
+  | grep -iE "\b(error|fail|exception|panic)\b" \
+  | grep -v "error message above" \
+  | grep -v "expected.*error" \
+  | grep -v "/health"
+```
+
+常见掩藏在 200 响应中的错误：
+- `[Tool] ... NOT_FOUND` — 工具执行失败但返回了友好文本而非抛出异常
+- `Error: ...` — 非致命错误被 catch 吞掉
+- `TypeError: Cannot read properties of undefined` — 数据缺失导致静默降级
+- `UnhandledPromiseRejection` — 异步异常未被上层捕获
+
+> **处理原则**：发现任何隐藏错误，即使 CI 显示 "success"，也必须定位根因并修复。假性成功 = 实际失败。
+
+### After CI Passes (all checks + logs clean)
 
 - Mark the task as complete
 - Update daily memory log with the fix summary
