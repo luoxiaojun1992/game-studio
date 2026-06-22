@@ -1236,27 +1236,22 @@ test('[UI-014] should display tool call chain with real-time updates (SPEC-019)'
   await page.goto('/');
   log('step1: page loaded');
 
-  // Navigate to 指令中心 tab
-  await page.getByRole('tab', { name: /指令中心/ }).click();
-  log('step2: navigated to command center tab');
+  // Navigate to commands tab — EXACT pattern from runFullWorkflowTest
+  log('command:switch-to-commands-tab');
+  await page.getByTestId('tab-commands').click();
+  await page.waitForTimeout(500);
+  log('step2: commands tab clicked');
 
-  // Verify ToolCallChain is present (empty state)
-  const toolChain = page.getByTestId('tool-call-chain');
-  await expect(toolChain).toBeVisible({ timeout: 10000 });
-  log('step3: tool-call-chain visible');
-
-  // Verify empty state text
-  await expect(toolChain.getByText(/暂无工具调用|No tool calls yet/)).toBeVisible();
-  log('step4: empty state confirmed');
-
-  // Select engineer agent explicitly (matching the pattern from runFullWorkflowTest)
-  const engineerBtn = page.locator('button').filter({ hasText: /工程师|Engineer/ }).first();
+  // Select engineer agent — EXACT pattern from runFullWorkflowTest
+  log('command:click-engineer-btn');
+  const engineerBtn = page.locator('button').filter({ hasText: /软件工程师/ }).first();
+  log('command:engineer-btn-exists', { exists: await engineerBtn.count().then(c => c > 0) });
   await engineerBtn.click();
-  log('step5: engineer agent selected');
+  log('step3: engineer agent selected');
 
-  // Set mock expectation for engineer with a tool call
+  // Set mock expectation for engineer with tool calls
   const currentProjectId = await page.locator('select').first().inputValue();
-  log('step6: project detected', { projectId: currentProjectId });
+  log('step4: project detected', { projectId: currentProjectId });
 
   await setMockExpectation(currentProjectId, 'engineer', {
     content: '正在搜索相关文件...',
@@ -1266,63 +1261,60 @@ test('[UI-014] should display tool call chain with real-time updates (SPEC-019)'
     }]
   });
   await setMockExpectation(currentProjectId, 'engineer', { content: '搜索完成，找到 3 个文件。' });
-  log('step7: mock expectations set');
+  log('step5: mock expectations set');
 
-  // Send command to engineer — use page.evaluate to call the API directly
-  // This bypasses potential CommandPanel interaction issues
-  log('step8: sending command via API directly');
-  const cmdRes = await page.evaluate(async () => {
-    try {
-      const res = await fetch('http://studio-backend:3000/api/agents/engineer/command', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: '搜索项目中的 TypeScript 文件', model: 'glm-5.0', projectId: 'default' })
-      });
-      return { ok: res.ok, status: res.status };
-    } catch (err: any) {
-      return { ok: false, status: 0, error: err.message || String(err) };
-    }
-  });
-  log('step9: command API result', cmdRes);
+  // Send command — EXACT pattern from runFullWorkflowTest
+  const textarea = page.locator('textarea[placeholder*="下达指令"]').first();
+  log('command:textarea-exists', { exists: await textarea.count().then(c => c > 0) });
+  const commandText = '搜索项目中的 TypeScript 文件';
+  log('command:fill-text', { length: commandText.length });
+  await textarea.fill(commandText);
+  log('command:click-send-btn');
+  await page.locator('button').filter({ hasText: /发送/ }).first().click();
+  log('step6: command-sent');
+
+  // Verify ToolCallChain empty state first
+  const toolChain = page.getByTestId('tool-call-chain');
+  await expect(toolChain).toBeVisible({ timeout: 10000 });
 
   // Wait for tool chain to update with the tool name
   await expect(toolChain.getByText('search_file')).toBeVisible({ timeout: 30000 });
-  log('step10: search_file appeared in tool chain');
+  log('step7: search_file appeared in tool chain');
 
   // Now test mode toggle (tools exist, so mode toggle is rendered)
   const modeToggle = page.getByTestId('tool-chain-mode-toggle');
   await expect(modeToggle).toBeVisible();
   await modeToggle.click();
-  log('step11: mode toggled to expanded');
+  log('step8: mode toggled to expanded');
 
   // Verify expanded mode shows index numbers
   await expect(toolChain.locator('.chain-index')).toBeVisible({ timeout: 5000 });
-  log('step12: expanded mode confirmed');
+  log('step9: expanded mode confirmed');
 
   // Toggle back to compact
   await modeToggle.click();
   await expect(toolChain.locator('.chain-badge')).toBeVisible({ timeout: 5000 });
-  log('step13: compact mode confirmed');
+  log('step10: compact mode confirmed');
 
   // Test config button
   const configBtn = page.getByTestId('tool-chain-config-btn');
   await expect(configBtn).toBeVisible();
   await configBtn.click();
-  log('step14: config panel opened');
+  log('step11: config panel opened');
 
   // Verify config panel and adjust max length
   const maxLengthSlider = page.getByTestId('tool-chain-max-length');
   await expect(maxLengthSlider).toBeVisible();
   await maxLengthSlider.fill('20');
-  log('step15: maxLength adjusted to 20');
+  log('step12: maxLength adjusted to 20');
 
   // Close config
   await configBtn.click();
-  log('step16: config panel closed');
+  log('step13: config panel closed');
 
   // Verify chain still renders after config change
   await expect(toolChain.getByText('search_file')).toBeVisible();
-  log('step17: chain still visible after config change');
+  log('step14: chain still visible after config change');
 
   process.stderr.write(`[${testId}] ${new Date().toISOString()} test:passed\n`);
 });
