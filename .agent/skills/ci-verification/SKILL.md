@@ -204,8 +204,34 @@ cat /tmp/ui-tests-full.log \
 
 > **处理原则**：发现任何隐藏错误，即使 CI 显示 "success"，也必须定位根因并修复。假性成功 = 实际失败。
 
+### get-videos.sh — Download Branch-Related UI Test Videos
+
+After CI passes, download the UI test recordings for tests modified on the current branch.
+
+```bash
+bash scripts/get-videos.sh <run-id>
+
+# Custom output directory
+bash scripts/get-videos.sh 12345678 --dir ./my-videos
+```
+
+**How it works:**
+1. Downloads the `allure-report` artifact from the CI run
+2. Detects which UI tests are new/changed on this branch (`git diff origin/main`)
+3. Extracts only the matching `video.webm` files
+4. Names them `UI-XXX-video.webm` for easy identification
+
+**Prerequisites:**
+- `gh` CLI authenticated (uses `GH_TOKEN` or `gh auth login`)
+- Working directory: game-dev-studio repo root
+- `origin/main` must be fetchable for diff comparison
+
 ### After CI Passes (all checks + logs clean)
 
+- Download branch-related UI test videos:
+  ```bash
+  bash scripts/get-videos.sh <run-id>
+  ```
 - Mark the task as complete
 - Update daily memory log with the fix summary
 - If the root cause was a non-obvious pattern, update `references/ci-workflow.md` or project CONVENTIONS.md
