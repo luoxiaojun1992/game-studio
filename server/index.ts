@@ -265,8 +265,12 @@ app.post('/api/agents/:agentId/resume', (req, res) => {
 // Executes an explicit user command against one agent and streams progress over SSE.
 app.post('/api/agents/:agentId/command', async (req, res) => {
   const { agentId } = req.params;
+  console.error('[DEBUG:command-handler] received POST agentId="%s" body=%s', agentId, JSON.stringify(req.body).slice(0, 200));
   const agentValidation = validateAgentIdInput(agentId, 'agentId');
-  if (!agentValidation.ok) return res.status(400).json({ error: agentValidation.error });
+  if (!agentValidation.ok) {
+    console.error(`[DEBUG:command-handler] validation failed: ${agentValidation.error}`);
+    return res.status(400).json({ error: agentValidation.error });
+  }
   const normalizedAgentId = agentValidation.agentId;
   if (normalizedAgentId === TEAM_BUILDING_AGENT_ID) {
     return res.status(400).json({ error: '团队建设 Agent 不支持手动下达指令' });
@@ -306,6 +310,9 @@ app.post('/api/agents/:agentId/command', async (req, res) => {
 
   res.write(`data: ${JSON.stringify({ type: 'command_started', commandId, agentId: normalizedAgentId })}\n\n`);
 
+  // DEBUG: Send agent heartbeat to clear any stale "working" state
+  console.error(`[DEBUG:command-handler] about to call sendMessage projectId="${projectId}" agentId="${normalizedAgentId}" message="${message.slice(0,50)}"`);
+
   try {
     const response = await agentManager.sendMessage(
       projectId,
@@ -321,6 +328,7 @@ app.post('/api/agents/:agentId/command', async (req, res) => {
     res.write(`data: ${JSON.stringify({ type: 'command_done', commandId, response: response.slice(0, 500) })}\n\n`);
     res.end();
   } catch (error: any) {
+    console.error(`[DEBUG:command-handler] sendMessage failed: projectId="${projectId}" agentId="${normalizedAgentId}" error="${error?.message}" stack="${error?.stack?.slice(0, 200)}"`);
     db.updateCommand(commandId, { status: 'failed', result: error?.message });
     res.write(`data: ${JSON.stringify({ type: 'command_error', commandId, error: error?.message })}\n\n`);
     res.end();
@@ -499,7 +507,11 @@ app.patch('/api/games/:id', (req, res) => {
 app.get('/api/projects/:projectId/logs', (req, res) => {
   const projectId = normalizeProjectId(req.params.projectId);
   const agentId = req.query.agentId as string | undefined;
-  const logs = db.getLogs(projectId, agentId, 1000);
+  const logType = req.query.log_type as string | undefined;
+  const limit = typeof req.query.limit === 'string' ? parseInt(req.query.limit, 10) : 1000;
+  const validLogType = logType && ['system', 'text', 'tool', 'tool_result', 'done', 'error', 'user_command'].includes(logType) ? logType as db.LogType : undefined;
+  console.error(`[DEBUG:logs-api] query: projectId=${projectId} agentId=${agentId} log_type=${logType} limit=${limit}`);
+  const logs = db.getLogs(projectId, agentId, limit, validLogType);
   res.json({ logs });
 });
 

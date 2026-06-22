@@ -140,6 +140,20 @@ test('[UI-006] should load star-office-ui and keep agent status synced via agent
   const starAgents = await starResp.json() as Array<{ agentId: string }>;
   expect(starAgents.length).toBeGreaterThan(0);
   expect(typeof starAgents[0].agentId).toBe('string');
+
+  // Cleanup: resume engineer and verify via UI (prevents polluting subsequent tests)
+  const resumeResp = await fetch(`${studioApiBase}/api/agents/engineer/resume?projectId=${encodeURIComponent(currentProjectId)}`, { method: 'POST' });
+  if (!resumeResp.ok) throw new Error(`failed to resume engineer: ${resumeResp.status}`);
+
+  // Verify resume via UI: navigate to command center, check engineer shows "空闲"
+  // SSE event delivery is async — allow generous timeout for state propagation
+  await page.getByTestId('tab-commands').click();
+  await page.waitForTimeout(500);
+  const engineerSection = page.locator('button').filter({ hasText: /软件工程师/ }).first();
+  await expect(engineerSection).toBeVisible({ timeout: 10000 });
+  // Wait for the SSE agent_resumed event to propagate and update React state
+  await expect(engineerSection.getByText(/空闲/)).toBeVisible({ timeout: 15000 });
+  await expect(engineerSection.getByText(/已暂停/)).toHaveCount(0);
 });
 
 // ═══════════════════════════════════════════
@@ -1217,4 +1231,112 @@ test('[UI-013] should process videos and save to game artifacts (SPEC-009)', asy
     gameType: 'h5',
     withVideoProcessing: true,
   });
+});
+
+// ═══════════════════════════════════════════
+// UI-014: Tool Call Chain — Agent tool call chain visualization (SPEC-019)
+// Verifies ToolCallChain renders, updates on tool events, mode/config toggles.
+// ═══════════════════════════════════════════
+
+test('[UI-014] should display tool call chain with real-time updates (SPEC-019)', async ({ page }) => {
+  const testId = 'UI-014';
+  const log = (step: string, extra?: Record<string, unknown>) => {
+    let payload = '';
+    if (extra) try { payload = ` ${JSON.stringify(extra)}` } catch { payload = ` ${String(extra)}` }
+    process.stderr.write(`[${testId}] ${new Date().toISOString()} ${step}${payload}\n`);
+  };
+
+  await page.addInitScript(() => localStorage.setItem('game_studio_ui_language', 'zh-CN'));
+
+  // Capture ALL browser console messages for debugging
+  page.on('console', msg => {
+    if (msg.type() === 'error' || msg.text().includes('[DEBUG:')) {
+      process.stderr.write(`[browser-console:${msg.type()}] ${msg.text()}\n`);
+    }
+  });
+
+  await page.goto('/');
+  log('step1: page loaded');
+
+  // Navigate to commands tab — EXACT pattern from runFullWorkflowTest
+  log('command:switch-to-commands-tab');
+  await page.getByTestId('tab-commands').click();
+  await page.waitForTimeout(500);
+  log('step2: commands tab clicked');
+
+  // Select engineer agent — EXACT pattern from runFullWorkflowTest
+  log('command:click-engineer-btn');
+  const engineerBtn = page.locator('button').filter({ hasText: /软件工程师/ }).first();
+  log('command:engineer-btn-exists', { exists: await engineerBtn.count().then(c => c > 0) });
+  await engineerBtn.click();
+  log('step3: engineer agent selected');
+
+  // Set mock expectation for engineer with tool calls
+  const currentProjectId = await page.locator('select').first().inputValue();
+  log('step4: project detected', { projectId: currentProjectId });
+
+  await setMockExpectation(currentProjectId, 'engineer', {
+    content: '正在保存记忆...',
+    toolCalls: [{
+      name: 'save_memory',
+      arguments: { category: 'technical', content: '项目使用 TypeScript + React 构建' }
+    }]
+  });
+  await setMockExpectation(currentProjectId, 'engineer', { content: '记忆保存完成。' });
+  log('step5: mock expectations set');
+
+  // Send command — EXACT pattern from runFullWorkflowTest
+  const textarea = page.locator('textarea[placeholder*="下达指令"]').first();
+  log('command:textarea-exists', { exists: await textarea.count().then(c => c > 0) });
+  const commandText = '保存项目技术栈信息';
+  log('command:fill-text', { length: commandText.length });
+  await textarea.fill(commandText);
+  log('command:click-send-btn');
+  await page.locator('button').filter({ hasText: /发送/ }).first().click();
+  log('step6: command-sent');
+
+  // Verify ToolCallChain empty state first
+  const toolChain = page.getByTestId('tool-call-chain');
+  await expect(toolChain).toBeVisible({ timeout: 10000 });
+
+  // Wait for tool chain to update with the tool name
+  await expect(toolChain.getByText('save_memory')).toBeVisible({ timeout: 30000 });
+  log('step7: save_memory appeared in tool chain');
+
+  // Now test mode toggle (tools exist, so mode toggle is rendered)
+  const modeToggle = page.getByTestId('tool-chain-mode-toggle');
+  await expect(modeToggle).toBeVisible();
+  await modeToggle.click();
+  log('step8: mode toggled to expanded');
+
+  // Verify expanded mode shows index numbers
+  await expect(toolChain.locator('.chain-index')).toBeVisible({ timeout: 5000 });
+  log('step9: expanded mode confirmed');
+
+  // Toggle back to compact
+  await modeToggle.click();
+  await expect(toolChain.locator('.chain-badge')).toBeVisible({ timeout: 5000 });
+  log('step10: compact mode confirmed');
+
+  // Test config button
+  const configBtn = page.getByTestId('tool-chain-config-btn');
+  await expect(configBtn).toBeVisible();
+  await configBtn.click();
+  log('step11: config panel opened');
+
+  // Verify config panel and adjust max length
+  const maxLengthSlider = page.getByTestId('tool-chain-max-length');
+  await expect(maxLengthSlider).toBeVisible();
+  await maxLengthSlider.fill('20');
+  log('step12: maxLength adjusted to 20');
+
+  // Close config
+  await configBtn.click();
+  log('step13: config panel closed');
+
+  // Verify chain still renders after config change
+  await expect(toolChain.getByText('save_memory')).toBeVisible();
+  log('step14: chain still visible after config change');
+
+  process.stderr.write(`[${testId}] ${new Date().toISOString()} test:passed\n`);
 });

@@ -86,9 +86,11 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     }).then(r => r.json()),
-  getLogs: (projectId?: string, agentId?: string) => {
+  getLogs: (projectId?: string, agentId?: string, options?: { log_type?: string; limit?: number }) => {
     const params = new URLSearchParams();
     if (agentId) params.set('agentId', agentId);
+    if (options?.log_type) params.set('log_type', options.log_type);
+    if (options?.limit) params.set('limit', String(options.limit));
     return fetch(`${API_BASE}/api/projects/${projectId || 'default'}/logs?${params}`).then(r => r.json());
   },
   deleteLogs: (projectId?: string, agentId?: string) => {
