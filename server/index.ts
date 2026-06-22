@@ -310,6 +310,9 @@ app.post('/api/agents/:agentId/command', async (req, res) => {
 
   res.write(`data: ${JSON.stringify({ type: 'command_started', commandId, agentId: normalizedAgentId })}\n\n`);
 
+  // DEBUG: Send agent heartbeat to clear any stale "working" state
+  console.error(`[DEBUG:command-handler] about to call sendMessage projectId="${projectId}" agentId="${normalizedAgentId}" message="${message.slice(0,50)}"`);
+
   try {
     const response = await agentManager.sendMessage(
       projectId,
@@ -325,6 +328,7 @@ app.post('/api/agents/:agentId/command', async (req, res) => {
     res.write(`data: ${JSON.stringify({ type: 'command_done', commandId, response: response.slice(0, 500) })}\n\n`);
     res.end();
   } catch (error: any) {
+    console.error(`[DEBUG:command-handler] sendMessage failed: projectId="${projectId}" agentId="${normalizedAgentId}" error="${error?.message}" stack="${error?.stack?.slice(0, 200)}"`);
     db.updateCommand(commandId, { status: 'failed', result: error?.message });
     res.write(`data: ${JSON.stringify({ type: 'command_error', commandId, error: error?.message })}\n\n`);
     res.end();
