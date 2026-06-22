@@ -843,13 +843,13 @@ export function addLog(log: DbLog): void {
 export function getLogs(projectId: string, agentId?: string, limit = 1000, logType?: LogType): DbLog[] {
   if (agentId && logType) {
     const stmt = db.prepare('SELECT * FROM logs WHERE project_id = ? AND agent_id = ? AND log_type = ? ORDER BY created_at DESC LIMIT ?');
-    return (stmt.all(projectId, agentId, limit, logType) as DbLog[]).reverse();
+    return (stmt.all(projectId, agentId, logType, limit) as DbLog[]).reverse();
   } else if (agentId) {
     const stmt = db.prepare('SELECT * FROM logs WHERE project_id = ? AND agent_id = ? ORDER BY created_at DESC LIMIT ?');
     return (stmt.all(projectId, agentId, limit) as DbLog[]).reverse();
   } else if (logType) {
     const stmt = db.prepare('SELECT * FROM logs WHERE project_id = ? AND log_type = ? ORDER BY created_at DESC LIMIT ?');
-    return (stmt.all(projectId, limit, logType) as DbLog[]).reverse();
+    return (stmt.all(projectId, logType, limit) as DbLog[]).reverse();
   } else {
     const stmt = db.prepare('SELECT * FROM logs WHERE project_id = ? ORDER BY created_at DESC LIMIT ?');
     return (stmt.all(projectId, limit) as DbLog[]).reverse();
