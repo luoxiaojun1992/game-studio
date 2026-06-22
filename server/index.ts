@@ -265,7 +265,7 @@ app.post('/api/agents/:agentId/resume', (req, res) => {
 // Executes an explicit user command against one agent and streams progress over SSE.
 app.post('/api/agents/:agentId/command', async (req, res) => {
   const { agentId } = req.params;
-  console.error(`[DEBUG:command-handler] received POST agentId="${agentId}" body=`, JSON.stringify(req.body).slice(0, 200));
+  console.error('[DEBUG:command-handler] received POST agentId="%s" body=%s', agentId, JSON.stringify(req.body).slice(0, 200));
   const agentValidation = validateAgentIdInput(agentId, 'agentId');
   if (!agentValidation.ok) {
     console.error(`[DEBUG:command-handler] validation failed: ${agentValidation.error}`);
