@@ -840,10 +840,16 @@ export function addLog(log: DbLog): void {
   stmt.run(log.id, log.project_id, log.agent_id, log.log_type, log.level, log.content, log.tool_name || null, log.action || null, log.is_error ? 1 : 0, log.created_at, log.updated_at);
 }
 
-export function getLogs(projectId: string, agentId?: string, limit = 1000): DbLog[] {
-  if (agentId) {
+export function getLogs(projectId: string, agentId?: string, limit = 1000, logType?: LogType): DbLog[] {
+  if (agentId && logType) {
+    const stmt = db.prepare('SELECT * FROM logs WHERE project_id = ? AND agent_id = ? AND log_type = ? ORDER BY created_at DESC LIMIT ?');
+    return (stmt.all(projectId, agentId, limit, logType) as DbLog[]).reverse();
+  } else if (agentId) {
     const stmt = db.prepare('SELECT * FROM logs WHERE project_id = ? AND agent_id = ? ORDER BY created_at DESC LIMIT ?');
     return (stmt.all(projectId, agentId, limit) as DbLog[]).reverse();
+  } else if (logType) {
+    const stmt = db.prepare('SELECT * FROM logs WHERE project_id = ? AND log_type = ? ORDER BY created_at DESC LIMIT ?');
+    return (stmt.all(projectId, limit, logType) as DbLog[]).reverse();
   } else {
     const stmt = db.prepare('SELECT * FROM logs WHERE project_id = ? ORDER BY created_at DESC LIMIT ?');
     return (stmt.all(projectId, limit) as DbLog[]).reverse();

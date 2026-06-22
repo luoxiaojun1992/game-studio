@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Agent, AgentRole, LogEntry } from '../types';
 import { api, API_BASE } from '../config';
 import { useI18n } from '../i18n';
+import ToolCallChain from './ToolCallChain';
 
 interface Props {
   agents: Agent[];
@@ -375,6 +376,9 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
             </select>
           </div>
         </div>
+
+        {/* Tool Call Chain (SPEC-019) */}
+        <ToolCallChain projectId={projectId} agentId={selectedAgent} logs={logs} />
 
         
         <div 

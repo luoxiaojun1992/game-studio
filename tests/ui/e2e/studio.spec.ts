@@ -1218,3 +1218,99 @@ test('[UI-013] should process videos and save to game artifacts (SPEC-009)', asy
     withVideoProcessing: true,
   });
 });
+
+// ═══════════════════════════════════════════
+// UI-014: Tool Call Chain — Agent tool call chain visualization (SPEC-019)
+// Verifies ToolCallChain renders, updates on tool events, mode/config toggles.
+// ═══════════════════════════════════════════
+
+test('[UI-014] should display tool call chain with real-time updates (SPEC-019)', async ({ page }) => {
+  const testId = 'UI-014';
+  const log = (step: string, extra?: Record<string, unknown>) => {
+    let payload = '';
+    if (extra) try { payload = ` ${JSON.stringify(extra)}` } catch { payload = ` ${String(extra)}` }
+    process.stderr.write(`[${testId}] ${new Date().toISOString()} ${step}${payload}\n`);
+  };
+
+  await page.addInitScript(() => localStorage.setItem('game_studio_ui_language', 'zh-CN'));
+  await page.goto('/');
+  log('step1: page loaded');
+
+  // Navigate to 指令中心 tab
+  await page.getByRole('tab', { name: /指令中心/ }).click();
+  log('step2: navigated to command center tab');
+
+  // Verify ToolCallChain is present (empty state)
+  const toolChain = page.getByTestId('tool-call-chain');
+  await expect(toolChain).toBeVisible({ timeout: 10000 });
+  log('step3: tool-call-chain visible');
+
+  // Verify empty state text
+  await expect(toolChain.getByText(/暂无工具调用|No tool calls yet/)).toBeVisible();
+  log('step4: empty state confirmed');
+
+  // Set mock expectation for engineer tool call
+  const currentProjectId = await page.locator('select').first().inputValue();
+  await setMockExpectation(currentProjectId, 'engineer', {
+    content: '正在搜索相关文件...',
+    toolCalls: [{
+      name: 'search_file',
+      arguments: { pattern: '*.ts', path: '/src' }
+    }]
+  });
+  await setMockExpectation(currentProjectId, 'engineer', { content: '搜索完成，找到 3 个文件。' });
+  log('step5: mock expectations set for engineer tool call');
+
+  // Send a command to engineer
+  const textarea = page.locator('textarea').first();
+  await textarea.fill('搜索项目中的 TypeScript 文件');
+  await textarea.press('Enter');
+  log('step6: command sent to engineer');
+
+  // Wait for tool chain to update with tool name
+  await expect(toolChain.getByText('search_file')).toBeVisible({ timeout: 15000 });
+  log('step7: search_file appeared in tool chain');
+
+  // Test mode toggle (compact → expanded)
+  const modeToggle = page.getByTestId('tool-chain-mode-toggle');
+  await expect(modeToggle).toBeVisible();
+  await modeToggle.click();
+  log('step8: mode toggled to expanded');
+
+  // Verify expanded mode shows index numbers
+  await expect(toolChain.locator('.chain-index')).toBeVisible({ timeout: 5000 });
+  log('step9: expanded mode confirmed with chain-index visible');
+
+  // Toggle back to compact
+  await modeToggle.click();
+  log('step10: toggled back to compact');
+
+  // Verify compact mode has chain badges
+  await expect(toolChain.locator('.chain-badge')).toBeVisible({ timeout: 5000 });
+  log('step11: compact mode confirmed with chain-badge visible');
+
+  // Test config button
+  const configBtn = page.getByTestId('tool-chain-config-btn');
+  await expect(configBtn).toBeVisible();
+  await configBtn.click();
+  log('step12: config panel opened');
+
+  // Verify config panel shows max-length slider
+  const maxLengthSlider = page.getByTestId('tool-chain-max-length');
+  await expect(maxLengthSlider).toBeVisible();
+  log('step13: max-length slider visible');
+
+  // Adjust max length to 10
+  await maxLengthSlider.fill('10');
+  log('step14: maxLength adjusted to 10');
+
+  // Close config panel
+  await configBtn.click();
+  log('step15: config panel closed');
+
+  // Verify chain still renders after config change
+  await expect(toolChain.getByText('search_file')).toBeVisible();
+  log('step16: chain still visible after config change');
+
+  process.stderr.write(`[${testId}] ${new Date().toISOString()} test:passed\n`);
+});

@@ -499,7 +499,11 @@ app.patch('/api/games/:id', (req, res) => {
 app.get('/api/projects/:projectId/logs', (req, res) => {
   const projectId = normalizeProjectId(req.params.projectId);
   const agentId = req.query.agentId as string | undefined;
-  const logs = db.getLogs(projectId, agentId, 1000);
+  const logType = req.query.log_type as string | undefined;
+  const limit = typeof req.query.limit === 'string' ? parseInt(req.query.limit, 10) : 1000;
+  const validLogType = logType && ['system', 'text', 'tool', 'tool_result', 'done', 'error', 'user_command'].includes(logType) ? logType as db.LogType : undefined;
+  console.error(`[DEBUG:logs-api] query: projectId=${projectId} agentId=${agentId} log_type=${logType} limit=${limit}`);
+  const logs = db.getLogs(projectId, agentId, limit, validLogType);
   res.json({ logs });
 });
 
