@@ -1233,6 +1233,14 @@ test('[UI-014] should display tool call chain with real-time updates (SPEC-019)'
   };
 
   await page.addInitScript(() => localStorage.setItem('game_studio_ui_language', 'zh-CN'));
+
+  // Capture ALL browser console messages for debugging
+  page.on('console', msg => {
+    if (msg.type() === 'error' || msg.text().includes('[DEBUG:')) {
+      process.stderr.write(`[browser-console:${msg.type()}] ${msg.text()}\n`);
+    }
+  });
+
   await page.goto('/');
   log('step1: page loaded');
 

@@ -265,8 +265,12 @@ app.post('/api/agents/:agentId/resume', (req, res) => {
 // Executes an explicit user command against one agent and streams progress over SSE.
 app.post('/api/agents/:agentId/command', async (req, res) => {
   const { agentId } = req.params;
+  console.error(`[DEBUG:command-handler] received POST agentId="${agentId}" body=`, JSON.stringify(req.body).slice(0, 200));
   const agentValidation = validateAgentIdInput(agentId, 'agentId');
-  if (!agentValidation.ok) return res.status(400).json({ error: agentValidation.error });
+  if (!agentValidation.ok) {
+    console.error(`[DEBUG:command-handler] validation failed: ${agentValidation.error}`);
+    return res.status(400).json({ error: agentValidation.error });
+  }
   const normalizedAgentId = agentValidation.agentId;
   if (normalizedAgentId === TEAM_BUILDING_AGENT_ID) {
     return res.status(400).json({ error: '团队建设 Agent 不支持手动下达指令' });

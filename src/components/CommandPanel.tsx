@@ -128,17 +128,26 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
 
   const sendCommand = async () => {
     if (!message.trim() || streaming) return;
+    const cmdMessage = message.trim();
+    console.error(`[DEBUG:CommandPanel.sendCommand] starting: message="${cmdMessage}" model="${model}" projectId="${projectId}" API_BASE="${API_BASE}" selectedAgent="${selectedAgent}"`);
     setMessage('');
     setStreaming(true);
     setCurrentStreamText('');
 
     try {
-      const res = await fetch(`${API_BASE}/api/agents/${selectedAgent}/command`, {
+      const url = `${API_BASE}/api/agents/${selectedAgent}/command`;
+      const body = JSON.stringify({ message: cmdMessage, model, projectId });
+      console.error(`[DEBUG:CommandPanel.sendCommand] fetch: url="${url}" body=${body}`);
+      const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: message.trim(), model, projectId })
+        body
       });
-      if (!res.body) { setStreaming(false); return; }
+      console.error(`[DEBUG:CommandPanel.sendCommand] response: ok=${res.ok} status=${res.status} contentType=${res.headers.get('content-type')}`);
+      if (!res.body) {
+        console.error(`[DEBUG:CommandPanel.sendCommand] abort: no response body`);
+        setStreaming(false); return;
+      }
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -163,7 +172,9 @@ export default function CommandPanel({ agents, logs, projectId, selectedAgentId,
         }
       }
       setCurrentStreamText('');
-    } catch {}
+    } catch (err: any) {
+      console.error(`[DEBUG:CommandPanel.sendCommand] fetch error:`, err.message || err, err.stack || '');
+    }
     setStreaming(false);
     onCommandSent?.();
   };
