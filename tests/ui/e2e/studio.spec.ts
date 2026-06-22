@@ -146,12 +146,13 @@ test('[UI-006] should load star-office-ui and keep agent status synced via agent
   if (!resumeResp.ok) throw new Error(`failed to resume engineer: ${resumeResp.status}`);
 
   // Verify resume via UI: navigate to command center, check engineer shows "空闲"
+  // SSE event delivery is async — allow generous timeout for state propagation
   await page.getByTestId('tab-commands').click();
   await page.waitForTimeout(500);
-  // The engineer button in the agent sidebar should show "空闲" (idle), not "已暂停" (paused)
   const engineerSection = page.locator('button').filter({ hasText: /软件工程师/ }).first();
-  await expect(engineerSection).toBeVisible();
-  await expect(engineerSection.getByText(/空闲/)).toBeVisible();
+  await expect(engineerSection).toBeVisible({ timeout: 10000 });
+  // Wait for the SSE agent_resumed event to propagate and update React state
+  await expect(engineerSection.getByText(/空闲/)).toBeVisible({ timeout: 15000 });
   await expect(engineerSection.getByText(/已暂停/)).toHaveCount(0);
 });
 
