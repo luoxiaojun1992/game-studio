@@ -140,6 +140,19 @@ test('[UI-006] should load star-office-ui and keep agent status synced via agent
   const starAgents = await starResp.json() as Array<{ agentId: string }>;
   expect(starAgents.length).toBeGreaterThan(0);
   expect(typeof starAgents[0].agentId).toBe('string');
+
+  // Cleanup: resume engineer and verify via UI (prevents polluting subsequent tests)
+  const resumeResp = await fetch(`${studioApiBase}/api/agents/engineer/resume?projectId=${encodeURIComponent(currentProjectId)}`, { method: 'POST' });
+  if (!resumeResp.ok) throw new Error(`failed to resume engineer: ${resumeResp.status}`);
+
+  // Verify resume via UI: navigate to command center, check engineer shows "空闲"
+  await page.getByTestId('tab-commands').click();
+  await page.waitForTimeout(500);
+  // The engineer button in the agent sidebar should show "空闲" (idle), not "已暂停" (paused)
+  const engineerSection = page.locator('button').filter({ hasText: /软件工程师/ }).first();
+  await expect(engineerSection).toBeVisible();
+  await expect(engineerSection.getByText(/空闲/)).toBeVisible();
+  await expect(engineerSection.getByText(/已暂停/)).toHaveCount(0);
 });
 
 // ═══════════════════════════════════════════
