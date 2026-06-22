@@ -1276,19 +1276,19 @@ test('[UI-014] should display tool call chain with real-time updates (SPEC-019)'
   log('step4: project detected', { projectId: currentProjectId });
 
   await setMockExpectation(currentProjectId, 'engineer', {
-    content: '正在搜索相关文件...',
+    content: '正在保存记忆...',
     toolCalls: [{
-      name: 'search_file',
-      arguments: { pattern: '*.ts', path: '/src' }
+      name: 'save_memory',
+      arguments: { category: 'technical', content: '项目使用 TypeScript + React 构建' }
     }]
   });
-  await setMockExpectation(currentProjectId, 'engineer', { content: '搜索完成，找到 3 个文件。' });
+  await setMockExpectation(currentProjectId, 'engineer', { content: '记忆保存完成。' });
   log('step5: mock expectations set');
 
   // Send command — EXACT pattern from runFullWorkflowTest
   const textarea = page.locator('textarea[placeholder*="下达指令"]').first();
   log('command:textarea-exists', { exists: await textarea.count().then(c => c > 0) });
-  const commandText = '搜索项目中的 TypeScript 文件';
+  const commandText = '保存项目技术栈信息';
   log('command:fill-text', { length: commandText.length });
   await textarea.fill(commandText);
   log('command:click-send-btn');
@@ -1300,8 +1300,8 @@ test('[UI-014] should display tool call chain with real-time updates (SPEC-019)'
   await expect(toolChain).toBeVisible({ timeout: 10000 });
 
   // Wait for tool chain to update with the tool name
-  await expect(toolChain.getByText('search_file')).toBeVisible({ timeout: 30000 });
-  log('step7: search_file appeared in tool chain');
+  await expect(toolChain.getByText('save_memory')).toBeVisible({ timeout: 30000 });
+  log('step7: save_memory appeared in tool chain');
 
   // Now test mode toggle (tools exist, so mode toggle is rendered)
   const modeToggle = page.getByTestId('tool-chain-mode-toggle');
@@ -1335,7 +1335,7 @@ test('[UI-014] should display tool call chain with real-time updates (SPEC-019)'
   log('step13: config panel closed');
 
   // Verify chain still renders after config change
-  await expect(toolChain.getByText('search_file')).toBeVisible();
+  await expect(toolChain.getByText('save_memory')).toBeVisible();
   log('step14: chain still visible after config change');
 
   process.stderr.write(`[${testId}] ${new Date().toISOString()} test:passed\n`);
