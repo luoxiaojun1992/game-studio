@@ -1249,36 +1249,14 @@ test('[UI-014] should display tool call chain with real-time updates (SPEC-019)'
   await expect(toolChain.getByText(/暂无工具调用|No tool calls yet/)).toBeVisible();
   log('step4: empty state confirmed');
 
-  // Test mode toggle and config BEFORE any tool calls (should be in empty state)
-  // Verify mode toggle exists
-  const modeToggle = page.getByTestId('tool-chain-mode-toggle');
-  await expect(modeToggle).toBeVisible();
-  log('step5: mode toggle visible');
-
-  // Verify config button exists
-  const configBtn = page.getByTestId('tool-chain-config-btn');
-  await expect(configBtn).toBeVisible();
-  log('step6: config button visible');
-
-  // Open config panel
-  await configBtn.click();
-  const maxLengthSlider = page.getByTestId('tool-chain-max-length');
-  await expect(maxLengthSlider).toBeVisible();
-  log('step7: max-length slider visible');
-
-  // Adjust max length
-  await maxLengthSlider.fill('10');
-  await configBtn.click();
-  log('step8: config adjusted and closed');
-
-  // Now select engineer agent explicitly (matching the pattern from runFullWorkflowTest)
+  // Select engineer agent explicitly (matching the pattern from runFullWorkflowTest)
   const engineerBtn = page.locator('button').filter({ hasText: /工程师|Engineer/ }).first();
   await engineerBtn.click();
-  log('step9: engineer agent selected');
+  log('step5: engineer agent selected');
 
   // Set mock expectation for engineer with a tool call
   const currentProjectId = await page.locator('select').first().inputValue();
-  log('step10: project detected', { projectId: currentProjectId });
+  log('step6: project detected', { projectId: currentProjectId });
 
   await setMockExpectation(currentProjectId, 'engineer', {
     content: '正在搜索相关文件...',
@@ -1288,36 +1266,53 @@ test('[UI-014] should display tool call chain with real-time updates (SPEC-019)'
     }]
   });
   await setMockExpectation(currentProjectId, 'engineer', { content: '搜索完成，找到 3 个文件。' });
-  log('step11: mock expectations set');
+  log('step7: mock expectations set');
 
   // Send command to engineer (using click-send like runFullWorkflowTest)
-  const textarea = page.locator('textarea[placeholder*="Engineer" i], textarea[placeholder*="工程师"]').first();
-  log('step12: textarea found', { exists: await textarea.count().then(c => c > 0) });
+  const textarea = page.locator('textarea[placeholder*="下达指令"]').first();
+  log('step8: textarea found', { exists: await textarea.count().then(c => c > 0) });
   await textarea.fill('搜索项目中的 TypeScript 文件');
   await page.locator('button').filter({ hasText: /发送/ }).first().click();
-  log('step13: command sent to engineer');
+  log('step9: command sent to engineer');
 
   // Wait for tool chain to update with the tool name
   await expect(toolChain.getByText('search_file')).toBeVisible({ timeout: 30000 });
-  log('step14: search_file appeared in tool chain');
+  log('step10: search_file appeared in tool chain');
 
-  // Test mode toggle (compact → expanded)
+  // Now test mode toggle (tools exist, so mode toggle is rendered)
+  const modeToggle = page.getByTestId('tool-chain-mode-toggle');
+  await expect(modeToggle).toBeVisible();
   await modeToggle.click();
-  log('step15: mode toggled to expanded');
+  log('step11: mode toggled to expanded');
 
   // Verify expanded mode shows index numbers
   await expect(toolChain.locator('.chain-index')).toBeVisible({ timeout: 5000 });
-  log('step16: expanded mode confirmed');
+  log('step12: expanded mode confirmed');
 
   // Toggle back to compact
   await modeToggle.click();
-  // Verify compact mode has chain badges
   await expect(toolChain.locator('.chain-badge')).toBeVisible({ timeout: 5000 });
-  log('step17: compact mode confirmed');
+  log('step13: compact mode confirmed');
 
-  // Verify chain still renders after mode switches
+  // Test config button
+  const configBtn = page.getByTestId('tool-chain-config-btn');
+  await expect(configBtn).toBeVisible();
+  await configBtn.click();
+  log('step14: config panel opened');
+
+  // Verify config panel and adjust max length
+  const maxLengthSlider = page.getByTestId('tool-chain-max-length');
+  await expect(maxLengthSlider).toBeVisible();
+  await maxLengthSlider.fill('20');
+  log('step15: maxLength adjusted to 20');
+
+  // Close config
+  await configBtn.click();
+  log('step16: config panel closed');
+
+  // Verify chain still renders after config change
   await expect(toolChain.getByText('search_file')).toBeVisible();
-  log('step18: chain still visible after mode toggle');
+  log('step17: chain still visible after config change');
 
   process.stderr.write(`[${testId}] ${new Date().toISOString()} test:passed\n`);
 });
