@@ -205,7 +205,7 @@ game-dev-studio/
 - 集成 Star‑Office‑UI 组件，实现双端联动。
 
 #### 8. E2E 测试 (`tests/ui/e2e/studio.spec.ts`)
-- 使用 Playwright 编写，覆盖 13 个核心场景：
+- 使用 Playwright 编写，覆盖 14 个核心场景：
   - UI‑001: 页面加载与基础布局
   - UI‑002: 语言切换
   - UI‑003: 自动驾驶开关
@@ -219,13 +219,14 @@ game-dev-studio/
   - UI‑011: 图片处理微服务
   - UI‑012: Draw.io 图表微服务
   - UI‑013: 视频处理微服务
+  - UI‑014: 工具调用链可视化（SPEC-019，ToolCallChain 组件 + SSE 实时追加）
 - 依赖 Mock Server 模拟 SDK 行为，确保测试可重复、不依赖外部服务。
 
 ##### E2E 测试架构
 - **测试框架**: Playwright + TypeScript
 - **Mock 服务**: `tests/mock-server/codebuddy-sdk-mock-server.mjs`（per-agent 路由队列）
 - **Docker 编排**: `docker-compose.ui-test.yml`（12 个服务：studio-backend + sdk-mock + image + video + creator + drawio + sonarqube + scanner + minio + star-office + ui-app + ui-e2e）
-- **测试入口**: `tests/ui/e2e/studio.spec.ts`（13 个用例）
+- **测试入口**: `tests/ui/e2e/studio.spec.ts`（14 个用例）
 - **核心模式**: `runFullWorkflowTest()` — 目标状态驱动的事件循环，UI-007/008 共用
 - **数据流**: 测试 → Mock Admin API (port 3001) → 预设响应队列 → Agent 调用 /chat/completions → 匹配 (projectId, agentRole) → 返回预设响应
 
