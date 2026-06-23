@@ -111,7 +111,7 @@
 - **断言策略**：成功完成标准工作流（3 handoffs + 1 game），视频处理不影响游戏 count 断言
 
 
-## data-testid 完整对照表（32 个，覆盖率 100%）
+## data-testid 完整对照表（36 个，覆盖率 100%）
 
 | testid | 所在组件 | 用途 |
 |:---|:---|:---|
@@ -150,6 +150,10 @@
 | `handoff-complete-btn` | HandoffPanel | 完成交接按钮（测试未用） |
 | `proposal-item-*` | ProposalList | 提案列表项（ID 后缀） |
 | `game-card-*` | GameList | 游戏卡片（ID 后缀） |
+| `tool-call-chain` | ToolCallChain | 工具链可视化容器 |
+| `tool-chain-mode-toggle` | ToolCallChain | 紧凑/展开模式切换按钮 |
+| `tool-chain-config-btn` | ToolCallChain | 配置面板开关按钮 |
+| `tool-chain-max-length` | ToolCallChain | 最大显示长度滑块 |
 
 ## 测试矩阵总览（14 个用例）
 
