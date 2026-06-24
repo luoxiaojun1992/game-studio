@@ -11,9 +11,11 @@ when tests fail.
 
 ## Prerequisites
 
-- `gh` CLI installed and authenticated (`gh auth status`)
-- `GITHUB_REPO` env var set, or the repo auto-detected via `gh repo view`
 - Working directory: the root of the game-dev-studio repo
+- GitHub token (priority order):
+  1. `GITHUB_TOKEN` environment variable
+  2. `.github-pat` file in repo root (auto-read by scripts)
+  3. `gh auth token` (fallback, requires `gh` CLI)
 
 ## Workflow Overview
 
@@ -44,43 +46,42 @@ Code change → git push → CI triggers automatically
 
 All scripts live under `scripts/` in the skill directory. The paths below are relative to wherever this skill is installed.
 
+### wait-for-ci.sh — Poll Until Complete (core script)
+
+Poll CI check runs until `sonar-check` + `ui-tests` both complete (or timeout).
+Uses GitHub Checks API directly — no `gh` CLI required.
+
+```bash
+# Default: 120s interval, 1h timeout
+bash scripts/wait-for-ci.sh feat/my-branch
+
+# Custom interval and timeout
+bash scripts/wait-for-ci.sh feat/my-branch --interval 60 --timeout 1800
+```
+
+- Shows per-job status (✅/❌/⏳) on each change
+- Prints dots between identical statuses to show liveness
+- Exits immediately if all jobs are already complete
+- Exit codes: 0=all pass, 1=failure, 124=timeout
+- On failure: prints instructions to download logs and fix root cause
+
 ### check-ci.sh — Quick Status Check
 
-Check the latest CI run for a branch.
+Check current CI status for a branch (no polling).
 
 ```bash
 # Check current branch
 bash scripts/check-ci.sh
 
 # Check specific branch
-bash scripts/check-ci.sh chore/my-fix
+bash scripts/check-ci.sh feat/my-branch
 
-# Exit codes: 0=pass, 1=fail, 2=still running
+# Exit codes: 0=all pass, 1=failure, 2=still running
 ```
-
-Output includes:
-- Run ID, status, conclusion, URL
-- Per-job status table (sonar-check, ui-tests)
-
-### wait-for-ci.sh — Poll Until Complete
-
-Poll CI until `sonar-check` + `ui-tests` both complete (or timeout).
-
-```bash
-# Default: 60s interval, 45min timeout
-bash scripts/wait-for-ci.sh chore/my-fix
-
-# Custom interval and timeout
-bash scripts/wait-for-ci.sh chore/my-fix --interval 30 --timeout 1800
-```
-
-- Prints polling progress with elapsed time
-- Shows per-job status on each update
-- Exit codes: 0=all pass, 1=failure, 124=timeout
 
 ### get-logs.sh — Download Failure Logs
 
-Download job logs for a specific CI run.
+Download job logs for a specific workflow run via GitHub Actions API.
 
 ```bash
 # Download all job logs
@@ -95,6 +96,7 @@ bash scripts/get-logs.sh 12345678 --dir ./my-ci-logs
 
 - Extracts error/failure lines for quick scanning
 - Output: one `.log` file per job in the output directory
+- Auto-follows GitHub log download redirects
 
 ## Debug-Fix-Retry Cycle
 
