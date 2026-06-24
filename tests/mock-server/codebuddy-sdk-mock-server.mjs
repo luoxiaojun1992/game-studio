@@ -296,6 +296,12 @@ const server = http.createServer(async (req, res) => {
           console.error(`[mock-debug] returning text="${expected.content || ''}"`);
         }
 
+        // Support delayed response for E2E status observation (e.g., team_builder working indicator)
+        if (typeof expected.delayMs === 'number' && expected.delayMs > 0) {
+          console.error(`[mock-debug] delaying response by ${expected.delayMs}ms for ${projectId}:${agentRole}`);
+          await new Promise(resolve => setTimeout(resolve, expected.delayMs));
+        }
+
         // Build response from expectation
         if (expected.toolCalls && Array.isArray(expected.toolCalls)) {
           if (stream) {
