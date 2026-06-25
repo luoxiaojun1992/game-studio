@@ -1478,14 +1478,14 @@ test('[UI-016] should verify build service health and test mode (SPEC-011)', asy
 
   // Step 3: Verify project info endpoint
   log('step3: project info check');
-  const infoRes = await page.evaluate(async (url, pid) => {
+  const infoRes = await page.evaluate(async (params) => {
     try {
-      const res = await fetch(`${url}/api/projects/${pid}`);
+      const res = await fetch(`${params.url}/api/projects/${params.pid}`);
       return { ok: res.ok, status: res.status };
     } catch (e) {
       return { ok: false, error: String(e) };
     }
-  }, buildServiceUrl, projectId);
+  }, { url: buildServiceUrl, pid: projectId });
   expect(infoRes.ok).toBeTruthy();
   log('step3: info ok');
 
