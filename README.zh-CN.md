@@ -24,6 +24,7 @@
 - Draw.io 图表链路（drawio-service + drawio-export，支持图表 CRUD 与导出）
 - 图片处理链路（image-service + ImageMagick + `image_*` 工具，支持 12 种图片操作）
 - 视频处理链路（video-service + FFmpeg + `video_*` 工具，支持 17 种视频操作）
+- 游戏打包链路（build-service + Node.js + `build_*` 工具，支持 h5/phaser-mobile 自动构建）
 - 静态分析（可扩展 Lint 框架，支持 HTML 结构、HTTP 方法安全、JS 安全、SonarQube 质量扫描等可插拔检查器，覆盖 HTML 模式与 ZIP 模式）
 - 游戏预览支持下载 SonarQube 扫描报告
 - Agent 长期记忆（保存/查询/清理）
@@ -125,6 +126,7 @@ npm run server
 | `DRAWIO_SERVICE_URL` | `http://localhost:8082` | Draw.io 服务基础地址（图表工具调用） |
 | `IMAGE_SERVICE_URL` | `http://localhost:8089` | ImageMagick 图片处理服务基础地址 |
 | `VIDEO_SERVICE_URL` | `http://localhost:8084` | FFmpeg 视频处理服务基础地址 |
+| `BUILD_SERVICE_URL` | `http://localhost:8085` | Node.js 游戏打包服务基础地址 |
 
 ## Docker 部署
 
@@ -146,6 +148,7 @@ game-studio/
 │   ├── file-storage.ts     # 文件存储（MinIO）操作
 │   ├── image-service.ts    # ImageMagick 图片处理服务客户端
 │   ├── video-service.ts    # FFmpeg 视频处理服务客户端
+│   ├── build-service.ts    # Node.js 游戏打包服务客户端
 │   ├── creator-service.ts  # Blender creator 服务客户端
 │   ├── drawio-service.ts   # Draw.io 图表服务客户端
 │   ├── sonar-scanner-service.ts # SonarQube scanner 服务客户端
@@ -175,6 +178,7 @@ game-studio/
 ├── sonar-scanner-service/  # SonarQube scanner 微服务（FastAPI + sonar-scanner CLI）
 ├── image-service/          # ImageMagick 图片处理微服务
 ├── video-service/          # FFmpeg 视频处理微服务
+├── build-service/          # Node.js 游戏打包微服务
 ├── tests/                  # E2E 测试套件（Playwright + Allure）
 ├── scripts/                # 工具脚本
 ├── .agent/                 # Agent 配置、规范、技能、记忆
@@ -260,7 +264,7 @@ game-studio/
 | SPEC-008 | ImageMagick 图片处理微服务 | ✅ 已实现 |
 | SPEC-009 | FFmpeg 视频处理微服务（供 engineer agent 制作游戏中视频素材） | ✅ 已实现 |
 | SPEC-010 | Phaser Mobile 游戏工程规范 | ✅ 已实现 |
-| SPEC-011 | 游戏构建微服务 | 🚧 设计中 |
+| SPEC-011 | 游戏构建微服务 | ✅ 已实现 |
 | SPEC-012 | 游戏运行/伺服微服务 | 🚧 设计中 |
 | SPEC-013 | Playwright 游戏测试微服务 | 🚧 设计中 |
 | SPEC-014 | GitHub Actions CI Agent | ✅ 已实现 |
@@ -295,6 +299,8 @@ make compose-ui-test-down
 | MinIO | `:9000`（API）、`:9001`（控制台） | `minio/minio:latest`，凭证 `minioadmin/minioadmin` |
 | Star Office UI | `:19000` | 从 `star-office-ui/` 构建 |
 | Creator（Blender） | `:8080` | 从 `creator/` 构建 |
+| Video Service (FFmpeg) | `:8084` | 从 `video-service/` 构建 |
+| Build Service (Node.js) | `:8085` | 从 `build-service/` 构建 |
 | Draw.io 服务 | `:8082` | 从 `drawio-service/` 构建 |
 | Draw.io 导出 | `:8083` | `jgraph/drawio:latest` |
 | SonarQube 扫描器 | `:8081` | 从 `sonar-scanner-service/` 构建 |
