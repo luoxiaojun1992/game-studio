@@ -7,7 +7,7 @@ import os
 import shutil
 from typing import Optional
 
-from app.builder import run_build_step, build_log as save_log, BuildError
+from app.builder import run_build_step, save_build_log, BuildError
 from app.schemas import SUPPORTED_GAME_TYPES
 
 
@@ -37,7 +37,7 @@ class H5BuildStrategy(BuildStrategy):
         logs.append(run_build_step(self.project_dir, ["npm", "install", "--prefer-offline"], "npm install"))
         logs.append(run_build_step(self.project_dir, ["npm", "run", "build"], "npm run build"))
         combined = "\n".join(logs)
-        save_log(self.project_dir, combined)
+        save_build_log(self.project_dir, combined)
         print(f"[DEBUG:strategies] H5 build DONE", flush=True)
         return combined
 
@@ -62,7 +62,7 @@ class PhaserMobileBuildStrategy(BuildStrategy):
             logs.append(f"[WARNING] cap sync failed (non-fatal): {e}")
 
         combined = "\n".join(logs)
-        save_log(self.project_dir, combined)
+        save_build_log(self.project_dir, combined)
         print(f"[DEBUG:strategies] Phaser Mobile build DONE", flush=True)
         return combined
 
