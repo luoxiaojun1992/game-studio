@@ -4,7 +4,7 @@ FROM alpine:3.21
 
 # Install Node.js 22 + npm + curl (healthcheck) + Python3 (FastAPI)
 RUN apk add --no-cache \
-    nodejs=22~ \
+    nodejs \
     npm \
     curl \
     python3 \
