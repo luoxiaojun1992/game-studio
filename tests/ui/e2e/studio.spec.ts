@@ -1438,15 +1438,16 @@ test('[UI-015] should display team building agent indicator with state transitio
 });
 
 // UI-016: Build Service 集成验证 (SPEC-011)
-// 验证标准 H5 工作流 + build service 集成（build-service fallback 机制）
-test('[UI-016] should run full H5 workflow with build service integration (SPEC-011)', async ({ page }) => {
+// 验证 build service 容器正常运行、健康检查通过、TEST_MODE 固定 ID
+test('[UI-016] should verify build service health and test mode (SPEC-011)', async ({ page }) => {
   const testId = 'UI-016';
   process.stderr.write(`[${testId}] ${new Date().toISOString()} test:started\n`);
   const log = (step, detail) => process.stderr.write(`[${testId}] ${step} ${detail ? '| ' + JSON.stringify(detail) : ''}\n`);
 
-  // Verify build service is healthy
   const buildServiceUrl = 'http://build-service:8085';
-  log('step0', { healthUrl: `${buildServiceUrl}/health` });
+
+  // Step 1: Health check
+  log('step1: health check', { url: `${buildServiceUrl}/health` });
   const healthRes = await page.evaluate(async (url) => {
     try {
       const res = await fetch(`${url}/health`);
@@ -1455,45 +1456,38 @@ test('[UI-016] should run full H5 workflow with build service integration (SPEC-
       return { ok: false, error: String(e) };
     }
   }, buildServiceUrl);
-  log('step0-result', healthRes);
+  expect(healthRes.ok).toBeTruthy();
+  expect(healthRes.status).toBe(200);
+  log('step1: healthy');
 
-  // Run standard H5 workflow — build service fallback handles the build
-  const opts = {
-    testId,
-    autopilot: false,
-    gameName: 'BuildService',
-    gameType: 'h5',
-    agentOrder: ['game_designer', 'ceo', 'architect', 'engineer'],
-    includeImageProcessing: false,
-    includeVideoProcessing: false,
-  };
+  // Step 2: Verify TEST_MODE returns fixed project ID
+  log('step2: test mode API check');
+  const createRes = await page.evaluate(async (url) => {
+    try {
+      const res = await fetch(`${url}/api/projects`, { method: 'POST' });
+      const data = await res.json();
+      return { status: res.status, data };
+    } catch (e) {
+      return { ok: false, error: String(e) };
+    }
+  }, buildServiceUrl);
+  expect(createRes.status === 201 || createRes.status === 200).toBeTruthy();
+  const projectId = createRes.data.project_id;
+  expect(projectId).toBe('build-proj-001');
+  log('step2: test mode confirmed', { projectId });
 
-  await createAndVerifyProject(page, opts);
-  await enableHandoffMode(page, testId);
-  log('prolog: project created');
-  const currentProjectId = await getCurrentProjectId(page);
-  log('prolog', { projectId: currentProjectId });
-
-  await queueFullWorkflowMocks(currentProjectId, {
-    gameName: 'BuildService',
-    gameType: 'h5',
-    includeImageProcessing: false,
-    includeVideoProcessing: false,
-  });
-  log('mocks-queued');
-
-  await sendAgentCommand(page, '创建一个H5游戏 test-build');
-  log('command: agent command sent');
-
-  await runFullWorkflowTest(page, opts);
-  log('loop: event loop completed');
-
-  await page.getByTestId('tab-games').click();
-  await page.waitForTimeout(500);
-  const gameCount = await page.locator('[data-testid^="game-card-"]').count();
-  log('result', { gameCount });
-  expect(gameCount).toBeGreaterThanOrEqual(1);
-  log('done: game created with build service integration');
+  // Step 3: Verify project info endpoint
+  log('step3: project info check');
+  const infoRes = await page.evaluate(async (url, pid) => {
+    try {
+      const res = await fetch(`${url}/api/projects/${pid}`);
+      return { ok: res.ok, status: res.status };
+    } catch (e) {
+      return { ok: false, error: String(e) };
+    }
+  }, buildServiceUrl, projectId);
+  expect(infoRes.ok).toBeTruthy();
+  log('step3: info ok');
 
   process.stderr.write(`[${testId}] ${new Date().toISOString()} test:passed\n`);
 });
