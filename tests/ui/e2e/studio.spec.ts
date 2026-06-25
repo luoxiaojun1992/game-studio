@@ -1438,8 +1438,8 @@ test('[UI-015] should display team building agent indicator with state transitio
 });
 
 // UI-016: Build Service 集成验证 (SPEC-011)
-// 验证 build service 容器正常运行、健康检查通过、TEST_MODE 固定 ID
-test('[UI-016] should verify build service health and test mode (SPEC-011)', async ({ page }) => {
+// 验证 build service 健康检查 + TEST_MODE + 真实源码构建
+test('[UI-016] should verify build service with real source build (SPEC-011)', async ({ page }) => {
   const testId = 'UI-016';
   process.stderr.write(`[${testId}] ${new Date().toISOString()} test:started\n`);
   const log = (step, detail) => process.stderr.write(`[${testId}] ${step} ${detail ? '| ' + JSON.stringify(detail) : ''}\n`);
@@ -1447,47 +1447,115 @@ test('[UI-016] should verify build service health and test mode (SPEC-011)', asy
   const buildServiceUrl = 'http://build-service:8085';
 
   // Step 1: Health check
-  log('step1: health check', { url: `${buildServiceUrl}/health` });
+  log('step1: health check');
   const healthRes = await page.evaluate(async (url) => {
     try {
       const res = await fetch(`${url}/health`);
       return { ok: res.ok, status: res.status };
-    } catch (e) {
-      return { ok: false, error: String(e) };
-    }
+    } catch (e) { return { ok: false, error: String(e) }; }
   }, buildServiceUrl);
   expect(healthRes.ok).toBeTruthy();
   expect(healthRes.status).toBe(200);
   log('step1: healthy');
 
-  // Step 2: Verify TEST_MODE returns fixed project ID
-  log('step2: test mode API check');
+  // Step 2: TEST_MODE returns fixed project ID
+  log('step2: test mode check');
   const createRes = await page.evaluate(async (url) => {
     try {
       const res = await fetch(`${url}/api/projects`, { method: 'POST' });
       const data = await res.json();
       return { status: res.status, data };
-    } catch (e) {
-      return { ok: false, error: String(e) };
-    }
+    } catch (e) { return { ok: false, error: String(e) }; }
   }, buildServiceUrl);
   expect(createRes.status === 201 || createRes.status === 200).toBeTruthy();
   const projectId = createRes.data.project_id;
   expect(projectId).toBe('build-proj-001');
   log('step2: test mode confirmed', { projectId });
 
-  // Step 3: Verify project info endpoint
-  log('step3: project info check');
-  const infoRes = await page.evaluate(async (params) => {
+  // Step 3: Create minimal real game source tar.gz
+  log('step3: creating real source');
+  const { execSync } = await import('child_process');
+  const fs = await import('fs');
+  const path = await import('path');
+  const os = await import('os');
+
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'build-test-'));
+  const distDir = path.join(tmpDir, 'dist');
+  fs.mkdirSync(distDir, { recursive: true });
+
+  // metadata.json with h5 game_type
+  fs.writeFileSync(path.join(distDir, 'metadata.json'), JSON.stringify({
+    title: 'BuildTest', version: '1.0.0', game_type: 'h5',
+    resolution: { width: 800, height: 600 }, orientation: 'landscape', entry: 'index.html',
+  }));
+
+  // package.json with no deps + simple build script
+  fs.writeFileSync(path.join(tmpDir, 'package.json'), JSON.stringify({
+    name: 'build-test-game', version: '1.0.0', private: true,
+    scripts: { build: 'echo "built ok" && mkdir -p dist && cp -r . dist/ 2>/dev/null || true' },
+  }));
+
+  // Simple index.html
+  fs.writeFileSync(path.join(tmpDir, 'index.html'), '<!DOCTYPE html><html><head><meta charset="utf-8"><title>BuildTest</title></head><body><h1>Hello Build</h1></body></html>');
+
+  const tarPath = path.join(os.tmpdir(), 'build-test-source.tar.gz');
+  execSync(`tar -czf "${tarPath}" -C "${tmpDir}" .`, { stdio: 'pipe' });
+  const tarBuffer = fs.readFileSync(tarPath);
+  const tarBase64 = tarBuffer.toString('base64');
+  log('step3: source created', { sizeBytes: tarBuffer.length });
+
+  // Cleanup temp dir
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+  try { fs.unlinkSync(tarPath); } catch { /* */ }
+
+  // Step 4: Upload source to build service
+  log('step4: uploading source');
+  const uploadRes = await page.evaluate(async (params) => {
     try {
-      const res = await fetch(`${params.url}/api/projects/${params.pid}`);
-      return { ok: res.ok, status: res.status };
-    } catch (e) {
-      return { ok: false, error: String(e) };
-    }
+      const binaryBlob = new Blob(
+        [new Uint8Array(atob(params.tarBase64).split('').map(c => c.charCodeAt(0)))],
+        { type: 'application/gzip' }
+      );
+      const res = await fetch(`${params.url}/api/projects/${params.pid}/upload`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/gzip' },
+        body: binaryBlob,
+      });
+      const data = await res.json();
+      return { ok: res.ok, status: res.status, file_count: data.file_count };
+    } catch (e) { return { ok: false, error: String(e) }; }
+  }, { url: buildServiceUrl, pid: projectId, tarBase64 });
+  expect(uploadRes.ok).toBeTruthy();
+  expect(uploadRes.file_count).toBeGreaterThan(0);
+  log('step4: upload ok', { fileCount: uploadRes.file_count });
+
+  // Step 5: Trigger build
+  log('step5: triggering build');
+  const buildRes = await page.evaluate(async (params) => {
+    try {
+      const res = await fetch(`${params.url}/api/build/${params.pid}`, { method: 'POST' });
+      const data = await res.json();
+      return { ok: res.ok, status: res.status, data };
+    } catch (e) { return { ok: false, error: String(e) }; }
   }, { url: buildServiceUrl, pid: projectId });
-  expect(infoRes.ok).toBeTruthy();
-  log('step3: info ok');
+  expect(buildRes.ok).toBeTruthy();
+  expect(buildRes.data.success).toBeTruthy();
+  expect(buildRes.data.game_type).toBe('h5');
+  expect(buildRes.data.strategy).toBe('h5');
+  expect(buildRes.data.files.length).toBeGreaterThan(0);
+  log('step5: build success', { gameType: buildRes.data.game_type, files: buildRes.data.files.length });
+
+  // Step 6: Download and verify build output
+  log('step6: downloading build output');
+  const dlRes = await page.evaluate(async (params) => {
+    try {
+      const res = await fetch(`${params.url}/api/files/${params.pid}/download`);
+      return { ok: res.ok, status: res.status, size: (await res.arrayBuffer()).byteLength };
+    } catch (e) { return { ok: false, error: String(e) }; }
+  }, { url: buildServiceUrl, pid: projectId });
+  expect(dlRes.ok).toBeTruthy();
+  expect(dlRes.size).toBeGreaterThan(0);
+  log('step6: download ok', { size: dlRes.size });
 
   process.stderr.write(`[${testId}] ${new Date().toISOString()} test:passed\n`);
 });
