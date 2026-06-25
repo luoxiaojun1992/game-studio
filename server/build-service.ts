@@ -143,7 +143,7 @@ export async function uploadBuildSource(opts: UploadBuildSourceOptions): Promise
     throw new Error(`上传源码失败 HTTP ${res.status}: ${detail}`);
   }
 
-  const data = await res.json();
+  const data: any = await res.json();
   const fileCount = data?.file_count || 0;
 
   log(agentId, '上传游戏源码', `project=${bpId}, files=${fileCount}`, 'success');
