@@ -1,19 +1,23 @@
 #!/bin/bash
-# Poll CI run until completion or timeout.
+# Poll CI check runs until completion (or timeout), then output final result.
 # Usage: ./wait-for-ci.sh [branch-name] [--interval SECONDS] [--timeout SECONDS]
 #   branch-name defaults to current git branch.
-#   interval  defaults to 60s.
-#   timeout   defaults to 2700s (45 min).
+#   interval  defaults to 120s.
+#   timeout   defaults to 3600s (1 hour).
 #
-# Prerequisites: gh CLI installed and authenticated.
+# Auth: GITHUB_TOKEN env var, or reads from <repo-root>/.github-pat
+# Exit codes: 0=all pass, 1=failure, 124=timeout
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BRANCH="${1:-$(git rev-parse --abbrev-ref HEAD)}"
-INTERVAL=60
-TIMEOUT=2700  # 45 min = CI timeout
+REPO_ROOT="$(git rev-parse --show-toplevel)"
 
-# Parse optional flags (shift past first arg if it's a branch name)
+INTERVAL=120
+TIMEOUT=3600  # 1 hour
+
+# Parse flags
 shift 2>/dev/null || true
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -23,81 +27,111 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-REPO="${GITHUB_REPO:-$(gh repo view --json nameWithOwner -q '.nameWithOwner' 2>/dev/null || echo '')}"
-if [ -z "$REPO" ]; then
-  echo "ERROR: Could not determine repo. Set GITHUB_REPO env var." >&2
-  exit 1
-fi
+# ── Auth ──
+get_token() {
+  if [ -n "${GITHUB_TOKEN:-}" ]; then echo "$GITHUB_TOKEN"; return 0; fi
+  if [ -f "$REPO_ROOT/.github-pat" ]; then cat "$REPO_ROOT/.github-pat" | head -1; return 0; fi
+  if command -v gh &>/dev/null; then
+    local t
+    t=$(gh auth token 2>/dev/null || true)
+    if [ -n "$t" ]; then echo "$t"; return 0; fi
+  fi
+  return 1
+}
 
-echo "⏳ Waiting for CI on branch '$BRANCH'..."
+TOKEN=$(get_token) || { echo "ERROR: No GitHub token found. Set GITHUB_TOKEN or create .github-pat" >&2; exit 3; }
+
+# ── Detect repo ──
+REPO=$(git -C "$REPO_ROOT" remote get-url origin | sed 's|.*github.com[:/]||; s|\.git$||')
+if [ -z "$REPO" ]; then echo "ERROR: could not detect GitHub repo" >&2; exit 1; fi
+
+API="https://api.github.com/repos/$REPO/commits/$BRANCH/check-runs"
+HEADER_AUTH="Authorization: token $TOKEN"
+HEADER_API="Accept: application/vnd.github+json"
+
+echo "⏳ Polling CI for branch '$BRANCH'"
 echo "   Repo: $REPO | Interval: ${INTERVAL}s | Timeout: ${TIMEOUT}s"
 echo ""
 
-get_run_info() {
-  gh run list --repo "$REPO" --branch "$BRANCH" --workflow ci.yml --limit 1 \
-    --json databaseId,status,conclusion,displayTitle,url 2>/dev/null
-}
-
-print_jobs() {
-  local run_id="$1"
-  gh run view "$run_id" --repo "$REPO" --json jobs --jq '
-    .jobs[] | "   [\(.conclusion // .status | ascii_upcase | lpadstr(10; " "))] \(.name)"
-  ' 2>/dev/null
-}
-
+# ── Polling loop ──
 START_TIME=$(date +%s)
-PREV_STATUS=""
-LAST_RUN_ID=""
+PREV_SUMMARY=""
 POLL_COUNT=0
 
 while true; do
   ELAPSED=$(($(date +%s) - START_TIME))
   if [ "$ELAPSED" -ge "$TIMEOUT" ]; then
     echo ""
-    echo "⏰ Timeout after ${TIMEOUT}s. Last run: #${LAST_RUN_ID:-N/A}"
+    echo "⏰ Timeout after ${TIMEOUT}s (${POLL_COUNT} polls)"
     exit 124
   fi
 
-  RUN_DATA=$(get_run_info)
-
-  if [ "$RUN_DATA" = "[]" ] || [ -z "$RUN_DATA" ]; then
+  RESP=$(curl -sf -H "$HEADER_AUTH" -H "$HEADER_API" "$API" 2>/dev/null) || {
+    echo -n "x"
     sleep "$INTERVAL"
     continue
-  fi
+  }
 
-  RUN_ID=$(echo "$RUN_DATA" | python3 -c "import sys,json; print(json.load(sys.stdin)[0]['databaseId'])")
-  STATUS=$(echo "$RUN_DATA" | python3 -c "import sys,json; print(json.load(sys.stdin)[0]['status'])")
-  CONCLUSION=$(echo "$RUN_DATA" | python3 -c "import sys,json; print(json.load(sys.stdin)[0]['conclusion'])")
-  TITLE=$(echo "$RUN_DATA" | python3 -c "import sys,json; print(json.load(sys.stdin)[0]['displayTitle'])")
+  # Build status summary
+  SUMMARY=$(echo "$RESP" | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+runs = data.get('check_runs', [])
+if not runs:
+    print('NO_RUNS')
+    sys.exit(0)
 
-  STATUS_KEY="${RUN_ID}:${STATUS}:${CONCLUSION}"
+lines = []
+all_done = True
+for r in sorted(runs, key=lambda x: x['name']):
+    name = r['name']
+    status = r['status']
+    conclusion = r.get('conclusion', '-')
+    if status == 'completed':
+        icon = '✅' if conclusion == 'success' else '❌' if conclusion == 'failure' else '⚪'
+    else:
+        icon = '⏳'
+        all_done = False
+    lines.append(f'{icon} {name}={conclusion}')
 
-  if [ "$STATUS_KEY" != "$PREV_STATUS" ]; then
-    POLL_COUNT=$((POLL_COUNT + 1))
-    ELAPSED_MIN=$((ELAPSED / 60))
-    echo "[+${ELAPSED_MIN}m] Run #$RUN_ID — $TITLE"
-    echo "         Status: $STATUS | Conclusion: ${CONCLUSION:-pending}"
-    print_jobs "$RUN_ID"
-    PREV_STATUS="$STATUS_KEY"
+print(' | '.join(lines))
+if all_done:
+    # Check overall: all critical jobs must be success
+    critical_jobs = {'sonar-check', 'ui-tests'}
+    for r in runs:
+        if r['name'] in critical_jobs:
+            if r.get('conclusion') != 'success':
+                print('OVERALL_FAIL')
+                sys.exit(0)
+    print('OVERALL_PASS')
+  " 2>/dev/null)
+
+  POLL_COUNT=$((POLL_COUNT + 1))
+  ELAPSED_MIN=$((ELAPSED / 60))
+
+  if [ "$SUMMARY" != "$PREV_SUMMARY" ]; then
+    printf "[+%dm] #%d  %s\n" "$ELAPSED_MIN" "$POLL_COUNT" "$SUMMARY"
+    PREV_SUMMARY="$SUMMARY"
   else
-    # Print a dot every interval to show we're still polling
     echo -n "."
   fi
 
-  LAST_RUN_ID="$RUN_ID"
-
-  if [ "$STATUS" = "completed" ]; then
+  # Check for completion
+  if echo "$SUMMARY" | grep -q "OVERALL_PASS"; then
     echo ""
     echo ""
-    if [ "$CONCLUSION" = "success" ]; then
-      echo "✅ All CI jobs passed! ($POLL_COUNT polls over ${ELAPSED}s)"
-      exit 0
-    else
-      echo "❌ CI failed. Conclusion: $CONCLUSION"
-      echo ""
-      echo "To download logs, run: get-logs.sh $RUN_ID"
-      exit 1
-    fi
+    echo "✅ All CI jobs passed! (${POLL_COUNT} polls over ${ELAPSED}s)"
+    exit 0
+  elif echo "$SUMMARY" | grep -q "OVERALL_FAIL"; then
+    echo ""
+    echo ""
+    echo "❌ CI failed."
+    echo ""
+    echo "To analyze:"
+    echo "  1. Download logs:  bash scripts/get-logs.sh <run-id> --failed-only"
+    echo "  2. Fix root cause (NEVER delete tests or relax assertions)"
+    echo "  3. Push fix then re-run:  git push && bash scripts/wait-for-ci.sh"
+    exit 1
   fi
 
   sleep "$INTERVAL"

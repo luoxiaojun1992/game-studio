@@ -1,10 +1,10 @@
 #!/bin/bash
-# Download CI job logs for a workflow run.
+# Download CI job logs for a workflow run via GitHub API.
 # Usage: ./get-logs.sh <run-id> [--dir OUTPUT_DIR] [--failed-only]
 #   --dir         Output directory (default: ./ci-logs-<run-id>)
 #   --failed-only Only download logs for failed jobs
 #
-# Prerequisites: gh CLI installed and authenticated.
+# Auth: GITHUB_TOKEN env var, or reads from <repo-root>/.github-pat
 
 set -euo pipefail
 
@@ -16,6 +16,7 @@ fi
 RUN_ID="$1"
 shift
 
+REPO_ROOT="$(git rev-parse --show-toplevel)"
 OUTPUT_DIR="./ci-logs-${RUN_ID}"
 FAILED_ONLY=false
 
@@ -27,11 +28,27 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-REPO="${GITHUB_REPO:-$(gh repo view --json nameWithOwner -q '.nameWithOwner' 2>/dev/null || echo '')}"
-if [ -z "$REPO" ]; then
-  echo "ERROR: Could not determine repo. Set GITHUB_REPO env var." >&2
-  exit 1
-fi
+# ── Auth ──
+get_token() {
+  if [ -n "${GITHUB_TOKEN:-}" ]; then echo "$GITHUB_TOKEN"; return 0; fi
+  if [ -f "$REPO_ROOT/.github-pat" ]; then cat "$REPO_ROOT/.github-pat" | head -1; return 0; fi
+  if command -v gh &>/dev/null; then
+    local t
+    t=$(gh auth token 2>/dev/null || true)
+    if [ -n "$t" ]; then echo "$t"; return 0; fi
+  fi
+  return 1
+}
+
+TOKEN=$(get_token) || { echo "ERROR: No GitHub token found. Set GITHUB_TOKEN or create .github-pat" >&2; exit 3; }
+
+# ── Detect repo ──
+REPO=$(git -C "$REPO_ROOT" remote get-url origin | sed 's|.*github.com[:/]||; s|\.git$||')
+if [ -z "$REPO" ]; then echo "ERROR: could not detect GitHub repo" >&2; exit 1; fi
+
+HEADER_AUTH="Authorization: token $TOKEN"
+HEADER_API="Accept: application/vnd.github+json"
+JOBS_API="https://api.github.com/repos/$REPO/actions/runs/$RUN_ID/jobs"
 
 mkdir -p "$OUTPUT_DIR"
 
@@ -39,29 +56,21 @@ echo "📥 Downloading logs for run #$RUN_ID"
 echo "   Output: $OUTPUT_DIR"
 echo ""
 
-# Get job list
-if [ "$FAILED_ONLY" = true ]; then
-  JOB_FILTER='.jobs[] | select(.conclusion == "failure")'
-else
-  JOB_FILTER='.jobs[]'
-fi
-
-JOBS=$(gh run view "$RUN_ID" --repo "$REPO" --json jobs 2>/dev/null)
-
-if [ -z "$JOBS" ]; then
-  echo "ERROR: Could not fetch jobs for run #$RUN_ID" >&2
+# ── Fetch job list ──
+JOBS_RESP=$(curl -sf -H "$HEADER_AUTH" -H "$HEADER_API" "$JOBS_API" 2>/dev/null) || {
+  echo "ERROR: Failed to fetch jobs for run #$RUN_ID" >&2
   exit 1
-fi
+}
 
-JOB_COUNT=$(echo "$JOBS" | python3 -c "import sys,json; jobs=json.load(sys.stdin)['jobs']; print(len([j for j in jobs]))")
-echo "Found $JOB_COUNT job(s)"
-echo ""
-
-echo "$JOBS" | python3 -c "
+# Parse and download each job log
+echo "$JOBS_RESP" | python3 -c "
 import sys, json
 data = json.load(sys.stdin)
-for job in data['jobs']:
-    print(f\"{job['databaseId']}\t{job['name']}\t{job.get('conclusion','running')}\")
+for job in data.get('jobs', []):
+    jid = job['id']
+    name = job['name']
+    conclusion = job.get('conclusion', 'running')
+    print(f'{jid}\t{name}\t{conclusion}')
 " | while IFS=$'\t' read -r job_id job_name job_conclusion; do
 
   if [ "$FAILED_ONLY" = true ] && [ "$job_conclusion" != "failure" ]; then
@@ -70,22 +79,32 @@ for job in data['jobs']:
   fi
 
   LOG_FILE="${OUTPUT_DIR}/${job_name// /_}-${job_id}.log"
-  echo "  📄 Downloading [$job_conclusion] $job_name → $(basename "$LOG_FILE")"
+  LOG_URL="https://api.github.com/repos/$REPO/actions/jobs/${job_id}/logs"
+  echo "  📄 [$job_conclusion] $job_name → $(basename "$LOG_FILE")"
 
-  gh run view --repo "$REPO" --job "$job_id" --log 2>/dev/null > "$LOG_FILE" || \
-    gh run view --repo "$REPO" --job "$job_id" --log-failed 2>/dev/null > "$LOG_FILE" || \
-    echo "     ⚠️  Failed to download" >&2
+  # GitHub redirects log downloads — follow redirect
+  curl -sL -H "$HEADER_AUTH" "$LOG_URL" -o "$LOG_FILE" 2>/dev/null || {
+    echo "     ⚠️  Failed to download (job may still be running)" >&2
+    continue
+  }
 
-  # Extract key error lines for quick scanning
-  if grep -q -i 'error\|fail\|FAIL\|Error\|exception\|assert' "$LOG_FILE" 2>/dev/null; then
-    echo "     🔴 Errors found:"
-    grep -n -i 'error\|fail\|FAIL\|Error\|exception\|assert' "$LOG_FILE" | head -20 | sed 's/^/       /'
+  # Size check
+  if [ -f "$LOG_FILE" ]; then
+    SIZE=$(wc -c < "$LOG_FILE" | tr -d ' ')
+    echo "     ${SIZE} bytes"
+
+    # Extract key error lines for quick scanning
+    if grep -q -iE '\b(error|fail|exception)\b' "$LOG_FILE" 2>/dev/null; then
+      echo "     🔴 Key errors:"
+      grep -n -iE '\b(error|fail|exception)\b' "$LOG_FILE" | head -20 | sed 's/^/       /'
+    fi
   fi
 
   echo ""
 done
 
-# Summary
-FAIL_COUNT=$(grep -l -i 'error\|fail\|FAIL\|Error' "$OUTPUT_DIR"/*.log 2>/dev/null | wc -l | tr -d ' ')
-echo "📊 Summary: $FAIL_COUNT/$JOB_COUNT job(s) have errors"
-echo "   Logs saved to: $OUTPUT_DIR/"
+echo "📊 Logs saved to: $OUTPUT_DIR/"
+
+JOB_COUNT=$(echo "$JOBS_RESP" | python3 -c "import sys,json; print(len(json.load(sys.stdin).get('jobs',[])))")
+FAIL_COUNT=$(grep -l -iE '\b(error|fail|exception)\b' "$OUTPUT_DIR"/*.log 2>/dev/null | wc -l | tr -d ' ')
+echo "   ${FAIL_COUNT}/${JOB_COUNT} job(s) with errors"

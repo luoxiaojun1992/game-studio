@@ -20,6 +20,8 @@ const setMockExpectation = async (
     content?: string;
     toolCalls?: Array<{ name: string; arguments?: Record<string, unknown> | string }>;
     matcher?: Record<string, unknown>;
+    /** Delay in milliseconds before the mock returns — used for E2E status observation (e.g., team_builder working indicator) */
+    delayMs?: number;
   }
 ) => {
   const resp = await fetch(`${mockAdminBase}/mock/expect`, {
@@ -47,6 +49,10 @@ const expectHandoff = (projectId: string, agentRole: string, toAgent: string) =>
 /** Convenience: queue a plain text completion (no tool calls) for a specific agent */
 const expectText = (projectId: string, agentRole: string, text = '任务已完成。') =>
   setMockExpectation(projectId, agentRole, { content: text });
+
+/** Convenience: queue a delayed response — keeps agent in 'working' status for E2E observation */
+const expectDelayed = (projectId: string, agentRole: string, text: string, delayMs: number) =>
+  setMockExpectation(projectId, agentRole, { content: text, delayMs });
 
 test.beforeEach(async () => {
   process.stderr.write(`[beforeEach] ${new Date().toISOString()} setup:resetting-mock-server\n`);
@@ -1337,6 +1343,96 @@ test('[UI-014] should display tool call chain with real-time updates (SPEC-019)'
   // Verify chain still renders after config change
   await expect(toolChain.getByText('save_memory')).toBeVisible();
   log('step14: chain still visible after config change');
+
+  process.stderr.write(`[${testId}] ${new Date().toISOString()} test:passed\n`);
+});
+
+// ═══════════════════════════════════════════
+// UI-015: Team Building Agent Indicator Light (SPEC-021)
+// ═══════════════════════════════════════════
+test('[UI-015] should display team building agent indicator with state transitions (SPEC-021)', async ({ page }) => {
+  const testId = 'UI-015';
+  const TEAM_BUILDER_DELAY_MS = 3000; // Keep team_builder in "working" for 3s for observation
+
+  const log = (step: string, extra?: Record<string, unknown>) => {
+    let payload = '';
+    if (extra) try { payload = ` ${JSON.stringify(extra)}` } catch { payload = ` ${String(extra)}` }
+    process.stderr.write(`[${testId}] ${new Date().toISOString()} ${step}${payload}\n`);
+  };
+
+  await page.addInitScript(() => localStorage.setItem('game_studio_ui_language', 'zh-CN'));
+
+  // Capture browser console for debugging
+  page.on('console', msg => {
+    if (msg.type() === 'error' || msg.text().includes('[DEBUG:')) {
+      process.stderr.write(`[browser-console:${msg.type()}] ${msg.text()}\n`);
+    }
+  });
+
+  await page.goto('/');
+  log('step1: page loaded');
+
+  const indicator = page.getByTestId('team-building-indicator');
+
+  // ── Verify idle state on initial load ──
+  await expect(indicator).toBeVisible({ timeout: 10000 });
+  await expect(indicator).toHaveAttribute('data-agent-status', 'idle');
+  await expect(indicator.getByText(/空闲/)).toBeVisible();
+  log('step2: idle indicator confirmed');
+
+  // ── Navigate to commands tab and select engineer ──
+  await page.getByTestId('tab-commands').click();
+  await page.waitForTimeout(500);
+  log('step3: commands tab clicked');
+
+  const engineerBtn = page.locator('button').filter({ hasText: /软件工程师/ }).first();
+  await engineerBtn.click();
+  log('step4: engineer agent selected');
+
+  const currentProjectId = await page.locator('select').first().inputValue();
+  log('step5: project detected', { projectId: currentProjectId });
+
+  // ── Set up mocks ──
+  // Engineer does save_memory (fast), finishes → triggers team_builder
+  await setMockExpectation(currentProjectId, 'engineer', {
+    content: '正在保存记忆...',
+    toolCalls: [{
+      name: 'save_memory',
+      arguments: { category: 'technical', content: '项目使用 TypeScript + React 构建' }
+    }]
+  });
+  await setMockExpectation(currentProjectId, 'engineer', { content: '保存完成。' });
+
+  // team_builder mock with 3s delay — stays "working" long enough for Playwright assertion
+  await expectDelayed(currentProjectId, 'team_builder', '团队建设总结完成。', TEAM_BUILDER_DELAY_MS);
+  log('step6: mocks queued (team_builder delayMs=' + TEAM_BUILDER_DELAY_MS + ')');
+
+  // ── Send command to trigger the flow ──
+  const textarea = page.locator('textarea[placeholder*="下达指令"]').first();
+  await textarea.fill('保存项目技术栈信息');
+  await page.locator('button').filter({ hasText: /发送/ }).first().click();
+  log('step7: command sent to engineer');
+
+  // ── Verify team_builder transitions to "working" (green pulse) ──
+  // The team_builder mock has a 3s delay, so it stays in "working" for observation
+  await expect(indicator).toHaveAttribute('data-agent-status', 'working', { timeout: 15000 });
+  await expect(indicator.getByText(/工作中/)).toBeVisible();
+  // Verify pulse animation is active (the dot should have animate-pulse class)
+  const pulseDot = indicator.locator('span.animate-pulse');
+  await expect(pulseDot).toBeVisible();
+  log('step8: working indicator with pulse confirmed');
+
+  // ── Wait for team_builder to finish and return to idle ──
+  await expect(indicator).toHaveAttribute('data-agent-status', 'idle', { timeout: TEAM_BUILDER_DELAY_MS + 10000 });
+  await expect(indicator.getByText(/空闲/)).toBeVisible();
+  log('step9: indicator returned to idle');
+
+  // ── Test click navigates to team_building tab ──
+  await indicator.click();
+  await page.waitForTimeout(500);
+  const teamBuildingTab = page.getByTestId('tab-team_building');
+  await expect(teamBuildingTab).toHaveAttribute('aria-selected', 'true');
+  log('step10: click navigated to team_building tab');
 
   process.stderr.write(`[${testId}] ${new Date().toISOString()} test:passed\n`);
 });

@@ -1,6 +1,6 @@
 # Team Building Agent 指示灯
 
-> **SPEC-021** | 状态：设计中
+> **SPEC-021** | 状态：已实现
 
 ## 目标
 
@@ -189,7 +189,7 @@ const STATUS_STYLE: Record<AgentStatus, { dot: string; bg: string; text: string;
 | `src/components/TeamBuildingIndicator.tsx` | 新增指示灯组件 | 新增（~60行） |
 | `src/pages/StudioPage.tsx` | 集成指示灯到 header | 低（~5行） |
 | `src/types.ts` | 无需修改（已有 AgentRole/AgentStatus 类型） | 无 |
-| `tests/ui/e2e/studio.spec.ts` | 新增 UI-011 测试用例 | 中（~80行） |
+| `tests/ui/e2e/studio.spec.ts` | 新增 UI-015 测试用例（含 mock 延迟机制） | 中（~70行） |
 
 ## 测试策略
 
@@ -197,10 +197,14 @@ const STATUS_STYLE: Record<AgentStatus, { dot: string; bg: string; text: string;
    - `TeamBuildingIndicator` 四种状态渲染正确性
    - `agent` 为 `undefined` 时不渲染
 
-2. **E2E 测试**：
-   - UI-011：team_builder 空闲状态 — 指示灯显示灰色 "空闲"
-   - UI-011：team_builder 工作状态 — 指示灯显示绿色 "工作中" + 脉冲动画
-   - UI-011：点击指示灯跳转到团队建设 Tab
+2. **E2E 测试 (UI-015)**：
+   - 验证 team_builder 空闲状态 — 指示灯显示灰色 "空闲"
+   - 通过 mock server 延迟机制 (delayMs=3000) 触发 team_builder 工作状态
+   - 验证指示灯变为绿色 "工作中" + 脉冲动画 (animate-pulse)
+   - 验证 team_builder 完成后退回 idle 状态
+   - 点击指示灯跳转到团队建设 Tab
+
+3. **Mock 延迟机制**：在 mock server `codebuddy-sdk-mock-server.mjs` 的 `/chat/completions` handler 中，匹配到 expectation 后、构建响应前插入 `await setTimeout(delayMs)`。通过 `expectDelayed(projectId, 'team_builder', text, delayMs)` helper 设置延迟 mock，确保 team_builder 在 `working` 状态停留足够时间供 Playwright 断言。
 
 ## UI Test 验收规则
 
@@ -234,13 +238,19 @@ const STATUS_STYLE: Record<AgentStatus, { dot: string; bg: string; text: string;
 
 ### E2E 测试日志
 
-UI-011 测试用例：
+UI-015 测试用例：
 
 ```
-[UI-011] step1: 验证 team_builder 空闲状态指示灯存在且显示灰色
-[UI-011] step2: 通过 Mock Server 触发 team_builder 状态切换为 working
-[UI-011] step3: 验证指示灯变为绿色脉冲状态
-[UI-011] step4: 点击指示灯，验证跳转到团队建设 Tab
+[UI-015] step1: page loaded
+[UI-015] step2: idle indicator confirmed
+[UI-015] step3: commands tab clicked
+[UI-015] step4: engineer agent selected
+[UI-015] step5: project detected
+[UI-015] step6: mocks queued (team_builder delayMs=3000)
+[UI-015] step7: command sent to engineer
+[UI-015] step8: working indicator with pulse confirmed
+[UI-015] step9: indicator returned to idle
+[UI-015] step10: click navigated to team_building tab
 ```
 
 ## 验证标准

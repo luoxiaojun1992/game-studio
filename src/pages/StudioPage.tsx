@@ -12,6 +12,7 @@ import HandoffPanel from '../components/HandoffPanel';
 import TaskBoardPanel from '../components/TaskBoardPanel';
 import StarOfficeStudio from '../components/StarOfficeStudio';
 import QuestionnaireForm from '../components/QuestionnaireForm';
+import TeamBuildingIndicator from '../components/TeamBuildingIndicator';
 import { useI18n } from '../i18n';
 
 const AGENT_NAMES_ZH: Record<string, string> = {
@@ -459,6 +460,10 @@ export default function StudioPage() {
               <span>{workingAgents.length} {l('个 Agent 工作中', 'agents working')}</span>
             </div>
           )}
+          <TeamBuildingIndicator
+            agent={teamBuildingAgent}
+            onTabSwitch={setActiveTab}
+          />
           <div className="flex items-center rounded-lg border border-gray-700 overflow-hidden">
             <button
               onClick={() => setLanguage('zh-CN')}
