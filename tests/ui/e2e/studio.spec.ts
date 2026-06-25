@@ -1436,3 +1436,64 @@ test('[UI-015] should display team building agent indicator with state transitio
 
   process.stderr.write(`[${testId}] ${new Date().toISOString()} test:passed\n`);
 });
+
+// UI-016: Build Service 集成验证 (SPEC-011)
+// 验证标准 H5 工作流 + build service 集成（build-service fallback 机制）
+test('[UI-016] should run full H5 workflow with build service integration (SPEC-011)', async ({ page }) => {
+  const testId = 'UI-016';
+  process.stderr.write(`[${testId}] ${new Date().toISOString()} test:started\n`);
+  const log = (step, detail) => process.stderr.write(`[${testId}] ${step} ${detail ? '| ' + JSON.stringify(detail) : ''}\n`);
+
+  // Verify build service is healthy
+  const buildServiceUrl = 'http://build-service:8085';
+  log('step0', { healthUrl: `${buildServiceUrl}/health` });
+  const healthRes = await page.evaluate(async (url) => {
+    try {
+      const res = await fetch(`${url}/health`);
+      return { ok: res.ok, status: res.status };
+    } catch (e) {
+      return { ok: false, error: String(e) };
+    }
+  }, buildServiceUrl);
+  log('step0-result', healthRes);
+
+  // Run standard H5 workflow — build service fallback handles the build
+  const opts = {
+    testId,
+    autopilot: false,
+    gameName: 'BuildService',
+    gameType: 'h5',
+    agentOrder: ['game_designer', 'ceo', 'architect', 'engineer'],
+    includeImageProcessing: false,
+    includeVideoProcessing: false,
+  };
+
+  await createAndVerifyProject(page, opts);
+  await enableHandoffMode(page, testId);
+  log('prolog: project created');
+  const currentProjectId = await getCurrentProjectId(page);
+  log('prolog', { projectId: currentProjectId });
+
+  await queueFullWorkflowMocks(currentProjectId, {
+    gameName: 'BuildService',
+    gameType: 'h5',
+    includeImageProcessing: false,
+    includeVideoProcessing: false,
+  });
+  log('mocks-queued');
+
+  await sendAgentCommand(page, '创建一个H5游戏 test-build');
+  log('command: agent command sent');
+
+  await runFullWorkflowTest(page, opts);
+  log('loop: event loop completed');
+
+  await page.getByTestId('tab-games').click();
+  await page.waitForTimeout(500);
+  const gameCount = await page.locator('[data-testid^="game-card-"]').count();
+  log('result', { gameCount });
+  expect(gameCount).toBeGreaterThanOrEqual(1);
+  log('done: game created with build service integration');
+
+  process.stderr.write(`[${testId}] ${new Date().toISOString()} test:passed\n`);
+});

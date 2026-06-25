@@ -488,6 +488,9 @@ class AgentManager extends EventEmitter {
         'video_crop', 'video_rotate', 'video_change_speed', 'video_extract_frames', 'video_extract_audio',
         'video_add_audio', 'video_add_text', 'video_add_watermark', 'video_generate_gif', 'video_gif_to_video',
         'video_create_thumbnail', 'video_write_file', 'video_upload_file', 'video_download_file', 'video_delete_file',
+        'build_create_project', 'build_list_projects', 'build_delete_project',
+        'build_upload_source', 'build_trigger', 'build_get_status',
+        'build_list_files', 'build_download', 'build_delete_file',
         'get_game_types', 'get_game_framework_spec', 'get_common_spec',
       ];
 

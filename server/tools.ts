@@ -108,6 +108,18 @@ import type {
   UploadVideoFileOptions, DownloadVideoFileOptions, DeleteVideoFileOptions,
 } from './video-service.js';
 
+import {
+  createBuildProject, deleteBuildProject, listBuildProjects,
+  uploadBuildSource, triggerBuild, getBuildStatus,
+  listBuildFiles, downloadBuild, uploadBuildFile, deleteBuildFile,
+} from './build-service.js';
+import type {
+  CreateBuildProjectOptions, DeleteBuildProjectOptions,
+  UploadBuildSourceOptions, TriggerBuildOptions,
+  GetBuildStatusOptions, ListBuildFilesOptions,
+  DownloadBuildOptions, UploadBuildFileOptions, DeleteBuildFileOptions,
+} from './build-service.js';
+
 /**
  */
 type ToolLogFn = (agentId: AgentRole, action: string, detail: string, level: 'info' | 'warn' | 'error' | 'success') => void;
@@ -836,6 +848,71 @@ export const TOOL_META_DEFINITIONS: ToolMeta[] = [
     }
   },
   {
+    name: 'build_create_project',
+    description: '创建游戏打包 project（仅 engineer 可用）。在 backend 数据库创建记录，然后调用 build service 创建容器内项目目录，返回 build_project_id。建议在完成构建后调用 build_delete_project 清理资源。',
+    inputSchema: {
+      name: z.string().min(1).max(50).describe('打包 project 名称'),
+    }
+  },
+  {
+    name: 'build_list_projects',
+    description: '列出当前 studio project 下所有打包 project（仅 engineer 可用）。',
+    inputSchema: {
+      limit: z.number().min(1).max(50).optional().default(20).describe('返回条数上限'),
+    }
+  },
+  {
+    name: 'build_delete_project',
+    description: '删除打包 project（仅 engineer 可用）。先调用 build service 删除远程目录（幂等），再删除 backend DB 记录。建议构建产物下载完成后主动调用以释放容器存储空间。',
+    inputSchema: {
+      build_project_id: z.string().describe('build_project_id（来自 build_create_project 的返回值）'),
+    }
+  },
+  {
+    name: 'build_upload_source',
+    description: '上传游戏源码到 build service（仅 engineer 可用）。传入源码的 tar.gz 二进制文件路径，上传到 build service 项目目录并解压。',
+    inputSchema: {
+      build_project_id: z.string().describe('build_project_id'),
+      file_path: z.string().min(1).max(512).describe('本地源码 tar.gz 文件路径'),
+    }
+  },
+  {
+    name: 'build_trigger',
+    description: '触发游戏构建（仅 engineer 可用）。自动读取 metadata.json 判断 game_type，选择对应构建策略（h5/phaser-mobile），执行 npm install + npm run build + (可选) cap sync。',
+    inputSchema: {
+      build_project_id: z.string().describe('build_project_id'),
+    }
+  },
+  {
+    name: 'build_get_status',
+    description: '查询构建状态（仅 engineer 可用）。返回 build_status（pending/building/completed/failed）、game_type、构建日志和产物文件列表。',
+    inputSchema: {
+      build_project_id: z.string().describe('build_project_id'),
+    }
+  },
+  {
+    name: 'build_list_files',
+    description: '列出 build service 项目中的文件（仅 engineer 可用）。递归列出所有文件和目录。',
+    inputSchema: {
+      build_project_id: z.string().describe('build_project_id'),
+    }
+  },
+  {
+    name: 'build_download',
+    description: '下载构建产物为 tar.gz（仅 engineer 可用）。将整个 build service 项目目录打包下载到本地 output 目录，返回本地文件路径。',
+    inputSchema: {
+      build_project_id: z.string().describe('build_project_id'),
+    }
+  },
+  {
+    name: 'build_delete_file',
+    description: '删除 build service 项目中的文件（幂等）（仅 engineer 可用）。',
+    inputSchema: {
+      build_project_id: z.string().describe('build_project_id'),
+      filename: z.string().min(1).max(128).describe('要删除的文件名'),
+    }
+  },
+  {
     name: 'drawio_create_project',
     description: '创建 draw.io 图表 project。在 backend 数据库创建记录，然后调用 drawio service 创建项目目录，返回 drawio_project_id。',
     inputSchema: {
@@ -1391,6 +1468,99 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
         return {
           content: [{ type: 'text' as const, text: `提交游戏失败：路径必须是目录，不支持单文件提交。` }]
         };
+      }
+
+      // ========== Build Service 集成：自动构建源码 ==========
+      const buildServiceEnabled = process.env.BUILD_SERVICE_URL;
+      let buildProjectId: string | null = null;
+      if (buildServiceEnabled) {
+        try {
+          console.error(`[DEBUG submit_game] build-service integration START`);
+          const {
+            createBuildProject: createBp,
+            uploadBuildSource: uploadBs,
+            triggerBuild: triggerB,
+            downloadBuild: downloadB,
+            deleteBuildProject: deleteBp,
+          } = await import('./build-service.js');
+
+          // Step 1: Create build project
+          const bpResult = await createBp({
+            projectId: scopedProjectId,
+            name: `build-${scopedProjectId}-${Date.now()}`,
+            agentId,
+            logFn: log,
+          });
+          buildProjectId = bpResult.buildProjectId;
+          console.error(`[DEBUG submit_game] build-service: created project buildProjectId=${buildProjectId}`);
+
+          // Step 2: Create source tar.gz from games/latest
+          const childProcess = await import('child_process');
+          const sourceTarPath = path.join('/tmp', `${scopedProjectId}_source.tar.gz`);
+          const sourceTarCmd = `cd "${outputDir}" && tar -czf "${sourceTarPath}" "${resolvedFilePath}"`;
+          childProcess.execSync(sourceTarCmd, { stdio: 'pipe' });
+          const tarGz = fs.readFileSync(sourceTarPath);
+          console.error(`[DEBUG submit_game] build-service: source tar.gz size=${tarGz.length}`);
+
+          // Step 3: Upload source
+          await uploadBs({
+            buildProjectId,
+            tarGz: Buffer.from(tarGz),
+            agentId,
+            logFn: log,
+          });
+          console.error(`[DEBUG submit_game] build-service: source uploaded`);
+
+          // Step 4: Trigger build
+          const buildResult = await triggerB({
+            buildProjectId,
+            agentId,
+            logFn: log,
+          });
+          console.error(`[DEBUG submit_game] build-service: build result game_type=${buildResult.game_type} strategy=${buildResult.strategy} files=${buildResult.files.length}`);
+
+          // Step 5: Download build output
+          const buildOutputDir = path.join('/tmp', `${scopedProjectId}_build_output`);
+          const dlResult = await downloadB({
+            buildProjectId,
+            localOutputDir: buildOutputDir,
+            agentId,
+            logFn: log,
+          });
+          console.error(`[DEBUG submit_game] build-service: downloaded to ${dlResult.localPath}`);
+
+          // Step 6: Extract and replace dist/
+          const distDir = path.join(targetPath, 'dist');
+          if (fs.existsSync(distDir)) {
+            fs.rmSync(distDir, { recursive: true });
+          }
+          fs.mkdirSync(distDir, { recursive: true });
+          // Extract tar.gz
+          childProcess.execSync(`tar -xzf "${dlResult.localPath}" -C "${distDir}"`, { stdio: 'pipe' });
+          console.error(`[DEBUG submit_game] build-service: dist/ replaced with build output`);
+
+          // Cleanup temp files
+          try { fs.unlinkSync(sourceTarPath); } catch { /* */ }
+          try { fs.rmSync(dlResult.localPath); } catch { /* */ }
+          try { fs.rmSync(buildOutputDir, { recursive: true }); } catch { /* */ }
+
+          // Step 7: Delete build project
+          try {
+            await deleteBp({
+              projectId: scopedProjectId,
+              buildProjectId,
+              agentId,
+              logFn: log,
+            });
+          } catch { /*幂等忽略*/ }
+
+        } catch (buildError: any) {
+          console.error(`[DEBUG submit_game] build-service integration FAILED: ${buildError?.message || String(buildError)}`);
+          // Fall back to original flow: use games/latest/dist/ as-is
+          log(agentId, 'build-service 集成异常', `构建服务调用失败，使用原始 dist/ 目录: ${buildError?.message || String(buildError)}`, 'warn');
+        }
+      } else {
+        console.error(`[DEBUG submit_game] build-service skipped: BUILD_SERVICE_URL not set`);
       }
 
       // 创建临时 ZIP 文件
@@ -2905,6 +3075,166 @@ export function createStudioToolsServer(projectId: string, agentId: AgentRole, l
       await deleteVideoFile(opts);
       return {
         content: [{ type: 'text' as const, text: `已删除视频文件：${filename}（远程 + 本地）` }]
+      };
+    },
+
+    build_create_project: async ({ name }: any) => {
+      const opts: CreateBuildProjectOptions = {
+        projectId: scopedProjectId,
+        name,
+        agentId,
+        logFn: log,
+      };
+      try {
+        const result = await createBuildProject(opts);
+        return {
+          content: [{ type: 'text' as const, text: `打包 project 已创建。build_project_id: ${result.buildProjectId}` }]
+        };
+      } catch (error: any) {
+        log(agentId, '创建打包 project 失败', `name=${name} error=${error?.message || String(error)}`, 'error');
+        throw new Error(`创建打包 project 失败：${error?.message || String(error)}`);
+      }
+    },
+
+    build_list_projects: async ({ limit = 20 }: any) => {
+      const projects = listBuildProjects(scopedProjectId, limit);
+      if (projects.length === 0) {
+        return { content: [{ type: 'text' as const, text: '暂无打包 project' }] };
+      }
+      const lines = projects.map((p: any) =>
+        `- ${p.name} | build_project_id: ${p.build_project_id} | game_type: ${p.game_type || 'unknown'} | status: ${p.build_status} | ${p.updated_at}`
+      ).join('\n');
+      return { content: [{ type: 'text' as const, text: lines }] };
+    },
+
+    build_delete_project: async ({ build_project_id }: any) => {
+      if (!build_project_id || typeof build_project_id !== 'string') {
+        throw new Error('build_project_id 不能为空');
+      }
+      const opts: DeleteBuildProjectOptions = {
+        projectId: scopedProjectId,
+        buildProjectId: build_project_id.trim(),
+        agentId,
+        logFn: log,
+      };
+      await deleteBuildProject(opts);
+      return {
+        content: [{ type: 'text' as const, text: `打包 project 已删除 (build_project_id: ${build_project_id})` }]
+      };
+    },
+
+    build_upload_source: async ({ build_project_id, file_path }: any) => {
+      if (!build_project_id || typeof build_project_id !== 'string') {
+        throw new Error('build_project_id 不能为空');
+      }
+      if (!file_path || typeof file_path !== 'string' || !file_path.trim()) {
+        throw new Error('file_path 不能为空');
+      }
+      const fs = await import('fs');
+      const pathModule = await import('path');
+      const resolvedPath = pathModule.resolve(file_path.trim());
+      if (!fs.existsSync(resolvedPath)) {
+        throw new Error(`文件不存在：${resolvedPath}`);
+      }
+      const tarGz = fs.readFileSync(resolvedPath);
+      const opts: UploadBuildSourceOptions = {
+        buildProjectId: build_project_id.trim(),
+        tarGz: Buffer.from(tarGz),
+        agentId,
+        logFn: log,
+      };
+      const result = await uploadBuildSource(opts);
+      return {
+        content: [{ type: 'text' as const, text: `源码已上传。文件数：${result.fileCount}` }]
+      };
+    },
+
+    build_trigger: async ({ build_project_id }: any) => {
+      if (!build_project_id || typeof build_project_id !== 'string') {
+        throw new Error('build_project_id 不能为空');
+      }
+      const opts: TriggerBuildOptions = {
+        buildProjectId: build_project_id.trim(),
+        agentId,
+        logFn: log,
+      };
+      const result = await triggerBuild(opts);
+      return {
+        content: [{ type: 'text' as const, text: `构建完成。game_type: ${result.game_type}, strategy: ${result.strategy}, 产物文件: ${result.files.length} 个\n\n日志:\n${result.build_log.substring(0, 2000)}` }]
+      };
+    },
+
+    build_get_status: async ({ build_project_id }: any) => {
+      if (!build_project_id || typeof build_project_id !== 'string') {
+        throw new Error('build_project_id 不能为空');
+      }
+      const opts: GetBuildStatusOptions = {
+        buildProjectId: build_project_id.trim(),
+        agentId,
+        logFn: log,
+      };
+      const status = await getBuildStatus(opts);
+      const text = [
+        `build_status: ${status.build_status}`,
+        `game_type: ${status.game_type || 'unknown'}`,
+        `output_files: ${status.output_files.length} 个`,
+      ].join('\n');
+      return { content: [{ type: 'text' as const, text }] };
+    },
+
+    build_list_files: async ({ build_project_id }: any) => {
+      if (!build_project_id || typeof build_project_id !== 'string') {
+        throw new Error('build_project_id 不能为空');
+      }
+      const opts: ListBuildFilesOptions = {
+        buildProjectId: build_project_id.trim(),
+        agentId,
+        logFn: log,
+      };
+      const files = await listBuildFiles(opts);
+      if (files.length === 0) {
+        return { content: [{ type: 'text' as const, text: '暂无文件' }] };
+      }
+      const lines = files.map((f: any) =>
+        `- [${f.type}] ${f.filename}${f.size_bytes !== undefined ? ` (${f.size_bytes} bytes)` : ''}`
+      ).join('\n');
+      return { content: [{ type: 'text' as const, text: lines }] };
+    },
+
+    build_download: async ({ build_project_id }: any) => {
+      if (!build_project_id || typeof build_project_id !== 'string') {
+        throw new Error('build_project_id 不能为空');
+      }
+      const pathModule = await import('path');
+      const localOutputDir = pathModule.resolve(_toolsDirname, '..', 'output', scopedProjectId, 'builds');
+      const opts: DownloadBuildOptions = {
+        buildProjectId: build_project_id.trim(),
+        localOutputDir,
+        agentId,
+        logFn: log,
+      };
+      const result = await downloadBuild(opts);
+      return {
+        content: [{ type: 'text' as const, text: `构建产物已下载到：${result.localPath} (${result.sizeBytes} bytes)` }]
+      };
+    },
+
+    build_delete_file: async ({ build_project_id, filename }: any) => {
+      if (!build_project_id || typeof build_project_id !== 'string') {
+        throw new Error('build_project_id 不能为空');
+      }
+      if (!filename || typeof filename !== 'string' || !filename.trim()) {
+        throw new Error('filename 不能为空');
+      }
+      const opts: DeleteBuildFileOptions = {
+        buildProjectId: build_project_id.trim(),
+        filename: filename.trim(),
+        agentId,
+        logFn: log,
+      };
+      await deleteBuildFile(opts);
+      return {
+        content: [{ type: 'text' as const, text: `已删除文件：${filename}` }]
       };
     },
 
