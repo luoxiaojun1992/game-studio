@@ -49,6 +49,7 @@ export const AGENT_IDS = ['engineer', 'architect', 'game_designer', 'biz_designe
 - 建模工具已并入单一 studio-tools（`blender_*`），并仅对 `engineer` 角色开放
 - 图片处理工具（`image_*`）通过 `image-service.ts` 调用 image 微服务，12 个操作
 - 视频处理工具（`video_*`）通过 `video-service.ts` 调用 video 微服务，17 个操作
+- 游戏打包工具（`build_*`）通过 `build-service.ts` 调用 build 微服务（Node.js 22），9 个工具：项目 CRUD、源码上传、构建触发、状态查询、文件管理
 - draw.io 工具（`drawio_*`）覆盖图表 CRUD/导出，`drawio_list_elements` 支持元素分页检索
 - 记忆通过 `getMemorySummaryForPrompt()` 注入 systemPrompt
 
@@ -62,6 +63,7 @@ export const AGENT_IDS = ['engineer', 'architect', 'game_designer', 'biz_designe
 | Creator 集成 | `server/creator-service.ts`、`creator/` |
 | Image 处理 | `server/image-service.ts`、`image-service/` |
 | Video 处理 | `server/video-service.ts`、`video-service/` |
+| Build 打包 | `server/build-service.ts`、`build-service/` |
 | Draw.io 集成 | `server/drawio-service.ts`、`drawio-service/` |
 | 数据库操作 | `server/db.ts` |
 | 文件存储 | `server/file-storage.ts`、`server/minio-client.ts` |

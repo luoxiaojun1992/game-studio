@@ -1,16 +1,16 @@
-# Graph Report - game-dev-studio  (2026-06-24)
+# Graph Report - game-dev-studio  (2026-06-25)
 
 ## Corpus Check
-- 242 files · ~522,883 words
+- 253 files · ~529,625 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 3240 nodes · 5161 edges · 248 communities (199 shown, 49 thin omitted)
-- Extraction: 83% EXTRACTED · 17% INFERRED · 0% AMBIGUOUS · INFERRED: 875 edges (avg confidence: 0.5)
+- 3383 nodes · 5403 edges · 264 communities (212 shown, 52 thin omitted)
+- Extraction: 83% EXTRACTED · 17% INFERRED · 0% AMBIGUOUS · INFERRED: 903 edges (avg confidence: 0.5)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `482dcd8e`
+- Built from commit: `bf775c9f`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -56,11 +56,14 @@
 - [[_COMMUNITY_Community 38|Community 38]]
 - [[_COMMUNITY_Community 39|Community 39]]
 - [[_COMMUNITY_Community 40|Community 40]]
+- [[_COMMUNITY_Community 41|Community 41]]
 - [[_COMMUNITY_Community 42|Community 42]]
 - [[_COMMUNITY_Community 43|Community 43]]
 - [[_COMMUNITY_Community 44|Community 44]]
+- [[_COMMUNITY_Community 45|Community 45]]
 - [[_COMMUNITY_Community 46|Community 46]]
 - [[_COMMUNITY_Community 47|Community 47]]
+- [[_COMMUNITY_Community 48|Community 48]]
 - [[_COMMUNITY_Community 49|Community 49]]
 - [[_COMMUNITY_Community 50|Community 50]]
 - [[_COMMUNITY_Community 51|Community 51]]
@@ -82,9 +85,13 @@
 - [[_COMMUNITY_Community 67|Community 67]]
 - [[_COMMUNITY_Community 68|Community 68]]
 - [[_COMMUNITY_Community 69|Community 69]]
+- [[_COMMUNITY_Community 70|Community 70]]
+- [[_COMMUNITY_Community 71|Community 71]]
 - [[_COMMUNITY_Community 72|Community 72]]
+- [[_COMMUNITY_Community 73|Community 73]]
 - [[_COMMUNITY_Community 74|Community 74]]
 - [[_COMMUNITY_Community 75|Community 75]]
+- [[_COMMUNITY_Community 76|Community 76]]
 - [[_COMMUNITY_Community 77|Community 77]]
 - [[_COMMUNITY_Community 78|Community 78]]
 - [[_COMMUNITY_Community 79|Community 79]]
@@ -244,7 +251,16 @@
 - [[_COMMUNITY_Community 251|Community 251]]
 - [[_COMMUNITY_Community 252|Community 252]]
 - [[_COMMUNITY_Community 253|Community 253]]
+- [[_COMMUNITY_Community 254|Community 254]]
+- [[_COMMUNITY_Community 255|Community 255]]
+- [[_COMMUNITY_Community 256|Community 256]]
+- [[_COMMUNITY_Community 257|Community 257]]
 - [[_COMMUNITY_Community 258|Community 258]]
+- [[_COMMUNITY_Community 259|Community 259]]
+- [[_COMMUNITY_Community 260|Community 260]]
+- [[_COMMUNITY_Community 261|Community 261]]
+- [[_COMMUNITY_Community 262|Community 262]]
+- [[_COMMUNITY_Community 263|Community 263]]
 
 ## God Nodes (most connected - your core abstractions)
 1. `HTTPException` - 40 edges
@@ -261,16 +277,17 @@
 ## Surprising Connections (you probably didn't know these)
 - `collect_files()` --calls--> `Path`  [INFERRED]
   .agent/skills/code-lint/scripts/check_backticks.py → sonar-scanner-service/app/routers/scan.py
-- `ImageOperationResponse` --uses--> `CompressRequest`  [INFERRED]
-  image-service/app/routers/image.py → video-service/app/schemas.py
-- `ImageOperationResponse` --uses--> `ConvertRequest`  [INFERRED]
-  image-service/app/routers/image.py → video-service/app/schemas.py
-- `ImageOperationResponse` --uses--> `CropRequest`  [INFERRED]
-  image-service/app/routers/image.py → video-service/app/schemas.py
-- `ImageOperationResponse` --uses--> `ResizeRequest`  [INFERRED]
-  image-service/app/routers/image.py → video-service/app/schemas.py
+- `FileListResponse` --uses--> `FileItem`  [INFERRED]
+  creator/app/routers/file.py → video-service/app/schemas.py
+- `FileListResponse` --uses--> `FileListResponse`  [INFERRED]
+  creator/app/routers/file.py → video-service/app/schemas.py
+- `FileResponse` --uses--> `FileItem`  [INFERRED]
+  creator/app/routers/file.py → video-service/app/schemas.py
+- `FileResponse` --uses--> `FileListResponse`  [INFERRED]
+  creator/app/routers/file.py → video-service/app/schemas.py
 
 ## Import Cycles
+- 1-file cycle: `build-service/app/main.py -> build-service/app/main.py`
 - 1-file cycle: `creator/app/main.py -> creator/app/main.py`
 - 1-file cycle: `drawio-service/app/main.py -> drawio-service/app/main.py`
 - 1-file cycle: `image-service/app/main.py -> image-service/app/main.py`
@@ -294,23 +311,23 @@
 - **Agent Communication System** — images_command_commands_tab, images_command_game_designer_agent, images_command_zh_cn_commands_tab, images_command_zh_cn_software_engineer_agent [INFERRED 0.85]
 - **RPG Game Extension Features** — images_command_zh_cn_weather_system, images_command_zh_cn_achievement_system, images_command_zh_cn_shop_system, images_command_zh_cn_inventory_system [EXTRACTED 0.95]
 
-## Communities (248 total, 49 thin omitted)
+## Communities (264 total, 52 thin omitted)
 
 ### Community 0 - "Community 0"
 Cohesion: 0.07
 Nodes (68): execute(), ImageMagick CLI wrapper.  Uses `magick` (ImageMagick 7) CLI to execute image pro, Execute an ImageMagick command via subprocess.      Args:         cmd: Command l, add_margin(), batch(), color_adjust(), composite(), convert_format() (+60 more)
 
 ### Community 1 - "Community 1"
-Cohesion: 0.07
-Nodes (122): AddAudioRequest, AddMarginRequest, AddTextRequest, AddWatermarkRequest, execute(), FFmpegError, ffprobe_info(), FFmpeg CLI wrapper.  Uses `ffmpeg` and `ffprobe` CLI to execute video processing (+114 more)
+Cohesion: 0.09
+Nodes (82): AddAudioRequest, AddMarginRequest, AddTextRequest, AddWatermarkRequest, FFmpegError, Raised when FFmpeg execution fails (non-zero exit or command error)., ImageMagickError, Raised when ImageMagick execution fails (non-zero exit or command error). (+74 more)
 
 ### Community 2 - "Community 2"
 Cohesion: 0.02
-Nodes (34): CEO_AGENT_ID, dataDir, db, DbAgentMemory, DbAgentSession, DbBlenderProject, DbCommand, DbDrawioProject (+26 more)
+Nodes (35): CEO_AGENT_ID, dataDir, db, DbAgentMemory, DbAgentSession, DbBlenderProject, DbBuildProject, DbCommand (+27 more)
 
 ### Community 3 - "Community 3"
-Cohesion: 0.18
-Nodes (23): execute_script(), Blender Python CLI wrapper.  Uses `blender --background --python-expr` to execut, Ensure project_path exists and is inside /app/data/projects/. Returns resolved p, Execute a Blender Python script in --background mode.      Args:         script_, validate_project_path(), HTTPException, blender_add_material(), blender_add_modifier() (+15 more)
+Cohesion: 0.07
+Nodes (35): BuildError, Build executor — handles subprocess invocation for npm/vite/capacitor.  All buil, Raised when a build step fails., Execute a build step (npm install / npm run build / npx cap sync).      Args:, Save build log to build.log in the project directory., run_build_step(), save_build_log(), build_project() (+27 more)
 
 ### Community 4 - "Community 4"
 Cohesion: 0.08
@@ -318,7 +335,7 @@ Nodes (57): AddConnectorRequest, AddShapeRequest, append_cell_to_xml(), _apply_s
 
 ### Community 5 - "Community 5"
 Cohesion: 0.08
-Nodes (51): AGENT_ID_ENUM, AutoHandoffHook, ToolLogFn, ToolMeta, _toolsDirname, createVideoProject(), CreateVideoProjectOptions, deleteVideoFile() (+43 more)
+Nodes (54): AGENT_ID_ENUM, AutoHandoffHook, ToolLogFn, ToolMeta, createStudioToolsServer(), requiredTextSchema(), singleLineTitleSchema(), _toolsDirname (+46 more)
 
 ### Community 6 - "Community 6"
 Cohesion: 0.04
@@ -333,8 +350,8 @@ Cohesion: 0.17
 Nodes (10): CI Workflow (.github/workflows/ci.yml), description Field XSS Sanitization, gh CLI (GitHub API Client), GitHub PAT Credentials Convention, renderQuestionnaireToMarkdown, sanitizeHtml Utility, SonarQube Lint Checker, submit_game MCP Tool (+2 more)
 
 ### Community 9 - "Community 9"
-Cohesion: 0.11
-Nodes (22): assetMetadataExistsRule, htmlBodyRule, htmlBodyNotEmptyRule, htmlCharsetRule, htmlDoctypeRule, htmlHeadRule, htmlRootRule, readEntryHtml() (+14 more)
+Cohesion: 0.10
+Nodes (19): htmlBodyRule, htmlBodyNotEmptyRule, htmlCharsetRule, htmlDoctypeRule, htmlHeadRule, htmlRootRule, readEntryHtml(), assetManifestExistsRule (+11 more)
 
 ### Community 10 - "Community 10"
 Cohesion: 0.08
@@ -402,11 +419,11 @@ Nodes (19): dependencies, better-sqlite3, express, lucide-react, minio, multer, 
 
 ### Community 28 - "Community 28"
 Cohesion: 0.20
-Nodes (19): createBlenderProject(), createDrawioProject(), createFileStorage(), createGame(), createHandoff(), createImageProject(), createProposal(), createProposalAttachment() (+11 more)
+Nodes (19): createBlenderProject(), createBuildProject(), createDrawioProject(), createGame(), createHandoff(), createImageProject(), createProposal(), createProposalAttachment() (+11 more)
 
 ### Community 29 - "Community 29"
-Cohesion: 0.16
-Nodes (11): deleteFileStorage(), getFileStorage(), getFileStorages(), updateFileStorage(), validateObjectKey(), createFileStorageRecord(), router, validateProjectIdInput() (+3 more)
+Cohesion: 0.15
+Nodes (12): createFileStorage(), deleteFileStorage(), getFileStorage(), getFileStorages(), updateFileStorage(), validateObjectKey(), createFileStorageRecord(), router (+4 more)
 
 ### Community 30 - "Community 30"
 Cohesion: 0.11
@@ -421,12 +438,12 @@ Cohesion: 0.12
 Nodes (16): compilerOptions, declaration, esModuleInterop, forceConsistentCasingInFileNames, lib, module, moduleResolution, outDir (+8 more)
 
 ### Community 33 - "Community 33"
-Cohesion: 0.07
-Nodes (31): builtInCheckers, gameEngineeringChecker, buildSummary(), createLintRunner(), lintGameArtifact(), LintRunner, lintZipBuffer, _lts() (+23 more)
+Cohesion: 0.17
+Nodes (14): builtInCheckers, _dirname, _filename, gameEngineeringChecker, buildSummary(), createLintRunner(), lintGameArtifact(), LintRunner (+6 more)
 
 ### Community 34 - "Community 34"
-Cohesion: 0.10
-Nodes (19): add_material(), add_modifier(), boolean_operation(), create_mesh(), export_model(), list_objects(), _location_tuple(), Add or replace a PBR material on an object.      Args:         object_name: Targ (+11 more)
+Cohesion: 0.11
+Nodes (23): buildFetch(), BuildFileInfo, BuildStatusResult, BuildTriggerResult, createBuildProject(), CreateBuildProjectOptions, deleteBuildFile(), DeleteBuildFileOptions (+15 more)
 
 ### Community 35 - "Community 35"
 Cohesion: 0.15
@@ -441,36 +458,48 @@ Cohesion: 0.21
 Nodes (15): find_content_boxes(), find_title_from_text(), find_title_height(), fp(), get_tag(), main(), process_group(), Process a single SVG <g> group.     Finds all content boxes and centers their te (+7 more)
 
 ### Community 38 - "Community 38"
-Cohesion: 0.05
-Nodes (56): ProjectCreateResponse, ProjectInfo, create_project(), delete_project(), _generate_project_id(), get_project(), _project_path(), Project management routes. (+48 more)
+Cohesion: 0.25
+Nodes (19): UploadResponse, ProjectCreateResponse, ProjectInfo, Request, ProjectCreateResponse, ProjectInfo, ProjectCreateResponse, ProjectInfo (+11 more)
 
 ### Community 39 - "Community 39"
 Cohesion: 0.36
 Nodes (3): Documentation Update Checklist (10-file audit on every change), Game Dev Studio - 长期记忆, 关键工程决策记录
 
 ### Community 40 - "Community 40"
-Cohesion: 0.57
-Nodes (8): FileListResponse, FileResponse, FileListResponse, FileResponse, FileItem, FileListResponse, FileItem, FileListResponse
+Cohesion: 0.14
+Nodes (23): FileInfo, FileUploadResponse, FileListResponse, Request, delete_file(), download_file(), list_files(), _project_path() (+15 more)
+
+### Community 41 - "Community 41"
+Cohesion: 0.26
+Nodes (11): buildZipFromDir(), cacheSonarIssues(), collectFiles(), computeZipHash(), evictOldestIfNeeded(), FileEntry, getCachedSonarIssues(), resetSonarScanHistory() (+3 more)
 
 ### Community 42 - "Community 42"
-Cohesion: 0.33
-Nodes (3): AgentDefinition, AGENT_DEFINITIONS, AGENT_IDS
+Cohesion: 0.23
+Nodes (11): create_project(), delete_project(), _generate_project_id(), get_project(), _project_path(), Project management routes for Build Service., Recursively delete the project directory. Idempotent., Resolve project directory with path traversal protection. (+3 more)
 
 ### Community 43 - "Community 43"
 Cohesion: 0.13
 Nodes (14): ConnectorStyle, ConnectorType, CreateDrawioProjectOptions, DeleteDrawioProjectOptions, DiagramElementInfo, DownloadDiagramOptions, DrawioAddConnectorOptions, DrawioAddShapeOptions (+6 more)
 
 ### Community 44 - "Community 44"
-Cohesion: 0.22
-Nodes (13): delete_file(), download_file(), list_files(), _project_path(), File management routes (list / download / upload / delete image files)., Resolve project directory with path traversal protection., Join base and filename, then verify result is inside base (path traversal guard), Return the list of files in the project directory. (+5 more)
+Cohesion: 0.16
+Nodes (19): FileListResponse, FileResponse, FileListResponse, FileResponse, delete_file(), download_file(), list_files(), _project_path() (+11 more)
+
+### Community 45 - "Community 45"
+Cohesion: 0.23
+Nodes (11): create_project(), delete_project(), _generate_project_id(), get_project(), _project_path(), Project management routes., Resolve project directory with path traversal protection., Generate a project ID. In test mode uses a fixed ID. (+3 more)
 
 ### Community 46 - "Community 46"
 Cohesion: 0.18
-Nodes (15): Upload a file to the project directory.      Request body:         - content (st, Delete a file from the project directory. Idempotent., FileListResponse, FileResponse, delete_file(), download_file(), list_files(), _project_path() (+7 more)
+Nodes (16): Upload a file to the project directory.      Request body:         - content (st, Delete a file from the project directory. Idempotent., FileListResponse, FileResponse, delete_file(), download_file(), list_files(), _project_path() (+8 more)
 
 ### Community 47 - "Community 47"
 Cohesion: 0.15
 Nodes (12): PIXELS, Props, ROLE_BADGE, ROLE_COLORS, STATUS_COLOR, LABEL_EN, LABEL_ZH, STATUS_STYLE (+4 more)
+
+### Community 48 - "Community 48"
+Cohesion: 0.23
+Nodes (11): create_project(), delete_project(), _generate_project_id(), get_project(), _project_path(), Project management routes for Drawio Service., Resolve project directory with path traversal protection., Generate a project ID. In test mode uses a fixed ID. (+3 more)
 
 ### Community 49 - "Community 49"
 Cohesion: 0.15
@@ -530,7 +559,7 @@ Nodes (11): AGENT_EMOJI, AGENT_NAMES_EN, AGENT_NAMES_ZH, HandoffPanel(), PRIORIT
 
 ### Community 63 - "Community 63"
 Cohesion: 0.05
-Nodes (47): add_audio(), add_text(), add_watermark(), _audio_format_codec(), change_speed(), _codec_name(), concat(), convert() (+39 more)
+Nodes (97): execute(), ffprobe_info(), FFmpeg CLI wrapper.  Uses `ffmpeg` and `ffprobe` CLI to execute video processing, Execute an FFmpeg command via subprocess.      Args:         cmd: Command list,, Run ffprobe to get video metadata as JSON.      Args:         input_path: Path t, add_audio(), add_text(), add_watermark() (+89 more)
 
 ### Community 64 - "Community 64"
 Cohesion: 0.20
@@ -541,8 +570,8 @@ Cohesion: 0.29
 Nodes (9): convert_cairosvg(), convert_magick(), convert_rsvg(), find_converter(), main(), Find available SVG→PNG converter. Prefer rsvg-convert, fallback to cairosvg., Convert using rsvg-convert., Convert using cairosvg library. (+1 more)
 
 ### Community 66 - "Community 66"
-Cohesion: 0.08
-Nodes (21): AgentState, AgentStatus, AgentManager, AgentState, AgentStatus, StreamEvent, StreamEvent, AgentRole (+13 more)
+Cohesion: 0.06
+Nodes (24): AgentState, AgentStatus, AgentManager, AgentState, AgentStatus, StreamEvent, StreamEvent, AgentDefinition (+16 more)
 
 ### Community 67 - "Community 67"
 Cohesion: 0.31
@@ -556,13 +585,29 @@ Nodes (9): PollScanOptions, ScanStatus, ScanSubmitOptions, deleteScan(), getScan
 Cohesion: 0.31
 Nodes (8): decode_to_wav(), mix(), Decode any audio file to 48000Hz mono PCM WAV, Read 16-bit mono WAV file, return list of int samples, Write 16-bit mono WAV file, Mix voiceover + BGM with fade envelope, read_wav(), write_wav()
 
+### Community 70 - "Community 70"
+Cohesion: 0.23
+Nodes (11): create_project(), delete_project(), _generate_project_id(), get_project(), _project_path(), Project management routes for Image Service., Resolve project directory with path traversal protection., Generate a project ID. In test mode uses a fixed ID. (+3 more)
+
+### Community 71 - "Community 71"
+Cohesion: 0.23
+Nodes (11): create_project(), delete_project(), _generate_project_id(), get_project(), _project_path(), Project management routes for Video Service., Resolve project directory with path traversal protection., Generate a project ID. In test mode uses a fixed ID. (+3 more)
+
 ### Community 72 - "Community 72"
-Cohesion: 0.14
-Nodes (9): assetMetadataSchemaRule, FieldCheck, fieldChecks, readAllJsContent(), readMetadataJson(), lifecyclePhaserGameRule, lifecyclePhaserSceneCreateRule, lifecyclePhaserScenePreloadRule (+1 more)
+Cohesion: 0.25
+Nodes (4): readAllJsContent(), lifecyclePhaserGameRule, lifecyclePhaserSceneCreateRule, lifecyclePhaserScenePreloadRule
+
+### Community 73 - "Community 73"
+Cohesion: 0.22
+Nodes (9): A.1.1 lifecycle-phaser-game, A.1.2 lifecycle-phaser-scene-preload, A.1.3 lifecycle-phaser-scene-create, A.1.4 lifecycle-phaser-script-tag, A.1 游戏框架契约规则组（lifecycle- 前缀）, A.2.1 asset-resource-relative-path, A.2.2 asset-capacitor-config, A.2 资源与配置规则组（asset- 前缀）— Phaser Mobile 扩展 (+1 more)
 
 ### Community 74 - "Community 74"
 Cohesion: 0.32
 Nodes (8): default:architect Agent, default:biz_designer Agent, default:ceo Agent, default:engineer Agent, default:game_designer Agent, Pixel Art Office Environment, Studio Page UI (English), Studio Page UI (Chinese)
+
+### Community 76 - "Community 76"
+Cohesion: 0.31
+Nodes (3): SonarIssuesResponse, SonarQubeClient, SonarQubeIssue
 
 ### Community 77 - "Community 77"
 Cohesion: 0.29
@@ -617,8 +662,8 @@ Cohesion: 0.60
 Nodes (5): align_segment(), gen(), get_dur(), main(), Pad or trim a voiceover segment to match its chapter video duration.     - If vo
 
 ### Community 90 - "Community 90"
-Cohesion: 0.05
-Nodes (42): API 设计, `build_projects` 表（SQLite）, Docker Compose, Dockerfile, MCP 工具清单（8 个）, metadata.json 结构, npm 安全, Python 端实现 (+34 more)
+Cohesion: 0.10
+Nodes (21): `build_projects` 表（SQLite）, MCP 工具清单（8 个）, npm 安全, subprocess 执行安全, UI Test 验收规则, 与 Video / Image Service 的对照, 主动更新所有相关文档规范, 主动补全 UI Test 规范 (+13 more)
 
 ### Community 92 - "Community 92"
 Cohesion: 0.53
@@ -633,8 +678,8 @@ Cohesion: 0.40
 Nodes (5): health_check(), lifespan(), Video Service — FastAPI entry point.  Mounts all routers and exposes a /health c, Liveness probe for the healthcheck., FastAPI
 
 ### Community 97 - "Community 97"
-Cohesion: 0.24
-Nodes (24): AddMaterialRequest, AddModifierRequest, BlenderError, Raised when Blender execution fails (non-zero exit or script error)., AddMaterialRequest, AddModifierRequest, BlenderObjectInfo, BlenderOperationResponse (+16 more)
+Cohesion: 0.07
+Nodes (66): AddMaterialRequest, AddModifierRequest, BlenderError, execute_script(), Blender Python CLI wrapper.  Uses `blender --background --python-expr` to execut, Raised when Blender execution fails (non-zero exit or script error)., Ensure project_path exists and is inside /app/data/projects/. Returns resolved p, Execute a Blender Python script in --background mode.      Args:         script_ (+58 more)
 
 ### Community 98 - "Community 98"
 Cohesion: 0.50
@@ -697,8 +742,8 @@ Cohesion: 0.67
 Nodes (3): getGameTypes(), insertGameEngineeringSpec(), seedGameEngineeringSpecs()
 
 ### Community 122 - "Community 122"
-Cohesion: 0.67
-Nodes (3): createStudioToolsServer(), requiredTextSchema(), singleLineTitleSchema()
+Cohesion: 0.25
+Nodes (6): assetMetadataExistsRule, assetMetadataSchemaRule, FieldCheck, fieldChecks, readMetadataJson(), isValidGameType()
 
 ### Community 125 - "Community 125"
 Cohesion: 0.40
@@ -729,8 +774,8 @@ Cohesion: 0.05
 Nodes (38): 1. 项目隔离, 2. Agent 角色定义, 3. SDK Custom Tools 架构, 4. 关键文件位置, Agent 返回 401 Unauthorized, CI 调试流程（SPEC-014）, Game Dev Studio - AI Agent Common Instructions, Mock Server (+30 more)
 
 ### Community 172 - "Community 172"
-Cohesion: 0.05
-Nodes (38): A.1.1 lifecycle-phaser-game, A.1.2 lifecycle-phaser-scene-preload, A.1.3 lifecycle-phaser-scene-create, A.1.4 lifecycle-phaser-script-tag, A.1 游戏框架契约规则组（lifecycle- 前缀）, A.2.1 asset-resource-relative-path, A.2.2 asset-capacitor-config, A.2 资源与配置规则组（asset- 前缀）— Phaser Mobile 扩展 (+30 more)
+Cohesion: 0.10
+Nodes (21): Capacitor 原生打包, CI/CD（GitHub Actions）, localStorage Key 命名规则, Phaser Mobile 游戏工程规范, SaveManager 实现, UI Test 验收规则, 主动更新所有相关文档规范, 主动补全 UI Test 规范 (+13 more)
 
 ### Community 173 - "Community 173"
 Cohesion: 0.05
@@ -845,16 +890,16 @@ Cohesion: 0.18
 Nodes (11): A.1.1 html-doctype, A.1.2 html-root, A.1.3 html-head, A.1.4 html-body, A.1.5 html-charset, A.1.6 html-body-not-empty, A.1 HTML 结构规则组（html- 前缀）, A.2.1 asset-metadata-exists (+3 more)
 
 ### Community 201 - "Community 201"
-Cohesion: 0.18
-Nodes (11): 3. `get_common_spec`, UI Test 验收规则（tool 功能验收）, 与 Checker 的关系, 参数定义, 参数校验规则, 实现参考, 工具列表, 新增游戏类型的步骤（DB 方式） (+3 more)
+Cohesion: 0.12
+Nodes (16): 3. `get_common_spec`, DB CRUD 函数, DB 表结构, UI Test 验收规则（tool 功能验收）, 与 Checker 的关系, 初始种子数据, 参数定义, 参数校验规则 (+8 more)
 
 ### Community 202 - "Community 202"
-Cohesion: 0.18
-Nodes (11): 10) 本地持久化选择状态片段, 1) 文本与标题标准化校验片段, 2) Project ID 归一化与验证片段, 3) Tool 参数 schema 复用片段, 4) Agent 权限门禁片段, 5) 任务状态流转约束片段, 6) SSE 广播片段（按项目隔离）, 7) SSE 初始化快照 + 增量事件片段 (+3 more)
+Cohesion: 0.07
+Nodes (30): 10) 本地持久化选择状态片段, 1) 后端 API Handler 模板, 1) 工厂模式（Factory）, 1) 文本与标题标准化校验片段, 2) MCP Tool 定义模板, 2) Project ID 归一化与验证片段, 2) 策略/插件模式（Strategy / Plugin）, 3) Agent 会话执行模板（sendMessage） (+22 more)
 
 ### Community 203 - "Community 203"
-Cohesion: 0.18
-Nodes (11): 1) 后端 API Handler 模板, 2) MCP Tool 定义模板, 3) Agent 会话执行模板（sendMessage）, 4) React SSE 订阅模板, 5) i18n Provider 模板, 6) E2E 工作流模板（目标状态驱动循环）, 7) Mock Expectation 队列模板, 二、可复用代码模板（Templates） (+3 more)
+Cohesion: 0.32
+Nodes (5): lintZipBuffer, createStudioToolsServer(), requiredTextSchema(), singleLineTitleSchema(), _toolsDirname
 
 ### Community 204 - "Community 204"
 Cohesion: 0.20
@@ -893,8 +938,8 @@ Cohesion: 0.25
 Nodes (8): Constrained Handoff Chain, Task State Transition, MCP Tool Set Definition, Multi-Role Agent Team, Task Handoff Workflow, MCP Custom Tools, Project-Level Data Isolation, Task Board System
 
 ### Community 213 - "Community 213"
-Cohesion: 0.25
-Nodes (8): 1) 工厂模式（Factory）, 2) 策略/插件模式（Strategy / Plugin）, 3) 观察者模式（Observer / Pub-Sub）, 4) 状态机模式（State Machine）, 5) 仓储/数据访问封装（Repository-like）, 6) 适配器模式（Adapter）, 7) 模板方法风格（Template Method）, 三、可复用设计模式（Design Patterns）
+Cohesion: 0.40
+Nodes (5): health_check(), lifespan(), Build Service — FastAPI entry point.  Mounts all routers and exposes a /health c, Liveness probe for the healthcheck., FastAPI
 
 ### Community 214 - "Community 214"
 Cohesion: 0.25
@@ -957,8 +1002,8 @@ Cohesion: 0.40
 Nodes (5): 1. `get_game_types`, 参数定义, 实现参考, 边界处理, 返回值格式
 
 ### Community 230 - "Community 230"
-Cohesion: 0.40
-Nodes (5): DB CRUD 函数, DB 表结构, 初始种子数据, 数据存储设计, 种子数据导入（启动时）
+Cohesion: 0.33
+Nodes (6): API 设计, 文件管理, 构建, 源码上传, 通用响应格式, 项目管理
 
 ### Community 231 - "Community 231"
 Cohesion: 0.40
@@ -1020,20 +1065,44 @@ Nodes (3): `test_projects` 表（SQLite）, `test_runs` 表（SQLite）, 数据�
 Cohesion: 0.11
 Nodes (18): Skill 发现规则, SPEC 开发全流程编排, Step 10 — CI 验证修复, Step 11 — doc-sync 文档同步, Step 1 — 确认 SPEC 编号, Step 2 — 阅读 memory 文档, Step 3 — 阅读 SPEC 文档, Step 4 — 规划任务列表 (+10 more)
 
+### Community 254 - "Community 254"
+Cohesion: 0.33
+Nodes (6): Docker Compose, Dockerfile, submit_game 流程变更, 测试模式 Toggle, 端口分配总览, 集成要点
+
+### Community 255 - "Community 255"
+Cohesion: 0.40
+Nodes (5): Python 端实现, 总体架构, 路径安全, 路由层使用规范, 路由覆盖范围
+
+### Community 256 - "Community 256"
+Cohesion: 0.50
+Nodes (3): Safe path resolution utilities for Build Service.  Provides a pure function to s, Resolve a user-supplied path segment within a trusted base directory.      The f, resolve_safe_path()
+
+### Community 257 - "Community 257"
+Cohesion: 0.50
+Nodes (4): GameConfig 契约, 场景流转, 必须实现的钩子, 生命周期契约（Phaser Scene 模型）
+
+### Community 259 - "Community 259"
+Cohesion: 0.50
+Nodes (4): Phaser 资源加载方式, 美术资源规范, 资源尺寸约定, 资源生成范式
+
+### Community 260 - "Community 260"
+Cohesion: 0.50
+Nodes (4): metadata.json 结构, 打包策略映射, 构建失败处理, 游戏类型与打包策略
+
 ## Knowledge Gaps
-- **1362 isolated node(s):** `check-ci.sh script`, `get-logs.sh script`, `get-videos.sh script`, `MESH_TYPES`, `BOOLEAN_OPS` (+1357 more)
+- **1367 isolated node(s):** `check-ci.sh script`, `get-logs.sh script`, `get-videos.sh script`, `wait-for-ci.sh script`, `MESH_TYPES` (+1362 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **49 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **52 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Path` connect `Community 22` to `Community 33`, `Community 66`, `Community 67`, `Community 2`, `Community 5`, `Community 72`, `Community 9`, `Community 10`, `Community 13`, `Community 18`, `Community 53`, `Community 23`, `Community 24`, `Community 25`, `Community 58`, `Community 59`, `Community 60`, `Community 31`?**
-  _High betweenness centrality (0.100) - this node is a cross-community bridge._
+- **Why does `Path` connect `Community 22` to `Community 2`, `Community 5`, `Community 9`, `Community 10`, `Community 13`, `Community 18`, `Community 23`, `Community 24`, `Community 25`, `Community 31`, `Community 33`, `Community 34`, `Community 41`, `Community 53`, `Community 58`, `Community 59`, `Community 60`, `Community 66`, `Community 67`, `Community 72`, `Community 203`?**
+  _High betweenness centrality (0.130) - this node is a cross-community bridge._
 - **Why does `ScanResponse` connect `Community 60` to `Community 1`, `Community 22`?**
-  _High betweenness centrality (0.024) - this node is a cross-community bridge._
+  _High betweenness centrality (0.032) - this node is a cross-community bridge._
 - **Why does `ScanStatusResponse` connect `Community 60` to `Community 1`, `Community 22`?**
-  _High betweenness centrality (0.024) - this node is a cross-community bridge._
+  _High betweenness centrality (0.032) - this node is a cross-community bridge._
 - **Are the 19 inferred relationships involving `HTTPException` (e.g. with `FFmpegError` and `AddAudioRequest`) actually correct?**
   _`HTTPException` has 19 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 2 inferred relationships involving `Game Dev Studio` (e.g. with `Game Dev Studio Brand Identity System` and `Star-Office-UI Integration`) actually correct?**

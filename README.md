@@ -25,6 +25,7 @@ A multi-agent game development workspace built on the CodeBuddy Agent SDK, provi
 - Draw.io diagram workflow (drawio-service + drawio-export for diagram CRUD and export)
 - Image processing pipeline (image-service + ImageMagick + `image_*` tools for 12 image operations)
 - Video processing pipeline (video-service + FFmpeg + `video_*` tools for 17 video operations)
+- Game build pipeline (build-service + Node.js + `build_*` tools for h5/phaser-mobile auto-build)
 - Static analysis (extensible lint framework with pluggable checkers for HTML structure/HTTP method safety/JS security/SonarQube quality scan, supports HTML mode and ZIP package mode)
 - Sonar report download in game preview when scan artifacts are available
 - Long-term agent memory (save/query/clear)
@@ -126,6 +127,7 @@ npm run server
 | `DRAWIO_SERVICE_URL` | `http://localhost:8082` | Draw.io service base URL used by diagram tools |
 | `IMAGE_SERVICE_URL` | `http://localhost:8089` | ImageMagick image processing service base URL |
 | `VIDEO_SERVICE_URL` | `http://localhost:8084` | FFmpeg video processing service base URL |
+| `BUILD_SERVICE_URL` | `http://localhost:8085` | Node.js game build service base URL |
 
 ## Docker Deployment
 
@@ -147,6 +149,7 @@ game-studio/
 │   ├── file-storage.ts     # File storage (MinIO) operations
 │   ├── image-service.ts    # ImageMagick processing service client
 │   ├── video-service.ts    # FFmpeg video processing service client
+│   ├── build-service.ts    # Node.js game build service client
 │   ├── creator-service.ts  # Blender creator service client
 │   ├── drawio-service.ts   # Draw.io diagram service client
 │   ├── sonar-scanner-service.ts # SonarQube scanner service client
@@ -176,6 +179,7 @@ game-studio/
 ├── sonar-scanner-service/  # SonarQube scanner microservice (FastAPI + sonar-scanner CLI)
 ├── image-service/          # ImageMagick image processing microservice
 ├── video-service/          # FFmpeg video processing microservice
+├── build-service/          # Node.js game build microservice
 ├── tests/                  # E2E test suite (Playwright + Allure)
 ├── scripts/                # Utility scripts
 ├── .agent/                 # Agent configurations, specs, skills, memory
@@ -257,7 +261,7 @@ Based on [technical specs](./.agent/specs/INDEX.md):
 | SPEC-008 | ImageMagick image processing microservice | ✅ Implemented |
 | SPEC-009 | FFmpeg video processing microservice (video tools for engineer agent) | ✅ Implemented |
 | SPEC-010 | Phaser Mobile game engineering spec | ✅ Implemented |
-| SPEC-011 | Game build microservice | 🚧 In Design |
+| SPEC-011 | Game build microservice | ✅ Implemented |
 | SPEC-012 | Game run/serving microservice | 🚧 In Design |
 | SPEC-013 | Playwright game testing microservice | 🚧 In Design |
 | SPEC-014 | GitHub Actions CI Agent | ✅ Implemented |
@@ -299,6 +303,8 @@ External service checklist (all must be running before starting the backend):
 | MinIO | `:9000` (API), `:9001` (console) | `minio/minio:latest`, credentials `minioadmin/minioadmin` |
 | Star Office UI | `:19000` | Build from `star-office-ui/` |
 | Creator (Blender) | `:8080` | Build from `creator/` |
+| Video service (FFmpeg) | `:8084` | Build from `video-service/` |
+| Build service (Node.js) | `:8085` | Build from `build-service/` |
 | Draw.io service | `:8082` | Build from `drawio-service/` |
 | Draw.io export | `:8083` | `jgraph/drawio:latest` |
 | SonarQube scanner | `:8081` | Build from `sonar-scanner-service/` |

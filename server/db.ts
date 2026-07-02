@@ -345,6 +345,20 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_video_projects_project ON video_projects(project_id);
 
+  -- Build 游戏打包项目表（关联 studio project 与 build service project）
+  CREATE TABLE IF NOT EXISTS build_projects (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL,
+    build_project_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    game_type TEXT,
+    build_status TEXT NOT NULL DEFAULT 'pending',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_build_projects_project ON build_projects(project_id);
+
   -- 策划案附件表（关联策划案与 MinIO 存储文件）
   CREATE TABLE IF NOT EXISTS proposal_attachments (
     id TEXT PRIMARY KEY,
@@ -519,6 +533,17 @@ export interface DbVideoProject {
   project_id: string;
   video_project_id: string;
   name: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DbBuildProject {
+  id: string;
+  project_id: string;
+  build_project_id: string;
+  name: string;
+  game_type: string | null;
+  build_status: string;
   created_at: string;
   updated_at: string;
 }
@@ -1738,6 +1763,65 @@ export function updateVideoProject(id: string, updates: { video_project_id?: str
 
 export function deleteVideoProject(id: string): boolean {
   const stmt = db.prepare('DELETE FROM video_projects WHERE id = ?');
+  const result = stmt.run(id);
+  return result.changes > 0;
+}
+
+// ============================================================================
+// BuildProject CRUD（关联 studio project 与 build service project）
+// ============================================================================
+
+export function getBuildProjects(projectId: string): DbBuildProject[] {
+  const stmt = db.prepare('SELECT * FROM build_projects WHERE project_id = ? ORDER BY created_at DESC');
+  return stmt.all(projectId) as DbBuildProject[];
+}
+
+export function getBuildProject(id: string): DbBuildProject | null {
+  const stmt = db.prepare('SELECT * FROM build_projects WHERE id = ?');
+  const result = stmt.get(id) as DbBuildProject | undefined;
+  return result ?? null;
+}
+
+export function createBuildProject(data: {
+  id: string;
+  project_id: string;
+  build_project_id: string;
+  name: string;
+  game_type: string | null;
+  build_status: string;
+  created_at: string;
+  updated_at: string;
+}): DbBuildProject {
+  const normalizedProjectId = normalizeAndValidateRequiredText(data.project_id, 'project_id');
+  const normalizedName = normalizeAndValidateRequiredText(data.name, 'name');
+  if (normalizedName.length > MAX_FILENAME_LENGTH) {
+    throw new Error(`name 长度不能超过 ${MAX_FILENAME_LENGTH}`);
+  }
+  const stmt = db.prepare(`
+    INSERT INTO build_projects (id, project_id, build_project_id, name, game_type, build_status, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  stmt.run(data.id, normalizedProjectId, data.build_project_id, normalizedName, data.game_type, data.build_status, data.created_at, data.updated_at);
+  return { ...data, project_id: normalizedProjectId, name: normalizedName };
+}
+
+export function updateBuildProject(id: string, updates: { build_project_id?: string; game_type?: string | null; build_status?: string }): boolean {
+  const now = new Date().toISOString();
+  const existing = getBuildProject(id);
+  if (!existing) return false;
+  const stmt = db.prepare('UPDATE build_projects SET build_project_id = ?, game_type = ?, build_status = ?, updated_at = ? WHERE id = ?');
+  const result = stmt.run(
+    updates.build_project_id ?? existing.build_project_id,
+    updates.game_type !== undefined ? updates.game_type : existing.game_type,
+    updates.build_status ?? existing.build_status,
+    now,
+    id,
+  );
+  return result.changes > 0;
+}
+
+export function deleteBuildProject(id: string): boolean {
+  const stmt = db.prepare('DELETE FROM build_projects WHERE id = ?');
   const result = stmt.run(id);
   return result.changes > 0;
 }

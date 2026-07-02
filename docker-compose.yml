@@ -49,6 +49,7 @@ services:
       - DRAWIO_SERVICE_URL=http://drawio-service:8082
       - IMAGE_SERVICE_URL=http://image-service:8089
       - VIDEO_SERVICE_URL=http://video-service:8084
+      - BUILD_SERVICE_URL=http://build-service:8085
       - SCANNER_SERVICE_URL=http://scanner:8081
       - SONARQUBE_HOST=http://sonarqube:9000
       - SONARQUBE_USER=admin
@@ -70,6 +71,8 @@ services:
       image-service:
         condition: service_healthy
       video-service:
+        condition: service_healthy
+      build-service:
         condition: service_healthy
       scanner:
         condition: service_healthy
@@ -217,6 +220,30 @@ services:
       start_period: 15s
     restart: unless-stopped
 
+  # Build 游戏打包微服务（Node.js 22 + FastAPI）
+  build-service:
+    build:
+      context: ./build-service
+      dockerfile: Dockerfile
+    container_name: game-studio-build-service
+    ports:
+      - "${BUILD_SERVICE_PORT:-8085}:8085"
+    environment:
+      - BUILD_SERVICE_PORT=8085
+      - NPM_CACHE=/root/.npm
+    volumes:
+      - build-data:/app/data
+      - npm-cache:/root/.npm
+    networks:
+      - game-studio-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8085/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+
   # Draw.io 图表微服务（FastAPI）
   drawio-service:
     build:
@@ -306,6 +333,10 @@ volumes:
   image-data:
     driver: local
   video-data:
+    driver: local
+  build-data:
+    driver: local
+  npm-cache:
     driver: local
   sonarqube-data:
     driver: local

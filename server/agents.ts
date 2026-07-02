@@ -144,6 +144,15 @@ const TOOLS_OVERVIEW = `
 | \`video_upload_file\` | 上传本地视频文件到 video service 容器目录 | **engineer** |
 | \`video_download_file\` | 从 video service 下载视频文件到本地 output 目录 | **engineer** |
 | \`video_delete_file\` | 删除 video service 远程视频文件（幂等） | **engineer** |
+| \`build_create_project\` | 创建游戏打包 project（调用 build service） | **engineer** |
+| \`build_list_projects\` | 列出当前项目下所有打包 project | **engineer** |
+| \`build_delete_project\` | 删除打包 project（清理 build service 端容器存储） | **engineer** |
+| \`build_upload_source\` | 上传游戏源码到 build service（tar.gz 二进制流） | **engineer** |
+| \`build_trigger\` | 触发游戏构建（自动识别 game_type 选择构建策略） | **engineer** |
+| \`build_get_status\` | 查询构建状态（pending/building/completed/failed） | **engineer** |
+| \`build_list_files\` | 列出 build service 项目中的文件（递归） | **engineer** |
+| \`build_download\` | 下载构建产物为 tar.gz 到本地 output 目录 | **engineer** |
+| \`build_delete_file\` | 删除 build service 项目文件（幂等） | **engineer** |
 | \`get_game_types\` | 获取所有已注册的游戏类型列表（开发前确认支持的游戏类型） | **engineer** |
 | \`get_game_framework_spec\` | 根据游戏类型获取对应的工程框架规范（Engineer Agent 开发前 MUST 调用） | **engineer** |
 | \`get_common_spec\` | 获取所有游戏类型共享的公共工程规范 | **engineer** |
@@ -293,6 +302,18 @@ export const AGENT_DEFINITIONS: Record<AgentRole, AgentDefinition> = {
 7. \`video_delete_project\` — 清理容器资源
 
 视频文件体积较大，处理耗时较长（默认超时 300s）。推荐流程：先 \`video_info\` 了解原始视频信息，再选择合适的操作参数。
+
+### 游戏打包工作流 (build service)
+游戏源码构建打包通过 \`build_*\` 系列工具完成，全流程：
+1. \`build_create_project\` — 创建打包 project
+2. \`build_upload_source\` — 上传游戏源码 tar.gz 到 build service（路径指向 \`output/{projectId}/games/latest/source.tar.gz\`）
+3. \`build_trigger\` — 触发构建（自动读取 metadata.json 判断 game_type，选择 h5 或 phaser-mobile 策略）
+4. \`build_get_status\` — 查询构建状态（pending/building/completed/failed）
+5. \`build_list_files\` — 查看构建产物文件列表
+6. \`build_download\` — 下载构建产物 tar.gz 到本地
+7. \`build_delete_project\` — 清理容器资源
+
+构建超时 600s（npm install + build 耗时较长）。构建失败时可通过 build_get_status 查看详细错误日志。
 
 ## 游戏工程规范（必须遵守）
 1. 开始开发前，MUST 先调用 \`get_game_types\` 确认支持的游戏类型。

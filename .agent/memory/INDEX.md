@@ -37,6 +37,7 @@
 - Blender 建模工具（`blender_*`）通过 `creator-service.ts` 调用 creator 微服务，模型文件下载/删除带安全路径校验
 - 图片处理工具（`image_*`）通过 `image-service.ts` 调用 image 微服务。`image_write_file`（本地 base64→Buffer）+ `image_upload_file`（本地→POST 微服务）职责分离。微服务侧 `IMAGE_SERVICE_TEST_MODE` 生成固定 project_id
 - 视频处理工具（`video_*`）通过 `video-service.ts` 调用 video 微服务。`video_write_file`（本地 base64→Buffer）+ `video_upload_file`（本地→POST 微服务）职责分离。微服务侧 `VIDEO_SERVICE_TEST_MODE` 生成固定 project_id `vid-proj-001`
+- 构建打包工具（`build_*`）通过 `build-service.ts` 调用 build 微服务（Node.js 22 + FastAPI，端口 8085）。共 9 个工具：project CRUD、源码上传、构建触发、状态查询、文件管理。`BUILD_SERVICE_TEST_MODE` 返回固定 `build-proj-001`。submit_game 集成自动构建，失败时 fallback
 - draw.io 图表工具（`drawio_*`、`drawio_list_elements`）通过 `drawio-service.ts` 调用微服务，项目记录存放于 `drawio_projects`
 - 策划案附件记录在 `proposal_attachments`，附件文件存储在 MinIO
 - SonarQube 报告上传后写入 `games.sonar_storage_id`，前端可下载扫描报告

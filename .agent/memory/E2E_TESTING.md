@@ -156,7 +156,7 @@
 | `tool-chain-max-length` | ToolCallChain | 最大显示长度滑块 |
 | `team-building-indicator` | TeamBuildingIndicator | 团队建设 Agent 指示灯（含 data-agent-status 属性） |
 
-## 测试矩阵总览（15 个用例）
+## 测试矩阵总览（16 个用例）
 
 | 用例 ID | 类别 | 是否需要 Mock | 核心验证 |
 |:---|:---|:---:|:---|
@@ -175,6 +175,7 @@
 | UI-013 | 视频处理工作流 (SPEC-009) | ✅ | video_create → write_file→upload_file → info→thumbnail→convert→gif→add_text → download_file → delete_project |
 | UI-014 | 工具链可视化 (SPEC-019) | ✅ | ToolCallChain 渲染 + SSE 实时追加 + 模式切换 + 配置调整 |
 | UI-015 | Team Building 指示灯 (SPEC-021) | ✅ | idle 状态验证 + mock 延迟触发 working + 绿色脉冲断言 + 点击跳转团队建设 Tab |
+| UI-016 | Build Service 集成 (SPEC-011) | ✅ | 标准 H5 工作流 + build service 健康检查 + fallback 机制验证 |
 
 ## Lint Framework 集成验证
 
