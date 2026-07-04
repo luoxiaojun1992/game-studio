@@ -65,6 +65,30 @@ bash scripts/wait-for-ci.sh feat/my-branch --interval 60 --timeout 1800
 - Exit codes: 0=all pass, 1=failure, 124=timeout
 - On failure: prints instructions to download logs and fix root cause
 
+**🚨 MANDATORY: Foreground execution only**
+
+`wait-for-ci.sh` MUST be executed in the **foreground** — never as a background task.
+The agent must block and wait synchronously for the script to complete. This is critical because:
+
+1. The agent needs to see the real-time status output to report progress to the user
+2. The exit code (0/1/124) determines the next step in the debug-fix-retry cycle
+3. Background execution breaks the polling loop — the dots and status updates are lost
+4. The agent cannot proceed to log analysis or code fixes until CI completes
+
+**Correct usage:**
+```bash
+# Foreground — agent blocks until CI completes or times out
+bash scripts/wait-for-ci.sh
+```
+
+**Wrong usage (forbidden):**
+```bash
+# ❌ NEVER run in background
+bash scripts/wait-for-ci.sh &   # forbidden
+# ❌ NEVER use Bash tool's run_in_background=true
+# ❌ NEVER nohup, disown, or any detached execution mode
+```
+
 ### check-ci.sh — Quick Status Check
 
 Check current CI status for a branch (no polling).
@@ -145,6 +169,7 @@ Apply the fix based on root cause analysis. Common failure patterns:
 
 ```bash
 git add -A && git commit -m "fix: <describe fix>" && git push
+# MUST run in foreground — blocks until CI completes
 bash scripts/wait-for-ci.sh
 ```
 
@@ -246,11 +271,14 @@ For a complete push-and-verify cycle:
 # 1. Push changes
 git push
 
-# 2. Wait for CI and report result
+# 2. Wait for CI and report result (FOREGROUND — blocks until done)
 bash scripts/wait-for-ci.sh
 ```
 
 If the above fails, proceed to the debug-fix-retry cycle.
+
+> ⚠️  The agent MUST run wait-for-ci.sh in the foreground and block until it exits.
+> Do NOT use background execution or any detached mode for this script.
 
 ## Reference
 
