@@ -35,6 +35,7 @@
 | SPEC-019 | Tool Call Chain — Agent 工具调用链可视化 | [tool-call-chain.md](tool-call-chain.md) | 已实现 |
 | SPEC-020 | OpenTelemetry 分布式链路追踪 | [opentelemetry-tracing/opentelemetry-tracing.md](opentelemetry-tracing/opentelemetry-tracing.md) | 设计中 |
 | SPEC-021 | Team Building Agent 指示灯 | [team-building-agent-indicator-light/spec.md](team-building-agent-indicator-light/spec.md) | 已实现 |
+| SPEC-022 | 清理 docker-compose.ui-test.yml 非必要环境变量 | [docker-compose-ui-test-cleanup.md](docker-compose-ui-test-cleanup.md) | 设计中 |
 
 ---
 
