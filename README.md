@@ -272,6 +272,7 @@ Based on [technical specs](./.agent/specs/INDEX.md):
 | SPEC-019 | Tool Call Chain — real-time agent tool call visualization with icons | ✅ Implemented |
 | SPEC-020 | OpenTelemetry distributed tracing with Jaeger — in-service and cross-service spans | 🚧 In Design |
 | SPEC-021 | Team Building Agent indicator light | ✅ Implemented |
+| SPEC-022 | Clean up non-essential env vars in docker-compose.ui-test.yml | 🚧 In Design |
 
 ## Architecture Documentation
 
