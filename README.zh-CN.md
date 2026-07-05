@@ -275,6 +275,7 @@ game-studio/
 | SPEC-019 | Tool Call Chain — Agent 工具调用链可视化（实时追踪，带图标） | ✅ 已实现 |
 | SPEC-020 | OpenTelemetry 分布式链路追踪（Jaeger）— 服务内函数调用 + 跨服务追踪 | 🚧 设计中 |
 | SPEC-021 | Team Building Agent 指示灯 | ✅ 已实现 |
+| SPEC-022 | 清理 docker-compose.ui-test.yml 非必要环境变量 | 🚧 设计中 |
 
 ```bash
 # 推荐：使用 Makefile 运行 UI 测试（构建 + 启动）
