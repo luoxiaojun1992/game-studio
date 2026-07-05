@@ -16,6 +16,7 @@
 | [GRAPHIFY.md](./GRAPHIFY.md) | Graphify 知识图谱技能使用指南 |
 | [../skills/architecture-diagram/SKILL.md](../skills/architecture-diagram/SKILL.md) | architecture-diagram 技能：SVG 架构图维护、文字居中算法 |
 | [../skills/doc-sync/SKILL.md](../skills/doc-sync/SKILL.md) | doc-sync 技能：文档同步检查清单（A→G 区域遍历、变更影响矩阵） |
+| [../skills/doc-architect/SKILL.md](../skills/doc-architect/SKILL.md) | doc-architect 技能：文档架构标准化（审计、对齐、初始化） |
 | [../skills/graphify/SKILL.md](../skills/graphify/SKILL.md) | graphify 技能：知识图谱构建与查询（含 --code-only 模式） |
 | [../skills/spec-writer/SKILL.md](../skills/spec-writer/SKILL.md) | spec-writer 技能：标准化 spec 设计文档编写规范 |
 | [../../specs/github-ci-agent.md](../../specs/github-ci-agent.md) | SPEC-014: GitHub Actions CI Agent 调试规范 |
