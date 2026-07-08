@@ -344,5 +344,6 @@ test: add xxx test case
 | `graphify` | 构建/查询代码库知识图谱（`.agent/skills/graphify/SKILL.md`）。`graphify-out/graph.json` 已预构建，包含 1697 节点、2952 边、149 社区 |
 | `ci-verification` | GitHub Actions CI 调试（SPEC-014 workflow） |
 | `promo-video-builder` | 宣传视频制作 pipeline |
+| `doc-architect` | 文档架构标准化：审计、对齐、初始化项目文档（`.agent/skills/doc-architect/SKILL.md`） |
 
 > **重要**：每次启动后应优先读取 `.agent/` 目录下的 memory 文件了解项目上下文，而非依赖模型内置知识。
